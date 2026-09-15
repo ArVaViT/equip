@@ -79,8 +79,17 @@ Flipping the flag back to `false` restores the documented default. Deploy
 previews cover the gap, and as of the same day they genuinely do — see the
 staging note in [`DEPLOYMENT.md`](DEPLOYMENT.md#known-gaps--follow-ups).
 
-Step 2 of Teardown below (**delete the Supabase branch**) is still
-outstanding — the branch keeps billing at ~$0.013/hr until it goes.
+Teardown is now complete: the Supabase branch was deleted on 2026-09-15,
+which stops the ~$0.013/hr compute. It was in state `MIGRATIONS_FAILED` —
+so for those ten weeks the authenticated e2e specs were passing against a
+branch whose own migrations had not applied. The Vercel projects, domains
+and repo secrets stay; they cost nothing without the branch.
+
+A consequence worth stating plainly: **the authenticated e2e specs now
+skip on every run.** CI still checks the public smoke and a11y specs, and
+that is honest, but nothing exercises a signed-in student or teacher until
+a staging environment exists again. Bringing one up means a fresh branch
+and a schema bootstrap, per Spin-up above.
 
 Before flipping the flag back to `true`, bring the environment up to date
 first: the branch, the schema, then the flag. In that order, or CI starts

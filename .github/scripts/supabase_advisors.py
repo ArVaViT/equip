@@ -52,14 +52,20 @@ ACCEPTED: dict[str, str] = {
         "mailer_otp_exp is 86400 on purpose: a one-hour link was expiring before "
         "people opened their mail, which broke six of seven sign-ups."
     ),
-    "anon_security_definer_function_executable": (
-        "can_teach / current_organization_id / is_platform_staff take no arguments, "
-        "read auth.uid() and answer about the caller — anon gets false. They are "
-        "called from inside RLS policies, including the public catalogue's, so "
-        "revoking EXECUTE would break the catalogue rather than close a hole."
-    ),
+    # `anon_security_definer_function_executable` used to be accepted here, on the
+    # grounds that revoking EXECUTE would break the public catalogue. That was
+    # wrong, and the entry is gone rather than corrected: the catalogue is served
+    # by the backend on the service role, and all three policies calling these
+    # helpers (courses_select_published, cohorts_select_own_organization,
+    # certificates_select_own_or_reviewer) are declared TO authenticated, so anon
+    # never evaluates them. EXECUTE was revoked from anon on 2026-09-15
+    # (20260915030000_anon_loses_execute_on_three_definer_functions) and the
+    # catalogue still answers. If the finding ever returns, it is a real
+    # regression — let it through.
     "authenticated_security_definer_function_executable": (
-        "Same three helpers; authenticated callers need EXECUTE for the policies that call them to run at all."
+        "can_teach / current_organization_id / is_platform_staff take no arguments, "
+        "read auth.uid() and answer about the caller. authenticated callers need "
+        "EXECUTE for the policies that call them to run at all."
     ),
     "unused_index": (
         "Indexes are judged when there is traffic to judge them by. With the "
@@ -67,8 +73,17 @@ ACCEPTED: dict[str, str] = {
         "yet', not 'wrong'."
     ),
     "auth_db_connections_absolute": (
-        "Informational: the pool sizing was measured on 2026-08-12 (5+5, timeout 10s) "
-        "against a chapter page making seven parallel calls."
+        "GoTrue holds 10 absolute connections rather than a percentage of the "
+        "instance. Accepted because the instance is not being resized: on a fixed "
+        "instance a percentage resolves to a fixed number anyway, and 10 has never "
+        "been the constraint. Revisit when the compute add-on changes — a "
+        "percentage is what makes the pool follow the instance, and Management API "
+        "accepts db_max_pool_size_unit: 'percent'. "
+        "NB: an earlier version of this note cited the 2026-08-12 measurement "
+        "(5+5, timeout 10s). That measurement is real but belongs to the backend's "
+        "own SQLAlchemy pool through Supavisor — see app/core/database.py. GoTrue "
+        "connects to Postgres directly and is a separate consumer of the limit, so "
+        "the number here was never covered by it."
     ),
 }
 
