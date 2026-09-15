@@ -2,6 +2,7 @@ import React from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import ErrorBoundary from '../ErrorBoundary'
+import { installPreloadErrorRecovery } from '@/lib/staleChunkRecovery'
 
 function ProblemChild(): React.ReactElement {
   throw new Error('boom')
@@ -96,5 +97,41 @@ describe('ErrorBoundary', () => {
       expect(reload).not.toHaveBeenCalled()
       expect(screen.getByText('Something went wrong')).toBeInTheDocument()
     })
+  })
+
+  /**
+   * `componentDidCatch` (render-path recovery) and `installPreloadErrorRecovery`
+   * (the `window` "vite:preloadError" net for imports that fail outside
+   * render — see src/lib/staleChunkRecovery.ts) share one cooldown key so a
+   * single stale deploy can't trigger both back to back.
+   */
+  it('shares its reload cooldown with installPreloadErrorRecovery', () => {
+    const reload = vi.fn()
+    sessionStorage.clear()
+    vi.stubGlobal('location', { reload })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const uninstall = installPreloadErrorRecovery()
+
+    try {
+      const Throwing = makeThrower('Failed to fetch dynamically imported module: /a.js')
+      render(
+        <ErrorBoundary>
+          <Throwing />
+        </ErrorBoundary>,
+      )
+      expect(reload).toHaveBeenCalledOnce()
+      reload.mockClear()
+
+      const event = new Event('vite:preloadError', { cancelable: true }) as Event & {
+        payload?: unknown
+      }
+      event.payload = new Error('Failed to fetch dynamically imported module: /b.js')
+      window.dispatchEvent(event)
+      expect(reload).not.toHaveBeenCalled()
+    } finally {
+      uninstall()
+      vi.unstubAllGlobals()
+      vi.restoreAllMocks()
+    }
   })
 })

@@ -1,6 +1,7 @@
 import { Component, type ReactNode } from "react"
 import { datadogRum } from "@datadog/browser-rum"
 import i18n from "@/i18n/config"
+import { reloadOnceFor } from "@/lib/staleChunkRecovery"
 
 interface Props {
   children: ReactNode
@@ -10,55 +11,6 @@ interface Props {
 interface State {
   hasError: boolean
   error: Error | null
-}
-
-// Patterns that indicate a stale-chunk failure: the user has an old
-// index.html in memory pointing at chunk hashes that the latest deploy
-// no longer publishes. The fix is to reload — fetching the fresh
-// index.html immediately makes the new chunk hashes available.
-//
-// Each engine spells the failure differently. We match all three so a
-// future Vite/Rollup tweak doesn't quietly bring back the bug:
-const CHUNK_LOAD_PATTERNS: RegExp[] = [
-  /failed to fetch dynamically imported module/i,
-  /loading chunk \d+ failed/i,
-  /chunkloaderror/i,
-  /importing a module script failed/i,
-  // A lazy chunk's stylesheet, not its script. Vite preloads both and
-  // rejects with this when the `<link>` 404s — the shape a teacher hit on
-  // 2026-09-06 when a deploy landed under their open lesson editor.
-  // `lazyRoute` catches it first for route chunks; this is the net under
-  // every other lazy boundary.
-  /unable to preload css/i,
-]
-
-// Don't loop. If we just reloaded and still hit a chunk error, the
-// fix didn't help (e.g. the user is offline) — show the manual UI
-// instead of bouncing the page forever.
-const RELOAD_FLAG_KEY = "errorBoundary:lastChunkReload"
-const RELOAD_COOLDOWN_MS = 60_000
-
-function isChunkLoadError(error: Error): boolean {
-  const message = error.message || ""
-  return CHUNK_LOAD_PATTERNS.some((re) => re.test(message))
-}
-
-function recentlyReloaded(): boolean {
-  try {
-    const last = parseInt(sessionStorage.getItem(RELOAD_FLAG_KEY) ?? "0", 10)
-    return Number.isFinite(last) && Date.now() - last < RELOAD_COOLDOWN_MS
-  } catch {
-    return false
-  }
-}
-
-function markReloaded() {
-  try {
-    sessionStorage.setItem(RELOAD_FLAG_KEY, String(Date.now()))
-  } catch {
-    // sessionStorage can throw in Safari private mode etc. Worst case
-    // we lose the loop guard — better than crashing the recovery path.
-  }
 }
 
 export default class ErrorBoundary extends Component<Props, State> {
@@ -86,11 +38,10 @@ export default class ErrorBoundary extends Component<Props, State> {
     // longer serves, and any lazy() route navigation throws "Failed to
     // fetch dynamically imported module". A full reload pulls the fresh
     // index.html with current chunk hashes and the user is back to work.
-    // The loop guard prevents an offline user from bouncing forever.
-    if (isChunkLoadError(error) && !recentlyReloaded()) {
-      markReloaded()
-      window.location.reload()
-    }
+    // The loop guard (in `reloadOnceFor`) prevents an offline user from
+    // bouncing forever, and is shared with `installPreloadErrorRecovery`'s
+    // `window` listener for the same-shaped failures that never reach here.
+    reloadOnceFor(error)
   }
 
   private handleReset = () => {

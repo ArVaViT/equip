@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import ErrorBoundary from './components/ErrorBoundary'
 import { initDatadogRum } from './lib/datadog'
+import { installPreloadErrorRecovery } from './lib/staleChunkRecovery'
 // Configures i18next; catalogs are per-locale lazy chunks. We await
 // `i18nReady` below so the very first render already has the active
 // locale's translations — no key flicker on cold start.
@@ -20,6 +21,12 @@ import './index.css'
 // (bad env vars, missing #root, etc.) get captured. No-op when the
 // VITE_DATADOG_* env vars are unset (local dev without credentials).
 initDatadogRum()
+
+// Net under ErrorBoundary for stale-chunk failures from dynamic imports
+// that never reach a React render frame (fire-and-forget tour loading —
+// see the doc comment on installPreloadErrorRecovery). Registered once,
+// before anything has a chance to import() a chunk.
+installPreloadErrorRecovery()
 
 const rootEl = document.getElementById('root')
 if (!rootEl) {
