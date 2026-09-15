@@ -182,6 +182,36 @@ At that point add enrollment-keyed RLS policies to the content tables and
 extend `rls_assertions.sql` to prove a non-enrolled `authenticated` user
 reads 0 content rows.
 
+## SECURITY DEFINER helpers are not callable by `anon` (2026-09-15)
+
+`can_teach()`, `current_organization_id()` and `is_platform_staff()` run
+with their owner's rights, bypassing RLS. All three had EXECUTE granted to
+`anon`, so anyone could invoke them over PostgREST RPC without signing in.
+
+**The grant was real, the exposure was not.** Called as `anon` they return
+`false`, `null`, `false` — verified against production inside a rolled-back
+transaction. Each reads `auth.uid()`, which is null without a JWT, and
+`id = null` is never true.
+
+**Why it happened**, because the same trap is easy to fall into again:
+Supabase grants EXECUTE on every new function in `public` to `anon` and
+`authenticated` **directly**, separately from the PUBLIC pseudo-role. So the
+`REVOKE ... FROM PUBLIC` in `20260830040000_rls_learns_about_organizations`
+did not do what it reads like — it dropped the PUBLIC grant and left
+Supabase's grant to `anon` untouched. `REVOKE ... FROM PUBLIC` alone never
+closes a function. Name `anon` explicitly.
+
+Closed by `20260915030000_anon_loses_execute_on_three_definer_functions`,
+applied to production the same day. `authenticated` and `service_role` keep
+their own explicit grants. Every policy calling these helpers is
+`TO authenticated`; the `course_assets_teacher_*` storage policies evaluate
+false for `anon` either way.
+
+**Still open (low priority):** `course_assets_teacher_*` and
+`avatars_owner_*` carry no `TO` clause, so they formally apply to `anon`
+with an always-false expression. Writing `TO authenticated` would say what
+is meant.
+
 ## Dependency scanning
 
 - Backend: `pip-audit --requirement requirements.txt --strict` runs in

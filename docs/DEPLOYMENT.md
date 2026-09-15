@@ -55,6 +55,23 @@ the Vercel project pages -- not in this repo.
 CI is configured with `concurrency: cancel-in-progress` so re-pushes
 to a PR don't pile up runs.
 
+### What CI does not check: `frontend/vercel.json`
+
+Nothing above exercises it. The e2e suite serves the built `dist/` with
+`npx vite preview` on localhost, so Vercel's rewrites and headers — the
+SPA fallback, the `/img/**` Supabase proxies, CSP, cache-control — are
+never evaluated. A green pipeline says nothing about that file.
+
+This is how the catch-all rewrite went unnoticed while it answered a
+request for a deleted asset chunk with `200 text/html` instead of `404`,
+which is what the browser reported as
+`'text/html' is not a valid JavaScript MIME type`.
+
+Verify a change to that file on a real preview deployment, not in CI.
+Preview URLs sit behind Vercel SSO, so plain `curl` gets a 302 — use a
+browser with a logged-in session, or check the aliased deployment after
+merging.
+
 ## Normal release flow
 
 Most changes need **no extra steps** -- merge to `main`, Vercel picks
@@ -356,7 +373,7 @@ Build-time only on Vercel (not in the bundle):
 | Region | All edge / IAD1 | IAD1 (default Python serverless) |
 | Custom domains | `equipbible.com` (`www` 308-redirects to apex) | `api.equipbible.com` |
 | Auto-deploy branch | `main` | `main` |
-| Log Drain | Same drain | `drn_DJUgg6MWFVruo4qV` → Datadog us5 (json) |
+| Log Drain | Same drain | `drn_anVGfaiUT6UPtBCo` → Datadog us5 (json) |
 
 `backend/vercel.json` uses the modern `functions` + `rewrites` format:
 the FastAPI entrypoint lives at `api/index.py` (re-exporting
@@ -433,6 +450,14 @@ to keep in source.
   `<branch>-equip-frontend-vadyms-projects-dfb6f76f.vercel.app` URL that
   hits the **production** backend and database, so a DB-affecting change
   is not exercised anywhere safe until staging is up.
+
+  That substitution only started actually working on 2026-09-15.
+  `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` were set for the
+  Production environment only, so `src/lib/supabase.ts` threw at module
+  load on every preview and the page came up blank. Both are now set for
+  Preview as well, pointing at production — which is what "previews hit
+  the production database" above has always claimed. Neither value is a
+  secret: both ship inside the production JS bundle.
 - **No automatic migration apply.** Documented above. Worth revisiting
   once we enable point-in-time recovery (the project is on Pro; PITR is
   the paid add-on, currently OFF) -- the auto-apply story is much less
