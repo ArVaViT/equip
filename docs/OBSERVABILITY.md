@@ -17,7 +17,7 @@ Configured 2026-05-11 to 2026-05-13. Org `arvavitcorp`, Datadog site
 |---|---|---|
 | Frontend errors, sessions, replays, Core Web Vitals | Datadog RUM (`equip-frontend`) | 100 % session + 100 % replay sampling; React-Router integration so dashboards aggregate by route template |
 | Backend WARNING / ERROR / CRITICAL logs | `DatadogHTTPHandler` in `backend/app/core/logging.py` | Per-record HTTPS POST to Datadog intake, tagged with env / service / version / vercel_region / vercel.request_id |
-| Backend INFO logs + build logs + edge events | Vercel Log Drain `drn_DJUgg6MWFVruo4qV` ("Datadog (us5)", `deliveryFormat: json`) | json stream from Vercel → Datadog intake (the intake URL carries `ddtags` such as `env:production`); covers both `equip-frontend` and `equip-backend` projects. Replaced the original ndjson drain on 2026-06-11 -- Datadog intake answered 415 to ndjson payloads. |
+| Backend INFO logs + edge events | Vercel Log Drain `drn_anVGfaiUT6UPtBCo` ("Datadog us5", `deliveryFormat: json`) | json stream from Vercel → Datadog intake (the intake URL carries `ddtags` such as `env:production`); covers both `equip-frontend` and `equip-backend` projects. Sources: `static`, `lambda`, `edge`, `external`, `firewall` — **not** `build`, dropped 2026-09-15, see the ingest cap below. Replaced the original ndjson drain on 2026-06-11 (Datadog intake answered 415 to ndjson payloads) and the `build`-carrying drain on 2026-09-15. |
 | External uptime | 3 Datadog synthetic monitors (30 min cadence, 2 retries, aws:us-east-1) | `https://api.equipbible.com/health`, `https://equipbible.com/`, `https://api.equipbible.com/api/v1/courses` |
 | Transactional email delivery | Supabase Edge Function `send-email` → Resend (verified domain `equipbible.com`) | Function ships its own logs to Datadog when `DD_API_KEY` is set; one monitor on its error stream |
 
@@ -42,7 +42,7 @@ StreamHandler → stdout                          DatadogHTTPHandler.emit()
        ↓                                                    ↓
 Vercel captures stdout                          synchronous POST with 0.5s timeout
        ↓                                          to https://http-intake.logs.us5.datadoghq.com
-Vercel Log Drain drn_DJUgg6MWFVruo4qV                       ↓
+Vercel Log Drain drn_anVGfaiUT6UPtBCo                       ↓
        ↓                                          Datadog index "main" (15-day retention)
 Datadog index "main"                                        ↓
                                               tagged: env, service, version (git SHA[:7]),
@@ -52,13 +52,43 @@ Datadog index "main"                                        ↓
 The two paths are **complementary, not duplicate**. The in-process
 handler ships only WARNING and above, with structured fields and the
 per-request `vercel.request_id` correlation key. The log drain ships
-everything Vercel sees (including INFO request lines, build failures,
-edge events, firewall events) but without the per-record tags.
+what Vercel sees at runtime (INFO request lines, edge events, firewall
+events) but without the per-record tags. Build output is **not** shipped
+-- see below.
 
 Both end up in the same `main` index, so a Datadog log query that
 filters by `service:equip-backend` gets both. The daily ingest cap is
-**10 000 events / day** with a warning at 80 % -- a defensive cost
-control against a logging-loop bug, not an expected ceiling.
+**10 000 events / day** with a warning at 80 %.
+
+#### The cap is a real ceiling, not a theoretical one
+
+It was written as a defensive control against a logging-loop bug. It is
+not: on 2026-09-14 a review found the cap had been touched on 8 of the
+previous 30 days and **fully consumed three times** (20.08, 31.08,
+07.09). On 07.09 indexing stopped at 19:13 UTC and nothing was recorded
+for the rest of the day -- almost five hours that read, in a dashboard,
+exactly like a quiet evening.
+
+Two sources accounted for nearly all of it:
+
+- **Build stdout** (`@source:build`) -- the per-chunk listing `vite build`
+  prints, plus sourcemap-upload banners. Zero on a quiet day, 2 000-7 000
+  on a deploy day; 70 % of the whole cap on 07.09. No diagnostic value
+  once the deploy is green: the same output is in the Vercel build log.
+- **Edge access logs** -- one line per HTTP request, including static
+  assets and Datadog's own synthetics. ~3 200/day, peaking at 7 490.
+
+`build` was removed from the drain's sources on 2026-09-15, which leaves
+the busiest observed day inside the cap. Edge access logs were kept
+deliberately: they are how a 404 on a vanished asset chunk becomes
+visible (see `frontend/vercel.json`).
+
+A hypothesis worth recording as **disproved**: WordPress scanner traffic
+(`/xmlrpc.php`, `/?rest_route=`) is under 0.3 % of the cap. Do not spend
+an exclusion filter on it.
+
+If the cap is hit again, the honest fix is to sample successful static
+hits -- not to raise the number, which just pays to index noise.
 
 ### Request correlation
 

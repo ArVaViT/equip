@@ -62,6 +62,30 @@ branch except `staging`, so PR pushes never double-build.
    `TRANSLATION_QUEUE_ENABLED=false`), then push `staging` to deploy.
 6. Flip the repo variable `STAGING_ACTIVE` to `true`.
 
+## Current state (2026-09-15)
+
+**Down.** `STAGING_ACTIVE` is `false`.
+
+It had been `true` since 2026-07-04 while the environment itself stopped
+moving that same day: the `staging` branch sat 417 commits behind `main`
+and both Vercel projects still served the deploy of 03.07. So for ten
+weeks CI built today's frontend and ran the authenticated specs against a
+73-day-old backend and schema. They passed — which is the problem. A green
+run said nothing about the contract the code actually ships against, and
+that is worse than an honest skip, because it is indistinguishable from
+coverage.
+
+Flipping the flag back to `false` restores the documented default. Deploy
+previews cover the gap, and as of the same day they genuinely do — see the
+staging note in [`DEPLOYMENT.md`](DEPLOYMENT.md#known-gaps--follow-ups).
+
+Step 2 of Teardown below (**delete the Supabase branch**) is still
+outstanding — the branch keeps billing at ~$0.013/hr until it goes.
+
+Before flipping the flag back to `true`, bring the environment up to date
+first: the branch, the schema, then the flag. In that order, or CI starts
+lying again.
+
 ## Teardown
 
 1. `gh variable set STAGING_ACTIVE --body "false"` — the authenticated e2e
