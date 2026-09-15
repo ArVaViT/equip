@@ -18,14 +18,17 @@ import { expect } from "vitest";
 
 expect.extend(toHaveNoViolations);
 
-// Augment Vitest's Assertion shape so ``expect(...).toHaveNoViolations()``
-// type-checks alongside ``.toBe`` / ``.toEqual``.
+// Augment Vitest's Matchers shape so ``expect(...).toHaveNoViolations()``
+// type-checks alongside ``.toBe`` / ``.toEqual``. `Matchers` (rather than
+// `Assertion`, which vitest itself declares more than once internally with
+// mismatched type parameters) is the one interface vitest defines exactly
+// once, so it is the only augmentation target TS can merge cleanly with.
 declare module "vitest" {
-  interface Assertion {
-    toHaveNoViolations(): void;
-  }
-  interface AsymmetricMatchersContaining {
-    toHaveNoViolations(): void;
+  // The `T` parameter must stay to match vitest's own arity exactly (see
+  // above); the matcher itself doesn't need it.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface Matchers<R = void | Promise<void>, T = unknown> {
+    toHaveNoViolations(): R;
   }
 }
 
