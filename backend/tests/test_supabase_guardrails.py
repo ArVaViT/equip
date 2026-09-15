@@ -82,10 +82,19 @@ class TestAcceptedFindings:
     def test_deny_all_rls_is_not_reported(self):
         assert not advisors.should_report(finding("rls_enabled_no_policy", "INFO"), {})
 
-    def test_security_definer_helpers_are_not_reported(self):
-        """Revoking EXECUTE would break the public catalogue, not close a hole."""
-        assert not advisors.should_report(finding("anon_security_definer_function_executable", "WARN"), {})
+    def test_security_definer_helpers_are_not_reported_for_authenticated(self):
+        """The policies calling these helpers are TO authenticated; they need EXECUTE to run."""
         assert not advisors.should_report(finding("authenticated_security_definer_function_executable", "WARN"), {})
+
+    def test_security_definer_helpers_are_reported_for_anon(self):
+        """anon lost EXECUTE on 2026-09-15; the finding coming back means someone re-granted it.
+
+        This used to be accepted, on the grounds that revoking would break the public
+        catalogue. It did not: the catalogue is served by the backend on the service
+        role, and every policy calling these helpers is declared TO authenticated, so
+        anon never evaluates them.
+        """
+        assert advisors.should_report(finding("anon_security_definer_function_executable", "WARN"), {})
 
     def test_long_otp_expiry_is_a_decision_not_a_defect(self):
         assert not advisors.should_report(finding("auth_otp_long_expiry", "WARN"), {})

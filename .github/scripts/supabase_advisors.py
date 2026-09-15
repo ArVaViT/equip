@@ -73,8 +73,17 @@ ACCEPTED: dict[str, str] = {
         "yet', not 'wrong'."
     ),
     "auth_db_connections_absolute": (
-        "Informational: the pool sizing was measured on 2026-08-12 (5+5, timeout 10s) "
-        "against a chapter page making seven parallel calls."
+        "GoTrue holds 10 absolute connections rather than a percentage of the "
+        "instance. Accepted because the instance is not being resized: on a fixed "
+        "instance a percentage resolves to a fixed number anyway, and 10 has never "
+        "been the constraint. Revisit when the compute add-on changes — a "
+        "percentage is what makes the pool follow the instance, and Management API "
+        "accepts db_max_pool_size_unit: 'percent'. "
+        "NB: an earlier version of this note cited the 2026-08-12 measurement "
+        "(5+5, timeout 10s). That measurement is real but belongs to the backend's "
+        "own SQLAlchemy pool through Supavisor — see app/core/database.py. GoTrue "
+        "connects to Postgres directly and is a separate consumer of the limit, so "
+        "the number here was never covered by it."
     ),
 }
 
