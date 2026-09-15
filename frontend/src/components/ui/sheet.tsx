@@ -109,5 +109,4 @@ export {
 // Bare aliases of Radix primitives. eslint-plugin-react-refresh >= 0.5.5 inspects
 // the initializer and cannot tell that `SheetPrimitive.Root` / `.Portal` are
 // components; Vite's Fast Refresh checks the runtime value, so HMR is unaffected.
-// eslint-disable-next-line react-refresh/only-export-components
 export { Sheet, SheetPortal }
