@@ -246,14 +246,28 @@ from. So this is pure log noise, not a correctness risk — but it drowns
 the Postgres WARNING stream, which is why the stream is worth nothing
 today.
 
-Fixed by one statement, which needs an operator (it alters a shared
-database, so agents are blocked from running it):
+**We cannot fix it.** The obvious statement is
 
 ```sql
 ALTER DATABASE template1 REFRESH COLLATION VERSION;
 ```
 
-Confirm with:
+and it fails with `must be owner of database template1`. On managed
+Supabase `template1` is owned by `supabase_admin`, while the credentials
+we hold connect as `postgres`, which is not a superuser:
+
+```sql
+SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname='template1';
+-- supabase_admin
+SELECT rolsuper FROM pg_roles WHERE rolname = current_user;
+-- false
+```
+
+The SQL editor in the dashboard runs as the same role, so it does not help
+either. Only Supabase support can clear this, and it is cosmetic — do not
+spend time on it again. What it costs us is real though: the Postgres
+WARNING stream is unusable as a signal, so do not build a monitor on it.
+Check the current state with
 
 ```sql
 SELECT datname, datcollversion, pg_database_collation_actual_version(oid)
