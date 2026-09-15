@@ -79,16 +79,53 @@ Two sources accounted for nearly all of it:
   assets and Datadog's own synthetics. ~3 200/day, peaking at 7 490.
 
 `build` was removed from the drain's sources on 2026-09-15, which leaves
-the busiest observed day inside the cap. Edge access logs were kept
-deliberately: they are how a 404 on a vanished asset chunk becomes
-visible (see `frontend/vercel.json`).
+the busiest observed day inside the cap. Edge access logs were kept, for
+the non-200 responses they carry — bot probes, proxy failures, anything
+the CDN answers badly. (An earlier version of this paragraph said they
+were kept because a 404 on a vanished asset chunk shows up in them. It
+does not; see the sampling section below, where that was tested.)
 
 A hypothesis worth recording as **disproved**: WordPress scanner traffic
 (`/xmlrpc.php`, `/?rest_route=`) is under 0.3 % of the cap. Do not spend
 an exclusion filter on it.
 
-If the cap is hit again, the honest fix is to sample successful static
-hits -- not to raise the number, which just pays to index noise.
+Removing `build` was not enough on its own. Measured again on 2026-09-15
+after that change: 441 events in one hour, which annualises past the cap on
+a busy day. Nearly all of it was one line per successful static asset
+request -- a visitor's first load alone is around fifty of them.
+
+So successful static hits are now sampled at the index, by an exclusion
+filter named **"vercel: successful static hits (non-200 kept)"**:
+
+```
+query:       source:vercel @proxy.pathType:STATIC @proxy.statusCode:200
+sample_rate: 0.9
+```
+
+`sample_rate` is the share **excluded**, so one in ten successful static
+hits is still indexed -- enough to see that traffic exists and roughly
+where it goes. The `@proxy.statusCode:200` clause keeps every non-200
+response: the 405s bots collect on `/xmlrpc.php` still arrive, as do the
+400s from the `/img/**` proxies. `EXTERNAL` paths are a different pathType
+and are not touched at all.
+
+**A 404 on a vanished chunk does not appear here, and never did.** Tested
+on 2026-09-15 by requesting three non-existent `/assets/*.js` paths and
+watching the drain: nothing arrived, while a `405` on `/xmlrpc.php` and a
+`400` on `/img/avatars/test.jpg` are both present in the same window. Vercel
+answers a missing static path at the CDN edge and ships no drain record for
+it. So the reason for keeping edge logs is **not** chunk-404 visibility —
+that belief was wrong when it was written into this file.
+
+Where a vanished chunk actually shows up is RUM: the browser reports
+`Failed to fetch dynamically imported module`, and before the 2026-09-15
+rewrite fix, `'text/html' is not a valid JavaScript MIME type`. Watch
+`@type:error` on `equip-frontend`, not the drain.
+
+Exclusion filters live on the index, and the Datadog API has no endpoint
+for one on its own: `PUT /api/v1/logs/config/indexes/main` replaces the
+whole list, so read the current filters and send them back with yours
+appended. Read first, keep a copy.
 
 ### Request correlation
 
