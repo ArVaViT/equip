@@ -335,6 +335,33 @@ class TestDecodeAccessToken:
             "via": "fallback",
         }
 
+    def test_invalid_algorithm_falls_back_to_supabase(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A token signed with an alg our fixed ``algorithms=[JWT_ALGORITHM]``
+        allow-list doesn't include (e.g. a Supabase project — or a local
+        ``supabase start`` stack — that mints access tokens with an
+        asymmetric JWT signing key instead of the shared HS256 secret)
+        must NOT 401 either. PyJWT raises ``InvalidAlgorithmError`` for
+        this case *before* it ever checks the signature, so it is a
+        distinct branch from ``InvalidSignatureError`` even though the
+        remedy — ask Supabase directly — is the same.
+        """
+        _clear_cache()
+        monkeypatch.setattr(core_security.settings, "JWT_SECRET_KEY", "test-secret")
+
+        def fake_decode(*_a: object, **_k: object) -> dict:
+            raise pyjwt.InvalidAlgorithmError("alg not allowed")
+
+        monkeypatch.setattr(core_security.jwt, "decode", fake_decode)
+        monkeypatch.setattr(
+            core_security,
+            "_validate_via_supabase",
+            lambda token: {"sub": "supabase-user", "via": "fallback"},
+        )
+        assert core_security.decode_access_token("es256-token") == {
+            "sub": "supabase-user",
+            "via": "fallback",
+        }
+
     def test_generic_pyjwt_error_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Catch-all for malformed tokens, missing claims, etc. Must NOT
         fall back to Supabase — those tokens are genuinely invalid.

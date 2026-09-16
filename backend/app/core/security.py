@@ -122,7 +122,17 @@ def decode_access_token(token: str) -> dict | None:
     except jwt.InvalidAudienceError:
         logger.warning("JWT token has invalid audience")
         return None
-    except jwt.InvalidSignatureError:
+    except (jwt.InvalidSignatureError, jwt.InvalidAlgorithmError):
+        # Either the local secret is stale (key rotation) or the token
+        # was minted with an alg our fixed ``algorithms=[HS256]`` allow-list
+        # doesn't include — e.g. a Supabase project (or a local
+        # ``supabase start`` stack on a CLI version) that signs access
+        # tokens with an asymmetric JWT signing key instead of the shared
+        # HS256 secret. Both are "can't verify locally", not "the token is
+        # bad" — PyJWT raises ``InvalidAlgorithmError`` for the latter
+        # before it ever looks at the signature, so it doesn't fall under
+        # ``InvalidSignatureError`` on its own. Same remedy either way:
+        # ask Supabase directly.
         return _validate_via_supabase(token)
     except jwt.PyJWTError as exc:
         logger.warning("JWT decode failed: %s", exc)
