@@ -264,6 +264,16 @@ jobs:
             --teacher-email e2e-teacher@equip-ci.invalid \
             --modules 1 --chapters-per-module 1 --students 0
           python -m scripts.seed_e2e_daily_challenge --created-by "$E2E_TEACHER_ID"
+          # Without this, every role user has zero `legal_acceptances` rows,
+          # `GET /legal/acceptances/me` truthfully reports privacy+terms as
+          # outstanding, and FirstRunFlow's full-screen consent dialog opens
+          # on top of every page — it intercepts pointer events even though
+          # global.setup.ts's `suppressOnboarding` already faked the
+          # localStorage cache flag, because FirstRunFlow overwrites that
+          # cache the moment the server's real answer comes back. Pre-accept
+          # for real, the way clicking "I agree" would.
+          python -m scripts.seed_e2e_legal_acceptance \
+            "$E2E_STUDENT_ID" "$E2E_TEACHER_ID" "$E2E_ADMIN_ID"
 
       - name: Start FastAPI backend
         working-directory: backend
