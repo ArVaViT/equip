@@ -193,13 +193,22 @@ export function DailyChallengeCard() {
         <div className="flex min-w-0 items-center gap-2.5">
           <Sparkles className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
           <div className="min-w-0">
-            <Eyebrow>{t("dailyChallenge.eyebrow")}</Eyebrow>
-            <h2
-              id="dc-card-heading"
-              className="truncate font-serif text-sm font-semibold tracking-tight text-ink"
-            >
+            {/* The section's accessible name (and the e2e golden-path
+                spec's anchor) has to stay put across every render state.
+                It used to live on the element below, whose visible text
+                swaps to the day's Bible reference once a question loads —
+                a screen-reader user landing on "Rom. 8:1" with no heading
+                anywhere that says "Daily Challenge" has lost the one word
+                that says what card this is. The eyebrow's own copy is
+                already that stable label in both languages, so it carries
+                the id + heading role instead; sighted users see no change,
+                the CSS is untouched. */}
+            <Eyebrow as="h2" id="dc-card-heading">
+              {t("dailyChallenge.eyebrow")}
+            </Eyebrow>
+            <p className="truncate font-serif text-sm font-semibold tracking-tight text-ink">
               {data ? verseLabel : t("dailyChallenge.title")}
-            </h2>
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">

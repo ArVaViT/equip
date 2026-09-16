@@ -113,11 +113,25 @@ def _cv_text(
 def _ensure_course(db: Session, *, course_id: str, title: str, teacher: User) -> Course:
     course = db.query(Course).filter(Course.id == course_id).first()
     if course is None:
+        # The course belongs to the teacher's organization. This is not a
+        # detail: `courses.organization_id` is NOT NULL, and the RLS policies
+        # the seeded data exists to exercise — courses_select_published,
+        # cohorts_select_own_organization — compare it against
+        # current_organization_id(). Seeding a course into a different
+        # organization than the student's would still produce green specs
+        # that assert nothing.
+        if teacher.organization_id is None:
+            raise SystemExit(
+                f"Teacher {teacher.email} has no organization_id. A course cannot be "
+                "created without one (NOT NULL), and a student in another organization "
+                "would not see it. Attach the teacher to an organization first."
+            )
         course = Course(
             id=course_id,
             status="draft",  # NEVER auto-publish from a script
             source_locale="en",
             created_by=teacher.id,
+            organization_id=teacher.organization_id,
             access_mode="public",
             quiz_weight=50,
             assignment_weight=50,
@@ -346,7 +360,7 @@ def _ensure_auth_user(db: Session, *, user_id: uuid.UUID, email: str) -> None:
     db.flush()
 
 
-def _ensure_student(db: Session, *, course_id: str, index: int) -> User:
+def _ensure_student(db: Session, *, course_id: str, index: int, organization_id: uuid.UUID | None = None) -> User:
     student_id = _student_id(course_id, index)
     student = db.query(User).filter(User.id == student_id).first()
     if student is None:
@@ -363,12 +377,20 @@ def _ensure_student(db: Session, *, course_id: str, index: int) -> User:
             email=_student_email(course_id, index),
             full_name=f"Seed Student {index + 1}",
             role=UserRole.STUDENT.value,
+            organization_id=organization_id,
         )
         db.add(student)
         db.flush()
     else:
         student.full_name = f"Seed Student {index + 1}"
         student.role = UserRole.STUDENT.value
+    # Put the learner in the course's organization even when the profile row
+    # already existed — the trigger created it with organization_id NULL, and
+    # a student outside the course's organization is filtered out by
+    # courses_select_published, so the seeded cohort would be invisible to
+    # exactly the policies it is meant to exercise.
+    if organization_id is not None and student.organization_id != organization_id:
+        student.organization_id = organization_id
     return student
 
 
@@ -389,9 +411,12 @@ def seed_students(
     chapter_ids = _ordered_chapter_ids(db, course_id=course_id)
     total_chapters = len(chapter_ids)
 
+    course = db.query(Course).filter(Course.id == course_id).first()
+    organization_id = course.organization_id if course is not None else None
+
     enrolled = 0
     for i in range(students):
-        student = _ensure_student(db, course_id=course_id, index=i)
+        student = _ensure_student(db, course_id=course_id, index=i, organization_id=organization_id)
 
         # Deterministic spread of completion across 0..100% so the cohort
         # exercises empty, partial, and finished states simultaneously.

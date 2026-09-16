@@ -1,123 +1,117 @@
-# Staging environment
+# Authenticated e2e: a local stack, not a staging environment
 
-Staging is a full, isolated copy of the production stack, designed to be
-**ephemeral**: cheap to spin up, safe to tear down, never a hard dependency
-of CI (see `STAGING_ACTIVE` below).
+There is no staging environment. There used to be one — a long-lived
+Supabase branch plus two Vercel projects, kept up between releases so the
+authenticated (student/teacher/admin) Playwright specs had somewhere real
+to sign in against. It is gone; see "What happened to the old staging
+tier" below for why. The `STAGING_ACTIVE` repo variable it was gated
+behind is retired along with it — nothing in the workflows reads it any
+more.
 
-| Piece | Production | Staging |
-|---|---|---|
-| Database | Supabase project `rrisqutxlkamwfhcashl` | Supabase **branch** `staging` (own project ref, own auth/storage) |
-| Backend | Vercel `equip-backend` → `api.equipbible.com` (deploys from `main`) | Vercel `equip-backend-staging` → `api-staging.equipbible.com` (deploys from the `staging` git branch) |
-| Frontend | Vercel `equip-frontend` → `equipbible.com` (deploys from `main`) | Vercel `equip-frontend-staging` → `staging.equipbible.com` (deploys from `staging`) |
-| Data | Real users | Synthetic only (`scripts/seed_fat_test_course.py` + three `e2e-*@staging.equipbible.com` role users) |
+What replaced it: `.github/workflows/frontend-e2e.yml` boots a **complete
+local stack inside the CI job** — Postgres + GoTrue (Auth) + Storage + Kong
+via the Supabase CLI's `supabase start`, a real FastAPI backend, and the
+built frontend — and runs the full Playwright suite, authenticated specs
+included, against it. It costs nothing (all containers on the runner,
+torn down when the job ends), needs no repository secrets (nothing to
+leak, so fork and Dependabot PRs get the same coverage as everyone else),
+and is provably fresh on every run instead of trusting a long-lived
+environment to still reflect `main`.
 
-## How deploys flow
+## How the CI stack comes up
 
-The long-lived git branch `staging` is the deploy source for both staging
-projects (their "production" environment). To put code on staging:
+Read `.github/workflows/frontend-e2e.yml` for the authoritative sequence;
+this is the shape of it:
 
-```powershell
-git checkout staging
-git merge --ff-only origin/main   # or cherry-pick a feature branch
-git push origin staging
-```
+1. **`supabase start`** (`supabase/config.toml`, `[db.migrations] enabled
+   = false` — see that file's header for why) gives a fresh Postgres +
+   GoTrue + Storage + Kong on localhost with the CLI's fixed local dev
+   keys. Containers this job never touches (Studio, Realtime, imgproxy,
+   Mailpit, postgres-meta, Edge Runtime, Logflare, Vector, Supavisor) are
+   excluded with `-x` to keep the boot fast.
+2. **Schema** — `supabase/schema.sql` (minus its `CREATE SCHEMA public;`
+   line; `supabase start` already made an empty one) loads onto that
+   Postgres, then `supabase/ci/rls_grants.sql` (the dump was taken with
+   `--no-privileges`, see `supabase/ci/README.md`) restores the GRANTs,
+   then `supabase/ci/local_stack_lockdown.sql` re-asserts the write-surface
+   REVOKEs and recreates the `on_auth_user_created` trigger (it lives on
+   `auth.users`, outside the `public`-schema dump, so `schema.sql` never
+   carries it). Storage buckets + policies aren't in `schema.sql` either
+   (also outside `public`) — those come from replaying the specific
+   `supabase/migrations/*.sql` files that created them, in the order they
+   landed in prod.
+3. **Role users** — real signups via GoTrue's admin API
+   (`POST /auth/v1/admin/users`, pre-confirmed so no mail is needed),
+   promoted to `teacher` / `admin` with a direct `UPDATE public.profiles`
+   afterwards — `handle_new_user()` force-sets every signup to
+   `role='student'` as an anti-escalation guard, so there is no signup-time
+   shortcut around that UPDATE. Passwords are generated in the job and
+   never leave it.
+4. **Data** — `backend/scripts/seed_fat_test_course.py` with small
+   numbers (`--modules 1 --chapters-per-module 1 --students 0`; the
+   authenticated specs only need the teacher dashboard + analytics
+   endpoint to see *a* course, not a realistic one — run it with its own
+   pilot-scale defaults by hand against a real environment when that's
+   what's needed) plus `backend/scripts/seed_e2e_daily_challenge.py` (one
+   published Daily Challenge question — the student dashboard's schedule
+   autofill picks up any published question for "today" with no explicit
+   schedule row needed).
+5. **Backend** — `uvicorn app.main:app` against the local Postgres, with
+   `JWT_SECRET_KEY` set to the local stack's GoTrue signing secret so the
+   backend's own JWT verification (`app/core/security.py`) accepts tokens
+   GoTrue just issued. `CORS_ORIGINS` is set explicitly because the
+   backend's default allow-list matches any `localhost` port but not
+   `127.0.0.1`, which is what the preview server binds.
+6. **Frontend** — built with `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`
+   pointed at the local stack and `VITE_API_URL` at the local backend,
+   served with `vite preview`, then the full Playwright suite runs against
+   it — public smoke/a11y specs and the authenticated
+   `student-flow.spec.ts` / `teacher-flow.spec.ts` specs together, in one
+   job.
 
-Both staging Vercel projects have an ignored-build-step that skips every
-branch except `staging`, so PR pushes never double-build.
+## What this does and doesn't cover
 
-## Spin-up (from nothing, ~15 min)
+- The RLS/privilege boundary itself already has a dedicated, stricter
+  probe: `rls-policy-postgres` in `backend-ci.yml` runs the actual denial
+  assertions (`supabase/ci/rls_assertions.sql`) as the `authenticated`
+  role. This job trusts that boundary and exercises the application on
+  top of it — a real signed-in browser session hitting real API routes —
+  which is a different (complementary) kind of coverage.
+- Storage bucket/policy replay follows the documented recipe faithfully,
+  but as of this writing none of the authenticated specs' API routes
+  (`/health`, courses, the daily-challenge card, teacher courses,
+  analytics) touch Supabase Storage at all — so today it's provably
+  correct DDL that nothing in the suite currently exercises. Worth
+  knowing if a future spec starts asserting on file upload/download.
+- Only Chromium runs here (see `playwright.config.ts`'s comment on why) —
+  this local stack doesn't change that.
 
-1. **DB branch**: create a Supabase branch named `staging` (MCP
-   `create_branch` or dashboard). The branch runner cannot replay our
-   migration history (it predates the initial schema), so bootstrap from the
-   DR baseline instead:
-   - load `supabase/schema.sql` **minus the `CREATE SCHEMA public;` line**;
-   - apply `supabase/ci/rls_grants.sql`;
-   - replay the write-surface lockdown (branch default-privileges re-grant
-     writes): `REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN
-     SCHEMA public FROM anon, authenticated; GRANT UPDATE ON public.profiles
-     TO authenticated; REVOKE SELECT ON public.quiz_options,
-     public.daily_challenge_options, public.content_versions FROM anon,
-     authenticated;` + the matching `ALTER DEFAULT PRIVILEGES`;
-   - recreate `on_auth_user_created` (lives on `auth.users`, so it is NOT in
-     the public-schema dump): `CREATE TRIGGER on_auth_user_created AFTER
-     INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION
-     public.handle_new_user();`
-   - create the three storage buckets + the ten `storage.objects` policies
-     (copy from prod `pg_policies`);
-   - copy `supabase_migrations.schema_migrations` rows from prod so future
-     `db push` stays idempotent.
-2. **JWT parity**: new branches sign tokens with ES256; the backend expects
-   the legacy HS256 secret (prod parity). Promote the branch's HS256 key:
-   `previously_used` → `standby` → `in_use` via the Management API
-   (`/config/auth/signing-keys`).
-3. **Role users**: create `e2e-student|teacher|admin@staging.equipbible.com`
-   via the branch auth admin API, promote roles in `profiles`.
-4. **Seed**: `python -m scripts.seed_fat_test_course --course-id staging-fat
-   --teacher-email e2e-teacher@staging.equipbible.com --modules 10
-   --chapters-per-module 4 --students 30` with `DATABASE_URL` pointing at
-   the branch pooler.
-5. **Vercel env**: point the staging projects' env at the branch (URL, keys,
-   `JWT_SECRET_KEY` = branch secret, `DD_ENV=staging`,
-   `TRANSLATION_QUEUE_ENABLED=false`), then push `staging` to deploy.
-6. Flip the repo variable `STAGING_ACTIVE` to `true`.
+## What happened to the old staging tier
 
-## Current state (2026-09-15)
+The previous design was a long-lived Supabase branch (`staging`) plus two
+Vercel projects, kept up between releases so CI had somewhere real to run
+the authenticated specs against continuously rather than booting a fresh
+stack per run. It had been `STAGING_ACTIVE=true` since 2026-07-04 while
+the environment itself stopped moving that same day: the `staging` branch
+sat 417 commits behind `main`, both Vercel projects still served the
+03.07 deploy, and the branch was quietly in `MIGRATIONS_FAILED` the whole
+time. CI built each day's frontend and ran the authenticated specs against
+a 73-day-old backend and schema. They passed — which was the problem: a
+green run said nothing about the contract the code actually shipped
+against, and that's worse than an honest skip because it's
+indistinguishable from real coverage.
 
-**Down.** `STAGING_ACTIVE` is `false`.
+The Supabase branch was deleted on 2026-09-15 (stopping its
+~$0.013/hr compute) and `STAGING_ACTIVE` was flipped to `false`, which
+made the authenticated specs skip on every run — an honest gap, but a
+gap: nothing exercised a signed-in student or teacher until this local
+stack replaced it. The core problem with the branch design wasn't cost,
+it was staleness by construction — a shared environment nobody was
+forced to keep current. A stack rebuilt from committed artifacts
+(`schema.sql`, the migrations, the seed scripts) on every single run
+can't go stale the same way: it either reflects `main` or the job fails.
 
-It had been `true` since 2026-07-04 while the environment itself stopped
-moving that same day: the `staging` branch sat 417 commits behind `main`
-and both Vercel projects still served the deploy of 03.07. So for ten
-weeks CI built today's frontend and ran the authenticated specs against a
-73-day-old backend and schema. They passed — which is the problem. A green
-run said nothing about the contract the code actually ships against, and
-that is worse than an honest skip, because it is indistinguishable from
-coverage.
-
-Flipping the flag back to `false` restores the documented default. Deploy
-previews cover the gap, and as of the same day they genuinely do — see the
-staging note in [`DEPLOYMENT.md`](DEPLOYMENT.md#known-gaps--follow-ups).
-
-Teardown is now complete: the Supabase branch was deleted on 2026-09-15,
-which stops the ~$0.013/hr compute. It was in state `MIGRATIONS_FAILED` —
-so for those ten weeks the authenticated e2e specs were passing against a
-branch whose own migrations had not applied. The Vercel projects, domains
-and repo secrets stay; they cost nothing without the branch.
-
-A consequence worth stating plainly: **the authenticated e2e specs now
-skip on every run.** CI still checks the public smoke and a11y specs, and
-that is honest, but nothing exercises a signed-in student or teacher until
-a staging environment exists again. Bringing one up means a fresh branch
-and a schema bootstrap, per Spin-up above.
-
-Before flipping the flag back to `true`, bring the environment up to date
-first: the branch, the schema, then the flag. In that order, or CI starts
-lying again.
-
-## Teardown
-
-1. `gh variable set STAGING_ACTIVE --body "false"` — the authenticated e2e
-   specs go back to skipping instead of failing.
-2. Delete the Supabase branch (stops the ~$0.013/hr compute).
-3. The Vercel projects, domains, and repo secrets can stay — they cost
-   nothing while the branch is gone.
-
-## e2e in CI
-
-`frontend-e2e.yml` builds against staging when `STAGING_ACTIVE == 'true'`,
-which unlocks the authenticated student/teacher/admin specs
-(`E2E_*` repository secrets). In any other state — flag off, fork PR,
-Dependabot PR — the build falls back to placeholder env and only the public
-smoke/a11y specs run. CI therefore never turns red because staging is down.
-
-## Guard-rails
-
-- The staging cron workers are neutered: `TRANSLATION_QUEUE_ENABLED=false`;
-  the daily-challenge worker runs but against staging data only.
-- `DD_ENV=staging` keeps staging logs out of the production monitors.
-- Synthetic students live on `@seed.invalid` (RFC 2606 — can never receive
-  mail); role users live on `@staging.equipbible.com`.
-- Never point staging env at the production database or vice versa; the
-  backend's CORS origin (`staging.equipbible.com` + localhost for the e2e
-  preview server) would be the first thing to break loudly.
+The two Vercel projects (`equip-backend-staging`, `equip-frontend-staging`)
+and their domains still exist and cost nothing while idle; they are
+unrelated to this CI job and out of scope for it. Whether to keep them
+around for anything else is a separate call.

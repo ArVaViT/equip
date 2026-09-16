@@ -6,16 +6,17 @@ import { getTestUser, signInViaForm, suppressOnboarding } from "./fixtures/auth"
 /**
  * Global setup for the Playwright suite.
  *
- * Signs in as each role-test user against the test Supabase project
- * and saves the resulting browser storage state to
- * ``playwright/.auth/<role>.json``. Each subsequent test reuses the
+ * Signs in as each role-test user against whatever Supabase project
+ * ``VITE_SUPABASE_URL`` points at — in CI, the local stack
+ * ``.github/workflows/frontend-e2e.yml`` boots per run (see
+ * ``docs/STAGING.md``) — and saves the resulting browser storage state
+ * to ``playwright/.auth/<role>.json``. Each subsequent test reuses the
  * file via the role-bound fixtures in ``fixtures/auth.ts``.
  *
- * This file currently only runs when the env vars
- * ``E2E_STUDENT_EMAIL`` / ``E2E_TEACHER_EMAIL`` / ``E2E_ADMIN_EMAIL``
- * (etc.) are set. Until the test Supabase project lands in CI, the
- * setup is a no-op: it logs the skip reason and exits cleanly so the
- * smoke specs can still run.
+ * Each block below only runs when its env vars (``E2E_STUDENT_EMAIL``
+ * etc.) are set, so this degrades cleanly to a no-op for a local
+ * ``npm run test:e2e`` where nobody bothered to set them — only the
+ * public smoke specs run then.
  */
 
 const AUTH_DIR = "playwright/.auth";

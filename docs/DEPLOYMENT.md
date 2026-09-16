@@ -442,14 +442,17 @@ to keep in source.
 
 ## Known gaps / follow-ups
 
-- **Staging is ephemeral and off by default.** [`STAGING.md`](STAGING.md)
-  describes the Supabase branch + `staging` Vercel projects that are
-  brought up for a release and torn down after; the repo variable
-  `STAGING_ACTIVE` says whether it is up. While it is down, Vercel deploy
-  previews substitute for it -- every PR gets a
+- **There is no staging environment.** [`STAGING.md`](STAGING.md) covers
+  what replaced it: `frontend-e2e.yml` boots a complete local Supabase +
+  FastAPI + frontend stack inside the CI job and runs the authenticated
+  specs against that, on every run, for free. The `STAGING_ACTIVE` repo
+  variable that used to gate a long-lived Supabase branch is retired.
+  Vercel deploy previews are unaffected by any of this and still work the
+  way the rest of this section describes -- every PR gets a
   `<branch>-equip-frontend-vadyms-projects-dfb6f76f.vercel.app` URL that
   hits the **production** backend and database, so a DB-affecting change
-  is not exercised anywhere safe until staging is up.
+  is not exercised against a disposable database by the preview itself
+  (the CI job above is what exercises it safely).
 
   That substitution only started actually working on 2026-09-15.
   `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` were set for the
