@@ -214,6 +214,27 @@ jobs:
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
             -c "UPDATE public.profiles SET role = 'admin' WHERE id = '$ADMIN_ID';"
 
+          # All three land in one organization. Two reasons, and the second
+          # is the one that matters: `courses.organization_id` is NOT NULL so
+          # the seed cannot run without it, and the policies these specs
+          # exist to exercise — courses_select_published,
+          # cohorts_select_own_organization — compare it against
+          # current_organization_id(). A student in a different organization
+          # than the course sees nothing, and the specs would pass while
+          # asserting nothing at all.
+          #
+          # The profiles guard (profiles_protect_immutable_fields) only fires
+          # for current_user = 'authenticated'; psql connects as postgres, the
+          # same route the role UPDATEs above already take.
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<SQL
+          INSERT INTO public.organizations (id, slug, public_name, status)
+          VALUES ('00000000-0000-0000-0000-0000000000e2', 'equip-ci', 'Equip CI', 'approved')
+          ON CONFLICT (id) DO NOTHING;
+          UPDATE public.profiles
+             SET organization_id = '00000000-0000-0000-0000-0000000000e2'
+           WHERE id IN ('$STUDENT_ID', '$TEACHER_ID', '$ADMIN_ID');
+          SQL
+
           {
             echo "E2E_STUDENT_EMAIL=e2e-student@equip-ci.invalid"
             echo "E2E_STUDENT_ID=$STUDENT_ID"
