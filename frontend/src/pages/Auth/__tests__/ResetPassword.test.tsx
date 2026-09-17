@@ -29,6 +29,13 @@ vi.mock("@/lib/supabase", () => ({
 }));
 vi.mock("@/services/auth", () => ({ authService: { updatePassword: vi.fn() } }));
 
+const hasAuthArrival = vi.fn(() => false);
+const completeAuthLanding = vi.fn();
+vi.mock("@/lib/authLanding", () => ({
+  hasAuthArrival: () => hasAuthArrival(),
+  completeAuthLanding: () => completeAuthLanding(),
+}));
+
 // AuthLayout reads the theme for its own chrome; irrelevant to what is tested.
 vi.mock("@/context/useTheme", () => ({
   useTheme: () => ({ theme: "light", toggleTheme: vi.fn() }),
@@ -45,6 +52,9 @@ function Wrapper({ children }: { children: ReactNode }) {
 describe("ResetPassword", () => {
   beforeEach(() => {
     getSession.mockReset();
+    hasAuthArrival.mockReset();
+    hasAuthArrival.mockReturnValue(false);
+    completeAuthLanding.mockReset();
   });
 
   it("shows the form once the recovery session is there", async () => {
@@ -81,5 +91,33 @@ describe("ResetPassword", () => {
     ).toBeInTheDocument();
     expect(screen.queryByLabelText(i18n.t("auth.resetPassword.newPassword"))).toBeNull();
     vi.useRealTimers();
+  });
+
+  it("verifies the link it arrived with, and then offers the form", async () => {
+    // The email's `#token_hash=…&type=recovery` was taken out of the URL by
+    // main.tsx; the page itself turns it into the recovery session.
+    hasAuthArrival.mockReturnValue(true);
+    completeAuthLanding.mockResolvedValue({ status: "signed-in", recovery: true });
+    render(
+      <Wrapper>
+        <ResetPassword />
+      </Wrapper>,
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText(i18n.t("auth.resetPassword.newPassword"))).toBeInTheDocument(),
+    );
+    expect(getSession).not.toHaveBeenCalled();
+  });
+
+  it("says a spent recovery link expired, without waiting on a timer", async () => {
+    hasAuthArrival.mockReturnValue(true);
+    completeAuthLanding.mockResolvedValue({ status: "failed", reason: "expired" });
+    render(
+      <Wrapper>
+        <ResetPassword />
+      </Wrapper>,
+    );
+    expect(await screen.findByRole("alert")).toHaveTextContent(i18n.t("auth.errors.linkExpired"));
+    expect(screen.queryByLabelText(i18n.t("auth.resetPassword.newPassword"))).toBeNull();
   });
 });

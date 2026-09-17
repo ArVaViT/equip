@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import ErrorBoundary from './components/ErrorBoundary'
 import { initDatadogRum } from './lib/datadog'
+import { captureAuthLanding } from './lib/authLanding'
 import { installPreloadErrorRecovery } from './lib/staleChunkRecovery'
 // Configures i18next; catalogs are per-locale lazy chunks. We await
 // `i18nReady` below so the very first render already has the active
@@ -16,6 +17,12 @@ import { i18nReady } from './i18n/config'
 import '@fontsource-variable/literata/index.css'
 import '@fontsource-variable/golos-text/index.css'
 import './index.css'
+
+// Before monitoring starts: take any sign-in the URL carries (an OAuth
+// `?code=`, an email link's `#token_hash=`, a pre-PKCE fragment session) and
+// remove it from the address bar, so the first view Datadog RUM and Session
+// Replay record never contains it. See `lib/authLanding.ts`.
+captureAuthLanding()
 
 // Initialize monitoring before React mounts so early boot errors
 // (bad env vars, missing #root, etc.) get captured. No-op when the

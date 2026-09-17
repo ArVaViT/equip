@@ -169,7 +169,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        if (event === "SIGNED_IN" && session?.user) {
+        // A recovery link signs the person in too; supabase-js just names
+        // the event after the link. Before PKCE that session arrived with
+        // the page and surfaced as INITIAL_SESSION; verified on the landing
+        // page instead, it only ever shows up as PASSWORD_RECOVERY.
+        if ((event === "SIGNED_IN" || event === "PASSWORD_RECOVERY") && session?.user) {
           if (activeUserId.current === session.user.id) {
             // Tab refocus or auto-refresh with the same account — we
             // already have the authoritative profile loaded.

@@ -88,9 +88,13 @@ export const authService = {
    *
    * The whole chain for this already existed and nothing could reach it: the
    * send-email hook has had `magic_link` copy in four languages since it was
-   * written, and `/auth/confirm` takes any session GoTrue puts in the
-   * fragment, whatever the link's type. The only missing piece was a way to
-   * ask for the email.
+   * written, and `/auth/confirm` verifies whatever link lands on it, whatever
+   * its type (`lib/authLanding.ts`). The only missing piece was a way to ask
+   * for the email.
+   *
+   * `emailRedirectTo` does not shape the link in the email — send-email
+   * builds that from its own configuration — but GoTrue still validates it
+   * and keeps it with the PKCE flow, so it stays pointed at the real page.
    *
    * `shouldCreateUser: false` on purpose. Left at its default, a typo in the
    * address silently creates a second, empty account, and signing in becomes

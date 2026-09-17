@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { authService } from "@/services/auth"
 import { supabase } from "@/lib/supabase"
+import { completeAuthLanding, hasAuthArrival } from "@/lib/authLanding"
 import AuthLayout from "@/components/layout/AuthLayout"
 import { z } from "zod"
 import { PASSWORD_MIN_LENGTH } from "@/lib/passwordPolicy"
@@ -72,19 +73,29 @@ export default function ResetPassword() {
 
   useEffect(() => {
     let cancelled = false
-    // The session arrives from the URL fragment, which the client parses
-    // asynchronously — so a miss is only a miss after we have waited for it.
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!cancelled && session) setLinkState("ready")
     })
-    const timer = setTimeout(() => {
-      if (!cancelled) setLinkState((prev) => (prev === "checking" ? "missing" : prev))
-    }, 4000)
-    void supabase.auth.getSession().then(({ data }) => {
-      if (!cancelled && data.session) setLinkState("ready")
-    })
+    let timer: ReturnType<typeof setTimeout> | undefined
+    if (hasAuthArrival()) {
+      // Arrived from the email: the link's token was taken out of the URL in
+      // `main.tsx` and is verified here. Its answer is the answer — no timer,
+      // a slow connection must not be told the link expired.
+      void completeAuthLanding().then((result) => {
+        if (!cancelled) setLinkState(result.status === "signed-in" ? "ready" : "missing")
+      })
+    } else {
+      // Arrived some other way (a reload, or from the callback page, which
+      // has already signed the person in): whatever session exists is it.
+      timer = setTimeout(() => {
+        if (!cancelled) setLinkState((prev) => (prev === "checking" ? "missing" : prev))
+      }, 4000)
+      void supabase.auth.getSession().then(({ data }) => {
+        if (!cancelled && data.session) setLinkState("ready")
+      })
+    }
     return () => {
       cancelled = true
       clearTimeout(timer)
