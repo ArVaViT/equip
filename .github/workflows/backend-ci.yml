@@ -58,7 +58,9 @@ jobs:
           CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
           echo "Changed files:"
           echo "$CHANGED"
-          if echo "$CHANGED" | grep -qE '^backend/|^\.github/workflows/backend-ci\.yml$'; then
+          # supabase/schema.sql counts as backend: the test suite holds the
+          # SQLAlchemy models to it, so a schema-only PR must run the tests.
+          if echo "$CHANGED" | grep -qE '^backend/|^supabase/schema\.sql$|^\.github/workflows/backend-ci\.yml$'; then
             echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "Backend changes detected — heavy jobs will run."
           else
