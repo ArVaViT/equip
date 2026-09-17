@@ -1,8 +1,8 @@
 -- Write-surface lockdown + the auth.users trigger, replayed on top of a
 -- freshly loaded `supabase/schema.sql` + `supabase/ci/rls_grants.sql`.
 --
--- This is step 1 (lockdown) and step 2 (trigger) of the "Spin-up" recipe in
--- docs/STAGING.md, used verbatim by `.github/workflows/frontend-e2e.yml` to
+-- This is the lockdown + trigger part of step 2 ("Schema") in
+-- docs/E2E.md "How the CI stack comes up", used verbatim by `.github/workflows/frontend-e2e.yml` to
 -- bring up a local `supabase start` stack for the authenticated e2e specs.
 --
 -- Why both are needed even though `schema.sql` already carries the current

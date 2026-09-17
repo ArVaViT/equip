@@ -247,7 +247,7 @@ There are great LMS options out there. Equip exists in a specific gap they don't
 | Architecture | [docs/adr/](docs/adr/) — Architecture Decision Records |
 | Cross-cutting UI calls | [docs/UI-DECISIONS.md](docs/UI-DECISIONS.md) — frozen UI decisions log |
 | Shipping a change | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — what deploys when, the two manual steps (migrations, edge function), env vars, rollback |
-| Authenticated e2e in CI | [docs/STAGING.md](docs/STAGING.md) — the local Supabase-CLI stack `frontend-e2e.yml` boots per run (no staging environment any more) |
+| Authenticated e2e in CI | [docs/E2E.md](docs/E2E.md) — the local Supabase-CLI stack `frontend-e2e.yml` boots per run |
 | Running in production | [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) — monitoring, log forwarding, incident debugging |
 | Backup and restore | [docs/runbooks/backup-restore.md](docs/runbooks/backup-restore.md) |
 | Security model | [docs/SECURITY.md](docs/SECURITY.md) — RLS, audit log, secrets, what is backend-gated |

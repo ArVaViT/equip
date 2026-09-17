@@ -1,22 +1,19 @@
-# Authenticated e2e: a local stack, not a staging environment
+# Authenticated e2e: a local stack per run
 
-There is no staging environment. There used to be one — a long-lived
-Supabase branch plus two Vercel projects, kept up between releases so the
-authenticated (student/teacher/admin) Playwright specs had somewhere real
-to sign in against. It is gone; see "What happened to the old staging
-tier" below for why. The `STAGING_ACTIVE` repo variable it was gated
-behind is retired along with it — nothing in the workflows reads it any
-more.
+`.github/workflows/frontend-e2e.yml` boots a **complete local stack inside
+the CI job** — Postgres + GoTrue (Auth) + Storage + Kong via the Supabase
+CLI's `supabase start`, a real FastAPI backend, and the built frontend —
+and runs the full Playwright suite, authenticated (student/teacher/admin)
+specs included, against it. It costs nothing (all containers on the
+runner, torn down when the job ends), needs no repository secrets (nothing
+to leak, so fork and Dependabot PRs get the same coverage as everyone
+else), and is provably fresh on every run: it is rebuilt from committed
+artifacts (`schema.sql`, the migrations, the seed scripts), so it either
+reflects `main` or the job fails.
 
-What replaced it: `.github/workflows/frontend-e2e.yml` boots a **complete
-local stack inside the CI job** — Postgres + GoTrue (Auth) + Storage + Kong
-via the Supabase CLI's `supabase start`, a real FastAPI backend, and the
-built frontend — and runs the full Playwright suite, authenticated specs
-included, against it. It costs nothing (all containers on the runner,
-torn down when the job ends), needs no repository secrets (nothing to
-leak, so fork and Dependabot PRs get the same coverage as everyone else),
-and is provably fresh on every run instead of trusting a long-lived
-environment to still reflect `main`.
+There is no shared staging environment. A long-lived one was tried and
+dropped because nothing forced it to stay current with `main`, so a green
+run against it said nothing about the code being shipped.
 
 ## How the CI stack comes up
 
@@ -51,7 +48,7 @@ this is the shape of it:
    numbers (`--modules 1 --chapters-per-module 1 --students 0`; the
    authenticated specs only need the teacher dashboard + analytics
    endpoint to see *a* course, not a realistic one — run it with its own
-   pilot-scale defaults by hand against a real environment when that's
+   pilot-scale defaults by hand against a local database when that's
    what's needed) plus `backend/scripts/seed_e2e_daily_challenge.py` (one
    published Daily Challenge question — the student dashboard's schedule
    autofill picks up any published question for "today" with no explicit
@@ -85,33 +82,3 @@ this is the shape of it:
   knowing if a future spec starts asserting on file upload/download.
 - Only Chromium runs here (see `playwright.config.ts`'s comment on why) —
   this local stack doesn't change that.
-
-## What happened to the old staging tier
-
-The previous design was a long-lived Supabase branch (`staging`) plus two
-Vercel projects, kept up between releases so CI had somewhere real to run
-the authenticated specs against continuously rather than booting a fresh
-stack per run. It had been `STAGING_ACTIVE=true` since 2026-07-04 while
-the environment itself stopped moving that same day: the `staging` branch
-sat 417 commits behind `main`, both Vercel projects still served the
-03.07 deploy, and the branch was quietly in `MIGRATIONS_FAILED` the whole
-time. CI built each day's frontend and ran the authenticated specs against
-a 73-day-old backend and schema. They passed — which was the problem: a
-green run said nothing about the contract the code actually shipped
-against, and that's worse than an honest skip because it's
-indistinguishable from real coverage.
-
-The Supabase branch was deleted on 2026-09-15 (stopping its
-~$0.013/hr compute) and `STAGING_ACTIVE` was flipped to `false`, which
-made the authenticated specs skip on every run — an honest gap, but a
-gap: nothing exercised a signed-in student or teacher until this local
-stack replaced it. The core problem with the branch design wasn't cost,
-it was staleness by construction — a shared environment nobody was
-forced to keep current. A stack rebuilt from committed artifacts
-(`schema.sql`, the migrations, the seed scripts) on every single run
-can't go stale the same way: it either reflects `main` or the job fails.
-
-The two Vercel projects (`equip-backend-staging`, `equip-frontend-staging`)
-and their domains still exist and cost nothing while idle; they are
-unrelated to this CI job and out of scope for it. Whether to keep them
-around for anything else is a separate call.

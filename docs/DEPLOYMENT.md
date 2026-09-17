@@ -303,8 +303,8 @@ Optional but production-set:
   accept link by hand. Auth emails do not use this key -- they go through
   the `send-email` edge function, which has its own copy.
 - `FRONTEND_URL` -- base for links inside backend-sent emails (the
-  `/invite/accept` link). Defaults to `https://equipbible.com`; a preview
-  or staging backend should point it at itself.
+  `/invite/accept` link). Defaults to `https://equipbible.com`; a local or
+  preview backend should point it at its own frontend.
 - `GEMINI_REVIEW_MODEL`, `GEMINI_TIMEOUT_SECONDS`, `GEMINI_MAX_OUTPUT_TOKENS`,
   `GEMINI_MIN_INTERVAL_SECONDS`, `TRANSLATION_WORKER_BUDGET_SECONDS`,
   `MAX_COURSES_PER_TEACHER` -- tuning knobs with measured defaults in
@@ -442,13 +442,12 @@ to keep in source.
 
 ## Known gaps / follow-ups
 
-- **There is no staging environment.** [`STAGING.md`](STAGING.md) covers
-  what replaced it: `frontend-e2e.yml` boots a complete local Supabase +
-  FastAPI + frontend stack inside the CI job and runs the authenticated
-  specs against that, on every run, for free. The `STAGING_ACTIVE` repo
-  variable that used to gate a long-lived Supabase branch is retired.
-  Vercel deploy previews are unaffected by any of this and still work the
-  way the rest of this section describes -- every PR gets a
+- **There is no staging environment.** [`E2E.md`](E2E.md) covers
+  how DB-affecting changes are exercised instead: `frontend-e2e.yml` boots
+  a complete local Supabase + FastAPI + frontend stack inside the CI job
+  and runs the authenticated specs against that, on every run, for free.
+  Vercel deploy previews work the way the rest of this section
+  describes -- every PR gets a
   `<branch>-equip-frontend-vadyms-projects-dfb6f76f.vercel.app` URL that
   hits the **production** backend and database, so a DB-affecting change
   is not exercised against a disposable database by the preview itself
