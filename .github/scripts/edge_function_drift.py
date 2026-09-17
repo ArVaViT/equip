@@ -8,6 +8,19 @@ last changed. If the source changed after the last deploy, production is
 running something older than main — which is the failure this exists to
 catch, and the one that actually happened on 2026-09-01.
 
+Both halves of that comparison need care, and each has been wrong once:
+
+* git's half needs history. In a shallow clone the only commit git has is
+  HEAD, and `git log -1 -- <path>` answers HEAD for every path — so a push
+  that touched only a workflow file looked like a change to the function.
+  On 2026-09-15 that failed three deploy runs in a row (02:22-02:50 UTC)
+  with "Production is running an older version than main" while
+  production was in fact current. The check now refuses to run shallow.
+* Supabase's half moves only when the bundle changes. `supabase functions
+  deploy` answers "No change found" for an identical bundle and leaves
+  `updated_at` where it was. A deploy is therefore expected to be fresh
+  only when the function's source changed in the commits being deployed.
+
 Exit codes: 0 in sync, 1 drifted or the check could not be made.
 """
 
@@ -64,6 +77,35 @@ def fetch_function(ref: str, slug: str, token: str) -> dict:
         return json.load(resp)
 
 
+def is_shallow_clone() -> bool:
+    out = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    return out == "true"
+
+
+def source_changed_since(base: str | None, paths: list[str]) -> bool:
+    """Did the source under `paths` change between `base` and HEAD?
+
+    Answers True whenever it cannot tell — no base, the all-zero SHA GitHub
+    sends for a newly created ref, or a base this clone does not have (a
+    force-push). Unknown is treated as changed so the freshness check stays
+    on rather than silently turning itself off.
+    """
+    if not base or set(base) == {"0"}:
+        return True
+    known = subprocess.run(["git", "cat-file", "-e", f"{base}^{{commit}}"], capture_output=True, check=False)
+    if known.returncode != 0:
+        return True
+    # --quiet exits 1 on a difference; anything else non-zero is an error,
+    # which is "cannot tell" and so also counts as changed.
+    diff = subprocess.run(["git", "diff", "--quiet", base, "HEAD", "--", *paths], capture_output=True, check=False)
+    return diff.returncode != 0
+
+
 def last_source_change(paths: list[str]) -> dt.datetime:
     out = subprocess.run(
         ["git", "log", "-1", "--format=%cI", "--", *paths],
@@ -81,11 +123,24 @@ def main() -> int:
     ap.add_argument("--project-ref", default=DEFAULT_REF)
     ap.add_argument("--slug", default=DEFAULT_SLUG)
     ap.add_argument(
-        "--require-fresh",
-        action="store_true",
-        help="also fail when the deploy is not recent — used right after deploying",
+        "--require-fresh-if-changed-since",
+        metavar="BASE_SHA",
+        help=(
+            "used right after deploying: when the function's source changed between "
+            "BASE_SHA and HEAD, also fail unless the deploy is recent. An empty or "
+            "unknown BASE_SHA counts as changed."
+        ),
     )
     args = ap.parse_args()
+
+    source_paths = [f"supabase/functions/{args.slug}"]
+    if is_shallow_clone():
+        print(
+            "::error::This is a shallow clone, so git cannot say when the function's "
+            "source last changed — it would answer HEAD for any path. Check out with "
+            "fetch-depth: 0."
+        )
+        return 1
 
     token = os.environ.get("SUPABASE_ACCESS_TOKEN")
     if not token:
@@ -103,7 +158,7 @@ def main() -> int:
         return 1
 
     deployed_at = parse_deployed_at(fn)
-    source_at = last_source_change([f"supabase/functions/{args.slug}"])
+    source_at = last_source_change(source_paths)
     now = dt.datetime.now(tz=dt.UTC)
 
     print(f"function : {args.slug} v{fn.get('version')} ({fn.get('status')})")
@@ -121,7 +176,13 @@ def main() -> int:
         )
         return 1
 
-    if args.require_fresh:
+    base = args.require_fresh_if_changed_since
+    if base is not None and not source_changed_since(base, source_paths):
+        print(
+            f"source unchanged since {base[:12]}: the CLI leaves an identical bundle "
+            "alone, so the deploy time is not expected to move."
+        )
+    elif base is not None:
         age = (now - deployed_at).total_seconds()
         if age > FRESH_DEPLOY_MAX_AGE_SECONDS:
             print(

@@ -44,11 +44,32 @@ jobs:
     # Only a real push to main deploys. Pull requests and the nightly run
     # take the drift job below instead — a PR must never be able to put
     # code in front of users before it is merged.
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    # A manual run deploys too, but only from main — dispatching this
+    # workflow on a branch must not put that branch in front of users.
+    if: >-
+      github.event_name == 'push'
+      || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    # One deploy at a time, oldest first. Two merges seconds apart (as on
+    # 2026-09-15, 02:22:42 and 02:22:53) otherwise deploy concurrently, and
+    # the older commit can finish last and leave production behind main —
+    # a state no timestamp comparison can see afterwards, since the older
+    # code then carries the newer deploy time. Not cancelled in progress:
+    # a deploy stopped halfway is worse than one that waits. A run still
+    # waiting is replaced (shown as cancelled) when a newer push queues
+    # behind it, which is right: the newer run deploys the newer code.
+    concurrency:
+      group: edge-functions-deploy-${{ github.ref }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The confirmation below asks git when the function's source last
+          # changed. A shallow clone answers "HEAD" for every path, which on
+          # 2026-09-15 failed three deploys of commits that never touched the
+          # function. The script now refuses to run shallow.
+          fetch-depth: 0
 
       - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
         with:
@@ -67,7 +88,18 @@ jobs:
       - name: Confirm the deploy landed
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-        run: python3 .github/scripts/edge_function_drift.py --require-fresh
+          # The commit main pointed at before this push. The deploy has to be
+          # fresh only if the function changed since then: for an identical
+          # bundle the CLI answers "No change found" and the deploy time
+          # rightly stays put. A manual run has no such commit and gets the
+          # drift comparison alone.
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            python3 .github/scripts/edge_function_drift.py --require-fresh-if-changed-since "$BEFORE_SHA"
+          else
+            python3 .github/scripts/edge_function_drift.py
+          fi
 
   drift:
     name: drift check
