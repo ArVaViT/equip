@@ -178,9 +178,9 @@
       "title": "Bevor wir beginnen",
       "intro": "Kurz gelesen, damit Sie wissen, was Equip speichert und was nicht. Die vollständigen Texte sind unten verlinkt und stehen immer im Seitenfuß.",
       "bullets": {
-        "collect": "Wir speichern Ihren Namen, Ihre E-Mail-Adresse, Ihr Bild und Ihre Kursaktivität (Fortschritt, Testantworten, Zertifikate) — nur das, was zum Betrieb der Plattform nötig ist.",
-        "share": "Wir verkaufen Ihre Daten nicht und geben sie nicht zu Werbezwecken an Dritte weiter. Anonyme Leistungsdaten helfen uns, Fehler zu finden (Datadog).",
-        "control": "Sie können Ihr Konto jederzeit im Profil ändern oder löschen."
+        "collect": "Wir speichern Name, E-Mail, Foto und das, was Sie in Ihren Kursen tun: Fortschritt, Quizantworten, eingereichte Arbeiten, Noten und Zertifikate.",
+        "share": "Wir verkaufen Ihre Daten nicht, es gibt keine Werbung und kein Tracking. Wir zeichnen aber jede Browsersitzung auf, einschließlich dessen, was auf Ihrem Bildschirm war — um Fehler zu finden und zu beheben; solange Sie angemeldet sind, trägt die Aufzeichnung Ihren Namen. Die Erklärung sagt genau, was darin landet.",
+        "control": "Ihre Daten sehen und ändern können Sie im Profil. Für eine Kopie von allem oder zum Löschen Ihres Kontos schreiben Sie uns — wir erledigen das."
       },
       "checkbox": "Ich habe die Datenschutzerklärung und die Nutzungsbedingungen gelesen und akzeptiere sie",
       "next": "Weiter",
