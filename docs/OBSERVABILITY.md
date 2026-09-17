@@ -147,7 +147,7 @@ To pivot from a user bug report:
 
 ## Monitors and where they alert
 
-All monitors notify `arvavitcorp@gmail.com`. There is no SMS / PagerDuty
+All monitors notify `supportequip@gmail.com`. There is no SMS / PagerDuty
 routing today -- Equip is one-developer-on-call; email and the in-app
 Datadog inbox are the routes.
 
@@ -361,7 +361,7 @@ These are deliberate omissions; revisit when traffic or budget grows.
   but is admin-gated. Add `/health/ready` if we ever hit a real outage
   where the serverless function answers but DB writes are timing out.
 - **No alert routing beyond email.** All monitors notify
-  `arvavitcorp@gmail.com`. Add SMS / Slack / PagerDuty if the
+  `supportequip@gmail.com`. Add SMS / Slack / PagerDuty if the
   on-call rotation grows past one person.
 - **No daily Resend send-count or bounce-rate monitor.** Resend Free
   tier is 3 000 / month; current volume is < 5. Revisit at ~1 000 /
