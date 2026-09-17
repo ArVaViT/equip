@@ -106,9 +106,16 @@ export function FirstRunFlow() {
       .status()
       .then((status) => {
         if (cancelled) return
-        const stillOwed = status.outstanding.length > 0
+        // Only the documents everybody signs. A role-scoped one — the
+        // Teacher & Contributor Agreement — has its own screen, with its own
+        // words and its own checkbox, and letting it ride along here would
+        // record a teacher agreeing to it under a sentence that names the
+        // privacy policy and the terms of use and nothing else. The test for
+        // "everybody" is the server's own: does a student owe it.
+        const universal = status.outstanding.filter((doc) => doc.required_for.includes("student"))
+        const stillOwed = universal.length > 0
         setLegalOutstanding(stillOwed)
-        setOwed(status.outstanding)
+        setOwed(universal)
         setAcceptedBefore(status.accepted.length > 0)
         // Keep the cache honest in both directions, including the case that
         // matters: somebody who accepted on their phone should not meet the
