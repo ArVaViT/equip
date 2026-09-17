@@ -106,7 +106,6 @@ Deno.serve(async (req: Request) => {
     const copy = copyFor(emailType, locale);
     const name = user.user_metadata?.full_name || "";
     const confirmUrl = confirmationUrl({
-      supabaseUrl: SUPABASE_URL ?? "",
       siteUrl: SITE_URL,
       tokenHash: email_data.token_hash,
       emailType,

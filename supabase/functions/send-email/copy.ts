@@ -340,55 +340,52 @@ export function hasCopyFor(emailType: string): boolean {
 
 
 /**
- * The link a person actually clicks — and the defect this file exists to end.
+ * The link a person actually clicks — and the defects it has carried.
  *
- * It used to be built as `${email_data.site_url}/auth/confirm?token_hash=…`,
- * on the assumption that `site_url` is the site. It is not: GoTrue sends the
- * project's auth API base, so every confirmation email ever sent by this
- * platform carried
+ * First it was `${email_data.site_url}/auth/confirm?token_hash=…`, on the
+ * assumption that `site_url` is the site. It is not: GoTrue sends the
+ * project's auth API base, so every confirmation email carried
+ * `https://<ref>.supabase.co/auth/v1/auth/confirm?…`, a path that does not
+ * exist (verified 2026-08-31: six of the seven password signups never
+ * confirmed, and this is why). `siteUrl` therefore comes from configuration,
+ * never from the hook payload.
  *
- *   https://<ref>.supabase.co/auth/v1/auth/confirm?token_hash=…
+ * Then it was GoTrue's own `/auth/v1/verify?token=…&redirect_to=…`, which
+ * 303s back to the site with the *session* in the fragment
+ * (`#access_token=…&refresh_token=…`). That URL was recorded by Datadog RUM
+ * and Session Replay on every sign-in, and once the client moved to PKCE it
+ * would stop working across browsers: a PKCE token redirects with a `?code=`
+ * that only the browser which asked for the email can exchange — a signup
+ * confirmed on a phone would fail.
  *
- * — a path that does not exist. Clicking it returned
- * `{"message":"No API key found in request"}`. Verified by hand on
- * 2026-08-31 against a real email: six of the seven accounts ever created
- * with a password never confirmed, and this is why. Not spam filtering, not
- * the one-hour expiry: the button did not work.
- *
- * The correct link is GoTrue's own `verify` endpoint, which needs no API key
- * and 303s to `redirect_to` with the session in the fragment — which is
- * exactly what `/auth/confirm` on the frontend is already waiting for.
- *
- * `siteUrl` comes from configuration rather than from the hook payload,
- * because the payload's own idea of the site is what caused this.
+ * So the link now goes to our own domain with the token hash, and the page
+ * verifies it with `supabase.auth.verifyOtp({ token_hash, type })`
+ * (`frontend/src/lib/authLanding.ts`). That works in any browser, the link's
+ * domain is the sender's domain, and nothing is redirected through GoTrue at
+ * all. The hash rides in the fragment, not the query, so it never reaches a
+ * server log or a `Referer` header. Links sent before this change still point
+ * at `/auth/v1/verify`; the frontend keeps accepting what they return until
+ * they expire (`mailer_otp_exp`, 24 hours).
  *
  * The landing page depends on the type, and that matters. A recovery link
  * used to land on `/auth/confirm` like everything else, which signs the
  * person in and sends them to the dashboard — so somebody who had forgotten
- * their password ended up inside their account with no way to set a new one,
- * and the same locked door waiting next time. Verified in production on
- * 2026-08-31 with a real recovery link and no prior session.
- *
- * Routing on the type here rather than sniffing it on the client: the type
- * is known for certain at this point, and the client's own signal for it
- * (a `PASSWORD_RECOVERY` event) does not arrive on this path.
+ * their password ended up inside their account with no way to set a new one.
+ * Verified in production on 2026-08-31 with a real recovery link.
  */
 export function landingPathFor(emailType: string): string {
   return emailType === "recovery" ? "/auth/reset-password" : "/auth/confirm";
 }
 
 export function confirmationUrl(opts: {
-  supabaseUrl: string;
   siteUrl: string;
   tokenHash: string;
   emailType: string;
 }): string {
-  const base = opts.supabaseUrl.replace(/\/+$/, "");
-  const redirectTo = `${opts.siteUrl.replace(/\/+$/, "")}${landingPathFor(opts.emailType)}`;
-  const params = new URLSearchParams({
-    token: opts.tokenHash,
+  const site = opts.siteUrl.replace(/\/+$/, "");
+  const fragment = new URLSearchParams({
+    token_hash: opts.tokenHash,
     type: opts.emailType,
-    redirect_to: redirectTo,
   });
-  return `${base}/auth/v1/verify?${params.toString()}`;
+  return `${site}${landingPathFor(opts.emailType)}#${fragment.toString()}`;
 }
