@@ -71,7 +71,7 @@ class OrgSettings(Base):
     # consistent with the threshold). Teachers never see this surface.
     grade_bands: Mapped[dict] = mapped_column(JSONVariant, default=dict, server_default="{}")
 
-    updated_at: Mapped[datetime | None] = mapped_column(
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     updated_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("profiles.id", ondelete="SET NULL"))

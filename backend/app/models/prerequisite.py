@@ -7,7 +7,8 @@ from app.core.database import Base
 class CoursePrerequisite(Base):
     __tablename__ = "course_prerequisites"
     __table_args__ = (
-        Index("ix_course_prerequisites_course_id", "course_id"),
+        # (course_id, ...) lookups are served by the primary key's leading column.
+        Index("ix_course_prerequisites_prerequisite_course_id", "prerequisite_course_id"),
         # Mirror prod: a course can't be its own prerequisite.
         CheckConstraint("course_id <> prerequisite_course_id", name="course_prerequisites_check"),
     )

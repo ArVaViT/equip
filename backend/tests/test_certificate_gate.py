@@ -18,6 +18,7 @@ from typing import TYPE_CHECKING
 
 from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.certificate import Certificate, CertificateStatus
+from app.models.cohort import Cohort, CohortCourse
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
 
@@ -218,11 +219,18 @@ def test_the_gate_reads_this_terms_enrolment_not_last_terms(student_client, db: 
     started."""
     course, module = _course(db, "gate-retake", progress=100)
     _assignment(db, module, course.id, status="graded", grade=95)
+    # The retake is in a cohort. A second enrolment with no cohort beside the
+    # first is a row production refuses (uq_enrollment_user_course_cohort).
+    this_term = Cohort(start_date=datetime(2026, 9, 1), end_date=datetime(2026, 12, 20), status="active")
+    db.add(this_term)
+    db.flush()
+    db.add(CohortCourse(cohort_id=this_term.id, course_id=course.id))
     db.add(
         Enrollment(
             id="enr-gate-retake-2",
             user_id=STUDENT_ID,
             course_id=course.id,
+            cohort_id=this_term.id,
             progress=10,
             enrolled_at=datetime.now(UTC),
         )
