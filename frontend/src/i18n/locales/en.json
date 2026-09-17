@@ -2840,6 +2840,30 @@
     "terms": "Terms of Use",
     "teacherTerms": "Teacher & Contributor Agreement"
   },
+  "legalGate": {
+    "signOut": "Not now — sign out",
+    "teacher": {
+      "eyebrow": "You are a teacher now",
+      "title": "Congratulations — a course is yours to build",
+      "intro": "Someone has given you the teaching role. Before you start, one short agreement: it covers the material you upload, the student data you can now see, and the marks you will sign.",
+      "bullets": {
+        "rights": "Everything you upload has to be yours to upload — your own work, licensed to you, or free to share. A scanned book or a PDF from a file-sharing site is not, and the responsibility is yours, not the platform's.",
+        "students": "You can now see other people's work, marks and contact details. Use them for teaching your course and nothing else, and never pass them outside the platform.",
+        "marks": "Mark honestly and on the work. A certificate carries your judgement and somebody will show it to somebody else."
+      },
+      "checkbox": "I have read and accept the Teacher & Contributor Agreement",
+      "next": "Continue",
+      "saveFailed": "Couldn't record your acceptance. Check your connection and try again."
+    },
+    "notice": {
+      "body": "The {{document}} was updated on {{date}}. Nothing you agreed to has changed, so there is nothing to sign.",
+      "read": "Read what changed",
+      "dismiss": "Dismiss"
+    },
+    "upload": {
+      "notice": "By uploading, you confirm you have the right to share this material."
+    }
+  },
   "meta": {
     "documentTitle": "Equip — study the Bible online",
     "description": "Equip is systematic Bible study for people who take Scripture seriously. Courses, progress, certificates. English, Russian, German, Ukrainian."

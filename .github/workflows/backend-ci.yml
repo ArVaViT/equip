@@ -359,8 +359,11 @@ jobs:
           # going red. Regenerating the dump is the step that catches column
           # drift, and it is not optional after a prod change.
           # 47 since 2026-08-27, when `organizations` arrived.
-          if [ "$COUNT" -ne 47 ]; then
-            echo "::error::Expected 47 public tables after replay, got $COUNT — schema.sql may be stale or partial." >&2
+          # 48 since 2026-09-17, when `legal_notices_seen` arrived — the record
+          # that somebody was *told* about a change, which is deliberately not
+          # a row in `legal_acceptances` because it is a weaker claim.
+          if [ "$COUNT" -ne 48 ]; then
+            echo "::error::Expected 48 public tables after replay, got $COUNT — schema.sql may be stale or partial." >&2
             exit 1
           fi
           echo "OK: prod schema replays cleanly from supabase/schema.sql"

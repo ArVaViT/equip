@@ -70,4 +70,16 @@ export const legalService = {
     const response = await api.post<LegalAcceptance>("/legal/acceptances", { slug, version, locale })
     return response.data
   },
+
+  /**
+   * Record that a notice-only change has been read.
+   *
+   * Deliberately a different route and a different table from `accept`. The
+   * claim is "they were told", which is weaker than "they agreed" and has to
+   * stay weaker — a consent record that also holds dismissals answers its own
+   * question ambiguously.
+   */
+  async markNoticeSeen(slug: string, version: string): Promise<void> {
+    await api.post("/legal/notices/seen", { slug, version })
+  },
 }

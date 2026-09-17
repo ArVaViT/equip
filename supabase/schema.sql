@@ -848,6 +848,26 @@ CREATE TABLE public.legal_acceptances (
 
 
 --
+-- Name: legal_notices_seen; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.legal_notices_seen (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    document_slug text NOT NULL,
+    version text NOT NULL,
+    seen_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: TABLE legal_notices_seen; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.legal_notices_seen IS 'Who has been told about a notice-only version of a document. Not consent.';
+
+
+--
 -- Name: modules; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1471,6 +1491,14 @@ ALTER TABLE ONLY public.legal_acceptances
 
 
 --
+-- Name: legal_notices_seen legal_notices_seen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.legal_notices_seen
+    ADD CONSTRAINT legal_notices_seen_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: modules modules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1644,6 +1672,14 @@ ALTER TABLE ONLY public.translation_jobs
 
 ALTER TABLE ONLY public.legal_acceptances
     ADD CONSTRAINT uq_legal_acceptances_user_doc_version UNIQUE (user_id, document_slug, version);
+
+
+--
+-- Name: legal_notices_seen uq_legal_notices_seen_user_doc_version; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.legal_notices_seen
+    ADD CONSTRAINT uq_legal_notices_seen_user_doc_version UNIQUE (user_id, document_slug, version);
 
 
 --
@@ -2192,6 +2228,13 @@ CREATE INDEX ix_invitations_organization_id ON public.invitations USING btree (o
 --
 
 CREATE INDEX ix_legal_acceptances_user ON public.legal_acceptances USING btree (user_id);
+
+
+--
+-- Name: ix_legal_notices_seen_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_legal_notices_seen_user ON public.legal_notices_seen USING btree (user_id);
 
 
 --
@@ -3059,6 +3102,14 @@ ALTER TABLE ONLY public.legal_acceptances
 
 
 --
+-- Name: legal_notices_seen legal_notices_seen_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.legal_notices_seen
+    ADD CONSTRAINT legal_notices_seen_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+
+--
 -- Name: modules modules_course_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3672,6 +3723,12 @@ ALTER TABLE public.invitations ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.legal_acceptances ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: legal_notices_seen; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.legal_notices_seen ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: modules; Type: ROW SECURITY; Schema: public; Owner: -
