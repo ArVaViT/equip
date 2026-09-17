@@ -145,6 +145,42 @@ To pivot from a user bug report:
 3. From there, click into the trace if APM is ever enabled, or jump to
    the matching RUM session.
 
+### Credentials are redacted before a log leaves the process
+
+Found 2026-09-16: invitation tokens were indexed in four places — the
+backend access line (`GET /api/v1/invitations/token/<token>`), the
+SQLAlchemy error text behind the 503 handler (`[parameters: {...}]`), the
+Vercel request line for both projects, and RUM `view.url`. RUM also held
+the whole Supabase session (`/auth/callback#access_token=…&provider_token=…
+&refresh_token=…`) for every Google sign-in.
+
+What guards it now:
+
+- **Backend** — every handler `setup_logging` installs formats through
+  `RedactingFormatter`, which applies `app/core/redact.py` to the message
+  and to the stack Datadog receives as `error.stack`. A log call does not
+  have to know. The engine is built with `hide_parameters=True`, so bound
+  values never enter an exception's text in the first place.
+  Tests: `backend/tests/test_a_token_never_reaches_a_log.py`.
+- **Invitation links** — the preview is `POST /invitations/preview` with
+  the token in the body, and letters link to `/invite/accept#token=…`; a
+  fragment is never sent to a server. The old `GET /invitations/token/…`
+  and `?token=` shapes still work for stale bundles and letters already
+  sent.
+- **RUM** — `beforeSend` scrubs `view.url`, `view.referrer`,
+  `resource.url`, and `error.message` / `error.stack` /
+  `error.resource.url` (`frontend/src/lib/datadog.ts`).
+
+What code cannot reach:
+
+- **The iCal feed** (`/api/v1/calendar/ical/feed?token=<JWT>`). A calendar
+  client can only be given a URL, so the token has to be in it, and
+  Vercel's drain records `@proxy.path` with its query. Only a Datadog-side
+  scrubbing rule (a pipeline processor or Sensitive Data Scanner) would
+  cover this.
+- **Session Replay** records the page address outside `beforeSend`.
+- **What is already indexed** stays until retention ends it (logs 15 days).
+
 ## Monitors and where they alert
 
 All monitors notify `supportequip@gmail.com`. There is no SMS / PagerDuty

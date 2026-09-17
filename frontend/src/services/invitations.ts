@@ -49,8 +49,13 @@ export const invitationsService = {
     return response.data
   },
 
+  /**
+   * The token goes in the body. As a path segment
+   * (`GET /invitations/token/<token>`) it was written into the backend's
+   * access log and the hosting platform's request log on every visit.
+   */
   async previewInvitation(token: string): Promise<InvitationPreview> {
-    const response = await api.get<InvitationPreview>(`/invitations/token/${encodeURIComponent(token)}`)
+    const response = await api.post<InvitationPreview>("/invitations/preview", { token })
     return response.data
   },
 

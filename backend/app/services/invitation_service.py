@@ -44,7 +44,15 @@ def is_invitation_expired(invitation: Invitation) -> bool:
 
 
 def _accept_url(token: str) -> str:
-    return f"{settings.FRONTEND_URL.rstrip('/')}/invite/accept?token={token}"
+    """The link in the letter.
+
+    The token rides in the fragment, not the query. A browser never sends
+    a fragment to a server, so it stays out of the frontend host's edge
+    log -- which recorded ``/invite/accept?token=<token>`` in full for
+    every visit -- and out of any ``Referer`` the page sends. The accept
+    page still reads ``?token=`` for letters already delivered.
+    """
+    return f"{settings.FRONTEND_URL.rstrip('/')}/invite/accept#token={token}"
 
 
 def _inviter_locale(db: Session, invited_by: uuid.UUID | str | None) -> LocaleCode:

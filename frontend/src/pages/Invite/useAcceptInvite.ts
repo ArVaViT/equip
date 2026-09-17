@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react"
 import { usePasswordAffordances } from "@/components/auth/usePasswordAffordances"
-import { useSearchParams } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/context/useAuth"
 import { invitationsService, type InvitationPreview } from "@/services/invitations"
 import { makeAcceptInviteSchema } from "@/lib/validations/auth"
 import { setPendingInviteToken, takePendingInviteToken } from "@/lib/pendingInvite"
+import { inviteAcceptPath, inviteTokenFrom, inviteTokenIsInQuery } from "@/lib/inviteLink"
 import { isAxiosError } from "axios"
 import { enrollmentsChanged } from "@/lib/enrollmentsChanged"
 import { getErrorCode } from "@/lib/errorCode"
@@ -35,8 +36,10 @@ export type AcceptInvitePhase =
   | "awaitingConfirmation" // email/password signup submitted, waiting on email confirm
 
 export function useAcceptInvite() {
-  const [params] = useSearchParams()
-  const token = params.get("token") ?? ""
+  const location = useLocation()
+  const navigate = useNavigate()
+  const token = inviteTokenFrom(location)
+  const tokenInQuery = inviteTokenIsInQuery(location)
   const { user, register, signInWithGoogle, logout, refreshUser } = useAuth()
 
   const [preview, setPreview] = useState<InvitationPreview | null>(null)
@@ -51,6 +54,15 @@ export function useAcceptInvite() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [acceptedRole, setAcceptedRole] = useState<string | null>(null)
   const [enrolledCourseId, setEnrolledCourseId] = useState<string | null>(null)
+
+  // A letter sent before 2026-09-16 put the token in the query. The page
+  // load that brought it here is already in the edge log, but moving it to
+  // the fragment keeps it out of the Referer of every request this page
+  // makes from now on, and out of the address a person copies to ask for
+  // help. Same token, same page, no reload.
+  useEffect(() => {
+    if (tokenInQuery) navigate(inviteAcceptPath(token), { replace: true })
+  }, [tokenInQuery, token, navigate])
 
   useEffect(() => {
     if (!token) {

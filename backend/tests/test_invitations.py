@@ -191,7 +191,7 @@ def test_preview_invitation_by_token_ok(admin_client: TestClient, anon_client: T
     admin_client.post(INVITATIONS_PREFIX, json={"email": "preview@example.com", "role": "teacher"})
     token = db.query(Invitation).filter(Invitation.email == "preview@example.com").one().token
 
-    resp = anon_client.get(f"{INVITATIONS_PREFIX}/token/{token}")
+    resp = anon_client.post(f"{INVITATIONS_PREFIX}/preview", json={"token": token})
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["email"] == "preview@example.com"
@@ -201,9 +201,26 @@ def test_preview_invitation_by_token_ok(admin_client: TestClient, anon_client: T
 
 
 def test_preview_invitation_unknown_token_404(anon_client: TestClient):
-    resp = anon_client.get(f"{INVITATIONS_PREFIX}/token/does-not-exist")
+    resp = anon_client.post(f"{INVITATIONS_PREFIX}/preview", json={"token": "does-not-exist"})
     assert resp.status_code == 404, resp.text
     assert resp.json()["detail"]["code"] == "invitation.not_found"
+
+
+def test_the_path_preview_still_answers_a_stale_bundle(admin_client: TestClient, anon_client: TestClient, db: Session):
+    """The old ``GET /token/{token}`` stays until no browser still calls it.
+
+    A tab left open on the accept page across the deploy runs the previous
+    bundle, and that bundle knows only this shape. Same answer as the body
+    route, byte for byte.
+    """
+    admin_client.post(INVITATIONS_PREFIX, json={"email": "stale@example.com", "role": "student"})
+    token = db.query(Invitation).filter(Invitation.email == "stale@example.com").one().token
+
+    by_path = anon_client.get(f"{INVITATIONS_PREFIX}/token/{token}")
+    by_body = anon_client.post(f"{INVITATIONS_PREFIX}/preview", json={"token": token})
+
+    assert by_path.status_code == 200, by_path.text
+    assert by_path.json() == by_body.json()
 
 
 # ---------------------------------------------------------------------------
@@ -305,7 +322,7 @@ def test_revoking_stops_the_link_from_working(admin_client: TestClient, db: Sess
     assert row is not None
     # The token itself still exists; what changed is that it is no longer
     # redeemable, which is what `accept_invitation` checks first.
-    preview = admin_client.get(f"{INVITATIONS_PREFIX}/token/{row.token}")
+    preview = admin_client.post(f"{INVITATIONS_PREFIX}/preview", json={"token": row.token})
     assert preview.status_code in (200, 404, 410)
     if preview.status_code == 200:
         assert preview.json()["status"] == "revoked"

@@ -349,7 +349,7 @@ class TestThePreviewSaysWhereItLeads:
         db.commit()
         invitation = _invitation(db, scope=InvitationScope.COURSE.value, course_id=course.id)
 
-        body = anon.get(f"{INVITATIONS_PREFIX}/token/{invitation.token}").json()
+        body = anon.post(f"{INVITATIONS_PREFIX}/preview", json={"token": invitation.token}).json()
 
         assert body["scope"] == "course"
         assert body["course_title"] == "Preaching Course I"
@@ -357,7 +357,7 @@ class TestThePreviewSaysWhereItLeads:
     def test_an_organization_invitation_names_no_course(self, anon: TestClient, db: Session, admin: User) -> None:
         invitation = _invitation(db)
 
-        body = anon.get(f"{INVITATIONS_PREFIX}/token/{invitation.token}").json()
+        body = anon.post(f"{INVITATIONS_PREFIX}/preview", json={"token": invitation.token}).json()
 
         assert body["scope"] == "organization"
         assert body["course_title"] is None
