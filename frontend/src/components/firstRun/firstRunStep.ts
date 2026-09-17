@@ -44,7 +44,7 @@ export function clearFlag(key: string): void {
  * at the catalogue. ``FirstRunFlow`` reports a cache-only pass to the server,
  * so the next device does not need the cache.
  */
-export function onboardingFinished(user: Pick<FirstRunUser, "id" | "onboarding_completed_at">): boolean {
+function onboardingFinished(user: Pick<FirstRunUser, "id" | "onboarding_completed_at">): boolean {
   return Boolean(user.onboarding_completed_at) || readFlag(firstRunCompletedKey(user.id))
 }
 

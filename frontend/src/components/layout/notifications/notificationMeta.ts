@@ -19,7 +19,7 @@ import { formatDate } from "@/i18n/format"
  * dropdown. Consumers that want other mappings (e.g. push notifications)
  * should build their own table rather than import from here.
  */
-export const NOTIFICATION_ICONS: Record<NotificationType, typeof Bell> = {
+const NOTIFICATION_ICONS: Record<NotificationType, typeof Bell> = {
   certificate_approved: Award,
   certificate_rejected: XCircle,
   assignment_graded: ClipboardCheck,
@@ -29,7 +29,7 @@ export const NOTIFICATION_ICONS: Record<NotificationType, typeof Bell> = {
   retake_requested: RotateCcw,
 }
 
-export const NOTIFICATION_COLORS: Record<NotificationType, string> = {
+const NOTIFICATION_COLORS: Record<NotificationType, string> = {
   certificate_approved: "text-success",
   certificate_rejected: "text-destructive",
   assignment_graded: "text-info",
