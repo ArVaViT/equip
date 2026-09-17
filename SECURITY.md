@@ -7,13 +7,20 @@
 | `main`  | :white_check_mark: |
 
 Only the latest code on the `main` branch receives security fixes. There are no
-tagged releases with long-term support yet.
+tagged releases; `main` is what runs at https://equipbible.com.
 
 ## Reporting a vulnerability
 
 **Please do NOT open a public GitHub issue for security vulnerabilities.**
 
-Instead, email **supportequip@gmail.com** with:
+Instead, report it privately through either channel:
+
+- **GitHub private vulnerability reporting** — on this repository, open
+  **Security → Report a vulnerability**
+  ([direct link](https://github.com/ArVaViT/equip/security/advisories/new)).
+- **Email** — **supportequip@gmail.com**.
+
+Please include:
 
 1. A description of the vulnerability.
 2. Steps to reproduce (or a proof-of-concept).
@@ -26,7 +33,7 @@ response within **7 days** indicating next steps.
 
 We follow a coordinated disclosure process:
 
-1. Reporter emails the maintainer.
+1. Reporter sends a private report (GitHub advisory or email).
 2. Maintainer confirms receipt within 72 hours.
 3. Maintainer investigates and develops a fix (target: 30 days).
 4. Fix is merged and deployed; a security advisory is published on GitHub.
