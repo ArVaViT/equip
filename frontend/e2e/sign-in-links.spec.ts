@@ -22,6 +22,8 @@
  * Mailpit case makes, and the unit tests in `lib/__tests__/authLanding.test.ts`
  * cover its URL handling.
  */
+import { randomBytes, randomUUID } from "node:crypto";
+
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
 
 const SUPABASE_URL = process.env.SUPABASE_URL?.replace(/\/+$/, "");
@@ -39,10 +41,10 @@ function adminHeaders() {
 }
 
 async function createUser(request: APIRequestContext): Promise<string> {
-  const email = `e2e-link-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@equip-ci.invalid`;
+  const email = `e2e-link-${randomUUID()}@equip-ci.invalid`;
   const res = await request.post(`${SUPABASE_URL}/auth/v1/admin/users`, {
     headers: adminHeaders(),
-    data: { email, password: `pw-${Math.random().toString(36)}-${Date.now()}`, email_confirm: true },
+    data: { email, password: randomBytes(24).toString("base64url"), email_confirm: true },
   });
   expect(res.ok(), await res.text()).toBeTruthy();
   return email;
