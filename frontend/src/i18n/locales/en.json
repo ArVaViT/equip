@@ -2420,6 +2420,7 @@
       "allStatuses": "All statuses",
       "statusPending": "Pending",
       "statusAccepted": "Accepted",
+      "statusFulfilled": "Joined without the link",
       "statusRevoked": "Revoked",
       "statusExpired": "Expired",
       "emptyTitle": "No invitations sent yet",
@@ -2662,6 +2663,7 @@
   },
   "invite": {
     "heading": "Join Equip",
+    "alreadyIn": "You already have access to what this invitation offers. Sign in as <strong>{{email}}</strong> to continue.",
     "formSubheading": "You've been invited to join Equip as a {{role}}",
     "readyBody": "You're signed in as <strong>{{email}}</strong>. Accept this invitation to join Equip as a {{role}}.",
     "acceptButton": "Accept invitation",

@@ -38,6 +38,7 @@ export default function AcceptInvite() {
     logout,
     previewError,
     retryPreview,
+    rememberInviteForSignIn,
   } = useAcceptInvite()
 
   if (phase === "loading") {
@@ -80,6 +81,30 @@ export default function AcceptInvite() {
           </p>
           <Link to="/login" className="block w-full">
             <Button variant="outline" size="lg" className="w-full">
+              {t("authRegister.duplicate.goToSignIn")}
+            </Button>
+          </Link>
+        </div>
+      </AuthLayout>
+    )
+  }
+
+  if (phase === "alreadyIn") {
+    return (
+      <AuthLayout heading={t("invite.heading")}>
+        <div className="flex flex-col items-center gap-4 py-4 text-center animate-fade-in">
+          <div className="flex h-16 w-16 items-center justify-center rounded-md bg-success/10">
+            <CheckCircle2 className="h-8 w-8 text-success-ink" strokeWidth={1.75} aria-hidden />
+          </div>
+          <p className="text-sm text-ink-muted leading-relaxed">
+            <Trans
+              i18nKey="invite.alreadyIn"
+              values={{ email: preview?.email }}
+              components={{ strong: <strong className="text-ink" /> }}
+            />
+          </p>
+          <Link to="/login" className="block w-full" onClick={rememberInviteForSignIn}>
+            <Button size="lg" className="w-full">
               {t("authRegister.duplicate.goToSignIn")}
             </Button>
           </Link>

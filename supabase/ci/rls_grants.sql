@@ -8,6 +8,8 @@ GRANT ALL ON FUNCTION public.custom_access_token_hook(event jsonb) TO service_ro
 GRANT ALL ON FUNCTION public.dc_schedule_assert_publishable() TO anon;
 GRANT ALL ON FUNCTION public.dc_schedule_assert_publishable() TO authenticated;
 GRANT ALL ON FUNCTION public.dc_schedule_assert_publishable() TO service_role;
+GRANT ALL ON FUNCTION public.fulfil_invitations_after_change() TO service_role;
+GRANT ALL ON FUNCTION public.fulfil_pending_invitations(p_profile_id uuid) TO service_role;
 GRANT ALL ON FUNCTION public.handle_new_user() TO service_role;
 GRANT ALL ON FUNCTION public.profiles_protect_immutable_fields() TO anon;
 GRANT ALL ON FUNCTION public.profiles_protect_immutable_fields() TO authenticated;

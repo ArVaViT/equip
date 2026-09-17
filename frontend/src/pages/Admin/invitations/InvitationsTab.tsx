@@ -35,6 +35,9 @@ const STATUS_BADGE: Record<DisplayStatus, "successSubtle" | "warningSubtle" | "m
   pending: "warningSubtle",
   accepted: "successSubtle",
   revoked: "destructiveSubtle",
+  // The same success as a used link: the person is there. The label, not
+  // the colour, tells the two apart.
+  fulfilled: "successSubtle",
   expired: "muted",
 }
 
@@ -42,11 +45,12 @@ const STATUS_LABEL_KEYS: Record<DisplayStatus, string> = {
   pending: "admin.invitations.statusPending",
   accepted: "admin.invitations.statusAccepted",
   revoked: "admin.invitations.statusRevoked",
+  fulfilled: "admin.invitations.statusFulfilled",
   expired: "admin.invitations.statusExpired",
 }
 
 type RoleFilterValue = "" | InvitationRole
-type StatusFilterValue = "" | "pending" | "accepted" | "revoked"
+type StatusFilterValue = "" | InvitationStatus
 
 /** Admin "Invitations" tab: send + track one-time email invites for the
  *  teacher/student roles. Mirrors CohortsTab's card/filter/table shape. */
@@ -173,6 +177,7 @@ export function InvitationsTab() {
               <SelectItem value="all">{t("admin.invitations.allStatuses")}</SelectItem>
               <SelectItem value="pending">{t("admin.invitations.statusPending")}</SelectItem>
               <SelectItem value="accepted">{t("admin.invitations.statusAccepted")}</SelectItem>
+              <SelectItem value="fulfilled">{t("admin.invitations.statusFulfilled")}</SelectItem>
               <SelectItem value="revoked">{t("admin.invitations.statusRevoked")}</SelectItem>
             </SelectContent>
           </Select>
