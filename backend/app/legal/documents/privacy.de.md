@@ -163,7 +163,7 @@ dürfen.
 | Konto und Profil — Name, E-Mail, Foto, Sprache | Supabase | Solange das Konto besteht |
 | Kursarbeit — Fortschritt, Quiz-Antworten, eingereichte Arbeiten, Noten, Rückmeldungen | Supabase | Solange das Konto besteht; wird mit ihm gelöscht |
 | Ausgestellte Zertifikate und die Notenblätter, die sie festhalten | Supabase | **Bleibt nach Löschung des Kontos** — siehe unten |
-| Nachweis der Annahme eines Dokuments wie diesem (Fassung, Prüfsumme, Sprache, Zeit, IP) | Supabase | Solange das Konto besteht |
+| Nachweis der Annahme eines Dokuments wie diesem (Fassung, Prüfsumme, Sprache, Zeit, IP) | Supabase | Solange das Konto besteht — danach **ohne Sie darin** aufbewahrt, unbefristet (siehe unten) |
 | Erklärung zu einer eingereichten Arbeit (Aussage, KI-Nutzung, Zeit, IP) | Supabase | Solange die eingereichte Arbeit besteht |
 | Aktivitätsprotokoll der Handlungen — wer wann was getan hat (keine IP) | Supabase | Bleibt; wird heute nicht planmäßig gelöscht |
 | Benachrichtigungen, die Ihnen in der Plattform angezeigt werden | Supabase | Bleibt; wird heute nicht planmäßig gelöscht |
@@ -180,11 +180,23 @@ einer läuft, ändert sich diese Tabelle, und die Änderung wird mitgeteilt stat
 neu unterschrieben, denn eine kürzere Speicherdauer ist für Sie kein schlechteres
 Geschäft.
 
-**Das eine, was Ihr Konto überdauert.** Ein ausgestelltes Zertifikat und das
-Notenblatt, das es festhält, bleiben. Eine Schule kann nicht rückwirkend
-unbezeugt machen, was sie bereits bezeugt hat, und genau deshalb sind diese
-Dokumente als Momentaufnahme zum Zeitpunkt ihrer Ausstellung eingefroren. Alles
-andere geht.
+**Was Ihr Konto überdauert.** Zwei Dinge, und nur zwei.
+
+Ein ausgestelltes Zertifikat und das Notenblatt, das es festhält, bleiben. Eine
+Schule kann nicht rückwirkend unbezeugt machen, was sie bereits bezeugt hat,
+und genau deshalb sind diese Dokumente als Momentaufnahme zum Zeitpunkt ihrer
+Ausstellung eingefroren.
+
+Der Nachweis, dass Sie ein Dokument wie dieses angenommen haben, bleibt
+ebenfalls — **ohne Sie darin**. Im Moment der Kontolöschung wird die
+Kontokennung in diesem Nachweis durch eine Einweg-Prüfsumme davon ersetzt und
+die IP-Adresse gelöscht. Übrig bleibt: welches Dokument, welche Fassung, in
+welcher Sprache und wann — und eine Prüfsumme, die sich nicht in Ihren Namen,
+Ihre E-Mail-Adresse oder Ihr Konto zurückverwandeln lässt. Das wird unbefristet
+aufbewahrt, denn ein Einwilligungsnachweis, der mit dem Konto verschwindet,
+kann die eine Frage nicht beantworten, für die er aufbewahrt wird.
+
+Alles andere geht.
 
 ## Was Sie tun können
 
@@ -195,7 +207,8 @@ andere geht.
   Export-Knopf zur Selbstbedienung gibt es noch nicht.
 - **Ihr Konto und Ihre Kursarbeit löschen** — schreiben Sie an
   supportequip@gmail.com. Wir tun es heute von Hand; einen Löschen-Knopf im
-  Profil gibt es noch nicht. Ausgestellte Zertifikate bleiben, wie oben vermerkt.
+  Profil gibt es noch nicht. Ausgestellte Zertifikate bleiben, und der
+  anonymisierte Nachweis Ihrer Annahme ebenfalls, wie oben vermerkt.
 - **Etwas berichtigen, das falsch ist** — sagen Sie es uns, und wir bringen es in
   Ordnung.
 - **Der Sitzungsaufzeichnung widersprechen** — wir können sie heute nicht für ein

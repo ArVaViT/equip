@@ -144,7 +144,7 @@ from an authority — and we will tell you when we are allowed to.
 | Account and profile — name, email, photo, language | Supabase | While the account exists |
 | Coursework — progress, quiz answers, submissions, marks, feedback | Supabase | While the account exists; deleted with it |
 | Issued certificates and the grade sheets recording them | Supabase | **Kept after the account is deleted** — see below |
-| Record of accepting a document like this one (version, fingerprint, language, time, IP) | Supabase | While the account exists |
+| Record of accepting a document like this one (version, fingerprint, language, time, IP) | Supabase | While the account exists — then **kept without you in it**, indefinitely (see below) |
 | Declaration attached to a submission (statement, AI use, time, IP) | Supabase | While the submission exists |
 | Audit record of actions — who did what, when (no IP) | Supabase | Kept; not deleted on a schedule today |
 | Notifications shown to you in the platform | Supabase | Kept; not deleted on a schedule today |
@@ -160,10 +160,22 @@ the platform is young and no purge job runs yet. When one does, this table
 changes and the change is notified rather than re-signed, because a shorter
 retention is not a worse deal for you.
 
-**The one thing that outlives your account.** An issued certificate, and the
-grade sheet recording it, remain. A school cannot retroactively un-witness what
-it has already witnessed, which is exactly why those documents are frozen as a
-snapshot at the moment they are issued. Everything else goes.
+**What outlives your account.** Two things, and only two.
+
+An issued certificate, and the grade sheet recording it, remain. A school
+cannot retroactively un-witness what it has already witnessed, which is exactly
+why those documents are frozen as a snapshot at the moment they are issued.
+
+The record that you accepted a document like this one also remains, **with you
+taken out of it**. At the moment your account is deleted, the account
+identifier on that record is replaced by a one-way fingerprint of it and the IP
+address is erased. What is left is which document, which version, in which
+language, and when — and a fingerprint that cannot be turned back into your
+name, your email address or your account. That is kept indefinitely, because a
+consent record that vanishes with the account cannot answer the one question it
+is kept to answer.
+
+Everything else goes.
 
 ## What you can do
 
@@ -173,7 +185,8 @@ snapshot at the moment they are issued. Everything else goes.
   button yet.
 - **Delete your account and your coursework** — write to
   supportequip@gmail.com. We do it by hand today; there is no delete button in
-  the profile yet. Issued certificates stay, per the note above.
+  the profile yet. Issued certificates stay, and so does the anonymised record
+  of your acceptance, per the note above.
 - **Correct something that is wrong** — tell us and we will fix it.
 - **Object to the session recording** — we cannot switch it off for one account
   today. If that is not acceptable to you, deleting the account is the honest

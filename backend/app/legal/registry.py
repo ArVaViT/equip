@@ -196,10 +196,10 @@ LEGAL_DOCUMENT_FINGERPRINTS: dict[tuple[str, str, str], str] = {
     # 2026-09-17: everything rewritten, and everything translated into the two
     # languages these documents never existed in. Sixteen files, four of them
     # a document nobody had been asked to sign before.
-    ("privacy", "2.0", "en"): "540a380618141c8e55c7fc6069e0e8d4732d3330e1141dc466cded6acb1d58af",
-    ("privacy", "2.0", "ru"): "83e6597ddf60a7c3de46750b003d7b2d3e833ea461841d8b93ce3dfbc3ce110b",
-    ("privacy", "2.0", "de"): "8da5b91192a69a048694b6b7177173d9c05f8687580a1e602f58da78cc7514b5",
-    ("privacy", "2.0", "uk"): "6bdbc333ca5a360df8ca768676aa6bcdfb8c1509bc315d3932e47dbc8a1f3f1a",
+    ("privacy", "2.0", "en"): "a9e501482feaf5c283e584f7e98a1e6a7f08ee99f8bf04373da7ded44affcff6",
+    ("privacy", "2.0", "ru"): "0cbb0859546d8201f4be412d320e216658b0370ab296d651a91951afd41756e5",
+    ("privacy", "2.0", "de"): "8a3e6af0f84fc81121d9762114dc018e3caf17172ddaa1abb08529cf8b622231",
+    ("privacy", "2.0", "uk"): "1b98c71a32e1ff42081f63d505e1ffa8b253c6d019fdbce011ac8cf5db6d4d1f",
     ("terms", "2.0", "en"): "f39c83564e045d89fb685520e6242ce5dc6379b650910eafda5215c9826daabe",
     ("terms", "2.0", "ru"): "795772d825725e102d5707c888e2489078fa5caedab063cd3cb9dd9420c8d4a3",
     ("terms", "2.0", "de"): "c49cb17a83ca0cdb0039ccc3a399dad5da9c8ee89c1a9eb3b003711de42e8bfb",
