@@ -75,7 +75,7 @@ class Invitation(Base):
     token: Mapped[str] = mapped_column(unique=True)
     status: Mapped[str] = mapped_column(default=InvitationStatus.PENDING.value)
     invited_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("profiles.id", ondelete="SET NULL"))
-    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_default_expires_at)
 

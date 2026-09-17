@@ -62,13 +62,6 @@ class Course(Base):
     __table_args__ = (
         Index("ix_courses_created_by", "created_by"),
         Index(
-            "ix_courses_status_created_at",
-            "status",
-            text("created_at DESC"),
-            postgresql_where=text("deleted_at IS NULL"),
-        ),
-        Index("ix_courses_access_mode", "access_mode"),
-        Index(
             "ix_courses_created_by_active",
             "created_by",
             postgresql_where=text("deleted_at IS NULL"),
@@ -218,19 +211,9 @@ class Course(Base):
 
 class Module(Base):
     __tablename__ = "modules"
-    __table_args__ = (
-        Index("ix_modules_course_id_order", "course_id", "order_index"),
-        Index(
-            "ix_modules_course_id_order_active",
-            "course_id",
-            "order_index",
-            postgresql_where=text("deleted_at IS NULL"),
-        ),
-    )
+    __table_args__ = (Index("ix_modules_course_id", "course_id"),)
 
     id: Mapped[str] = mapped_column(primary_key=True)
-    # The composite ``ix_modules_course_id_order`` covers plain ``course_id``
-    # lookups via its leading column, so no single-column FK index here.
     course_id: Mapped[str] = mapped_column(ForeignKey("courses.id"))
     order_index: Mapped[int] = mapped_column(default=0)
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

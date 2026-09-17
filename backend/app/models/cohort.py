@@ -45,7 +45,6 @@ class CohortStatus(enum.StrEnum):
 class Cohort(Base):
     __tablename__ = "cohorts"
     __table_args__ = (
-        Index("ix_cohorts_status", "status"),
         Index("ix_cohorts_created_by", "created_by"),
         # Mirrors the Postgres ``cohorts_status_check`` CHECK constraint.
         # Same 4-way-mirror discipline rule as ``ChapterBlock``: the
@@ -77,8 +76,8 @@ class Cohort(Base):
     # deleted from the platform — cohort survives so historical
     # enrollments and grades stay intact.
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("profiles.id", ondelete="SET NULL"))
-    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime | None] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
@@ -102,7 +101,7 @@ class CohortCourse(Base):
 
     cohort_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cohorts.id", ondelete="CASCADE"), primary_key=True)
     course_id: Mapped[str] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True)
-    added_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     def __repr__(self) -> str:
         return f"<CohortCourse cohort_id={self.cohort_id} course_id={self.course_id!r}>"

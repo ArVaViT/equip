@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -22,8 +22,8 @@ class Assignment(Base):
     # writes through dual_write_entity_content(texts={...}).
     max_score: Mapped[int] = mapped_column(default=100)
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime | None] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
@@ -31,8 +31,19 @@ class Assignment(Base):
 class AssignmentSubmission(Base):
     __tablename__ = "assignment_submissions"
     __table_args__ = (
-        Index("ix_assignment_subs_student_assignment", "student_id", "assignment_id"),
-        Index("ix_assignment_subs_assignment_id", "assignment_id"),
+        # A student hands in as many times as the work allows, one row each;
+        # the newest row is the one that counts. Nothing here is unique on
+        # (assignment_id, student_id) -- production carried such a constraint
+        # until 20260917030000 and it turned every second hand-in into a 409.
+        # This index serves the per-assignment list, a student's own history
+        # for one assignment, and ``latest_submissions``.
+        Index(
+            "ix_assignment_submissions_assignment_student_submitted",
+            "assignment_id",
+            "student_id",
+            text("submitted_at DESC"),
+        ),
+        Index("idx_submissions_student_id", "student_id"),
         # Mirror prod CHECK constraints (status domain + non-negative grade).
         CheckConstraint(
             "status IN ('submitted', 'graded', 'returned')",
@@ -46,7 +57,7 @@ class AssignmentSubmission(Base):
     student_id: Mapped[uuid.UUID] = mapped_column()
     content: Mapped[str | None] = mapped_column(Text)
     file_url: Mapped[str | None] = mapped_column(Text)
-    submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     status: Mapped[str] = mapped_column(String(20), default="submitted")
     grade: Mapped[int | None] = mapped_column()
     feedback: Mapped[str | None] = mapped_column(Text)

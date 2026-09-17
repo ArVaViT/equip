@@ -89,7 +89,7 @@ class Certificate(Base):
     issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     certificate_number: Mapped[str | None] = mapped_column(String(50), unique=True)
     status: Mapped[str] = mapped_column(String(20), default="pending")
-    requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     teacher_approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     teacher_approved_by: Mapped[uuid.UUID | None] = mapped_column()
     admin_approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

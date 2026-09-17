@@ -47,7 +47,7 @@ class ChapterBlock(Base):
     file_bucket: Mapped[str | None] = mapped_column(String(50))
     file_path: Mapped[str | None] = mapped_column(Text)
     file_name: Mapped[str | None] = mapped_column(String(255))
-    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime | None] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

@@ -1151,14 +1151,6 @@ ALTER TABLE ONLY public.assignment_rubrics
 
 
 --
--- Name: assignment_submissions assignment_submissions_assignment_id_student_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.assignment_submissions
-    ADD CONSTRAINT assignment_submissions_assignment_id_student_id_key UNIQUE (assignment_id, student_id);
-
-
---
 -- Name: assignment_submissions assignment_submissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1567,14 +1559,6 @@ ALTER TABLE ONLY public.student_grades
 
 
 --
--- Name: student_grades student_grades_student_id_course_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.student_grades
-    ADD CONSTRAINT student_grades_student_id_course_id_key UNIQUE (student_id, course_id);
-
-
---
 -- Name: submission_declarations submission_declarations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1682,6 +1666,13 @@ CREATE INDEX ix_announcements_created_by ON public.announcements USING btree (cr
 --
 
 CREATE INDEX ix_assignment_rubrics_rubric ON public.assignment_rubrics USING btree (rubric_id);
+
+
+--
+-- Name: ix_assignment_submissions_assignment_student_submitted; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_assignment_submissions_assignment_student_submitted ON public.assignment_submissions USING btree (assignment_id, student_id, submitted_at DESC);
 
 
 --
@@ -2291,13 +2282,6 @@ CREATE INDEX ix_student_grades_cohort_id ON public.student_grades USING btree (c
 --
 
 CREATE INDEX ix_student_grades_graded_by ON public.student_grades USING btree (graded_by);
-
-
---
--- Name: ix_submission_declarations_submission; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_submission_declarations_submission ON public.submission_declarations USING btree (submission_id);
 
 
 --
