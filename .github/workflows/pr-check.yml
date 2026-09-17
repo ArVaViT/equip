@@ -63,6 +63,27 @@ jobs:
             echo "::notice::Found TODO/FIXME/HACK in the diff. Resolve or track before merging if appropriate."
           fi
 
+      - name: Require actions pinned by commit SHA
+        # A tag like `@v7` can be moved by whoever controls the action's
+        # repository; a 40-character SHA cannot. Every workflow here is pinned,
+        # and Dependabot keeps the pins current (it rewrites the SHA and the
+        # `# vX.Y.Z` comment together). Two workflows written by hand on
+        # 2026-09-14 went in with bare tags anyway and sat as six open
+        # Scorecard alerts, because nothing failed. This step is that failure.
+        run: |
+          set -euo pipefail
+          UNPINNED=$(grep -nE '^[[:space:]]*(-[[:space:]]+)?uses:[[:space:]]+[^.[:space:]][^[:space:]]*@' .github/workflows/*.yml \
+            | grep -vE '@[0-9a-f]{40}([[:space:]]|$)' \
+            | grep -v 'docker://' || true)
+          if [ -n "$UNPINNED" ]; then
+            while IFS=: read -r file line rest; do
+              echo "::error file=$file,line=$line::Action not pinned by commit SHA:$rest"
+            done <<< "$UNPINNED"
+            echo "::error::Pin each action as owner/repo@<40-char sha> # vX.Y.Z (resolve with: gh api repos/<owner>/<repo>/git/ref/tags/<tag>, dereferencing annotated tags)."
+            exit 1
+          fi
+          echo "Every action is pinned by commit SHA."
+
       - name: Block secret and environment files in diff
         run: |
           set -euo pipefail

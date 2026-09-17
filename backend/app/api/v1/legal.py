@@ -109,7 +109,7 @@ def accept(
     if payload.slug not in required_slugs():
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             message=f"'{payload.slug}' is not a document that requires acceptance",
             context={"resource_type": "legal_document", "resource_id": payload.slug},
         )

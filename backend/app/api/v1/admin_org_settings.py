@@ -109,7 +109,7 @@ def update_org_settings(
     if error:
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             message=error,
             context={"resource_type": AUDIT_RESOURCE, "default_grading_scheme": scheme},
         )
@@ -119,7 +119,7 @@ def update_org_settings(
         if not isinstance(bands, dict):
             raise equip_error(
                 ErrorCode.VALIDATION_FAILED,
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 message="Bands must be an object keyed by scheme",
                 context={"resource_type": AUDIT_RESOURCE},
             )
@@ -127,7 +127,7 @@ def update_org_settings(
             if band_scheme not in BAND_SCHEMES:
                 raise equip_error(
                     ErrorCode.VALIDATION_FAILED,
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     message=f"'{band_scheme}' has no bands: only {', '.join(BAND_SCHEMES)} are resolved through them",
                     context={"resource_type": AUDIT_RESOURCE, "scheme": band_scheme},
                 )
@@ -138,7 +138,7 @@ def update_org_settings(
             if error:
                 raise equip_error(
                     ErrorCode.VALIDATION_FAILED,
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     message=error,
                     context={"resource_type": AUDIT_RESOURCE, "scheme": band_scheme},
                 )
