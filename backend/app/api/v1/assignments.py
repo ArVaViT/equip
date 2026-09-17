@@ -15,6 +15,7 @@ from app.api.dependencies import (
 )
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.core.http import get_client_ip
 from app.core.metrics import increment
 from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
@@ -357,7 +358,7 @@ def submit_assignment(
                 statement=data.declaration.statement
                 + (f"\n\n{data.declaration.note}" if data.declaration.note else ""),
                 ai_use=data.declaration.ai_use,
-                ip=request.client.host if request and request.client else None,
+                ip=get_client_ip(request),
             )
         )
 
