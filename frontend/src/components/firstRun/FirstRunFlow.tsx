@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { legalService } from "@/services/legal"
+import { legalService, type LegalDocumentSummary } from "@/services/legal"
 import { onboardingService } from "@/services/onboarding"
 import { useAuth } from "@/context/useAuth"
 import { setFirstRunActive } from "@/lib/tourState"
@@ -75,6 +75,11 @@ export function FirstRunFlow() {
   // and something is outstanding anyway, the documents changed under them —
   // and the screen must say so rather than greet them as a newcomer.
   const [acceptedBefore, setAcceptedBefore] = useState(false)
+  // Exactly which documents this person owes, as the server named them. The
+  // gate hands the list to the consent step rather than letting it ask again:
+  // one round-trip, and — since the teacher agreement is asked of teachers
+  // only — the list a student ticks is the list a student was asked for.
+  const [owed, setOwed] = useState<LegalDocumentSummary[]>([])
   // Skipped the name step this session. Without this, the legal answer
   // landing a moment after the skip would re-derive the step and send the
   // person back to the question they had just declined.
@@ -93,6 +98,7 @@ export function FirstRunFlow() {
     if (!userId) {
       setLegalOutstanding(null)
       setAcceptedBefore(false)
+      setOwed([])
       return
     }
     let cancelled = false
@@ -100,13 +106,14 @@ export function FirstRunFlow() {
       .status()
       .then((status) => {
         if (cancelled) return
-        const owed = status.outstanding.length > 0
-        setLegalOutstanding(owed)
+        const stillOwed = status.outstanding.length > 0
+        setLegalOutstanding(stillOwed)
+        setOwed(status.outstanding)
         setAcceptedBefore(status.accepted.length > 0)
         // Keep the cache honest in both directions, including the case that
         // matters: somebody who accepted on their phone should not meet the
         // gate again on the laptop just because this browser never saw it.
-        if (owed) clearFlag(privacyAcceptedKey(userId))
+        if (stillOwed) clearFlag(privacyAcceptedKey(userId))
         else writeFlag(privacyAcceptedKey(userId))
       })
       .catch(() => {
@@ -335,7 +342,7 @@ export function FirstRunFlow() {
             transition={{ duration: 0.4, ease: EDITORIAL_EASE }}
             className="flex w-full justify-center"
           >
-            <PrivacyPolicyStep onAccept={handlePrivacyAccept} renewal={acceptedBefore} />
+            <PrivacyPolicyStep onAccept={handlePrivacyAccept} renewal={acceptedBefore} documents={owed} />
           </motion.div>
         )}
         {step === "name" && (

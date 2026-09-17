@@ -1,6 +1,6 @@
 # Infrastructure providers
 
-**Last changed 12 September 2026**
+**Last changed 17 September 2026**
 
 This page is referred to by the [Privacy Policy](/privacy) and is not part of
 it. Changing it does not change what the policy promises, which is why swapping
@@ -11,23 +11,29 @@ their own purposes.
 
 | Who | What they hold | Why | Where |
 |---|---|---|---|
-| Supabase | the database, account sign-in, uploaded files | everything the platform stores | United States |
-| Vercel | requests to the site and to the API | serving the application | United States |
+| Supabase | the database, account sign-in, uploaded files; and, for each active sign-in session, its IP address and browser User-Agent | everything the platform stores | United States |
+| Vercel | requests to the site and to the API, including the IP address they came from | serving the application | United States |
+| Datadog | technical logs (including those request IPs, for 15 days), error reports, and a recording of every browser session including Session Replay (for 30 days) | noticing breakage before you report it, and being able to see what actually happened | United States |
+| Google — Gemini | teacher-authored course content sent for machine translation: titles, lesson text, quiz questions, announcements. **Not student work** | teaching the same course in four languages | United States |
+| Google — sign-in | sign-in, for accounts that use "Continue with Google" | authentication only, at your choice | United States |
+| YouVersion | the Bible reference a lesson asks for | printing the real text of a quoted passage | United States |
 | Resend | the address a message goes to, its subject and body, and whether it was accepted | sending account and course email | United States |
-| Datadog | technical logs and error reports | noticing breakage before you report it | United States |
-| Google | sign-in, for accounts that use "Continue with Google" | authentication only, at your choice | United States |
 
 ## What is deliberately not here
 
-**Analytics that follow people.** There is no advertising network, no tracking
-pixel, and no third-party analytics script. The error and performance reporting
-we do run is the fourth row above, and it is ours to read rather than anyone's
-to sell.
+**Analytics that follow people.** There is no advertising network, no marketing
+tag, no cross-site tracking, and no tracking pixel — including in the email the
+platform sends. The session recording in the third row is ours to read rather
+than anyone's to sell, and the Privacy Policy describes exactly what it captures.
 
-**Machine translation of your coursework.** Course *content* written by a
-teacher is translated by machine so a school can teach in four languages, and
-that is stated in the policy. Student submissions are not sent anywhere for
-translation or for anything else.
+**Machine translation of your coursework.** Course *content* written by a teacher
+is translated by machine so a school can teach in four languages, and that is
+stated in the policy and in the fourth row. Student submissions are not sent
+anywhere for translation or for anything else.
+
+**A payment provider.** There are no payments on the platform and we store no
+payment details. If that ever changes, a row appears here and the Privacy Policy
+says what the provider holds — and it will never be us holding a card number.
 
 ## If this list changes
 

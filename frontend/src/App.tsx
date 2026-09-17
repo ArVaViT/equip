@@ -241,6 +241,10 @@ function AppRoutes() {
               <Route path="/verify/:certificateNumber" element={<VerifyCertificatePage />} />
               <Route path="/privacy" element={<LegalDocumentPage slug="privacy" />} />
               <Route path="/terms" element={<LegalDocumentPage slug="terms" />} />
+              {/* Public like the other two: somebody deciding whether to accept
+                  a teaching role has to be able to read what it binds them to
+                  before they are standing in front of the checkbox. */}
+              <Route path="/teacher-terms" element={<LegalDocumentPage slug="teacher-terms" />} />
               {/* Linked from the privacy policy; read, never signed. */}
               <Route path="/privacy/providers" element={<LegalDocumentPage slug="providers" />} />
               <Route path="/profile" element={<Gate mode="private"><ProfilePage /></Gate>} />

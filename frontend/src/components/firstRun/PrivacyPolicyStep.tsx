@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react"
+import { useId, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { Loader2 } from "lucide-react"
@@ -16,6 +16,18 @@ interface Props {
    * happened instead of being welcomed as if they had just signed up.
    */
   renewal?: boolean
+  /**
+   * What this person still owes, as the server answered it — the orchestrator
+   * has already asked, and asking again here would be a second round-trip for
+   * an answer that is already in memory.
+   *
+   * Passed rather than fetched for a second reason: it must be *their*
+   * outstanding list and not every document that exists. Those were the same
+   * list while both documents were asked of everybody; the teacher agreement
+   * is asked of teachers only, and a student ticking one box must not produce
+   * a record of consent nobody sought.
+   */
+  documents?: LegalDocumentSummary[]
 }
 
 /**
@@ -44,7 +56,7 @@ interface Props {
  * is how the screen knows to explain that rather than start from "Before we
  * begin".
  */
-export function PrivacyPolicyStep({ onAccept, renewal = false }: Props) {
+export function PrivacyPolicyStep({ onAccept, renewal = false, documents }: Props) {
   const { i18n, t } = useTranslation()
   // The language the reader is actually in. It used to collapse to "ru" for
   // everyone but English readers, so a German student's consent record said
@@ -53,32 +65,17 @@ export function PrivacyPolicyStep({ onAccept, renewal = false }: Props) {
   const locale = isSupportedLocale(i18n.language) ? i18n.language : DEFAULT_LOCALE
   const [accepted, setAccepted] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [documents, setDocuments] = useState<LegalDocumentSummary[] | null>(null)
   const checkboxId = useId()
-
-  useEffect(() => {
-    let cancelled = false
-    legalService.documents().then(
-      (list) => {
-        if (!cancelled) setDocuments(list)
-      },
-      () => {
-        // Fetched again at click time. A network hiccup on mount must not
-        // leave somebody staring at a permanently dead Continue button.
-        if (!cancelled) setDocuments(null)
-      },
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   const confirm = async () => {
     setSaving(true)
     try {
-      const list = documents ?? (await legalService.documents())
-      // One tick, both documents — that is what the checkbox says, and
-      // recording only one of them would make the record narrower than the
+      // Asked again here only when the orchestrator has nothing to hand over —
+      // a failed status call on mount must not leave somebody staring at a
+      // permanently dead Continue button.
+      const list = documents?.length ? documents : (await legalService.status()).outstanding
+      // One tick, every document named in it — that is what the checkbox says,
+      // and recording only one of them would make the record narrower than the
       // sentence the person actually agreed to. Accepting something already
       // accepted is idempotent on the server, so this is safe to repeat.
       for (const doc of list) {

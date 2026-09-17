@@ -90,6 +90,11 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
+                <Link to="/teacher-terms" className={linkClass}>
+                  {t("legal.teacherTerms")}
+                </Link>
+              </li>
+              <li>
                 <a href={`mailto:${SUPPORT_EMAIL}`} className={linkClass}>
                   {t("footer.support")}
                 </a>

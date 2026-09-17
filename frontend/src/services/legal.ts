@@ -11,6 +11,17 @@ export interface LegalDocument {
 export interface LegalDocumentSummary {
   slug: string
   version: string
+  /** The date this version took effect (ISO ``YYYY-MM-DD``). */
+  effective: string
+  /** Roles that must accept it. Empty for a page nobody signs. */
+  required_for: string[]
+  /**
+   * Whether arriving at this version asks for a fresh acceptance. A version
+   * published with this ``false`` reaches people as a notice — which is the
+   * mechanism that lets a typo be fixed without a hundred people clicking a
+   * consent screen they have stopped reading.
+   */
+  requires_consent: boolean
 }
 
 export interface LegalAcceptance {
@@ -22,8 +33,14 @@ export interface LegalAcceptance {
 
 export interface LegalStatus {
   accepted: LegalAcceptance[]
-  /** What this person still has to accept. The server answers it, not us. */
+  /**
+   * What this person still has to accept. The server answers it, not us —
+   * and it answers for the role on their profile row, which is how a
+   * promotion to teacher reaches a tab that has not re-read its own profile.
+   */
   outstanding: LegalDocumentSummary[]
+  /** Documents that changed since they signed, without changing the deal. */
+  notices: LegalDocumentSummary[]
 }
 
 /**

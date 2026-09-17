@@ -16,7 +16,7 @@ import PageSpinner from "@/components/ui/PageSpinner"
  * last-changed date in the field a signed document uses for its
  * version.
  */
-export type LegalSlug = "privacy" | "terms" | "providers"
+export type LegalSlug = "privacy" | "terms" | "teacher-terms" | "providers"
 
 /**
  * The page the consent checkbox has been pointing at all along.

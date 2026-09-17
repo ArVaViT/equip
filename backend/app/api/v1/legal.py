@@ -1,5 +1,7 @@
 """Serving the documents, and recording that somebody accepted one."""
 
+import uuid
+
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -9,7 +11,15 @@ from app.api.dependencies import get_current_user
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.http import get_client_ip
-from app.legal import GOVERNING_LOCALE, LEGAL_DOCUMENTS, document_for, required_slugs
+from app.legal import (
+    GOVERNING_LOCALE,
+    LEGAL_REGISTRY,
+    DocumentSpec,
+    document_for,
+    notices_for,
+    outstanding_for,
+    required_slugs,
+)
 from app.models.legal_acceptance import LegalAcceptance
 from app.models.user import User
 from app.schemas.legal import (
@@ -23,10 +33,27 @@ from app.schemas.legal import (
 router = APIRouter(prefix="/legal", tags=["legal"])
 
 
+def _summary(spec: DocumentSpec) -> LegalDocumentSummary:
+    return LegalDocumentSummary(
+        slug=spec.slug,
+        version=spec.current.version,
+        effective=spec.current.effective,
+        required_for=sorted(spec.required_for),
+        requires_consent=spec.current.consent,
+    )
+
+
 @router.get("/documents", response_model=list[LegalDocumentSummary])
 def list_documents() -> list[LegalDocumentSummary]:
-    """What must be accepted, and at which version. Public on purpose."""
-    return [LegalDocumentSummary(slug=slug, version=version) for slug, version in LEGAL_DOCUMENTS.items()]
+    """What must be accepted, by whom, and at which version. Public on purpose.
+
+    Every signable document, not only the ones the caller owes: this route has
+    no caller to ask about, and a person deciding whether to sign up is
+    entitled to see the agreement they would be under if they ever taught here.
+    Which of them *this* person still owes is
+    :func:`my_acceptances`, which does know who is asking.
+    """
+    return [_summary(spec) for spec in LEGAL_REGISTRY if spec.signable]
 
 
 @router.get("/documents/{slug}", response_model=LegalDocumentOut)
@@ -38,10 +65,8 @@ def get_document(slug: str, locale: str = GOVERNING_LOCALE) -> LegalDocumentOut:
     after accepting it is not a policy.
 
     ``locale`` is what the reader asked for; the response's ``locale`` is what
-    they got, and the two differ for a language these documents do not exist
-    in. The default used to be Russian, which meant a bare request — and every
-    reader whose language was not English — was answered in a language they
-    may not read.
+    they got, and the two differ only for a language these documents do not
+    exist in — which, since 2026-09-17, is no language the interface serves.
     """
     try:
         doc = document_for(slug, locale)
@@ -61,7 +86,7 @@ def get_document(slug: str, locale: str = GOVERNING_LOCALE) -> LegalDocumentOut:
     )
 
 
-def _accepted_rows(db: Session, user_id) -> list[LegalAcceptance]:
+def _accepted_rows(db: Session, user_id: uuid.UUID) -> list[LegalAcceptance]:
     return list(db.scalars(select(LegalAcceptance).where(LegalAcceptance.user_id == user_id)).all())
 
 
@@ -70,14 +95,18 @@ def my_acceptances(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> LegalStatusOut:
+    """What this person has accepted, still owes, and should be told about.
+
+    The role is read from the database row rather than taken from the client,
+    which makes this route the place a promotion becomes visible. A tab left
+    open while an administrator grants the teaching role keeps a stale profile
+    — nothing in the frontend re-reads it — but this answer changes on the next
+    poll, and the teacher agreement appearing in ``outstanding`` is how the
+    application finds out.
+    """
     rows = _accepted_rows(db, current_user.id)
-    current = {(slug, version) for slug, version in LEGAL_DOCUMENTS.items()}
-    have = {(row.document_slug, row.version) for row in rows}
-    outstanding = [
-        LegalDocumentSummary(slug=slug, version=version)
-        for slug, version in sorted(current - have)
-        if slug in required_slugs()
-    ]
+    accepted = {(row.document_slug, row.version) for row in rows}
+    role = current_user.role
     return LegalStatusOut(
         accepted=[
             LegalAcceptanceOut(
@@ -88,7 +117,8 @@ def my_acceptances(
             )
             for row in rows
         ],
-        outstanding=outstanding,
+        outstanding=[_summary(spec) for spec in outstanding_for(role, accepted)],
+        notices=[_summary(spec) for spec in notices_for(role, accepted)],
     )
 
 
@@ -100,12 +130,20 @@ def accept(
     current_user: User = Depends(get_current_user),
 ) -> LegalAcceptanceOut:
     """Record an acceptance of a document the server can still produce."""
-    # Only the documents that are actually asked for can be accepted.
-    # The same route serves reference pages — the provider list the
-    # privacy policy points at — and those are read, never signed: a row
-    # in ``legal_acceptances`` asserting agreement to a page nobody was
-    # ever asked to agree to makes the table harder to read and answers
-    # a question nobody posed.
+    # Only the documents that are actually asked for can be accepted. The same
+    # route serves reference pages — the provider list the privacy policy
+    # points at — and those are read, never signed: a row in
+    # ``legal_acceptances`` asserting agreement to a page nobody was ever asked
+    # to agree to makes the table harder to read and answers a question nobody
+    # posed.
+    #
+    # Signable for *anybody*, deliberately, rather than signable for this
+    # person's role. A promotion and a gate can race — an administrator grants
+    # the teaching role, the client is shown the agreement, an administrator
+    # changes their mind — and refusing the acceptance in that window would
+    # leave a person who has read and ticked the thing with nowhere to put it.
+    # An extra row is harmless; a missing one is the failure this table exists
+    # to prevent.
     if payload.slug not in required_slugs():
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,
@@ -141,6 +179,9 @@ def accept(
         version=doc.version,
         locale=doc.locale,
         content_sha256=doc.sha256,
+        # Named in the privacy policy itself, and stored at this moment and at
+        # a submission declaration and nowhere else: it is evidence that the
+        # acceptance happened.
         ip=get_client_ip(request),
     )
     db.add(row)
