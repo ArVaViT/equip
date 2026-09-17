@@ -366,8 +366,6 @@ CREATE TABLE public.audit_logs (
     resource_type character varying(50) NOT NULL,
     resource_id text NOT NULL,
     details jsonb,
-    ip_address character varying(45),
-    user_agent character varying(500),
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 

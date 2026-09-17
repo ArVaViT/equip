@@ -32,8 +32,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -66,17 +64,6 @@ def db():
         yield session
     finally:
         session.close()
-
-
-@pytest.fixture
-def mock_request() -> Any:
-    """Minimal Request stub for audit-log calls — those only read
-    ``client.host`` and ``headers``. Returning a MagicMock saves us
-    from constructing a Starlette Request."""
-    req = MagicMock()
-    req.client = MagicMock(host="127.0.0.1")
-    req.headers = {}
-    return req
 
 
 def _make_user(db: Session, *, user_id: uuid.UUID, role: str) -> User:
@@ -140,7 +127,7 @@ class TestTwoEyesApprovalGuard:
     teacher, then issue as admin) — defeating the entire design.
     """
 
-    def test_admin_who_teacher_approved_cannot_admin_approve(self, db, mock_request):
+    def test_admin_who_teacher_approved_cannot_admin_approve(self, db):
         # Admin acts as the course owner (teacher-stage) AND as admin.
         admin = _make_user(db, user_id=ADMIN_ID, role=UserRole.ADMIN.value)
         course = _make_course(db, owner_id=ADMIN_ID)  # admin owns the course
@@ -152,11 +139,11 @@ class TestTwoEyesApprovalGuard:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            admin_approve(db, cert.id, admin, mock_request)
+            admin_approve(db, cert.id, admin)
         assert exc_info.value.status_code == 403
         assert "another admin" in exc_info.value.detail["message"].lower()
 
-    def test_different_admin_can_admin_approve_teacher_approved_cert(self, db, mock_request):
+    def test_different_admin_can_admin_approve_teacher_approved_cert(self, db):
         # Sanity check: when the admin is different from the teacher-
         # approver, the gate passes.
         teacher = _make_user(db, user_id=TEACHER_ID, role=UserRole.TEACHER.value)
@@ -169,7 +156,7 @@ class TestTwoEyesApprovalGuard:
             teacher_approved_by=teacher.id,
         )
 
-        result = admin_approve(db, cert.id, admin, mock_request)
+        result = admin_approve(db, cert.id, admin)
         assert result.status == "approved"
         assert result.admin_approved_by == admin.id
 
@@ -180,7 +167,7 @@ class TestRejectStageAuthorisation:
     Without the second gate, a teacher could approve and then reject
     their own prior decision (single-person veto)."""
 
-    def test_teacher_cannot_reject_their_own_teacher_approved_cert(self, db, mock_request):
+    def test_teacher_cannot_reject_their_own_teacher_approved_cert(self, db):
         teacher = _make_user(db, user_id=TEACHER_ID, role=UserRole.TEACHER.value)
         course = _make_course(db, owner_id=teacher.id)
         cert = _make_cert(
@@ -191,11 +178,11 @@ class TestRejectStageAuthorisation:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            reject(db, cert.id, teacher, mock_request)
+            reject(db, cert.id, teacher)
         assert exc_info.value.status_code == 403
         assert "administrator" in exc_info.value.detail["message"].lower()
 
-    def test_admin_can_reject_teacher_approved_cert(self, db, mock_request):
+    def test_admin_can_reject_teacher_approved_cert(self, db):
         teacher = _make_user(db, user_id=TEACHER_ID, role=UserRole.TEACHER.value)
         admin = _make_user(db, user_id=ADMIN_ID, role=UserRole.ADMIN.value)
         course = _make_course(db, owner_id=teacher.id)
@@ -206,10 +193,10 @@ class TestRejectStageAuthorisation:
             teacher_approved_by=teacher.id,
         )
 
-        result = reject(db, cert.id, admin, mock_request)
+        result = reject(db, cert.id, admin)
         assert result.status == "rejected"
 
-    def test_teacher_can_reject_pending_cert(self, db, mock_request):
+    def test_teacher_can_reject_pending_cert(self, db):
         # At pending stage, the originating teacher hasn't committed
         # to anything — they can still reject without needing admin
         # involvement.
@@ -217,7 +204,7 @@ class TestRejectStageAuthorisation:
         course = _make_course(db, owner_id=teacher.id)
         cert = _make_cert(db, course=course, status="pending")
 
-        result = reject(db, cert.id, teacher, mock_request)
+        result = reject(db, cert.id, teacher)
         assert result.status == "rejected"
 
 
@@ -228,7 +215,7 @@ class TestStatusTransitionMatrix:
     No other transitions are allowed; every illegal one is a 400.
     """
 
-    def test_admin_approve_on_pending_cert_fails(self, db, mock_request):
+    def test_admin_approve_on_pending_cert_fails(self, db):
         """``admin_approve`` requires the cert to be already
         teacher_approved. A direct pending→approved skip would bypass
         the entire two-stage review."""
@@ -238,11 +225,11 @@ class TestStatusTransitionMatrix:
         cert = _make_cert(db, course=course, status="pending")
 
         with pytest.raises(HTTPException) as exc_info:
-            admin_approve(db, cert.id, admin, mock_request)
+            admin_approve(db, cert.id, admin)
         assert exc_info.value.status_code == 400
         assert "teacher-approved" in exc_info.value.detail["message"].lower()
 
-    def test_teacher_approve_on_already_teacher_approved_fails(self, db, mock_request):
+    def test_teacher_approve_on_already_teacher_approved_fails(self, db):
         """No double-tap of teacher_approve."""
         teacher = _make_user(db, user_id=TEACHER_ID, role=UserRole.TEACHER.value)
         course = _make_course(db, owner_id=teacher.id)
@@ -254,34 +241,34 @@ class TestStatusTransitionMatrix:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            teacher_approve(db, cert.id, teacher, mock_request)
+            teacher_approve(db, cert.id, teacher)
         assert exc_info.value.status_code == 400
         assert "pending" in exc_info.value.detail["message"].lower()
 
-    def test_teacher_approve_on_approved_cert_fails(self, db, mock_request):
+    def test_teacher_approve_on_approved_cert_fails(self, db):
         teacher = _make_user(db, user_id=TEACHER_ID, role=UserRole.TEACHER.value)
         course = _make_course(db, owner_id=teacher.id)
         cert = _make_cert(db, course=course, status="approved")
 
         with pytest.raises(HTTPException):
-            teacher_approve(db, cert.id, teacher, mock_request)
+            teacher_approve(db, cert.id, teacher)
 
-    def test_reject_on_approved_cert_fails(self, db, mock_request):
+    def test_reject_on_approved_cert_fails(self, db):
         teacher = _make_user(db, user_id=TEACHER_ID, role=UserRole.TEACHER.value)
         course = _make_course(db, owner_id=teacher.id)
         cert = _make_cert(db, course=course, status="approved")
 
         with pytest.raises(HTTPException) as exc_info:
-            reject(db, cert.id, teacher, mock_request)
+            reject(db, cert.id, teacher)
         assert exc_info.value.status_code == 400
 
-    def test_reject_on_already_rejected_cert_fails(self, db, mock_request):
+    def test_reject_on_already_rejected_cert_fails(self, db):
         teacher = _make_user(db, user_id=TEACHER_ID, role=UserRole.TEACHER.value)
         course = _make_course(db, owner_id=teacher.id)
         cert = _make_cert(db, course=course, status="rejected")
 
         with pytest.raises(HTTPException) as exc_info:
-            reject(db, cert.id, teacher, mock_request)
+            reject(db, cert.id, teacher)
         assert exc_info.value.status_code == 400
 
 
@@ -291,18 +278,18 @@ class TestSelfApprovalGuard:
     request a cert, and self-sign it; or an admin could issue their
     own cert with no second pair of eyes."""
 
-    def test_teacher_cannot_teacher_approve_own_cert(self, db, mock_request):
+    def test_teacher_cannot_teacher_approve_own_cert(self, db):
         teacher = _make_user(db, user_id=TEACHER_ID, role=UserRole.TEACHER.value)
         course = _make_course(db, owner_id=teacher.id)
         # Teacher is also the recipient.
         cert = _make_cert(db, course=course, student_id=teacher.id, status="pending")
 
         with pytest.raises(HTTPException) as exc_info:
-            teacher_approve(db, cert.id, teacher, mock_request)
+            teacher_approve(db, cert.id, teacher)
         assert exc_info.value.status_code == 403
         assert "own" in exc_info.value.detail["message"].lower()
 
-    def test_admin_cannot_admin_approve_own_cert(self, db, mock_request):
+    def test_admin_cannot_admin_approve_own_cert(self, db):
         admin = _make_user(db, user_id=ADMIN_ID, role=UserRole.ADMIN.value)
         teacher = _make_user(db, user_id=TEACHER_ID, role=UserRole.TEACHER.value)
         course = _make_course(db, owner_id=teacher.id)
@@ -317,7 +304,7 @@ class TestSelfApprovalGuard:
         )
 
         with pytest.raises(HTTPException) as exc_info:
-            admin_approve(db, cert.id, admin, mock_request)
+            admin_approve(db, cert.id, admin)
         assert exc_info.value.status_code == 403
         assert "own" in exc_info.value.detail["message"].lower()
 
@@ -356,7 +343,7 @@ class TestArchivedCourseGuard:
     same ownership-denied 403 rather than a 500 or a 404 that would
     leak whether the course ever existed."""
 
-    def test_teacher_approve_with_null_course_id_is_forbidden(self, db, mock_request):
+    def test_teacher_approve_with_null_course_id_is_forbidden(self, db):
         teacher = _make_user(db, user_id=TEACHER_ID, role=UserRole.TEACHER.value)
         student = _make_user(db, user_id=STUDENT_ID, role=UserRole.STUDENT.value)
         cert = Certificate(id=uuid.uuid4(), user_id=student.id, course_id=None, status="pending")
@@ -365,11 +352,11 @@ class TestArchivedCourseGuard:
         db.refresh(cert)
 
         with pytest.raises(HTTPException) as exc_info:
-            teacher_approve(db, cert.id, teacher, mock_request)
+            teacher_approve(db, cert.id, teacher)
         assert exc_info.value.status_code == 403
         assert "own courses" in exc_info.value.detail["message"].lower()
 
-    def test_teacher_approve_with_soft_deleted_course_is_forbidden(self, db, mock_request):
+    def test_teacher_approve_with_soft_deleted_course_is_forbidden(self, db):
         teacher = _make_user(db, user_id=TEACHER_ID, role=UserRole.TEACHER.value)
         course = _make_course(db, owner_id=teacher.id)
         course.deleted_at = datetime.now(UTC)
@@ -377,11 +364,11 @@ class TestArchivedCourseGuard:
         cert = _make_cert(db, course=course, status="pending")
 
         with pytest.raises(HTTPException) as exc_info:
-            teacher_approve(db, cert.id, teacher, mock_request)
+            teacher_approve(db, cert.id, teacher)
         assert exc_info.value.status_code == 403
         assert "own courses" in exc_info.value.detail["message"].lower()
 
-    def test_reject_with_missing_course_row_is_forbidden(self, db, mock_request):
+    def test_reject_with_missing_course_row_is_forbidden(self, db):
         """``reject`` deliberately does NOT require the course to be live
         (a teacher may need to clear a request against a course they've
         since soft-deleted) -- but it still needs *some* course row to
@@ -396,7 +383,7 @@ class TestArchivedCourseGuard:
         db.refresh(cert)
 
         with pytest.raises(HTTPException) as exc_info:
-            reject(db, cert.id, teacher, mock_request)
+            reject(db, cert.id, teacher)
         assert exc_info.value.status_code == 403
         assert "own courses" in exc_info.value.detail["message"].lower()
 

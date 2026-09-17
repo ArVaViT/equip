@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -203,7 +203,6 @@ def mark_chapter_read(
 def teacher_complete_chapter(
     chapter_id: str,
     student_id: UUID,
-    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
@@ -301,7 +300,6 @@ def teacher_complete_chapter(
             resource_type="chapter_progress",
             resource_id=str(chapter_id),
             details={"student_id": str(student_id), "course_id": str(course_id)},
-            request=request,
         )
     return {
         "message": "Chapter marked as complete by teacher",
@@ -314,7 +312,6 @@ def teacher_complete_chapter(
 def teacher_uncomplete_chapter(
     chapter_id: str,
     student_id: UUID,
-    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
@@ -371,7 +368,6 @@ def teacher_uncomplete_chapter(
         resource_type="chapter_progress",
         resource_id=str(chapter_id),
         details={"student_id": str(student_id), "course_id": str(course_id)},
-        request=request,
     )
     return {
         "message": "Chapter completion removed",

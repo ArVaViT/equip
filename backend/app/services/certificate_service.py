@@ -22,7 +22,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from fastapi import Request, status
+from fastapi import status
 
 from app.core.errors import ErrorCode, equip_error
 from app.core.i18n import t
@@ -198,7 +198,7 @@ def _status_error_message(cert: Certificate, allowed: tuple[str, ...]) -> str:
     return f"Certificate cannot transition from status: {cert.status}"
 
 
-def teacher_approve(db: Session, cert_id: UUID, teacher: User, request: Request) -> Certificate:
+def teacher_approve(db: Session, cert_id: UUID, teacher: User) -> Certificate:
     cert = _load_cert_or_404(db, cert_id, for_update=True)
     _assert_status(cert, CertificateStatus.PENDING)
     _assert_not_self_approval(cert, teacher)
@@ -224,12 +224,11 @@ def teacher_approve(db: Session, cert_id: UUID, teacher: User, request: Request)
         "certificate",
         str(cert_id),
         details={"level": "teacher"},
-        request=request,
     )
     return cert
 
 
-def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> Certificate:
+def admin_approve(db: Session, cert_id: UUID, admin: User) -> Certificate:
     cert = _load_cert_or_404(db, cert_id, for_update=True)
     _assert_same_organization(cert, admin)
     _assert_status(cert, CertificateStatus.TEACHER_APPROVED)
@@ -299,12 +298,11 @@ def admin_approve(db: Session, cert_id: UUID, admin: User, request: Request) -> 
         "certificate",
         str(cert_id),
         details={"level": "admin"},
-        request=request,
     )
     return cert
 
 
-def reject(db: Session, cert_id: UUID, user: User, request: Request) -> Certificate:
+def reject(db: Session, cert_id: UUID, user: User) -> Certificate:
     cert = _load_cert_or_404(db, cert_id, for_update=True)
     if cert.status in (CertificateStatus.APPROVED, CertificateStatus.REJECTED):
         raise equip_error(
@@ -364,7 +362,7 @@ def reject(db: Session, cert_id: UUID, user: User, request: Request) -> Certific
     db.commit()
     db.refresh(cert)
 
-    log_action(db, user.id, "reject", "certificate", str(cert_id), request=request)
+    log_action(db, user.id, "reject", "certificate", str(cert_id))
     return cert
 
 

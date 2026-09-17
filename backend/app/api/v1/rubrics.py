@@ -20,7 +20,7 @@ would look like a normal mark in every record afterwards.
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Header, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, require_teacher, verify_chapter_owner
@@ -86,7 +86,6 @@ def _dual_write(
 @router.post("", response_model=RubricResponse, status_code=status.HTTP_201_CREATED)
 def create_rubric(
     data: RubricCreate,
-    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
@@ -165,7 +164,6 @@ def create_rubric(
         "rubric",
         str(rubric.id),
         details={"course_id": data.course_id, "criteria": len(data.criteria)},
-        request=request,
     )
     db.refresh(rubric)
     return rubric_service.rubric_payload(db, rubric)
@@ -194,7 +192,6 @@ def list_rubrics(
 def attach_rubric(
     assignment_id: UUID,
     rubric_id: UUID = Query(...),
-    request: Request = None,  # type: ignore[assignment]
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
@@ -232,7 +229,6 @@ def attach_rubric(
         "assignment",
         str(assignment_id),
         details={"rubric_id": str(rubric_id), "max_score": assignment.max_score},
-        request=request,
     )
     return rubric_service.rubric_payload(db, rubric)
 
@@ -292,7 +288,6 @@ def read_submission_rubric(
 def set_submission_marks(
     submission_id: UUID,
     data: RubricMarksRequest,
-    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
@@ -375,7 +370,6 @@ def set_submission_marks(
             new_status="graded",
             teacher_id=teacher.id,
             source_locale=_course_source_locale_for_chapter(db, assignment.chapter_id),
-            request=request,
             source="rubric",
         )
     else:

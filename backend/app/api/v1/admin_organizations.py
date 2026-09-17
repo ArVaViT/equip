@@ -18,7 +18,7 @@ every certificate it has issued.
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -120,7 +120,6 @@ def list_organizations(
 @router.post("", response_model=OrganizationResponse, status_code=status.HTTP_201_CREATED)
 def create_organization(
     data: OrganizationCreate,
-    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> OrganizationResponse:
@@ -157,7 +156,6 @@ def create_organization(
         "organization",
         str(organization.id),
         details={"slug": data.slug, "public_name": data.public_name, "status": data.status},
-        request=request,
     )
     db.commit()
     db.refresh(organization)
@@ -177,7 +175,6 @@ def get_organization(
 def update_organization(
     organization_id: uuid.UUID,
     data: OrganizationUpdate,
-    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> OrganizationResponse:
@@ -221,7 +218,6 @@ def update_organization(
         "organization",
         str(organization.id),
         details=patch,
-        request=request,
     )
     db.commit()
     db.refresh(organization)
@@ -232,7 +228,6 @@ def update_organization(
 def appoint_director(
     organization_id: uuid.UUID,
     data: DirectorAppointment,
-    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> OrganizationResponse:
@@ -285,7 +280,6 @@ def appoint_director(
             "previous_role": previous_role,
             "previous_organization_id": str(previous_organization) if previous_organization else None,
         },
-        request=request,
     )
     db.commit()
     db.refresh(organization)

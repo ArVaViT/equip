@@ -523,8 +523,6 @@ export interface AuditLogEntry {
   resource_type: string
   resource_id: string
   details: Record<string, unknown> | null
-  ip_address: string | null
-  user_agent: string | null
   created_at: string
 }
 

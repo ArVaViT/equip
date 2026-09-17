@@ -2,7 +2,7 @@ import logging
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Header, Query, Response, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -130,7 +130,6 @@ def get_my_courses(
 @router.patch("/me/preferences", response_model=UserResponse)
 def update_my_preferences(
     body: PreferredLocaleUpdate,
-    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> User:
@@ -181,7 +180,6 @@ def update_my_preferences(
         "user_preferences",
         str(current_user.id),
         details={"preferred_locale": {"from": previous, "to": body.preferred_locale}},
-        request=request,
     )
 
     db.commit()
@@ -254,7 +252,6 @@ class BulkRoleUpdate(BaseModel):
 @router.put("/admin/users/bulk-role")
 def bulk_update_user_roles(
     body: BulkRoleUpdate,
-    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -301,7 +298,6 @@ def bulk_update_user_roles(
         "user",
         ",".join(str(u) for u in safe_uuids[:10]),
         details={"new_role": body.role, "count": updated},
-        request=request,
     )
 
     return {"updated": updated, "role": body.role}
@@ -310,7 +306,6 @@ def bulk_update_user_roles(
 @router.put("/admin/users/{user_id}/role")
 def update_user_role(
     user_id: str,
-    request: Request,
     # Validated against ``VALID_ROLES`` below; cap keeps Pydantic from
     # parsing a multi-MB role string before that allow-list check runs.
     role: str = Query(..., max_length=32),
@@ -337,16 +332,13 @@ def update_user_role(
     user.role = role
     db.commit()
     db.refresh(user)
-    log_action(
-        db, admin.id, "update", "user", user_id, details={"old_role": old_role, "new_role": role}, request=request
-    )
+    log_action(db, admin.id, "update", "user", user_id, details={"old_role": old_role, "new_role": role})
     return {"id": str(user.id), "email": user.email, "role": user.role}
 
 
 @router.delete("/admin/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def admin_delete_user(
     user_id: str,
-    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> Response:
@@ -385,7 +377,6 @@ def admin_delete_user(
             "user",
             str(uid),
             details={"email": target.email, "role": target.role, "mode": "soft_delete"},
-            request=request,
         )
         target.deactivated_at = datetime.now(UTC)
         db.commit()
@@ -405,7 +396,6 @@ def admin_delete_user(
 @router.post("/admin/users/{user_id}/restore", status_code=status.HTTP_204_NO_CONTENT)
 def admin_restore_user(
     user_id: str,
-    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> Response:
@@ -429,7 +419,6 @@ def admin_restore_user(
         "user",
         str(uid),
         details={"email": target.email, "role": target.role},
-        request=request,
     )
 
     target.deactivated_at = None

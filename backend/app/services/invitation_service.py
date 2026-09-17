@@ -22,7 +22,6 @@ from app.services.user_locale import preferred_locale_of
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from fastapi import Request
     from sqlalchemy.orm import Session
 
     from app.schemas.locale import LocaleCode
@@ -175,7 +174,6 @@ def create_or_resend_invitation(
     organization_id: UUID,
     scope: str = InvitationScope.ORGANIZATION.value,
     course_id: str | None = None,
-    request: Request | None = None,
 ) -> tuple[Invitation, bool]:
     """Create a new invitation, or resend the existing pending one.
 
@@ -288,7 +286,6 @@ def create_or_resend_invitation(
         "invitation",
         str(invitation.id),
         details={"email": normalized_email, "role": role, "scope": scope, "course_id": course_id},
-        request=request,
     )
 
     increment("equip.invitations.created_total", scope=scope, role=role, kind="new")
@@ -341,7 +338,6 @@ def revoke_invitation(
     invitation_id: UUID | str,
     actor: User,
     organization_id: UUID | str | None,
-    request: Request | None = None,
 ) -> Invitation:
     """Withdraw a pending invitation so its link stops working.
 
@@ -396,7 +392,6 @@ def revoke_invitation(
             "invitation",
             str(invitation.id),
             details={"email": invitation.email, "role": invitation.role},
-            request=request,
         )
     return invitation
 
@@ -407,7 +402,6 @@ def accept_invitation(
     token: str,
     current_user_id: UUID,
     current_user_email: str,
-    request: Request | None = None,
 ) -> Invitation:
     """Redeem a token and grant everything the invitation promised.
 
@@ -587,7 +581,6 @@ def accept_invitation(
             "previous_organization_id": str(previous_organization_id) if previous_organization_id else None,
             "enrolled_course_id": enrolled_course_id,
         },
-        request=request,
     )
 
     return invitation

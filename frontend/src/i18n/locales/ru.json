@@ -1993,7 +1993,6 @@
       "thUser": "Пользователь",
       "thAction": "Действие",
       "thResource": "Объект",
-      "thIp": "IP",
       "prevPageAria": "Предыдущая страница",
       "nextPageAria": "Следующая страница",
       "errorPrefix": "Ошибка журнала аудита",

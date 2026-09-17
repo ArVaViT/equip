@@ -26,7 +26,7 @@ import uuid
 from decimal import Decimal
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_director
@@ -78,7 +78,6 @@ def read_org_settings(
 @router.put("", response_model=OrgSettingsResponse)
 def update_org_settings(
     data: OrgSettingsUpdate,
-    request: Request,
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ):
@@ -168,7 +167,6 @@ def update_org_settings(
             "previous": previous,
             "current": {key: (str(value) if isinstance(value, Decimal) else value) for key, value in payload.items()},
         },
-        request=request,
     )
     db.commit()
     return settings
