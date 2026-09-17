@@ -205,6 +205,36 @@ describe("AuthContext", () => {
     expect(single).toHaveBeenCalledTimes(1)
   })
 
+  it("signs the person in on PASSWORD_RECOVERY too", async () => {
+    // A recovery link verified on the landing page (PKCE, token hash) only
+    // ever announces itself this way. Ignoring it left the person signed in
+    // to Supabase and anonymous to the app — and after setting a new
+    // password, sent to a dashboard that treated them as a guest.
+    mockProfileFetch({
+      id: "user-1",
+      email: "a@b.com",
+      full_name: "Student Sam",
+      avatar_url: null,
+      role: "student",
+      created_at: "2024-01-01T00:00:00Z",
+      updated_at: "2024-01-02T00:00:00Z",
+    })
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>,
+    )
+
+    await act(async () => {
+      authHandler!("PASSWORD_RECOVERY", makeSession(makeSupabaseUser()))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user").textContent).toBe("a@b.com")
+    })
+  })
+
   it("wipes the user on SIGNED_OUT", async () => {
     mockProfileFetch({
       id: "user-1",

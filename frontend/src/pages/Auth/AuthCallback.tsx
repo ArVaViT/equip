@@ -2,28 +2,27 @@ import { useEffect, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { supabase } from "@/lib/supabase"
+import { completeAuthLanding, type AuthLandingResult } from "@/lib/authLanding"
 
 /**
- * Reads the failure GoTrue reports in the URL fragment.
+ * The failure to show for a link that did not sign anyone in.
  *
- * `/auth/v1/verify` answers a 303 to `redirect_to`, and when the token is
- * spent or stale it puts the reason in the fragment rather than refusing the
- * redirect: `#error=access_denied&error_code=otp_expired&…`. Without this,
- * such an arrival looked exactly like a slow OAuth round-trip — a spinner
- * for fifteen seconds and then "could not complete sign-in", which tells a
- * person nothing about the one thing they can act on: asking for a new link.
+ * GoTrue does not refuse a spent or stale token outright — it redirects with
+ * the reason (`error_code=otp_expired`), and `verifyOtp` answers with the
+ * same code. Without naming it, such an arrival looked exactly like a slow
+ * OAuth round-trip: a spinner and then "could not complete sign-in", which
+ * tells a person nothing about the one thing they can act on — asking for a
+ * new link.
  */
-function linkFailureFromHash(hash: string): string | null {
-  const params = new URLSearchParams(hash.replace(/^#/, ""))
-  const code = params.get("error_code")
-  const error = params.get("error")
-  if (!code && !error) return null
-  // `otp_expired` covers both halves of what a person experiences as "the
-  // link stopped working": genuinely past its lifetime, and already used.
-  if (code === "otp_expired" || error === "access_denied") return "auth.errors.linkExpired"
-  return "auth.callback.timedOut"
+function failureKey(result: Extract<AuthLandingResult, { status: "failed" }>): string {
+  return result.reason === "expired" ? "auth.errors.linkExpired" : "auth.callback.timedOut"
 }
 
+/**
+ * Where Google (`/auth/callback`) and every email link but recovery
+ * (`/auth/confirm`) land. `main.tsx` has already taken the code or token out
+ * of the URL; this page turns it into a session and moves on.
+ */
 export default function AuthCallback() {
   const navigate = useNavigate()
   const handled = useRef(false)
@@ -32,14 +31,7 @@ export default function AuthCallback() {
   const { t } = useTranslation()
 
   useEffect(() => {
-    // Checked before the listener is armed: a failed verification never
-    // produces a session, so waiting for one is waiting for nothing.
-    const failure = linkFailureFromHash(window.location.hash)
-    if (failure) {
-      setLinkErrorKey(failure)
-      return
-    }
-
+    let cancelled = false
     let redirectTimer: ReturnType<typeof setTimeout> | undefined
 
     const go = (path: string) => {
@@ -48,27 +40,32 @@ export default function AuthCallback() {
       navigate(path, { replace: true })
     }
 
-    const timeout = setTimeout(() => {
+    void completeAuthLanding().then(async (result) => {
+      if (cancelled) return
+      if (result.status === "signed-in") {
+        go(result.recovery ? "/auth/reset-password" : "/")
+        return
+      }
+      if (result.status === "failed") {
+        setLinkErrorKey(failureKey(result))
+        return
+      }
+      // Nothing in the URL: a reload after the sign-in finished, or a visit
+      // by hand. A session already here is the success; otherwise there is
+      // nothing to wait for.
+      const { data } = await supabase.auth.getSession()
+      if (cancelled) return
+      if (data.session) {
+        go("/")
+        return
+      }
       setTimedOut(true)
       redirectTimer = setTimeout(() => go("/login?error=oauth_timeout"), 3000)
-    }, 15000)
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (event === "PASSWORD_RECOVERY") {
-          clearTimeout(timeout)
-          go("/auth/reset-password")
-        } else if (session) {
-          clearTimeout(timeout)
-          go("/")
-        }
-      },
-    )
+    })
 
     return () => {
-      clearTimeout(timeout)
+      cancelled = true
       clearTimeout(redirectTimer)
-      subscription.unsubscribe()
     }
   }, [navigate])
 

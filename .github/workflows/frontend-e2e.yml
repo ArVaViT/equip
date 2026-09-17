@@ -108,13 +108,15 @@ jobs:
         # supabase/migrations/*.sql is incremental history that doesn't
         # replay from empty (see the file header + docs/E2E.md), so
         # the schema gets loaded by hand below instead. Excluded
-        # containers (studio/realtime/imgproxy/mailpit/postgres-meta/
-        # edge-runtime/logflare/vector/supavisor) are all things this
-        # e2e run never touches — role users are created pre-confirmed
-        # via the admin API so no mail is ever sent, and the backend
-        # talks to Postgres directly rather than through the pooler.
+        # containers (studio/realtime/imgproxy/postgres-meta/edge-runtime/
+        # logflare/vector/supavisor) are all things this e2e run never
+        # touches — the backend talks to Postgres directly rather than
+        # through the pooler. Mailpit stays: role users are created
+        # pre-confirmed, but e2e/sign-in-links.spec.ts reads the real
+        # "Email me a link instead" mail GoTrue sends, to follow a PKCE
+        # link end to end.
         run: |
-          supabase start -x studio,realtime,imgproxy,mailpit,postgres-meta,edge-runtime,logflare,vector,supavisor
+          supabase start -x studio,realtime,imgproxy,postgres-meta,edge-runtime,logflare,vector,supavisor
 
       - name: Export local Supabase connection info
         run: |

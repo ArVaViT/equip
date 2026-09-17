@@ -176,49 +176,62 @@ Deno.test("an email address with a plus sign is escaped into the query", async (
 });
 
 
-Deno.test("the confirmation link points at GoTrue's verify endpoint", () => {
-  // The old link was `${email_data.site_url}/auth/confirm?token_hash=…`, and
-  // `site_url` is the auth API base, not the site — so every email ever sent
-  // carried https://<ref>.supabase.co/auth/v1/auth/confirm, a path that does
-  // not exist. Clicking it answered "No API key found in request".
+function fragmentOf(url: string): URLSearchParams {
+  return new URLSearchParams(new URL(url).hash.replace(/^#/, ""));
+}
+
+Deno.test("the confirmation link points at our own site, not at GoTrue", () => {
+  // Two links came before this one. `${email_data.site_url}/auth/confirm`
+  // put the auth API base in front and 404'd. GoTrue's `/auth/v1/verify`
+  // worked, but redirected back with the whole session in the URL — which
+  // Datadog RUM recorded — and under PKCE it only works in the browser that
+  // asked for the email. The page on our domain verifies the hash itself.
   const url = confirmationUrl({
-    supabaseUrl: "https://project.supabase.co",
     siteUrl: "https://equipbible.com",
-    tokenHash: "abc123",
+    tokenHash: "pkce_abc123",
     emailType: "signup",
   });
   const parsed = new URL(url);
-  assertEquals(parsed.origin, "https://project.supabase.co");
-  assertEquals(parsed.pathname, "/auth/v1/verify");
-  assertEquals(parsed.searchParams.get("token"), "abc123");
-  assertEquals(parsed.searchParams.get("type"), "signup");
-  assertEquals(parsed.searchParams.get("redirect_to"), "https://equipbible.com/auth/confirm");
-  assert(!url.includes("/auth/v1/auth/"), "старый несуществующий путь вернулся");
+  assertEquals(parsed.origin, "https://equipbible.com");
+  assertEquals(parsed.pathname, "/auth/confirm");
+  assertEquals(fragmentOf(url).get("token_hash"), "pkce_abc123");
+  assertEquals(fragmentOf(url).get("type"), "signup");
+  assert(!url.includes("supabase.co"), `ссылка ведёт на домен Supabase: ${url}`);
+  assert(!url.includes("/auth/v1/"), `ссылка снова идёт через GoTrue: ${url}`);
 });
 
-Deno.test("the link survives trailing slashes in configuration", () => {
+Deno.test("the token rides in the fragment, never in the query", () => {
+  // A query string is sent to the server and written into Vercel's request
+  // log; a fragment never leaves the browser.
   const url = confirmationUrl({
-    supabaseUrl: "https://project.supabase.co/",
+    siteUrl: "https://equipbible.com",
+    tokenHash: "abc123",
+    emailType: "magiclink",
+  });
+  const parsed = new URL(url);
+  assertEquals(parsed.search, "");
+  assert(!parsed.search.includes("abc123"));
+});
+
+Deno.test("the link survives a trailing slash in configuration", () => {
+  const url = confirmationUrl({
     siteUrl: "https://equipbible.com/",
     tokenHash: "abc123",
     emailType: "recovery",
   });
-  assert(!url.includes("//auth/v1"), `двойной слэш в пути: ${url}`);
-  assertEquals(
-    new URL(url).searchParams.get("redirect_to"),
-    // recovery, so the reset page — and no doubled slash from the config.
-    "https://equipbible.com/auth/reset-password",
-  );
+  assert(!url.includes("com//"), `двойной слэш в пути: ${url}`);
+  // recovery, so the reset page — and no doubled slash from the config.
+  assertEquals(new URL(url).pathname, "/auth/reset-password");
 });
 
 Deno.test("a token with URL-special characters is escaped", () => {
   const url = confirmationUrl({
-    supabaseUrl: "https://project.supabase.co",
     siteUrl: "https://equipbible.com",
-    tokenHash: "a+b/c=d&e",
+    tokenHash: "a+b/c=d&e#f",
     emailType: "magiclink",
   });
-  assertEquals(new URL(url).searchParams.get("token"), "a+b/c=d&e");
+  assertEquals(fragmentOf(url).get("token_hash"), "a+b/c=d&e#f");
+  assertEquals(fragmentOf(url).get("type"), "magiclink");
 });
 
 
@@ -228,17 +241,13 @@ Deno.test("a recovery link lands on the page that changes the password", () => {
   // their password got into their account and found no way to set a new one
   // — with the same locked door waiting next time. Seen in production.
   assertEquals(landingPathFor("recovery"), "/auth/reset-password");
-  assertEquals(
-    new URL(
-      confirmationUrl({
-        supabaseUrl: "https://project.supabase.co",
-        siteUrl: "https://equipbible.com",
-        tokenHash: "abc",
-        emailType: "recovery",
-      }),
-    ).searchParams.get("redirect_to"),
-    "https://equipbible.com/auth/reset-password",
-  );
+  const url = confirmationUrl({
+    siteUrl: "https://equipbible.com",
+    tokenHash: "abc",
+    emailType: "recovery",
+  });
+  assertEquals(new URL(url).pathname, "/auth/reset-password");
+  assertEquals(fragmentOf(url).get("type"), "recovery");
 });
 
 Deno.test("every other link still lands on the confirm page", () => {
