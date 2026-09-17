@@ -126,25 +126,48 @@ After the PR is merged and CI is green:
 
 1. **Verify the migration file landed on `main`**: `git log --oneline -- supabase/migrations/`
    should show the newest timestamp at the top.
-2. **Apply via Supabase MCP** (preferred, no CLI install needed):
-   ```
-   apply_migration(
-     name="<short_snake_case_name>",
-     query=<contents of the .sql file>
-   )
-   ```
-   The Supabase MCP server reports success / failure and writes a row
-   to `supabase_migrations.schema_migrations`.
-3. **Or apply via the Supabase CLI** (if you're at a terminal with
-   `supabase` linked to the project):
+2. **Apply that one file, and record it under the file's own timestamp**,
+   in one transaction, from the directory linked to the project:
    ```bash
-   cd supabase
-   supabase db push --linked
+   f=supabase/migrations/<timestamp>_<name>.sql
+   v=$(basename "$f" | cut -d_ -f1); n=$(basename "$f" .sql | cut -d_ -f2-)
+   {
+     echo "BEGIN;"
+     cat "$f"
+     echo "INSERT INTO supabase_migrations.schema_migrations (version, name)"
+     echo "  VALUES ('$v', '$n') ON CONFLICT (version) DO NOTHING;"
+     echo "COMMIT;"
+   } > /tmp/apply-migration.sql
+   supabase db query --linked --file /tmp/apply-migration.sql
    ```
-4. **Verify**: `select version from supabase_migrations.schema_migrations
-   order by version desc limit 5;` -- the new timestamp should appear.
-5. **Smoke-test the affected route** from production -- e.g. if the
+   If any statement fails, nothing is applied and nothing is recorded.
+3. **Verify**: `select version, name from supabase_migrations.schema_migrations
+   order by version desc limit 5;` -- the file's timestamp should appear,
+   and the change itself should be visible (`pg_indexes`,
+   `information_schema.columns`, `pg_constraint`).
+4. **Smoke-test the affected route** from production -- e.g. if the
    migration added a column, hit the endpoint that reads it.
+
+### Never `supabase db push` against production
+
+`db push` decides what to run by comparing the files in
+`supabase/migrations/` with the versions in
+`supabase_migrations.schema_migrations`. On this project the two do not
+line up: 32 migrations were applied (mostly through the Supabase MCP
+`apply_migration` tool, which records the moment it ran as the version)
+and recorded under timestamps different from their file names. To `db
+push`, those 32 files look unapplied, and the 32 recorded versions look
+like migrations nobody has. It refuses on the second, and the repair it
+suggests -- marking the recorded versions `reverted` -- clears the way
+for it to run all 32 files again against the live database: column
+drops, policy rewrites and grant revocations, replayed onto a schema
+that already has them. The same applies to MCP `apply_migration` for a
+new file: it records a version that is not the file's, and adds one more
+mismatch.
+
+Applying one named file (above) avoids both. Until the history is
+repaired so that every file's timestamp is recorded, that is the only
+path.
 
 ### What if the migration breaks prod
 
