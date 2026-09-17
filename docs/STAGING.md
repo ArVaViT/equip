@@ -27,8 +27,9 @@ this is the shape of it:
    = false` — see that file's header for why) gives a fresh Postgres +
    GoTrue + Storage + Kong on localhost with the CLI's fixed local dev
    keys. Containers this job never touches (Studio, Realtime, imgproxy,
-   Mailpit, postgres-meta, Edge Runtime, Logflare, Vector, Supavisor) are
-   excluded with `-x` to keep the boot fast.
+   postgres-meta, Edge Runtime, Logflare, Vector, Supavisor) are
+   excluded with `-x` to keep the boot fast. Mailpit is kept:
+   `e2e/sign-in-links.spec.ts` follows a real sign-in-link email.
 2. **Schema** — `supabase/schema.sql` (minus its `CREATE SCHEMA public;`
    line; `supabase start` already made an empty one) loads onto that
    Postgres, then `supabase/ci/rls_grants.sql` (the dump was taken with
