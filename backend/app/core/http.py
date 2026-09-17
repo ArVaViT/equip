@@ -1,7 +1,8 @@
 """Shared helpers for inspecting incoming HTTP requests.
 
-Kept out of the middleware/service layers so that rate limiting, audit logging,
-and anything else that needs a reliable client IP share one implementation.
+Kept out of the middleware/service layers so that rate limiting and the two
+records the Privacy Policy says carry an IP (legal acceptances and submission
+declarations) share one implementation.
 """
 
 from __future__ import annotations
@@ -42,7 +43,7 @@ def get_client_ip(request: Request, fallback: str | None = None) -> str | None:
     headers and use ``request.client.host`` directly — otherwise any
     client can spoof their IP per request and defeat per-IP throttling.
     Returns ``fallback`` when we truly cannot determine the IP (for the
-    rate limiter, pass ``"unknown"``; for audit logging, pass ``None``
+    rate limiter, pass ``"unknown"``; for a stored record, pass ``None``
     so the DB column stays NULL).
     """
     if _TRUSTED_PROXY:

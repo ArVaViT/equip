@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from fastapi import Depends, Header, Request, Response, status
+from fastapi import Depends, Header, Response, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -119,7 +119,6 @@ def _enforce_cohort_gates(db: Session, course_id: str, cohort_id: str, user_id: 
 @router.post("/{course_id}/enroll", response_model=EnrollmentResponse)
 def enroll_course(
     course_id: str,
-    request: Request,
     response: Response,
     body: EnrollRequest = EnrollRequest(),
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
@@ -205,7 +204,6 @@ def enroll_course(
         "enrollment",
         str(enrollment.id),
         details={"course_id": course_id},
-        request=request,
     )
     # Hydrate the lazy-loaded course relationship so the
     # response serializer sees title/description (no longer columns).

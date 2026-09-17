@@ -2351,7 +2351,6 @@
       "thUser": "Person",
       "thAction": "Aktion",
       "thResource": "Objekt",
-      "thIp": "IP",
       "prevPageAria": "Vorige Seite",
       "nextPageAria": "Nächste Seite",
       "errorPrefix": "Fehler im Prüfprotokoll",

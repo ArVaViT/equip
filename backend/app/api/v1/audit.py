@@ -23,8 +23,6 @@ class AuditLogResponse(BaseModel):
     resource_type: str
     resource_id: str
     details: dict | None = None
-    ip_address: str | None = None
-    user_agent: str | None = None
     created_at: datetime
 
 

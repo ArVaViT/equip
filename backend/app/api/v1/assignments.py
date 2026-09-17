@@ -490,7 +490,6 @@ def list_my_submissions(
 def grade_submission(
     submission_id: UUID,
     data: GradeSubmissionRequest,
-    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
@@ -527,6 +526,5 @@ def grade_submission(
         new_status=data.status,
         teacher_id=teacher.id,
         source_locale=_course_source_locale_for_chapter(db, assignment.chapter_id),
-        request=request,
     )
     return submission

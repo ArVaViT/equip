@@ -270,7 +270,6 @@ function AuditTable({
             <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.audit.thAction")}</th>
             <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.audit.thResource")}</th>
             <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.audit.thDetails")}</th>
-            <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.audit.thIp")}</th>
           </tr>
         </thead>
         <tbody className="divide-y">
@@ -296,7 +295,6 @@ function AuditTable({
               <td className="max-w-[320px] px-5 py-3">
                 <AuditDetailsCell details={log.details} />
               </td>
-              <td className="px-5 py-3 text-xs text-ink-muted">{log.ip_address || "—"}</td>
             </tr>
           ))}
         </tbody>

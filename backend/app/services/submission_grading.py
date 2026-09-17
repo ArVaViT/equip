@@ -28,7 +28,6 @@ from app.services.user_locale import preferred_locale_of
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from fastapi import Request
     from sqlalchemy.orm import Session
 
     from app.models.assignment import Assignment, AssignmentSubmission
@@ -44,7 +43,6 @@ def apply_grade(
     new_status: str,
     teacher_id: UUID,
     source_locale: str | None,
-    request: Request | None = None,
     source: str = "manual",
 ) -> None:
     """Write the mark, tell the student, record who did it.
@@ -122,5 +120,4 @@ def apply_grade(
         "assignment_submission",
         str(submission.id),
         details={"grade": grade, "status": new_status, "source": source},
-        request=request,
     )

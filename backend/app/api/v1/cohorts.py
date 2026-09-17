@@ -24,7 +24,7 @@ the top-level admin UI.
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Header, Query, Response, status
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -249,7 +249,6 @@ def list_cohorts(
 @router.post("", response_model=CohortResponse, status_code=status.HTTP_201_CREATED)
 def create_cohort(
     data: CohortCreate,
-    request: Request,
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
@@ -277,7 +276,6 @@ def create_cohort(
         "cohort",
         str(cohort.id),
         details={"name": data.name},
-        request=request,
     )
     return _serialize(db, cohort)
 
@@ -296,7 +294,6 @@ def get_cohort(
 def update_cohort(
     cohort_id: UUID,
     data: CohortUpdate,
-    request: Request,
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
@@ -350,7 +347,6 @@ def update_cohort(
             "cohort",
             str(cohort.id),
             details={"changes": changes},
-            request=request,
         )
     return _serialize(db, cohort)
 
@@ -358,7 +354,6 @@ def update_cohort(
 @router.delete("/{cohort_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_cohort(
     cohort_id: UUID,
-    request: Request,
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> None:
@@ -379,14 +374,12 @@ def delete_cohort(
         "cohort",
         str(cohort_id),
         details={"name": cohort_name},
-        request=request,
     )
 
 
 @router.post("/{cohort_id}/complete", response_model=CohortResponse)
 def complete_cohort(
     cohort_id: UUID,
-    request: Request,
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
@@ -408,7 +401,6 @@ def complete_cohort(
         "cohort",
         str(cohort.id),
         details={"name": _fetch_cohort_names(db, [cohort.id]).get(str(cohort.id), "")},
-        request=request,
     )
     return _serialize(db, cohort)
 
@@ -434,7 +426,6 @@ def list_cohort_courses(
 def attach_course(
     cohort_id: UUID,
     body: CohortCourseAttach,
-    request: Request,
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
@@ -528,7 +519,6 @@ def attach_course(
         "cohort",
         str(cohort.id),
         details={"course_id": course.id},
-        request=request,
     )
     reconcile_entity_if_course_published(db, "cohort", cohort)
     return _serialize(db, cohort)
@@ -541,7 +531,6 @@ def attach_course(
 def detach_course(
     cohort_id: UUID,
     course_id: str,
-    request: Request,
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> None:
@@ -567,7 +556,6 @@ def detach_course(
         "cohort",
         str(cohort.id),
         details={"course_id": course_id},
-        request=request,
     )
 
 
@@ -656,7 +644,6 @@ def list_cohort_students(
 def add_student(
     cohort_id: UUID,
     body: CohortStudentAdd,
-    request: Request,
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -782,7 +769,6 @@ def add_student(
         "cohort",
         str(cohort.id),
         details={"user_id": str(user.id), "email": user.email, "course_count": len(course_ids)},
-        request=request,
     )
     return {"user_id": str(user.id), "course_ids": course_ids}
 
@@ -794,7 +780,6 @@ def add_student(
 def remove_student(
     cohort_id: UUID,
     user_id: UUID,
-    request: Request,
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> None:
@@ -812,7 +797,6 @@ def remove_student(
         "cohort",
         str(cohort.id),
         details={"user_id": str(user_id)},
-        request=request,
     )
 
 

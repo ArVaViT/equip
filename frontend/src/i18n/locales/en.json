@@ -2351,7 +2351,6 @@
       "thUser": "User",
       "thAction": "Action",
       "thResource": "Resource",
-      "thIp": "IP",
       "prevPageAria": "Previous page",
       "nextPageAria": "Next page",
       "errorPrefix": "Audit log error",

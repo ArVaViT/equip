@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Header, Path, Query, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -415,7 +415,6 @@ def list_admin_pending_certificates(
 )
 def teacher_approve_certificate(
     cert_id: UUID,
-    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> Certificate:
@@ -427,7 +426,7 @@ def teacher_approve_certificate(
     certificate row serializes parallel approvers (see
     ``certificate_service._load_cert_or_404``).
     """
-    return certificate_service.teacher_approve(db, cert_id, teacher, request)
+    return certificate_service.teacher_approve(db, cert_id, teacher)
 
 
 @router.put(
@@ -443,7 +442,6 @@ def teacher_approve_certificate(
 )
 def admin_approve_certificate(
     cert_id: UUID,
-    request: Request,
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ) -> Certificate:
@@ -451,7 +449,7 @@ def admin_approve_certificate(
     fires a ``certificate_approved`` notification to the student. The
     ``FOR UPDATE`` lock prevents double-issuance from concurrent director
     clicks."""
-    return certificate_service.admin_approve(db, cert_id, director, request)
+    return certificate_service.admin_approve(db, cert_id, director)
 
 
 @router.put(
@@ -467,14 +465,13 @@ def admin_approve_certificate(
 )
 def reject_certificate(
     cert_id: UUID,
-    request: Request,
     current_user: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> Certificate:
     """Either reviewer (teacher or admin) can reject up until issuance.
     Cannot be reversed — a rejected certificate stays rejected and the
     student must re-request."""
-    return certificate_service.reject(db, cert_id, current_user, request)
+    return certificate_service.reject(db, cert_id, current_user)
 
 
 @router.get(
