@@ -212,7 +212,7 @@ def create_or_resend_invitation(
     elif course_id is not None:
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             message="course_id is only meaningful when scope is 'course'",
             context={"resource_type": "invitation"},
         )

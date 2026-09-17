@@ -556,7 +556,7 @@ def update_grading_scheme(
     if invalid:
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             message=invalid,
             context={"resource_type": "course", "resource_id": course_id},
         )
@@ -1265,7 +1265,7 @@ def upsert_student_grade(
     except ValueError:
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             message="student_id and cohort_id must be UUIDs",
             context={"resource_type": "grade", "student_id": student_id},
         ) from None
@@ -1283,7 +1283,7 @@ def upsert_student_grade(
     if invalid:
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             message=invalid,
             context={"resource_type": "grade", "course_id": course_id, "scheme": course.grading_scheme},
         )
@@ -1417,7 +1417,7 @@ def clear_student_grade(
     except ValueError:
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             message="student_id and cohort_id must be UUIDs",
             context={"resource_type": "grade", "student_id": student_id},
         ) from None
