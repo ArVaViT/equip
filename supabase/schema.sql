@@ -133,6 +133,35 @@ $$;
 
 
 --
+-- Name: anonymise_legal_acceptances(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.anonymise_legal_acceptances() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+  UPDATE public.legal_acceptances
+     SET subject_hash = COALESCE(
+           subject_hash,
+           encode(sha256(convert_to(OLD.id::text, 'UTF8')), 'hex')
+         ),
+         user_id = NULL,
+         ip = NULL
+   WHERE user_id = OLD.id;
+  RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION anonymise_legal_acceptances(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.anonymise_legal_acceptances() IS 'Keeps the proof that somebody consented while removing who they were. See 20260917234500.';
+
+
+--
 -- Name: fulfil_pending_invitations(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -837,14 +866,29 @@ CREATE TABLE public.invitations (
 
 CREATE TABLE public.legal_acceptances (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
+    user_id uuid,
     document_slug text NOT NULL,
     version text NOT NULL,
     locale text NOT NULL,
     content_sha256 text NOT NULL,
     accepted_at timestamp with time zone DEFAULT now() NOT NULL,
-    ip text
+    ip text,
+    subject_hash text
 );
+
+
+--
+-- Name: COLUMN legal_acceptances.user_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.legal_acceptances.user_id IS 'Who accepted. NULL once the account is gone — the row survives the person.';
+
+
+--
+-- Name: COLUMN legal_acceptances.subject_hash; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.legal_acceptances.subject_hash IS 'Set only when the account is deleted: sha256 of the account id, hex. Links a deleted person''s rows to each other and to nothing else.';
 
 
 --
@@ -2525,6 +2569,13 @@ CREATE TRIGGER trg_invitations_created_fulfil AFTER INSERT ON public.invitations
 
 
 --
+-- Name: profiles trg_profiles_deleted_anonymise_consent; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_profiles_deleted_anonymise_consent BEFORE DELETE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.anonymise_legal_acceptances();
+
+
+--
 -- Name: profiles trg_profiles_changed_fulfil_invitations; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3098,7 +3149,7 @@ ALTER TABLE ONLY public.invitations
 --
 
 ALTER TABLE ONLY public.legal_acceptances
-    ADD CONSTRAINT legal_acceptances_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+    ADD CONSTRAINT legal_acceptances_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
 
 
 --
