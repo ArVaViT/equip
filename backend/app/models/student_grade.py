@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -11,19 +11,21 @@ from app.core.database import Base
 class StudentGrade(Base):
     __tablename__ = "student_grades"
     __table_args__ = (
-        Index("ix_student_grades_student_course", "student_id", "course_id"),
-        Index("ix_student_grades_student_course_cohort", "student_id", "course_id", "cohort_id"),
-        # The unique constraint is enforced in Postgres via the
-        # NULLS-NOT-DISTINCT index added in migration
-        # ``20260521172911_student_grades_unique_constraint``. SQLite (the
-        # test backend) treats NULLs as distinct in unique constraints, so
-        # the test-side check is "best effort" -- it still catches the
-        # non-NULL-cohort race. Production safety comes from the migration.
+        # One grade row per student, course and cohort -- a retake in a later
+        # cohort is a new row (ADR-010). Production enforces it with the
+        # NULLS NOT DISTINCT unique index from
+        # ``20260521172911_student_grades_unique_constraint``, and it is the
+        # only uniqueness on the table: a two-column (student_id, course_id)
+        # constraint sat beside it until ``20260917030000`` and would have
+        # refused the second cohort's grade. SQLite has no NULLS NOT DISTINCT,
+        # so on the test backend two course-wide (cohort NULL) rows are not
+        # refused; ``upsert_student_grade`` reads before it writes either way.
         UniqueConstraint(
             "student_id",
             "course_id",
             "cohort_id",
             name="uq_student_grades_student_course_cohort",
+            postgresql_nulls_not_distinct=True,
         ),
         # At most one override. A row may hold a symbol, a number, or neither —
         # the last being a teacher who wrote a comment and left the grade
@@ -54,8 +56,8 @@ class StudentGrade(Base):
     reason: Mapped[str | None] = mapped_column(Text)
     comment: Mapped[str | None] = mapped_column(Text)
     graded_by: Mapped[uuid.UUID | None] = mapped_column()
-    graded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime | None] = mapped_column(
+    graded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 

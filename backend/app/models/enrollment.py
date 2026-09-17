@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -17,12 +17,17 @@ class Enrollment(Base):
     __table_args__ = (
         # Uniqueness is on (user, course, cohort) — ADR-010 §3. Retake in a
         # later cohort writes a NEW row, preserving the historical attempt.
-        # The PROD partial UNIQUE INDEX (with COALESCE for the NULL cohort_id
-        # sentinel) lives in the migration; SQLAlchemy can't express that
-        # directly so we declare a plain three-column UniqueConstraint here
-        # which is enough for the SQLite test path (NULL is treated as a
-        # distinct value by SQLite UNIQUE, matching the COALESCE semantics).
-        UniqueConstraint("user_id", "course_id", "cohort_id", name="uq_enrollment_user_course_cohort"),
+        # The COALESCE is the point: without it two enrolments in the same
+        # course with no cohort would both be accepted, because a UNIQUE treats
+        # NULLs as distinct. Same expression as production, so SQLite refuses
+        # the same second row Postgres does.
+        Index(
+            "uq_enrollment_user_course_cohort",
+            "user_id",
+            "course_id",
+            text("COALESCE(cohort_id, '00000000-0000-0000-0000-000000000000')"),
+            unique=True,
+        ),
         Index("ix_enrollments_course_id", "course_id"),
         Index("ix_enrollments_cohort_id", "cohort_id"),
         # Mirror prod: progress is a 0..100 percentage.

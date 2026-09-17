@@ -447,7 +447,17 @@ export interface Cohort {
 // Pydantic Literal["teacher", "student"] and the Postgres CHECK
 // constraint on invitations.role. An invite can never grant admin.
 export type InvitationRole = 'teacher' | 'student'
-export type InvitationStatus = 'pending' | 'accepted' | 'revoked'
+// 'fulfilled': the person got what the invitation offered without using its
+// link (enrolled, joined, signed up) -- set by the database, migration
+// 20260917023526. 'accepted': they used the link.
+export type InvitationStatus = 'pending' | 'accepted' | 'revoked' | 'fulfilled'
+
+export const INVITATION_STATUSES = {
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  REVOKED: 'revoked',
+  FULFILLED: 'fulfilled',
+} as const satisfies Record<string, InvitationStatus>
 
 export interface Invitation {
   id: string
@@ -457,6 +467,7 @@ export interface Invitation {
   invited_by: string | null
   created_at: string | null
   accepted_at: string | null
+  fulfilled_at?: string | null
   expires_at: string
   // Derived server-side: a 'pending' row past expires_at. Only
   // meaningful when status === 'pending'.
@@ -512,8 +523,6 @@ export interface AuditLogEntry {
   resource_type: string
   resource_id: string
   details: Record<string, unknown> | null
-  ip_address: string | null
-  user_agent: string | null
   created_at: string
 }
 

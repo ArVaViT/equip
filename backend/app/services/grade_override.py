@@ -32,7 +32,6 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from uuid import UUID
 
-    from fastapi import Request
     from sqlalchemy.orm import Session
 
     from app.models.course import Course
@@ -158,7 +157,6 @@ def audit_override(
     action: str,
     row: StudentGrade,
     previous: Mapping[str, object] | None = None,
-    request: Request | None = None,
 ) -> None:
     """Record a hand-set grade in the audit log.
 
@@ -182,5 +180,4 @@ def audit_override(
             "reason": row.reason,
             "previous": dict(previous) if previous is not None else None,
         },
-        request=request,
     )

@@ -34,7 +34,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import func, tuple_
 from sqlalchemy.exc import SQLAlchemyError
@@ -135,7 +135,6 @@ class AcceptReviewedRequest(BaseModel):
 )
 def reset_by_ids(
     payload: ResetByIdsRequest,
-    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> ResetResponse:
@@ -178,7 +177,6 @@ def reset_by_ids(
         "content_version",
         ",".join(str(i) for i in payload.ids[:10]),
         details={"count": affected, "total_requested": len(payload.ids)},
-        request=request,
     )
     return ResetResponse(reset=affected)
 
@@ -194,7 +192,6 @@ def reset_by_ids(
 )
 def reset_by_entity(
     payload: ResetByEntityRequest,
-    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> ResetResponse:
@@ -237,7 +234,6 @@ def reset_by_entity(
         "content_version",
         f"{payload.entity_type}:{payload.entity_id}:{payload.field}:{payload.locale}",
         details={"count": affected},
-        request=request,
     )
     return ResetResponse(reset=affected)
 
@@ -287,7 +283,6 @@ class RetryReviewedRequest(BaseModel):
 )
 def retry_reviewed(
     payload: RetryReviewedRequest,
-    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> ResetResponse:
@@ -364,7 +359,6 @@ def retry_reviewed(
         if payload.ids is not None
         else f"{payload.entity_type}:{payload.locale or 'all'}",
         details={"count": affected, "limit": payload.limit, "queued_courses": queued},
-        request=request,
     )
     return ResetResponse(reset=affected)
 
@@ -451,7 +445,6 @@ class OrphanReport(BaseModel):
 )
 def purge_orphans(
     payload: PurgeOrphansRequest,
-    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> OrphanReport:
@@ -521,7 +514,6 @@ def purge_orphans(
             "content_version",
             "orphans",
             details={"removed": removed, "by_entity_type": by_type},
-            request=request,
         )
     return OrphanReport(removed=removed, by_entity_type=by_type, dry_run=not payload.confirm)
 
@@ -537,7 +529,6 @@ def purge_orphans(
 )
 def restore_last_good(
     payload: RestoreLastGoodRequest,
-    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> ResetResponse:
@@ -612,7 +603,6 @@ def restore_last_good(
         "content_version",
         ",".join(str(i) for i in payload.ids[:10]),
         details={"count": restored, "total_requested": len(payload.ids)},
-        request=request,
     )
     return ResetResponse(reset=restored)
 
@@ -628,7 +618,6 @@ def restore_last_good(
 )
 def accept_reviewed(
     payload: AcceptReviewedRequest,
-    request: Request,
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> ResetResponse:
@@ -703,7 +692,6 @@ def accept_reviewed(
             ],
             "promoted_courses": promoted,
         },
-        request=request,
     )
     return ResetResponse(reset=affected)
 

@@ -28,6 +28,7 @@ export type AcceptInvitePhase =
   | "invalid" // token doesn't exist
   | "unavailable" // the server did not answer; nothing is known about the link yet
   | "unusable" // expired, already accepted, or revoked
+  | "alreadyIn" // fulfilled another way, caller not signed in -- they have an account, so sign in rather than sign up
   | "form" // pending + valid, caller not authenticated yet -- show signup form
   | "mismatch" // pending + valid, but signed in under a different email
   | "ready" // pending + valid, signed in under the matching email -- show Accept button
@@ -115,12 +116,19 @@ export function useAcceptInvite() {
       setPhase("loading")
       return
     }
-    if (preview.status !== "pending" || preview.is_expired) {
+    // A fulfilled invitation stays usable by its invitee: the person already
+    // has what it offered (or, for a platform invitation, has just signed up
+    // from this very link), and accepting may still add the rest -- the
+    // backend accepts it without changing its status.
+    const usable = preview.status === "pending" || preview.status === "fulfilled"
+    if (!usable || preview.is_expired) {
       setPhase("unusable")
       return
     }
     if (!user) {
-      setPhase("form")
+      // Fulfilled means an account with this address exists, so the sign-up
+      // form could only fail with "account exists".
+      setPhase(preview.status === "fulfilled" ? "alreadyIn" : "form")
       return
     }
     setPhase(user.email.trim().toLowerCase() === preview.email.trim().toLowerCase() ? "ready" : "mismatch")
@@ -205,6 +213,12 @@ export function useAcceptInvite() {
     }
   }, [form, preview, register, token])
 
+  // Keep the token across the sign-in page, so App's resume effect brings the
+  // person back here to finish -- the same bridge sign-up uses.
+  const rememberInviteForSignIn = useCallback(() => {
+    setPendingInviteToken(token)
+  }, [token])
+
   const handleGoogleSignUp = useCallback(async () => {
     setGoogleLoading(true)
     try {
@@ -236,5 +250,6 @@ export function useAcceptInvite() {
     handleGoogleSignUp,
     acceptNow,
     logout,
+    rememberInviteForSignIn,
   }
 }

@@ -8,7 +8,7 @@ from typing import Any
 from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, or_
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -206,7 +206,6 @@ def create_exemption(
     course_id: str,
     student_id: str,
     data: ExemptionCreate,
-    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
@@ -261,7 +260,6 @@ def create_exemption(
             "item_id": str(data.item_id),
             "reason": data.reason,
         },
-        request=request,
     )
     return exemption
 
@@ -275,7 +273,6 @@ def delete_exemption(
     student_id: str,
     item_type: str,
     item_id: str,
-    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> None:
@@ -317,7 +314,6 @@ def delete_exemption(
             "item_type": item_type,
             "item_id": str(item_id),
         },
-        request=request,
     )
 
 
@@ -426,7 +422,6 @@ def get_grade_sheet(
 @router.post("/course/{course_id}/sheet", response_model=GradeSheetResponse, status_code=status.HTTP_201_CREATED)
 def close_grade_sheet(
     course_id: str,
-    request: Request,
     cohort_id: UUID | None = None,
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
@@ -450,7 +445,6 @@ def close_grade_sheet(
         resource_type="grade_sheet",
         resource_id=str(sheet.id),
         details={"course_id": course_id, "cohort_id": str(cohort_id) if cohort_id else None},
-        request=request,
     )
     return _sheet_response(db, sheet)
 
@@ -459,7 +453,6 @@ def close_grade_sheet(
 def reopen_grade_sheet(
     sheet_id: UUID,
     data: SheetReopenRequest,
-    request: Request,
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ):
@@ -497,7 +490,6 @@ def reopen_grade_sheet(
         resource_type="grade_sheet",
         resource_id=str(sheet.id),
         details={"course_id": sheet.course_id, "reason": data.reason},
-        request=request,
     )
     return _sheet_response(db, sheet)
 
@@ -523,7 +515,6 @@ def get_grading_scheme(
 def update_grading_scheme(
     course_id: str,
     data: GradingSchemeUpdate,
-    request: Request,
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
 ):
@@ -617,7 +608,6 @@ def update_grading_scheme(
             "reason": data.reason,
             "quizzes_off_the_new_line": drifted,
         },
-        request=request,
     )
 
     settings = get_org_settings(db, course.organization_id)
@@ -1242,7 +1232,6 @@ def upsert_student_grade(
     course_id: str,
     student_id: str,
     data: GradeUpsert,
-    request: Request,
     cohort_id: str | None = Query(None, max_length=36),
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
@@ -1324,7 +1313,6 @@ def upsert_student_grade(
             action=ACTION_CHANGED,
             row=grade,
             previous=previous,
-            request=request,
         )
         return grade
 
@@ -1385,11 +1373,10 @@ def upsert_student_grade(
             action=ACTION_CHANGED,
             row=existing,
             previous=previous,
-            request=request,
         )
         return existing
     db.refresh(grade)
-    audit_override(db, actor_id=teacher.id, action=ACTION_SET, row=grade, request=request)
+    audit_override(db, actor_id=teacher.id, action=ACTION_SET, row=grade)
     return grade
 
 
@@ -1397,7 +1384,6 @@ def upsert_student_grade(
 def clear_student_grade(
     course_id: str,
     student_id: str,
-    request: Request,
     cohort_id: str | None = Query(None, max_length=36),
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
@@ -1451,7 +1437,6 @@ def clear_student_grade(
         action=ACTION_CLEARED,
         row=grade,
         previous=previous,
-        request=request,
     )
 
     # Clearing removes the *grade*, not the teacher's note to the student. A

@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import Depends, Request, status
+from fastapi import Depends, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import assert_course_owner, organization_of, require_teacher
@@ -39,7 +39,6 @@ logger = logging.getLogger(__name__)
 @router.post("", response_model=CourseResponse, status_code=status.HTTP_201_CREATED)
 def create_new_course(
     data: CourseCreate,
-    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> Course:
@@ -80,7 +79,7 @@ def create_new_course(
         organization_id=organization_of(teacher),
         source_locale=teacher.preferred_locale,
     )
-    log_action(db, teacher.id, "create", "course", course.id, request=request)
+    log_action(db, teacher.id, "create", "course", course.id)
     return course
 
 
@@ -88,7 +87,6 @@ def create_new_course(
 def update_existing_course(
     course_id: str,
     data: CourseUpdate,
-    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> Course:
@@ -156,7 +154,7 @@ def update_existing_course(
             details["released_held_edits"] = released
 
     action = "publish" if is_publish_event else "update"
-    log_action(db, teacher.id, action, "course", course_id, details=details or None, request=request)
+    log_action(db, teacher.id, action, "course", course_id, details=details or None)
 
     # Full-course translation when published (initial publish or edits
     # while live). This goes through the pipeline hook rather than
@@ -186,7 +184,6 @@ def update_existing_course(
 @router.delete("/{course_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_course(
     course_id: str,
-    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> None:
@@ -204,7 +201,7 @@ def remove_course(
     # log_action below would stamp ``None`` into the audit row without
     # this call. The cost is one indexed cv lookup per delete.
     populate_spine_texts(db, [course])
-    log_action(db, teacher.id, "delete", "course", course_id, details={"title": course.title}, request=request)
+    log_action(db, teacher.id, "delete", "course", course_id, details={"title": course.title})
     delete_course(db, course)
 
 
@@ -250,7 +247,6 @@ def clone_existing_course(
 @router.post("/{course_id}/restore", response_model=CourseResponse)
 def restore_deleted_course(
     course_id: str,
-    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> Course:
@@ -271,14 +267,13 @@ def restore_deleted_course(
         )
     assert_course_owner(course, teacher)
     result = restore_course(db, course)
-    log_action(db, teacher.id, "restore", "course", course_id, request=request)
+    log_action(db, teacher.id, "restore", "course", course_id)
     return result
 
 
 @router.post("/{course_id}/resync-progress", response_model=ResyncProgressResponse)
 def resync_course_progress_route(
     course_id: str,
-    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> ResyncProgressResponse:
@@ -311,7 +306,6 @@ def resync_course_progress_route(
         "course",
         course_id,
         details={"enrollments": updated},
-        request=request,
     )
     return ResyncProgressResponse(course_id=course_id, enrollments_updated=updated)
 
@@ -319,7 +313,6 @@ def resync_course_progress_route(
 @router.delete("/{course_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
 def permanently_remove_course(
     course_id: str,
-    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> None:
@@ -348,6 +341,5 @@ def permanently_remove_course(
         "course",
         course_id,
         details={"title": course.title},
-        request=request,
     )
     permanently_delete_course(db, course)

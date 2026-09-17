@@ -22,8 +22,8 @@ class Quiz(Base):
     quiz_type: Mapped[str] = mapped_column(String(20), default="quiz", server_default="quiz")
     max_attempts: Mapped[int | None] = mapped_column()
     passing_score: Mapped[int] = mapped_column(default=70)
-    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime | None] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
@@ -37,7 +37,7 @@ class Quiz(Base):
 class QuizQuestion(Base):
     __tablename__ = "quiz_questions"
     __table_args__ = (
-        Index("ix_quiz_questions_quiz_id_order", "quiz_id", "order_index"),
+        Index("idx_quiz_questions_quiz_id", "quiz_id"),
         # Mirror prod CHECK constraints (question-type domain, points 1..100, non-negative min_words).
         CheckConstraint(
             "question_type IN ('multiple_choice', 'true_false', 'short_answer', 'essay')",
@@ -54,7 +54,7 @@ class QuizQuestion(Base):
     points: Mapped[int] = mapped_column(default=1)
     # Only meaningful for ``essay`` — UX hint rendered on the student's textarea.
     min_words: Mapped[int | None] = mapped_column()
-    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     quiz: Mapped["Quiz"] = relationship(back_populates="questions")
     options: Mapped[list["QuizOption"]] = relationship(
@@ -79,7 +79,7 @@ class QuizOption(Base):
 class QuizAttempt(Base):
     __tablename__ = "quiz_attempts"
     __table_args__ = (
-        Index("ix_quiz_attempts_user_quiz", "user_id", "quiz_id"),
+        Index("idx_quiz_attempts_user_id", "user_id"),
         Index("ix_quiz_attempts_quiz_id", "quiz_id"),
         # Partial composite for _aggregate_quiz_results: filters
         # `quiz_id IN (...) AND completed_at IS NOT NULL`, windows by user/quiz.
@@ -100,7 +100,7 @@ class QuizAttempt(Base):
     score: Mapped[int | None] = mapped_column()
     max_score: Mapped[int | None] = mapped_column()
     passed: Mapped[bool | None] = mapped_column()
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     answers: Mapped[list["QuizAnswer"]] = relationship(back_populates="attempt", cascade="all, delete-orphan")
@@ -124,7 +124,7 @@ class QuizExtraAttempt(Base):
 class QuizAnswer(Base):
     __tablename__ = "quiz_answers"
     __table_args__ = (
-        Index("ix_quiz_answers_attempt_id", "attempt_id"),
+        Index("ix_quiz_answers_attempt_question", "attempt_id", "question_id"),
         Index("ix_quiz_answers_question_id", "question_id"),
     )
 

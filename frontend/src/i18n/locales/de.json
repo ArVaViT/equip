@@ -2351,7 +2351,6 @@
       "thUser": "Person",
       "thAction": "Aktion",
       "thResource": "Objekt",
-      "thIp": "IP",
       "prevPageAria": "Vorige Seite",
       "nextPageAria": "Nächste Seite",
       "errorPrefix": "Fehler im Prüfprotokoll",
@@ -2420,6 +2419,7 @@
       "allStatuses": "Alle Status",
       "statusPending": "Offen",
       "statusAccepted": "Angenommen",
+      "statusFulfilled": "Ohne Link beigetreten",
       "statusRevoked": "Zurückgezogen",
       "statusExpired": "Abgelaufen",
       "emptyTitle": "Noch keine Einladungen verschickt",
@@ -2662,6 +2662,7 @@
   },
   "invite": {
     "heading": "Equip beitreten",
+    "alreadyIn": "Sie haben bereits Zugang zu dem, wozu diese Einladung führt. Melden Sie sich als <strong>{{email}}</strong> an, um fortzufahren.",
     "formSubheading": "Sie wurden eingeladen, Equip als {{role}} beizutreten",
     "readyBody": "Sie sind als <strong>{{email}}</strong> angemeldet. Nehmen Sie die Einladung an, um Equip als {{role}} beizutreten.",
     "acceptButton": "Einladung annehmen",

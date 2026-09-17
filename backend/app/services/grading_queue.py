@@ -220,16 +220,16 @@ def waiting_groups(db: Session, teacher_id: UUID) -> list[dict[str, Any]]:
         .group_by(Chapter.course_id, Assignment.id, Chapter.id, Chapter.title)
         .all()
     )
-    for row in assignment_rows:
+    for assignment_row in assignment_rows:
         groups.append(
             {
                 "kind": "assignment",
-                "item_id": str(row.item_id),
-                "course_id": row.course_id,
-                "chapter_id": row.chapter_id,
-                "title": row.chapter_title,
-                "waiting": int(row.waiting or 0),
-                "oldest": row.oldest,
+                "item_id": str(assignment_row.item_id),
+                "course_id": assignment_row.course_id,
+                "chapter_id": assignment_row.chapter_id,
+                "title": assignment_row.chapter_title,
+                "waiting": int(assignment_row.waiting or 0),
+                "oldest": assignment_row.oldest,
             }
         )
 

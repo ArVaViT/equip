@@ -2429,7 +2429,6 @@
       "thUser": "Користувач",
       "thAction": "Дія",
       "thResource": "Об’єкт",
-      "thIp": "IP",
       "prevPageAria": "Попередня сторінка",
       "nextPageAria": "Наступна сторінка",
       "errorPrefix": "Помилка журналу дій",
@@ -2498,6 +2497,7 @@
       "allStatuses": "Усі стани",
       "statusPending": "Очікує",
       "statusAccepted": "Прийнято",
+      "statusFulfilled": "Отримано без посилання",
       "statusRevoked": "Відкликано",
       "statusExpired": "Прострочено",
       "emptyTitle": "Запрошень ще не надсилали",
@@ -2746,6 +2746,7 @@
   },
   "invite": {
     "heading": "Приєднатися до Equip",
+    "alreadyIn": "У вас уже є доступ до того, куди вело це запрошення. Увійдіть як <strong>{{email}}</strong>, щоб продовжити.",
     "formSubheading": "Вас запросили приєднатися до Equip як {{role}}",
     "readyBody": "Ви увійшли як <strong>{{email}}</strong>. Прийміть це запрошення, щоб приєднатися до Equip як {{role}}.",
     "acceptButton": "Прийняти запрошення",

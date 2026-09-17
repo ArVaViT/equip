@@ -22,7 +22,6 @@ from app.services.user_locale import preferred_locale_of
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from fastapi import Request
     from sqlalchemy.orm import Session
 
     from app.schemas.locale import LocaleCode
@@ -175,7 +174,6 @@ def create_or_resend_invitation(
     organization_id: UUID,
     scope: str = InvitationScope.ORGANIZATION.value,
     course_id: str | None = None,
-    request: Request | None = None,
 ) -> tuple[Invitation, bool]:
     """Create a new invitation, or resend the existing pending one.
 
@@ -288,7 +286,6 @@ def create_or_resend_invitation(
         "invitation",
         str(invitation.id),
         details={"email": normalized_email, "role": role, "scope": scope, "course_id": course_id},
-        request=request,
     )
 
     increment("equip.invitations.created_total", scope=scope, role=role, kind="new")
@@ -341,7 +338,6 @@ def revoke_invitation(
     invitation_id: UUID | str,
     actor: User,
     organization_id: UUID | str | None,
-    request: Request | None = None,
 ) -> Invitation:
     """Withdraw a pending invitation so its link stops working.
 
@@ -374,11 +370,14 @@ def revoke_invitation(
             context={"resource_type": "invitation", "resource_id": str(invitation_id)},
         )
 
-    if invitation.status == InvitationStatus.ACCEPTED.value:
+    if invitation.status in (InvitationStatus.ACCEPTED.value, InvitationStatus.FULFILLED.value):
+        # A fulfilled invitation is a person who is already there, which is
+        # the same answer as an accepted one: withdrawing the link would read
+        # as though the access went with it.
         raise equip_error(
             ErrorCode.INVITATION_ALREADY_USED,
             status_code=status.HTTP_409_CONFLICT,
-            message="This invitation has already been accepted",
+            message=f"This invitation has already been {invitation.status}",
             context={"resource_type": "invitation", "resource_id": str(invitation.id)},
         )
 
@@ -393,7 +392,6 @@ def revoke_invitation(
             "invitation",
             str(invitation.id),
             details={"email": invitation.email, "role": invitation.role},
-            request=request,
         )
     return invitation
 
@@ -404,7 +402,6 @@ def accept_invitation(
     token: str,
     current_user_id: UUID,
     current_user_email: str,
-    request: Request | None = None,
 ) -> Invitation:
     """Redeem a token and grant everything the invitation promised.
 
@@ -432,7 +429,18 @@ def accept_invitation(
     """
     invitation = get_invitation_by_token(db, token)
 
-    if invitation.status != InvitationStatus.PENDING.value:
+    # A fulfilled invitation is still honoured for the person it was sent to.
+    # The database closes an invitation the moment its person arrives another
+    # way -- and for a platform invitation, signing up *is* arriving, so the
+    # invitee who registers from the link finds it fulfilled by the time they
+    # press Accept. Refusing them would break the invitation for exactly the
+    # person it was for. Granting again is harmless (every write below is
+    # idempotent or monotonic) and can still add something: a person who
+    # enrolled on a public course by themselves gets the membership the
+    # course invitation also offered.
+    is_fulfilled = invitation.status == InvitationStatus.FULFILLED.value
+
+    if invitation.status != InvitationStatus.PENDING.value and not is_fulfilled:
         increment("equip.invitations.refused_total", reason="already_used", scope=invitation.scope)
         raise equip_error(
             ErrorCode.INVITATION_ALREADY_USED,
@@ -469,9 +477,13 @@ def accept_invitation(
 
     # Single-use guard: only flips a row still 'pending'. A concurrent
     # accept (double click, retried request) loses the race here rather
-    # than in application logic.
+    # than in application logic. A fulfilled row keeps its status: the
+    # person was already there, and "fulfilled" is the truer account of
+    # how.
     updated = (
-        db.query(Invitation)
+        1
+        if is_fulfilled
+        else db.query(Invitation)
         .filter(Invitation.id == invitation.id, Invitation.status == InvitationStatus.PENDING.value)
         .update(
             {Invitation.status: InvitationStatus.ACCEPTED.value, Invitation.accepted_at: datetime.now(UTC)},
@@ -569,7 +581,6 @@ def accept_invitation(
             "previous_organization_id": str(previous_organization_id) if previous_organization_id else None,
             "enrolled_course_id": enrolled_course_id,
         },
-        request=request,
     )
 
     return invitation

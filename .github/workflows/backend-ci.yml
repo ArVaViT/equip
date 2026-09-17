@@ -58,7 +58,9 @@ jobs:
           CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
           echo "Changed files:"
           echo "$CHANGED"
-          if echo "$CHANGED" | grep -qE '^backend/|^\.github/workflows/backend-ci\.yml$'; then
+          # supabase/schema.sql counts as backend: the test suite holds the
+          # SQLAlchemy models to it, so a schema-only PR must run the tests.
+          if echo "$CHANGED" | grep -qE '^backend/|^supabase/schema\.sql$|^\.github/workflows/backend-ci\.yml$'; then
             echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "Backend changes detected — heavy jobs will run."
           else
@@ -362,6 +364,17 @@ jobs:
             exit 1
           fi
           echo "OK: prod schema replays cleanly from supabase/schema.sql"
+
+      # The invitation-fulfilment rule lives in a function and four triggers
+      # (migration 20260917023526), so the backend's SQLite tests cannot see
+      # it. This drives it with direct table writes on the replayed schema.
+      - name: Invitations close when their person arrives
+        env:
+          PGPASSWORD: ci
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -h localhost -p 5432 -U ci -d ci \
+            -f supabase/ci/invitation_fulfilment_assertions.sql
 
   # ---------------------------------------------------------------------------
   # RLS policy + privilege test. Recreates the prod schema + RLS policies +

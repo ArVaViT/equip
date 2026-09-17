@@ -1,6 +1,6 @@
 from typing import cast
 
-from fastapi import APIRouter, Depends, Header, Path, Query, Request, Response, status
+from fastapi import APIRouter, Depends, Header, Path, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
@@ -51,6 +51,7 @@ def _to_response(invitation: Invitation) -> InvitationResponse:
         invited_by=invitation.invited_by,
         created_at=invitation.created_at,
         accepted_at=invitation.accepted_at,
+        fulfilled_at=invitation.fulfilled_at,
         expires_at=invitation.expires_at,
         is_expired=is_expired,
     )
@@ -59,7 +60,6 @@ def _to_response(invitation: Invitation) -> InvitationResponse:
 @router.post("", response_model=InvitationResponse, status_code=201)
 def create_invitation(
     body: InvitationCreate,
-    request: Request,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> InvitationResponse:
@@ -110,7 +110,6 @@ def create_invitation(
         course_id=body.course_id,
         invited_by=teacher.id,
         organization_id=organization_of(teacher),
-        request=request,
     )
     return _to_response(invitation)
 
@@ -140,7 +139,6 @@ def list_invitations_route(
 
 @router.delete("/{invitation_id}", response_model=InvitationResponse)
 def revoke_invitation_route(
-    request: Request,
     invitation_id: str = Path(...),
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
@@ -159,7 +157,6 @@ def revoke_invitation_route(
         invitation_id=invitation_id,
         actor=director,
         organization_id=scope,
-        request=request,
     )
     return _to_response(invitation)
 
@@ -181,7 +178,9 @@ def _preview(db: Session, response: Response, token: str, accept_language: str |
         # knows what they read.
         course_title=course_title_for_invitation(db, invitation, display_locale=normalize_locale(accept_language)),
         status=cast("InvitationStatusLiteral", invitation.status),
-        is_expired=invitation.status == "pending" and is_invitation_expired(invitation),
+        # A fulfilled invitation is still redeemable by its invitee (see
+        # accept_invitation), on the same clock as a pending one.
+        is_expired=invitation.status in ("pending", "fulfilled") and is_invitation_expired(invitation),
     )
 
 
@@ -229,7 +228,6 @@ def preview_invitation_by_path(
 @router.post("/accept", response_model=InvitationAcceptResponse)
 def accept_invitation_route(
     body: InvitationAcceptRequest,
-    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> InvitationAcceptResponse:
@@ -245,7 +243,6 @@ def accept_invitation_route(
         token=body.token,
         current_user_id=current_user.id,
         current_user_email=current_user.email,
-        request=request,
     )
     return InvitationAcceptResponse(
         role=cast("InvitationRoleLiteral", invitation.role),

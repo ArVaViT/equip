@@ -105,6 +105,70 @@ $$;
 
 
 --
+-- Name: fulfil_invitations_after_change(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fulfil_invitations_after_change() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+DECLARE
+  person uuid;
+BEGIN
+  IF TG_TABLE_NAME = 'enrollments' THEN
+    PERFORM public.fulfil_pending_invitations(NEW.user_id);
+  ELSIF TG_TABLE_NAME = 'profiles' THEN
+    PERFORM public.fulfil_pending_invitations(NEW.id);
+  ELSIF TG_TABLE_NAME = 'invitations' THEN
+    -- An invitation written for somebody who is already there.
+    FOR person IN
+      SELECT p.id FROM public.profiles AS p WHERE lower(p.email) = lower(NEW.email)
+    LOOP
+      PERFORM public.fulfil_pending_invitations(person);
+    END LOOP;
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: fulfil_pending_invitations(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fulfil_pending_invitations(p_profile_id uuid) RETURNS integer
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+DECLARE
+  closed integer;
+BEGIN
+  -- p_profile_id NULL means every profile: the backfill.
+  UPDATE public.invitations AS i
+  SET status = 'fulfilled',
+      fulfilled_at = now()
+  FROM public.profiles AS p
+  WHERE i.status = 'pending'
+    AND (p_profile_id IS NULL OR p.id = p_profile_id)
+    AND lower(p.email) = lower(i.email)
+    AND (CASE p.role WHEN 'student' THEN 0 WHEN 'teacher' THEN 1 WHEN 'director' THEN 2 WHEN 'admin' THEN 3 ELSE -1 END)
+        >= (CASE i.role WHEN 'student' THEN 0 WHEN 'teacher' THEN 1 WHEN 'director' THEN 2 WHEN 'admin' THEN 3 ELSE 4 END)
+    AND CASE i.scope
+          WHEN 'platform' THEN true
+          WHEN 'organization' THEN p.organization_id IS NOT DISTINCT FROM i.organization_id
+          WHEN 'course' THEN EXISTS (
+            SELECT 1 FROM public.enrollments AS e
+            WHERE e.user_id = p.id AND e.course_id = i.course_id
+          )
+          ELSE false
+        END;
+  GET DIAGNOSTICS closed = ROW_COUNT;
+  RETURN closed;
+END;
+$$;
+
+
+--
 -- Name: handle_new_user(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -302,8 +366,6 @@ CREATE TABLE public.audit_logs (
     resource_type character varying(50) NOT NULL,
     resource_id text NOT NULL,
     details jsonb,
-    ip_address character varying(45),
-    user_agent character varying(500),
     created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
@@ -760,10 +822,12 @@ CREATE TABLE public.invitations (
     organization_id uuid NOT NULL,
     scope text DEFAULT 'organization'::text NOT NULL,
     course_id character varying,
+    fulfilled_at timestamp with time zone,
     CONSTRAINT chk_invitations_course_matches_scope CHECK ((((scope = 'course'::text) AND (course_id IS NOT NULL)) OR ((scope <> 'course'::text) AND (course_id IS NULL)))),
+    CONSTRAINT chk_invitations_fulfilled_at_matches_status CHECK (((status = 'fulfilled'::text) = (fulfilled_at IS NOT NULL))),
     CONSTRAINT chk_invitations_scope CHECK ((scope = ANY (ARRAY['platform'::text, 'organization'::text, 'course'::text]))),
     CONSTRAINT invitations_role_check CHECK ((role = ANY (ARRAY['teacher'::text, 'student'::text]))),
-    CONSTRAINT invitations_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'revoked'::text])))
+    CONSTRAINT invitations_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'revoked'::text, 'fulfilled'::text])))
 );
 
 
@@ -1148,14 +1212,6 @@ ALTER TABLE ONLY public.announcements
 
 ALTER TABLE ONLY public.assignment_rubrics
     ADD CONSTRAINT assignment_rubrics_pkey PRIMARY KEY (assignment_id);
-
-
---
--- Name: assignment_submissions assignment_submissions_assignment_id_student_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.assignment_submissions
-    ADD CONSTRAINT assignment_submissions_assignment_id_student_id_key UNIQUE (assignment_id, student_id);
 
 
 --
@@ -1567,14 +1623,6 @@ ALTER TABLE ONLY public.student_grades
 
 
 --
--- Name: student_grades student_grades_student_id_course_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.student_grades
-    ADD CONSTRAINT student_grades_student_id_course_id_key UNIQUE (student_id, course_id);
-
-
---
 -- Name: submission_declarations submission_declarations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1682,6 +1730,13 @@ CREATE INDEX ix_announcements_created_by ON public.announcements USING btree (cr
 --
 
 CREATE INDEX ix_assignment_rubrics_rubric ON public.assignment_rubrics USING btree (rubric_id);
+
+
+--
+-- Name: ix_assignment_submissions_assignment_student_submitted; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_assignment_submissions_assignment_student_submitted ON public.assignment_submissions USING btree (assignment_id, student_id, submitted_at DESC);
 
 
 --
@@ -2294,13 +2349,6 @@ CREATE INDEX ix_student_grades_graded_by ON public.student_grades USING btree (g
 
 
 --
--- Name: ix_submission_declarations_submission; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX ix_submission_declarations_submission ON public.submission_declarations USING btree (submission_id);
-
-
---
 -- Name: ix_translation_jobs_course; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2417,6 +2465,34 @@ CREATE TRIGGER trg_cohorts_updated_at BEFORE UPDATE ON public.cohorts FOR EACH R
 --
 
 CREATE TRIGGER trg_courses_updated_at BEFORE UPDATE ON public.courses FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
+
+--
+-- Name: enrollments trg_enrollments_fulfil_invitations; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_enrollments_fulfil_invitations AFTER INSERT OR UPDATE OF user_id, course_id ON public.enrollments FOR EACH ROW EXECUTE FUNCTION public.fulfil_invitations_after_change();
+
+
+--
+-- Name: invitations trg_invitations_created_fulfil; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_invitations_created_fulfil AFTER INSERT ON public.invitations FOR EACH ROW WHEN ((new.status = 'pending'::text)) EXECUTE FUNCTION public.fulfil_invitations_after_change();
+
+
+--
+-- Name: profiles trg_profiles_changed_fulfil_invitations; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_profiles_changed_fulfil_invitations AFTER UPDATE OF role, organization_id, email ON public.profiles FOR EACH ROW WHEN (((old.role IS DISTINCT FROM new.role) OR (old.organization_id IS DISTINCT FROM new.organization_id) OR (old.email IS DISTINCT FROM new.email))) EXECUTE FUNCTION public.fulfil_invitations_after_change();
+
+
+--
+-- Name: profiles trg_profiles_created_fulfil_invitations; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_profiles_created_fulfil_invitations AFTER INSERT ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.fulfil_invitations_after_change();
 
 
 --
