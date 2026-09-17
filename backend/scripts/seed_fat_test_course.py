@@ -12,8 +12,8 @@ per quiz-typed chapter. Designed to be idempotent: re-runs with the
 same ``--course-id`` upsert the structure rather than duplicating
 it.
 
-Run against any environment (SQLite test, Postgres dev, Supabase
-staging — never prod). The course is marked ``draft`` so a stray
+Run against any non-production database (SQLite test, local Postgres,
+the local Supabase stack from ``docs/E2E.md``) — never prod. The course is marked ``draft`` so a stray
 run against prod doesn't surface to users; promote to ``published``
 manually after eyeballing the dashboard render.
 
@@ -348,7 +348,7 @@ def _ensure_auth_user(db: Session, *, user_id: uuid.UUID, email: str) -> None:
     """``profiles.id`` FKs to ``auth.users(id)`` — on real Postgres a profile
     row can't exist without its auth row, so seed that first. SQLite test DBs
     have no ``auth`` schema, so skip there (the FK isn't materialised). These
-    are ``@seed.invalid`` identities with no password — a staging/dev tool,
+    are ``@seed.invalid`` identities with no password — a local/dev tool,
     never for prod auth. ``ON CONFLICT DO NOTHING`` keeps it idempotent.
     """
     if db.bind is None or db.bind.dialect.name != "postgresql":
