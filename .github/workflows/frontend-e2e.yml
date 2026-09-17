@@ -33,7 +33,7 @@ concurrency:
 #
 # The whole stack this job drives — Postgres + GoTrue (Auth) + Storage +
 # Kong, via `supabase start` — is local Docker containers on the runner.
-# There is no staging environment any more (see docs/STAGING.md): it cost
+# There is no staging environment any more (see docs/E2E.md): it cost
 # real money to keep live, drifted 417 commits behind main while nobody
 # noticed because a stale green run looks identical to a fresh one, and a
 # from-scratch local stack proves the schema + app boot cleanly on every
@@ -106,7 +106,7 @@ jobs:
       - name: Start local Supabase stack
         # `supabase/config.toml` has `[db.migrations] enabled = false` —
         # supabase/migrations/*.sql is incremental history that doesn't
-        # replay from empty (see the file header + docs/STAGING.md), so
+        # replay from empty (see the file header + docs/E2E.md), so
         # the schema gets loaded by hand below instead. Excluded
         # containers (studio/realtime/imgproxy/mailpit/postgres-meta/
         # edge-runtime/logflare/vector/supavisor) are all things this
@@ -142,7 +142,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Load the production schema onto the local stack
-        # Recipe from docs/STAGING.md "Spin-up", steps 1-2: schema.sql
+        # Recipe from docs/E2E.md "How the CI stack comes up", steps 1-2: schema.sql
         # (minus the `CREATE SCHEMA public;` line — `supabase start`
         # already created an empty one), then the GRANTs schema.sql was
         # dumped without (`--no-privileges`, see supabase/ci/README.md),
@@ -184,7 +184,7 @@ jobs:
         # (the trigger just created) force-sets every new profile to
         # role='student' (anti-escalation guard), so teacher/admin are
         # promoted with a direct UPDATE afterwards, exactly as a human
-        # operator would per docs/STAGING.md step 3. Passwords are
+        # operator would per docs/E2E.md step 3. Passwords are
         # generated here and never leave this job.
         run: |
           set -euo pipefail

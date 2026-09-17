@@ -18,7 +18,8 @@ Usage
 Requires
 --------
 - ``GEMINI_API_KEY`` set in the environment.
-- ``DATABASE_URL`` pointing at the target DB (prod or staging).
+- ``DATABASE_URL`` pointing at the target DB (production, or a local
+  Supabase stack for a trial run).
 - A teacher UUID with permission to create DRAFTs.
 
 Cost model

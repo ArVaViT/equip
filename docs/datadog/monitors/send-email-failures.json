@@ -2,7 +2,7 @@
   "name": "[Equip] send-email failures (silent email outage)",
   "type": "log alert",
   "query": "logs(\"service:send-email status:error\").index(\"*\").rollup(\"count\").last(\"15m\") >= 3",
-  "message": "The send-email edge function is logging delivery/function errors. Supabase Auth sees 200 (non-blocking design) but users are NOT receiving signup/reset emails. Check Resend + the function. @arvavitcorp@gmail.com",
+  "message": "The send-email edge function is logging delivery/function errors. Supabase Auth sees 200 (non-blocking design) but users are NOT receiving signup/reset emails. Check Resend + the function. @supportequip@gmail.com",
   "tags": [],
   "priority": 2,
   "options": {

@@ -2,7 +2,7 @@
   "name": "[Equip] Translation jobs stuck in processing",
   "type": "log alert",
   "query": "logs(\"service:equip-backend \\\"jobs stuck in processing\\\"\").index(\"*\").rollup(\"count\").last(\"30m\") >= 1",
-  "message": "Translation jobs are piling up in 'processing' (workers dying mid-run). The 15-min reaper re-claims them but a sustained backlog means repeated worker failures. @arvavitcorp@gmail.com",
+  "message": "Translation jobs are piling up in 'processing' (workers dying mid-run). The 15-min reaper re-claims them but a sustained backlog means repeated worker failures. @supportequip@gmail.com",
   "tags": [],
   "priority": null,
   "options": {

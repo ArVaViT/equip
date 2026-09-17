@@ -9,7 +9,7 @@ import { getTestUser, signInViaForm, suppressOnboarding } from "./fixtures/auth"
  * Signs in as each role-test user against whatever Supabase project
  * ``VITE_SUPABASE_URL`` points at — in CI, the local stack
  * ``.github/workflows/frontend-e2e.yml`` boots per run (see
- * ``docs/STAGING.md``) — and saves the resulting browser storage state
+ * ``docs/E2E.md``) — and saves the resulting browser storage state
  * to ``playwright/.auth/<role>.json``. Each subsequent test reuses the
  * file via the role-bound fixtures in ``fixtures/auth.ts``.
  *

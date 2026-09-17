@@ -2,7 +2,7 @@
   "name": "equip frontend: RUM error spike",
   "type": "rum alert",
   "query": "rum(\"@type:error service:equip-frontend env:production\").rollup(\"count\").last(\"10m\") >= 10",
-  "message": "Frontend logged 10+ RUM errors in 10 minutes. Investigate at https://app.us5.datadoghq.com/rum/explorer\n\nNotify: @arvavitcorp@gmail.com",
+  "message": "Frontend logged 10+ RUM errors in 10 minutes. Investigate at https://app.us5.datadoghq.com/rum/explorer\n\nNotify: @supportequip@gmail.com",
   "tags": [
     "env:production",
     "project:equip",

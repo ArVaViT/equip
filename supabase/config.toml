@@ -4,7 +4,7 @@
 # This file exists for ONE consumer: `.github/workflows/frontend-e2e.yml`,
 # which runs `supabase start` to give the authenticated e2e specs a real
 # Postgres + GoTrue + Storage stack with zero external cost (see
-# docs/STAGING.md). It is not used for day-to-day local development —
+# docs/E2E.md). It is not used for day-to-day local development —
 # schema changes are authored as `supabase/migrations/*.sql` and applied to
 # the linked hosted project per docs/DEPLOYMENT.md, never replayed here.
 #
@@ -12,7 +12,7 @@
 # `supabase/schema.sql` (a full pg_dump of prod) directly instead of
 # replaying `supabase/migrations/*.sql` from empty, because the earliest
 # migrations `ALTER` base tables that were created in the Supabase dashboard
-# before migration tracking began — see docs/STAGING.md "Spin-up".
+# before migration tracking began — see docs/E2E.md "How the CI stack comes up".
 #
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
 # working directory name when running `supabase init`.

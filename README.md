@@ -40,27 +40,27 @@
 <table>
   <tr>
     <td width="50%" align="center">
-      <img src=".github/assets/screenshots/login-desktop.png" alt="Equip login page — two-column layout with scripture on the left and a clean sign-in form on the right" />
-      <br /><sub>Sign in (light)</sub>
+      <img src=".github/assets/screenshots/home-desktop.png" alt="Equip home page: the headline &quot;Study Scripture in order, not in fragments&quot; with Browse all courses and Create account buttons" />
+      <br /><sub>Home</sub>
     </td>
     <td width="50%" align="center">
-      <img src=".github/assets/screenshots/login-desktop-dark.png" alt="Equip login page in dark mode" />
-      <br /><sub>Sign in (dark)</sub>
+      <img src=".github/assets/screenshots/courses-desktop.png" alt="Equip course catalog with cover cards for published courses" />
+      <br /><sub>Course catalog — open to visitors; enrolling needs an account</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center">
-      <img src=".github/assets/screenshots/register-desktop.png" alt="Equip account creation form" />
-      <br /><sub>Account creation — self-signup is student-only; teachers and directors join by invitation</sub>
+      <img src=".github/assets/screenshots/login-desktop.png" alt="Equip sign-in page: a scripture column on the left, Google, email-and-password and sign-in-link options on the right" />
+      <br /><sub>Sign in — Google, email and password, or a sign-in link</sub>
     </td>
     <td width="50%" align="center">
-      <img src=".github/assets/screenshots/login-mobile.png" alt="Equip sign-in on a 390px mobile viewport" width="240" />
+      <img src=".github/assets/screenshots/home-mobile.png" alt="Equip home page on a 390px mobile viewport" width="240" />
       <br /><sub>Mobile (390px)</sub>
     </td>
   </tr>
 </table>
 
-> Live at [equipbible.com](https://equipbible.com). Teacher and admin views (gradebook, course editor, analytics) are behind sign-in &mdash; create a free account to explore.
+> Live at [equipbible.com](https://equipbible.com). Course pages, the lesson reader, and the teacher and director views (course editor, gradebook, analytics) are behind sign-in. Anyone can create a free student account; teachers join a school by invitation.
 
 ---
 
@@ -74,8 +74,8 @@ technical expertise that volunteer-run organizations simply don't have.
 **Equip** is designed to change that:
 
 - **Free forever** — MIT-licensed, no paywalls, no "premium" tiers.
-- **Simple to deploy** — one-click Vercel deploy with a free Supabase
-  database. No Docker, no servers to manage.
+- **Serverless hosting** — a Vercel frontend and backend on a Supabase
+  project. No Docker, no servers to manage.
 - **Built for small scale** — optimized for 20-100 students, not enterprise
   pricing models.
 - **Multilingual out of the box** — a teacher writes in one language and
@@ -92,8 +92,9 @@ technical expertise that volunteer-run organizations simply don't have.
 | **Assignments** | Student submissions, grading queue, automatic chapter completion |
 | **Progress tracking** | Per-chapter progress, module/course completion, enrollment management |
 | **Certificates** | Auto-generated certificates with teacher approval flow |
-| **Teacher tools** | Gradebook, analytics dashboard, cohort management, calendar, announcements |
-| **Admin tools** | User management, bulk operations, CSV export, course cloning, soft delete |
+| **Teacher tools** | Gradebook with CSV export, analytics dashboard, calendar, announcements |
+| **Schools (organizations)** | Platform staff admit a school and appoint its director; the director runs cohorts and invites teachers into the school, and a teacher invites students onto their own course. Self-signup only ever creates a student account |
+| **Admin tools** | User management, bulk role changes, course cloning, soft delete and restore |
 | **Design** | Editorial aesthetic, dark/light theme, responsive (360px+), HSL semantic tokens |
 | **Multilingual content (RU / EN / DE / UK)** | Auto-translation of all teacher-authored text via Gemini, stored per (entity, field, locale) in the `content_versions` table; canonical Scripture substituted from the published edition of each language rather than paraphrased by the model; symmetric — an author writes in their language, students read in theirs; every translation is checked against its source before a reader sees it, and a course enters the catalogue only when all four languages are in place; off-the-request-path via a cron-driven worker queue so publishing stays instant even on 100-block courses |
 | **Security** | RLS on every table, server-side HTML sanitization, CORS lockdown, audit pipeline, typed error envelope (`{code, message, context}`) for structured client handling and Datadog error tracking |
@@ -158,7 +159,7 @@ cd frontend && npm run dev                      # http://localhost:5173
 ### 4. Run tests
 
 ```bash
-cd backend  && python -m pytest tests/    # 3200+ tests (SQLite in-memory)
+cd backend  && python -m pytest tests/    # 4000+ tests (SQLite in-memory)
 cd frontend && npm run test:run           # Vitest + jsdom
 cd frontend && npm run i18n:check         # locale parity across ru / en / de / uk
 ```
@@ -208,11 +209,14 @@ what you need, an issue describing the gap is more useful than a patch.
 If you're a Bible school, ministry, or educational nonprofit considering
 this platform:
 
-- **It's free.** MIT license means you can use, modify, and deploy it with
-  zero cost.
-- **No vendor lock-in.** Host it yourself or use the free tiers of Vercel +
-  Supabase.
-- **You don't need a developer on staff.** Follow the quick start above.
+- **It's free.** The MIT license means you can use, modify, and deploy it
+  with no license fee; you pay only for whatever hosting you choose.
+- **No vendor lock-in.** The code, the schema (`supabase/migrations/`), and
+  your data are yours to move.
+- **Hosting it yourself takes someone comfortable with a terminal.** The
+  quick start above and [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) cover the
+  steps (two Vercel projects, a Supabase project, migrations, env vars).
+  The per-minute translation cron needs a paid Vercel plan.
 - **Your feedback shapes the product.** Open an issue describing what your
   school actually needs — that is what the work gets pointed at.
 
@@ -225,8 +229,8 @@ There are great LMS options out there. Equip exists in a specific gap they don't
 | | **Equip** | **Moodle** | **Google Classroom** | **Canvas LMS** |
 |---|---|---|---|---|
 | License / cost | MIT, free | GPL, free | Free | Per-user fees |
-| Self-hosted | One-click Vercel + Supabase free tier | LAMP server you maintain | SaaS only | SaaS only |
-| Setup effort | Minutes | Hours to days | None | None |
+| Self-hosted | Vercel + Supabase | LAMP server you maintain | SaaS only | SaaS only |
+| Setup effort | An afternoon | Hours to days | None | None |
 | UI | Modern, theme-aware (light + dark) | Functional, dated | Modern | Modern |
 | Scripture handling | The published edition of each language, paraphrase guard | None | None | None |
 | Multilingual content | Four languages, machine-translated and validated | Manual i18n | None | Manual i18n |
@@ -247,7 +251,7 @@ There are great LMS options out there. Equip exists in a specific gap they don't
 | Architecture | [docs/adr/](docs/adr/) — Architecture Decision Records |
 | Cross-cutting UI calls | [docs/UI-DECISIONS.md](docs/UI-DECISIONS.md) — frozen UI decisions log |
 | Shipping a change | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — what deploys when, the two manual steps (migrations, edge function), env vars, rollback |
-| Authenticated e2e in CI | [docs/STAGING.md](docs/STAGING.md) — the local Supabase-CLI stack `frontend-e2e.yml` boots per run (no staging environment any more) |
+| Authenticated e2e in CI | [docs/E2E.md](docs/E2E.md) — the local Supabase-CLI stack `frontend-e2e.yml` boots per run |
 | Running in production | [docs/OBSERVABILITY.md](docs/OBSERVABILITY.md) — monitoring, log forwarding, incident debugging |
 | Backup and restore | [docs/runbooks/backup-restore.md](docs/runbooks/backup-restore.md) |
 | Security model | [docs/SECURITY.md](docs/SECURITY.md) — RLS, audit log, secrets, what is backend-gated |

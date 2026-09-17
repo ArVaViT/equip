@@ -22,7 +22,7 @@
  *
  * Path 1 is wired into CI via ``global.setup.ts`` against the local
  * Supabase stack ``.github/workflows/frontend-e2e.yml`` boots per run
- * (``docs/STAGING.md``). Path 2 (``injectSession``) has no caller yet —
+ * (``docs/E2E.md``). Path 2 (``injectSession``) has no caller yet —
  * it stays here as a documented option for a spec that wants a specific
  * signed-in state without going through the login form.
  */
