@@ -2062,6 +2062,7 @@
       "allStatuses": "Все статусы",
       "statusPending": "Ожидает",
       "statusAccepted": "Принято",
+      "statusFulfilled": "Получено без ссылки",
       "statusRevoked": "Отозвано",
       "statusExpired": "Истекло",
       "emptyTitle": "Приглашений пока нет",
@@ -2746,6 +2747,7 @@
   },
   "invite": {
     "heading": "Присоединиться к Equip",
+    "alreadyIn": "У вас уже есть доступ к тому, куда вело это приглашение. Войдите как <strong>{{email}}</strong>, чтобы продолжить.",
     "formSubheading": "Вас пригласили присоединиться к Equip в роли: {{role}}",
     "readyBody": "Вы вошли как <strong>{{email}}</strong>. Примите приглашение, чтобы присоединиться к Equip в роли: {{role}}.",
     "acceptButton": "Принять приглашение",

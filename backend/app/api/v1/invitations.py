@@ -51,6 +51,7 @@ def _to_response(invitation: Invitation) -> InvitationResponse:
         invited_by=invitation.invited_by,
         created_at=invitation.created_at,
         accepted_at=invitation.accepted_at,
+        fulfilled_at=invitation.fulfilled_at,
         expires_at=invitation.expires_at,
         is_expired=is_expired,
     )
@@ -181,7 +182,9 @@ def _preview(db: Session, response: Response, token: str, accept_language: str |
         # knows what they read.
         course_title=course_title_for_invitation(db, invitation, display_locale=normalize_locale(accept_language)),
         status=cast("InvitationStatusLiteral", invitation.status),
-        is_expired=invitation.status == "pending" and is_invitation_expired(invitation),
+        # A fulfilled invitation is still redeemable by its invitee (see
+        # accept_invitation), on the same clock as a pending one.
+        is_expired=invitation.status in ("pending", "fulfilled") and is_invitation_expired(invitation),
     )
 
 

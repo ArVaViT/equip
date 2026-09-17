@@ -11,7 +11,9 @@ from app.schemas._request import RequestModel
 # the SQLAlchemy model's CheckConstraints. Deliberately excludes "admin" --
 # an invite can never grant admin, only the manual role-change route can.
 InvitationRoleLiteral = Literal["teacher", "student"]
-InvitationStatusLiteral = Literal["pending", "accepted", "revoked"]
+# ``fulfilled``: the person got what the invitation offered another way
+# (migration 20260917023526); ``accepted``: they used the link.
+InvitationStatusLiteral = Literal["pending", "accepted", "revoked", "fulfilled"]
 # Mirrors chk_invitations_scope. What accepting grants: an account, a
 # membership, or a membership plus a seat on one course.
 InvitationScopeLiteral = Literal["platform", "organization", "course"]
@@ -52,6 +54,7 @@ class InvitationResponse(BaseModel):
     invited_by: UUID | None
     created_at: datetime | None
     accepted_at: datetime | None
+    fulfilled_at: datetime | None = None
     expires_at: datetime
     # Derived, not stored -- a 'pending' row past its expiry is treated as
     # expired at read time rather than requiring a cron to flip a stored

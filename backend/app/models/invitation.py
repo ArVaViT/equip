@@ -21,6 +21,13 @@ class InvitationStatus(enum.StrEnum):
     PENDING = "pending"
     ACCEPTED = "accepted"
     REVOKED = "revoked"
+    #: The person got what the invitation offered without using its link --
+    #: enrolled on the course, joined the organization, signed up. Set by the
+    #: database (``public.fulfil_pending_invitations`` and its triggers), never
+    #: by the application: see migration 20260917023526 for why the rule lives
+    #: there. Distinct from ``accepted`` so the sender can tell "used the link"
+    #: from "came in another way".
+    FULFILLED = "fulfilled"
 
 
 class InvitationScope(enum.StrEnum):
@@ -51,7 +58,14 @@ class Invitation(Base):
         # SQLite test path and the Postgres schema-smoke job enforce the
         # same value domains.
         CheckConstraint("role IN ('teacher', 'student')", name="chk_invitations_role"),
-        CheckConstraint("status IN ('pending', 'accepted', 'revoked')", name="chk_invitations_status"),
+        CheckConstraint(
+            "status IN ('pending', 'accepted', 'revoked', 'fulfilled')",
+            name="chk_invitations_status",
+        ),
+        CheckConstraint(
+            "(status = 'fulfilled') = (fulfilled_at IS NOT NULL)",
+            name="chk_invitations_fulfilled_at_matches_status",
+        ),
         CheckConstraint("scope IN ('platform', 'organization', 'course')", name="chk_invitations_scope"),
         # The scope and its target agree in both directions.
         CheckConstraint(
@@ -77,6 +91,8 @@ class Invitation(Base):
     invited_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("profiles.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    #: When the person arrived without the link (status ``fulfilled``).
+    fulfilled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_default_expires_at)
 
     inviter: Mapped["User | None"] = relationship(foreign_keys=[invited_by])
