@@ -2532,6 +2532,21 @@
     "body": true
   },
   {
+    "method": "POST",
+    "path": "/api/v1/invitations/preview",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
     "method": "GET",
     "path": "/api/v1/invitations/token/{token}",
     "params": [

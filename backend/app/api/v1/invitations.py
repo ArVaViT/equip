@@ -19,6 +19,7 @@ from app.schemas.invitation import (
     InvitationAcceptResponse,
     InvitationCreate,
     InvitationPreview,
+    InvitationPreviewRequest,
     InvitationResponse,
     InvitationRoleLiteral,
     InvitationScopeLiteral,
@@ -163,19 +164,7 @@ def revoke_invitation_route(
     return _to_response(invitation)
 
 
-@router.get("/token/{token}", response_model=InvitationPreview)
-def preview_invitation(
-    response: Response,
-    token: str = Path(..., max_length=128),
-    accept_language: str | None = Header(default=None, alias="Accept-Language"),
-    db: Session = Depends(get_db),
-) -> InvitationPreview:
-    """Unauthenticated preview of an invite, for the accept-invite page
-    to render "you've been invited as a teacher" copy before the visitor
-    has signed in. Deliberately returns 200 with ``is_expired``/``status``
-    rather than 404/410 for a stale token, so the accept page can render
-    a clear "this invite expired" state instead of a generic not-found.
-    """
+def _preview(db: Session, response: Response, token: str, accept_language: str | None) -> InvitationPreview:
     invitation = get_invitation_by_token(db, token)
     # The course title is the only translated text on this route, and it
     # is resolved per reader, so the answer varies by header.
@@ -187,13 +176,54 @@ def preview_invitation(
         # Only the title, and only for a course invitation: someone
         # deciding whether to accept is entitled to know what they are
         # being invited to, and a published course's title is public
-        # anyway. In their own language or not at all — they have no
+        # anyway. In their own language or not at all -- they have no
         # profile yet, so the browser's header is the only thing that
         # knows what they read.
         course_title=course_title_for_invitation(db, invitation, display_locale=normalize_locale(accept_language)),
         status=cast("InvitationStatusLiteral", invitation.status),
         is_expired=invitation.status == "pending" and is_invitation_expired(invitation),
     )
+
+
+@router.post("/preview", response_model=InvitationPreview)
+def preview_invitation(
+    body: InvitationPreviewRequest,
+    response: Response,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    db: Session = Depends(get_db),
+) -> InvitationPreview:
+    """Unauthenticated preview of an invite, for the accept-invite page
+    to render "you've been invited as a teacher" copy before the visitor
+    has signed in. Deliberately returns 200 with ``is_expired``/``status``
+    rather than 404/410 for a stale token, so the accept page can render
+    a clear "this invite expired" state instead of a generic not-found.
+
+    The token travels in the body. In the path it was written into every
+    request log this backend has -- ours, which now redacts it, and
+    Vercel's platform log (``[GET] /api/v1/invitations/token/<token>``),
+    which nothing in this process can reach. Nobody logs a body. ``POST``
+    for a read is the price of that, and ``/accept`` already pays it.
+    """
+    return _preview(db, response, body.token, accept_language)
+
+
+@router.get("/token/{token}", response_model=InvitationPreview, deprecated=True)
+def preview_invitation_by_path(
+    response: Response,
+    token: str = Path(..., max_length=128),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    db: Session = Depends(get_db),
+) -> InvitationPreview:
+    """The previous shape of ``POST /invitations/preview``.
+
+    Kept only for a browser still running a bundle from before the move:
+    a tab left open on the accept page, or a cached ``index.html``. The
+    current client never calls it. Our access line for it is redacted by
+    the log formatter, but the platform's own request log still records
+    the path, so this route should go once nothing has reached it for a
+    while -- the Vercel log drain shows when that is.
+    """
+    return _preview(db, response, token, accept_language)
 
 
 @router.post("/accept", response_model=InvitationAcceptResponse)

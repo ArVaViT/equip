@@ -80,6 +80,12 @@ class InvitationPreview(BaseModel):
     is_expired: bool
 
 
+class InvitationPreviewRequest(RequestModel):
+    """The token, in a body rather than a path, so no request log holds it."""
+
+    token: str = Field(min_length=1, max_length=128)
+
+
 class InvitationAcceptRequest(RequestModel):
     token: str = Field(min_length=1, max_length=128)
 

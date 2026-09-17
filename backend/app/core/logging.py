@@ -7,6 +7,9 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from typing import Any
+
+from app.core.redact import redact_secrets
 
 # Per-request correlation. Vercel populates ``x-vercel-id`` on every
 # inbound request; main.log_requests middleware copies it here so the
@@ -163,9 +166,31 @@ class DatadogHTTPHandler(logging.Handler):
             setattr(record, self._REENTRY_GUARD_ATTR, False)
 
 
+class RedactingFormatter(logging.Formatter):
+    """A formatter that will not write a credential, whoever logs one.
+
+    Every handler ``setup_logging`` installs -- stdout, which the Vercel
+    drain ships, and the Datadog intake -- formats through this, and the
+    Datadog handler builds ``error.stack`` through ``formatException``.
+    So the rule lives here once rather than at each call site: an access
+    line with a token in its path and a database error with a token in
+    its bound parameters are both just records by the time they arrive.
+    See ``app.core.redact`` for what counts as a secret.
+    """
+
+    def format(self, record: logging.LogRecord) -> str:
+        return redact_secrets(super().format(record))
+
+    def formatException(self, ei: Any) -> str:
+        return redact_secrets(super().formatException(ei))
+
+    def formatStack(self, stack_info: str) -> str:
+        return redact_secrets(super().formatStack(stack_info))
+
+
 def setup_logging() -> None:
     """Configure structured logging for the application."""
-    formatter = logging.Formatter(
+    formatter = RedactingFormatter(
         fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
