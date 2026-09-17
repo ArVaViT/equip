@@ -11,7 +11,8 @@ import { ROLE_I18N_KEY } from "@/lib/roles"
 import { useAcceptInvite } from "./useAcceptInvite"
 
 /**
- * Public /invite/accept?token=... route -- reads the token, previews the
+ * Public /invite/accept#token=... route (or ?token= from older letters) --
+ * reads the token, previews the
  * invite (email/role/validity), then either shows a signup form (not
  * authenticated), an "Accept" button (already signed in under the
  * matching email), or a terminal state (invalid/expired/mismatch/done).

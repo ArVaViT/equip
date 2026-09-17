@@ -63,6 +63,90 @@ export function isBenignCspViolation(event: RumEvent): boolean {
   return false
 }
 
+/**
+ * Credentials a URL can carry on this site, and the text RUM copies URLs into.
+ *
+ * Found in RUM on 2026-09-16: `view.url` held
+ * `/invite/accept?token=<invitation token>` for every invited visitor, and
+ * `/auth/callback#access_token=…&provider_token=…&refresh_token=…` for
+ * every Google sign-in — a live session, and the Google token behind it,
+ * indexed for as long as RUM keeps a view. RUM copies the page URL into
+ * `view.url`, the previous page into `view.referrer`, every request into
+ * `resource.url`, and any URL an error mentions into its message and stack.
+ *
+ * What counts as a secret mirrors the backend's `app/core/redact.py`:
+ *
+ * - the path segment after `/invitations/token/` (the preview route a
+ *   stale bundle may still call);
+ * - query or fragment parameters that carry a credential — `token`,
+ *   `access_token`, `refresh_token`, `provider_token`,
+ *   `provider_refresh_token`, `id_token`, `token_hash`, `code`;
+ * - any JWT, wherever it appears.
+ *
+ * Not secret, and left readable: `error`, `error_code`, `token_type`,
+ * `expires_in`, resource ids, certificate numbers (printed on the
+ * certificate so a stranger can check them).
+ */
+const REDACTED = "[redacted]"
+const SECRET_PATH = /(\/invitations\/token\/)[^/?#\s'"]+/g
+const SECRET_PARAMS = [
+  "token",
+  "access_token",
+  "refresh_token",
+  "provider_token",
+  "provider_refresh_token",
+  "id_token",
+  "token_hash",
+  "code",
+]
+const SECRET_PARAM = new RegExp(`([?&#])(${SECRET_PARAMS.join("|")})=[^&#\\s'"]+`, "g")
+const JWT = /eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g
+
+export function redactSecrets(text: string): string
+export function redactSecrets(text: string | undefined): string | undefined
+export function redactSecrets(text: string | undefined): string | undefined {
+  if (!text) return text
+  return text
+    .replace(SECRET_PATH, `$1${REDACTED}`)
+    .replace(SECRET_PARAM, `$1$2=${REDACTED}`)
+    .replace(JWT, REDACTED)
+}
+
+type Scrubbable = {
+  view?: { url?: string; referrer?: string }
+  resource?: { url?: string }
+  error?: { message?: string; stack?: string; resource?: { url?: string } }
+}
+
+/**
+ * Remove credentials from every field of a RUM event that holds a URL.
+ *
+ * Mutates in place: `beforeSend` is handed the event to edit, and these
+ * are fields Datadog documents as modifiable there. Every event type
+ * carries `view`, so the page URL is cleaned on views, actions, resources,
+ * errors and long tasks alike.
+ */
+export function scrubRumEvent(event: RumEvent): void {
+  const e = event as RumEvent & Scrubbable
+  if (e.view) {
+    e.view.url = redactSecrets(e.view.url)
+    e.view.referrer = redactSecrets(e.view.referrer)
+  }
+  if (e.resource) e.resource.url = redactSecrets(e.resource.url)
+  if (e.error) {
+    e.error.message = redactSecrets(e.error.message)
+    e.error.stack = redactSecrets(e.error.stack)
+    if (e.error.resource) e.error.resource.url = redactSecrets(e.error.resource.url)
+  }
+}
+
+/** The `beforeSend` hook: drop benign noise, scrub everything else. */
+export function beforeSendRum(event: RumEvent): boolean {
+  if (isBenignCspViolation(event)) return false
+  scrubRumEvent(event)
+  return true
+}
+
 // Datadog RUM is opt-in: if the applicationId / clientToken aren't set we
 // skip init entirely so local builds don't ship events to a dashboard nobody
 // reads. In production (Vercel) both vars are populated from Vercel env vars.
@@ -143,10 +227,11 @@ export function initDatadogRum() {
     plugins: [reactPlugin({ router: true })],
 
     // Drop known-benign CSP-Report-Only violation events client-side
-    // (see ``isBenignCspViolation`` for the signatures + rationale).
-    // Returning ``false`` here prevents the event from being sent to
-    // Datadog; everything else passes through unchanged.
-    beforeSend: (event) => !isBenignCspViolation(event),
+    // (see ``isBenignCspViolation`` for the signatures + rationale), and
+    // strip credentials out of the URLs on everything else (see
+    // ``scrubRumEvent``). Returning ``false`` prevents the event from
+    // being sent to Datadog.
+    beforeSend: beforeSendRum,
   })
 }
 

@@ -19,8 +19,8 @@ export function firstNameOf(fullName: string | null | undefined): string | null 
 }
 
 /**
- * Two-character initials for avatar fallbacks — "Vadym Arnaut" → "VA",
- * "vadimarnaut78@gmail.com" → "VA", "Иван" → "И".
+ * Two-character initials for avatar fallbacks — "Ivan Petrov" → "IP",
+ * "ivan@example.com" → "IE", "Иван" → "И".
  *
  * Splits on whitespace AND ``@`` so an email handle yields a usable
  * pair (the part before the first ``.`` of the local-part isn't worth

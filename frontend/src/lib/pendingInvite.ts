@@ -9,7 +9,7 @@ const STORAGE_KEY = "equip.pendingInviteToken"
  * redirect kicks off. Once the user comes back authenticated -- to ANY
  * route, since OAuth/email-confirm both land on "/" -- App.tsx's resume
  * effect calls `takePendingInviteToken` and navigates to
- * `/invite/accept?token=...` to finish the promotion.
+ * `/invite/accept#token=...` to finish the promotion.
  */
 export function setPendingInviteToken(token: string): void {
   try {

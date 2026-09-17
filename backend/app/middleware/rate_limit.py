@@ -81,6 +81,10 @@ ENDPOINT_LIMITS: dict[str, tuple[int, int]] = {
     # below so its longer, more specific match wins (``_resolve_limit``
     # returns the first prefix match in insertion order).
     "/api/v1/invitations/token/": (30, 60),
+    # The same preview with the token in the body instead of the path
+    # (the path version stays for stale bundles only). Same ceiling, same
+    # reason.
+    "/api/v1/invitations/preview": (30, 60),
     # Admin create/list + the authenticated accept-by-token route share
     # this bucket. Mirrors the admin-mutation ceiling above; accept is a
     # one-time action per invitee so 30/min/IP is generous.

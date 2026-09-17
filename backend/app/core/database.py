@@ -141,6 +141,15 @@ def _get_engine() -> Engine:
             },
             "pool_pre_ping": True,
             "echo": False,
+            # Bound values stay out of ``str(exc)``. Without this every
+            # SQLAlchemyError renders ``[parameters: {...}]`` into its
+            # message, and the 503 handler in ``app.main`` logs that
+            # message -- which put invitation tokens into Datadog
+            # (2026-09-16), and would do the same with emails, answers,
+            # anything a query filters on. The SQL text is kept; only the
+            # values go. The log formatter redacts the same block as a
+            # second line of defence (``app.core.redact``).
+            "hide_parameters": True,
         }
 
         if IS_SERVERLESS:

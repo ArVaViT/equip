@@ -147,7 +147,7 @@ class Settings(BaseSettings):
     # link, etc). No existing Settings field carried this -- other call
     # sites hardcode "https://equipbible.com" inline (see app/main.py,
     # calendar_ical.py). Kept as a real setting (not another hardcode) so
-    # a preview/staging deployment can point invite links at itself.
+    # a local or preview deployment can point invite links at itself.
     FRONTEND_URL: str = Field(default="https://equipbible.com", description="Public frontend origin for email links")
     # ``gemini-2.5-flash-lite``, measured rather than assumed. Numbers
     # from 2026-08-17, twelve real production strings translated into

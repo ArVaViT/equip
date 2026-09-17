@@ -77,4 +77,4 @@ Challenge data, then builds the frontend against that stack, serves it,
 runs the full suite (public and authenticated specs together) and
 uploads traces + screenshots on failure. This needs no repository
 secrets, so it runs the same way on fork and Dependabot PRs — see
-`docs/STAGING.md` for the full recipe.
+`docs/E2E.md` for the full recipe.

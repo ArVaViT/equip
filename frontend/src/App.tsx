@@ -18,6 +18,7 @@ import ScrollToTop from "./components/layout/ScrollToTop";
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useGrandTour } from "@/hooks/useGrandTour"
 import { takePendingInviteToken } from "@/lib/pendingInvite"
+import { inviteAcceptPath } from "@/lib/inviteLink"
 import { returnPathFrom } from "@/lib/authRedirect"
 import { canTeach } from "@/lib/roles"
 import { DeniedRedirect } from "@/components/auth/DeniedRedirect"
@@ -149,7 +150,7 @@ function useResumePendingInvite() {
     if (!user) return
     if (location.pathname === "/invite/accept") return
     const token = takePendingInviteToken()
-    if (token) navigate(`/invite/accept?token=${encodeURIComponent(token)}`, { replace: true })
+    if (token) navigate(inviteAcceptPath(token), { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 }

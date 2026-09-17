@@ -21,11 +21,11 @@ frontend/frontend/
 .github/assets/devto-*
 
 # Locale-variant screenshot drafts (login-en-desktop.png /
-# register-ru-desktop.png etc.) — work-in-progress reference shots
-# Vadym takes during UI review. The canonical tracked screenshots
-# (login-desktop.png / login-mobile.png / register-desktop.png /
-# login-desktop-dark.png) stay versioned; the *-en-* / *-ru-* / *-v2
-# variants don't until they replace one of the canonical names.
+# register-ru-desktop.png etc.) — work-in-progress reference shots taken
+# during UI review. The canonical tracked screenshots README.md embeds
+# (home-desktop.png / courses-desktop.png / login-desktop.png /
+# home-mobile.png) stay versioned; the *-en-* / *-ru-* variants don't
+# until they replace one of the canonical names.
 .github/assets/screenshots/login-en-*
 .github/assets/screenshots/login-ru-*
 .github/assets/screenshots/register-en-*

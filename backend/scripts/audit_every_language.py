@@ -30,12 +30,13 @@ it cannot name is reported as ``unknown`` rather than as a pass.
 
 Use
 ---
-  python -m scripts.audit_every_language                    # student's view
-  python -m scripts.audit_every_language --verbose          # every sample
+  python -m scripts.audit_every_language --account reader@example.com
+  python -m scripts.audit_every_language --account reader@example.com --verbose
 
 Needs ``SUPABASE_URL`` / ``SUPABASE_SECRET_KEY`` /
-``SUPABASE_PUBLISHABLE_KEY`` to mint a session, and ``EQUIP_API`` to
-point somewhere other than production.
+``SUPABASE_PUBLISHABLE_KEY`` to mint a session, the account to read as
+(``--account`` or ``EQUIP_AUDIT_EMAIL``; there is no default), and
+``EQUIP_API`` to point somewhere other than production.
 """
 
 from __future__ import annotations
@@ -53,7 +54,6 @@ from app.schemas.locale import LOCALE_CODES
 from app.services.language_detection import carries_language, detect_locale
 
 API = os.getenv("EQUIP_API", "https://api.equipbible.com")
-ACCOUNT = os.getenv("EQUIP_AUDIT_EMAIL", "arvavitcorp@gmail.com")
 
 # Enough of each course to be representative without turning the audit
 # into a crawl of every lesson on the platform four times over.
@@ -91,20 +91,20 @@ class Report:
         self.findings.append(Finding(surface, locale, kind, detail))
 
 
-def _session_token(client: httpx.Client) -> str:
+def _session_token(client: httpx.Client, account: str) -> str:
     url = os.environ["SUPABASE_URL"].rstrip("/")
     secret = os.environ["SUPABASE_SECRET_KEY"]
     publishable = os.environ["SUPABASE_PUBLISHABLE_KEY"]
     link = client.post(
         f"{url}/auth/v1/admin/generate_link",
         headers={"Authorization": f"Bearer {secret}", "apikey": secret},
-        json={"type": "magiclink", "email": ACCOUNT},
+        json={"type": "magiclink", "email": account},
     ).json()
     otp = link.get("email_otp") or link.get("properties", {}).get("email_otp")
     verified = client.post(
         f"{url}/auth/v1/verify",
         headers={"apikey": publishable},
-        json={"type": "magiclink", "email": ACCOUNT, "token": otp},
+        json={"type": "magiclink", "email": account, "token": otp},
     ).json()
     return str(verified["access_token"])
 
@@ -183,11 +183,18 @@ def _inspect(report: Report, surface: str, locale: str, response: httpx.Response
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--verbose", action="store_true", help="report text the detector could not name")
+    parser.add_argument(
+        "--account",
+        default=os.getenv("EQUIP_AUDIT_EMAIL"),
+        help="email of the existing account to read as (default: $EQUIP_AUDIT_EMAIL)",
+    )
     args = parser.parse_args()
+    if not args.account:
+        parser.error("pass --account or set EQUIP_AUDIT_EMAIL")
 
     report = Report()
     with httpx.Client(timeout=60, follow_redirects=True) as client:
-        token = _session_token(client)
+        token = _session_token(client, args.account)
         auth = {"Authorization": f"Bearer {token}"}
 
         catalog = client.get(f"{API}/api/v1/courses", headers={**auth, "Accept-Language": "en"})

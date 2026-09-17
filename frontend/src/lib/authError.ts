@@ -69,7 +69,7 @@ function keyByStatus(status: number | undefined): string | null {
   return null
 }
 
-export function asAuthError(err: unknown): AuthErrorish {
+function asAuthError(err: unknown): AuthErrorish {
   return typeof err === "object" && err !== null ? (err as AuthErrorish) : {}
 }
 

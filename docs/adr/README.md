@@ -10,10 +10,15 @@ simpler shape was rejected.
 
 ## Index
 
+Numbering starts at 010 because ADR-001 to ADR-009 were written in a
+private planning repository before this one was public; ADR-010 was the
+first moved here (#236), and the sequence continued from it.
+
 | # | Title | Status |
 |---|-------|--------|
 | [010](0010-cohorts-as-top-level-entities.md) | Cohorts as top-level admin entities | Accepted (2026-05-13), amended 2026-08-27: rosters belong to the `director` role |
 | [011](0011-tailwind-v4-oklch-migration.md) | Tailwind v4 + OKLCH migration — not doing it | Superseded (2026-08-24) |
+| [012](0012-invitations-notifications-and-one-way-out.md) | Invitations, notifications, and one way out of the building | Proposed (2026-09-12) |
 
 ## Format
 
