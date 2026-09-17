@@ -162,7 +162,12 @@ export function renderLegalMarkdown(source: string): ReactNode[] {
       blocks.push(
         <h2
           key={`h${blocks.length}`}
-          className="mt-10 font-serif text-xl font-semibold tracking-tight text-ink"
+          /* ``break-words`` for the same reason the h1 has it, found the same
+             way: "Urheberrechtsbeschwerden" is a single 24-character word and
+             at 320px it pushed the German terms 13px wider than the viewport.
+             German compounds this document cannot avoid — Haftungsbeschränkung,
+             Datenschutzerklärung — are all in this range. */
+          className="mt-10 break-words font-serif text-xl font-semibold tracking-tight text-ink"
         >
           {trimmed.slice(3)}
         </h2>,
