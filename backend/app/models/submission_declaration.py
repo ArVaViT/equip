@@ -17,7 +17,7 @@ text as displayed rather than a pointer to a row a teacher can edit afterwards.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Text, UniqueConstraint, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -41,7 +41,6 @@ class SubmissionDeclaration(Base):
             "policy IN ('ai_forbidden', 'ai_with_disclosure', 'ai_open')",
             name="submission_declarations_policy_check",
         ),
-        Index("ix_submission_declarations_submission", "submission_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
