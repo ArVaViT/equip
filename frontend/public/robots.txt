@@ -4,6 +4,11 @@
 
 User-agent: *
 Allow: /
+# Public documents that happen to sit under a disallowed prefix. Robots.txt
+# matches on prefix, so `Disallow: /teacher` would otherwise hide the Teacher
+# & Contributor Agreement — a document somebody is asked to accept and is
+# entitled to find before they are standing in front of the checkbox.
+Allow: /teacher-terms
 Disallow: /admin
 Disallow: /teacher
 Disallow: /dashboard

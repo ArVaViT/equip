@@ -178,12 +178,12 @@
       "title": "Bevor wir beginnen",
       "intro": "Kurz gelesen, damit Sie wissen, was Equip speichert und was nicht. Die vollständigen Texte sind unten verlinkt und stehen immer im Seitenfuß.",
       "bullets": {
-        "collect": "Wir speichern Ihren Namen, Ihre E-Mail-Adresse, Ihr Bild und Ihre Kursaktivität (Fortschritt, Testantworten, Zertifikate) — nur das, was zum Betrieb der Plattform nötig ist.",
-        "share": "Wir verkaufen Ihre Daten nicht und geben sie nicht zu Werbezwecken an Dritte weiter. Anonyme Leistungsdaten helfen uns, Fehler zu finden (Datadog).",
-        "control": "Sie können Ihr Konto jederzeit im Profil ändern oder löschen."
+        "collect": "Wir speichern Name, E-Mail, Foto und das, was Sie in Ihren Kursen tun: Fortschritt, Quizantworten, eingereichte Arbeiten, Noten und Zertifikate.",
+        "share": "Wir verkaufen Ihre Daten nicht, es gibt keine Werbung und kein Tracking. Wir zeichnen aber jede Browsersitzung auf, einschließlich dessen, was auf Ihrem Bildschirm war — um Fehler zu finden und zu beheben; solange Sie angemeldet sind, trägt die Aufzeichnung Ihren Namen. Die Erklärung sagt genau, was darin landet.",
+        "control": "Ihre Daten sehen und ändern können Sie im Profil. Für eine Kopie von allem oder zum Löschen Ihres Kontos schreiben Sie uns — wir erledigen das."
       },
       "checkbox": "Ich habe die Datenschutzerklärung und die Nutzungsbedingungen gelesen und akzeptiere sie",
-      "next": "Weiter",
+      "next": "Annehmen und fortfahren",
       "saveFailed": "Ihre Zustimmung konnte nicht gespeichert werden. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
       "renewal": {
         "eyebrow": "Aktualisierte Dokumente",
@@ -730,6 +730,8 @@
     "courses": "Kurse",
     "privacy": "Datenschutzerklärung",
     "terms": "Nutzungsbedingungen",
+    "teacherTerms": "Lehrenden- und Beitragendenvereinbarung",
+    "schoolAgreement": "Schulvereinbarung",
     "providers": "Infrastrukturanbieter"
   },
   "notFound": {
@@ -2880,7 +2882,33 @@
     "englishOnly": "Dieses Dokument ist nur auf Englisch verfügbar.",
     "fingerprint": "Fassung {{version}} · Textprüfsumme {{sha}}",
     "privacy": "Datenschutzerklärung",
-    "terms": "Nutzungsbedingungen"
+    "terms": "Nutzungsbedingungen",
+    "teacherTerms": "Lehrenden- und Beitragendenvereinbarung",
+    "schoolAgreement": "Schulvereinbarung"
+  },
+  "legalGate": {
+    "signOut": "Nicht jetzt — abmelden",
+    "teacher": {
+      "eyebrow": "Sie sind jetzt Lehrende",
+      "title": "Herzlichen Glückwunsch — ein Kurs liegt in Ihren Händen",
+      "intro": "Jemand hat Ihnen die Lehrrolle gegeben. Bevor Sie anfangen, eine kurze Vereinbarung: über das Material, das Sie hochladen, über die Studierendendaten, die Sie jetzt sehen, und über die Noten, die Sie unterschreiben.",
+      "bullets": {
+        "rights": "Alles, was Sie hochladen, muss Ihnen gehören — Ihre eigene Arbeit, an Sie lizenziert oder frei weiterzugeben. Ein eingescanntes Buch oder ein PDF von einer Filesharing-Seite ist das nicht, und die Verantwortung liegt bei Ihnen, nicht bei der Plattform.",
+        "students": "Sie sehen jetzt fremde Arbeiten, Noten und Kontaktdaten. Nutzen Sie sie nur für den Unterricht in Ihrem Kurs und geben Sie sie niemals außerhalb der Plattform weiter.",
+        "marks": "Bewerten Sie ehrlich und an der Arbeit. Ein Zertifikat trägt Ihr Urteil, und jemand wird es jemand anderem zeigen."
+      },
+      "checkbox": "Ich habe die Lehrenden- und Beitragendenvereinbarung gelesen und akzeptiere sie",
+      "next": "Annehmen und fortfahren",
+      "saveFailed": "Ihre Zustimmung konnte nicht gespeichert werden. Prüfen Sie die Verbindung und versuchen Sie es erneut."
+    },
+    "notice": {
+      "body": "Das Dokument „{{document}}“ wurde am {{date}} aktualisiert. An dem, dem Sie zugestimmt haben, hat sich nichts geändert — es ist nichts zu unterschreiben.",
+      "read": "Nachlesen, was sich geändert hat",
+      "dismiss": "Schließen"
+    },
+    "upload": {
+      "notice": "Mit dem Hochladen bestätigen Sie, dass Sie das Recht haben, dieses Material zu teilen."
+    }
   },
   "meta": {
     "documentTitle": "Equip — Bibelstudium online",

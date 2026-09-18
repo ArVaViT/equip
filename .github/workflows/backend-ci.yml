@@ -359,11 +359,12 @@ jobs:
           # going red. Regenerating the dump is the step that catches column
           # drift, and it is not optional after a prod change.
           # 47 since 2026-08-27, when `organizations` arrived.
-          # 48 since 2026-09-17, when `dmca_complaints` arrived — the record
-          # § 512(i)(1)(A) asks a platform to keep of what it did about each
-          # complaint. See the migration for why it exists.
-          if [ "$COUNT" -ne 48 ]; then
-            echo "::error::Expected 48 public tables after replay, got $COUNT — schema.sql may be stale or partial." >&2
+          # 49 since 2026-09-17: `legal_notices_seen` (somebody was *told*
+          # about a change — deliberately weaker than a row in
+          # `legal_acceptances`) and `dmca_complaints` (what § 512(i)(1)(A)
+          # asks a platform to keep about each complaint).
+          if [ "$COUNT" -ne 49 ]; then
+            echo "::error::Expected 49 public tables after replay, got $COUNT — schema.sql may be stale or partial." >&2
             exit 1
           fi
           echo "OK: prod schema replays cleanly from supabase/schema.sql"
@@ -378,6 +379,18 @@ jobs:
           set -euo pipefail
           psql -v ON_ERROR_STOP=1 -h localhost -p 5432 -U ci -d ci \
             -f supabase/ci/invitation_fulfilment_assertions.sql
+
+      # Same reason: the rule that a consent record outlives the account lives
+      # in a BEFORE DELETE trigger (migration 20260917234500), and nothing in
+      # the application is on the path that fires it — the backend's delete
+      # route is a soft delete, and a real deletion comes through Supabase.
+      - name: A consent record outlives the account, and the person does not
+        env:
+          PGPASSWORD: ci
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -h localhost -p 5432 -U ci -d ci \
+            -f supabase/ci/consent_survives_deletion_assertions.sql
 
   # ---------------------------------------------------------------------------
   # RLS policy + privilege test. Recreates the prod schema + RLS policies +

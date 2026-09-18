@@ -63,6 +63,8 @@ export function matchTitleKey(pathname: string): string | null {
   if (pathname === "/privacy") return "pageTitle.privacy"
   if (pathname === "/dmca") return "dmca.title"
   if (pathname === "/terms") return "pageTitle.terms"
+  if (pathname === "/teacher-terms") return "pageTitle.teacherTerms"
+  if (pathname === "/school-agreement") return "pageTitle.schoolAgreement"
 
   return null
 }

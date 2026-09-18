@@ -178,12 +178,12 @@
       "title": "Before we begin",
       "intro": "A short read, so you know what Equip stores and what it does not. The full texts are linked below, and always in the site footer.",
       "bullets": {
-        "collect": "We store your name, email, avatar, and what you do on your courses (progress, quiz answers, certificates) — only what's needed to run the platform for you.",
-        "share": "We don't sell your data and we don't share it with third parties for advertising. Anonymous performance telemetry helps us spot bugs (Datadog).",
-        "control": "You can edit or delete your account at any time from your profile."
+        "collect": "We store your name, email, photo, and what you do on your courses — progress, quiz answers, work handed in, marks and certificates.",
+        "share": "We don't sell your data and there is no advertising or tracking. We do record every browser session, including a replay of what was on your screen, to find and fix breakage — and you are named in it while you're signed in. The policy says exactly what that captures.",
+        "control": "You can see and change your data in your profile. To get a copy of everything, or to delete your account, write to us and we'll do it."
       },
       "checkbox": "I have read and accept the Privacy Policy and the Terms of Use",
-      "next": "Continue",
+      "next": "Accept and continue",
       "saveFailed": "Couldn't record your acceptance. Check your connection and try again.",
       "renewal": {
         "eyebrow": "Updated documents",
@@ -730,6 +730,8 @@
     "courses": "Courses",
     "privacy": "Privacy Policy",
     "terms": "Terms of Use",
+    "teacherTerms": "Teacher & Contributor Agreement",
+    "schoolAgreement": "School Agreement",
     "providers": "Infrastructure providers"
   },
   "notFound": {
@@ -2880,7 +2882,33 @@
     "englishOnly": "This document is available in English only.",
     "fingerprint": "Version {{version}} · text fingerprint {{sha}}",
     "privacy": "Privacy Policy",
-    "terms": "Terms of Use"
+    "terms": "Terms of Use",
+    "teacherTerms": "Teacher & Contributor Agreement",
+    "schoolAgreement": "School Agreement"
+  },
+  "legalGate": {
+    "signOut": "Not now — sign out",
+    "teacher": {
+      "eyebrow": "You are a teacher now",
+      "title": "Congratulations — a course is yours to build",
+      "intro": "Someone has given you the teaching role. Before you start, one short agreement: it covers the material you upload, the student data you can now see, and the marks you will sign.",
+      "bullets": {
+        "rights": "Everything you upload has to be yours to upload — your own work, licensed to you, or free to share. A scanned book or a PDF from a file-sharing site is not, and the responsibility is yours, not the platform's.",
+        "students": "You can now see other people's work, marks and contact details. Use them for teaching your course and nothing else, and never pass them outside the platform.",
+        "marks": "Mark honestly and on the work. A certificate carries your judgement and somebody will show it to somebody else."
+      },
+      "checkbox": "I have read and accept the Teacher & Contributor Agreement",
+      "next": "Accept and continue",
+      "saveFailed": "Couldn't record your acceptance. Check your connection and try again."
+    },
+    "notice": {
+      "body": "The {{document}} was updated on {{date}}. Nothing you agreed to has changed, so there is nothing to sign.",
+      "read": "Read what changed",
+      "dismiss": "Dismiss"
+    },
+    "upload": {
+      "notice": "By uploading, you confirm you have the right to share this material."
+    }
   },
   "meta": {
     "documentTitle": "Equip — study the Bible online",
