@@ -54,6 +54,13 @@ EVERYONE = frozenset({STUDENT, TEACHER, DIRECTOR, ADMIN})
 #: is "runs a school", not "does not enter a classroom".
 TEACHING = frozenset({TEACHER, DIRECTOR, ADMIN})
 
+#: Who can bind a school. The School Agreement is the only document here that
+#: is accepted on somebody else's behalf: a director accepting it commits the
+#: organisation, not themselves. Admin is included because a platform
+#: administrator standing in for a school has to be able to do it; nobody else
+#: is ever shown it.
+RUNS_A_SCHOOL = frozenset({DIRECTOR, ADMIN})
+
 
 @dataclass(frozen=True)
 class Revision:
@@ -145,6 +152,11 @@ LEGAL_REGISTRY: tuple[DocumentSpec, ...] = (
         revisions=(Revision("1.0", date(2026, 9, 17), consent=True),),
     ),
     DocumentSpec(
+        slug="school-agreement",
+        required_for=RUNS_A_SCHOOL,
+        revisions=(Revision("1.0", date(2026, 9, 17), consent=True),),
+    ),
+    DocumentSpec(
         slug="providers",
         required_for=frozenset(),
         revisions=(
@@ -196,25 +208,31 @@ LEGAL_DOCUMENT_FINGERPRINTS: dict[tuple[str, str, str], str] = {
     # 2026-09-17: everything rewritten, and everything translated into the two
     # languages these documents never existed in. Sixteen files, four of them
     # a document nobody had been asked to sign before.
-    ("privacy", "2.0", "en"): "a9e501482feaf5c283e584f7e98a1e6a7f08ee99f8bf04373da7ded44affcff6",
-    ("privacy", "2.0", "ru"): "0cbb0859546d8201f4be412d320e216658b0370ab296d651a91951afd41756e5",
-    ("privacy", "2.0", "de"): "8a3e6af0f84fc81121d9762114dc018e3caf17172ddaa1abb08529cf8b622231",
-    ("privacy", "2.0", "uk"): "1b98c71a32e1ff42081f63d505e1ffa8b253c6d019fdbce011ac8cf5db6d4d1f",
-    ("terms", "2.0", "en"): "f39c83564e045d89fb685520e6242ce5dc6379b650910eafda5215c9826daabe",
-    ("terms", "2.0", "ru"): "795772d825725e102d5707c888e2489078fa5caedab063cd3cb9dd9420c8d4a3",
-    ("terms", "2.0", "de"): "c49cb17a83ca0cdb0039ccc3a399dad5da9c8ee89c1a9eb3b003711de42e8bfb",
-    ("terms", "2.0", "uk"): "e08d42fe79f7b07aa5ff3bb760a0c9c40a63944cb63ebb3a22bb5a3f2c7477c2",
-    ("teacher-terms", "1.0", "en"): "b37421241999bc1f176209181e7c238467688d8c6ecf48803ed0559d407cb2f8",
-    ("teacher-terms", "1.0", "ru"): "3cdbcfa92500c975e9cd99119441094b88f16907c227adf98168dcf540482180",
-    ("teacher-terms", "1.0", "de"): "432abd2fbca7bd352ccdddec7f4fba09dbcc60c87c8448ec40a1ce8a2b543370",
-    ("teacher-terms", "1.0", "uk"): "ff545b36416669c6f5cd30af354316dac4fa448e36c0e3f8de3ab8e1a8406718",
+    ("privacy", "2.0", "en"): "96e7a94b189dc3f004d35aab0a6bea4de36a757c46ac122d14038753ace3d2f8",
+    ("privacy", "2.0", "ru"): "782af21fd36b9df9d80e05b77a9d736c385d9363c5cfea7421c4d5974d1adcad",
+    ("privacy", "2.0", "de"): "e9718e79c2c795976f556a4bb6c2a8c4280082c339a449abbecefd6c5537968c",
+    ("privacy", "2.0", "uk"): "dd79170ea18bcc86d3dc472169351dde7b360573d7810cca267a1fe42c47e6ab",
+    ("terms", "2.0", "en"): "0510d5d4ff749029bee54b403a502ffefc5087b8fa882b5d5179490b06cbc2c4",
+    ("terms", "2.0", "ru"): "a48034c571ea23df68fe402adc1616846c5bc783845bbb0479678de024e16013",
+    ("terms", "2.0", "de"): "af438c6e6afe39cf07d966095278f7245abdb6ea29c02335e935415264809850",
+    ("terms", "2.0", "uk"): "940e226a76072ff07cd61b0d920752cec513272bb3913f99c5525fa488ff6c8b",
+    ("teacher-terms", "1.0", "en"): "53292c0b7d076bb6bf7957adb125331c5f17e1afcec80978b3a87e93d8dc7b60",
+    ("teacher-terms", "1.0", "ru"): "79b0b55f071d0255b7412183f2d7531b9e871d0383c04e122b99dc8debf14bef",
+    ("teacher-terms", "1.0", "de"): "cba6237c2e38fbe292efb7324b4e80d91c2b491b912f8f7a6e14d4dd5242dbcc",
+    ("teacher-terms", "1.0", "uk"): "542686d7dc6e53c88308571ad018002191ec672acc9e1c7c2a9d87da8d327aeb",
+    # The School Agreement, new on 2026-09-17. The only document here accepted
+    # on somebody else's behalf: a director signing binds the organisation.
+    ("school-agreement", "1.0", "en"): "5b5c4fce3f1381471de42fb48ef49d7ee46e3c104b2789405614cf545cd370f3",
+    ("school-agreement", "1.0", "ru"): "c1cba5c52f1ac7d5b357906980caea3483df3ec180bdb9b59a633c70f55d2cb3",
+    ("school-agreement", "1.0", "de"): "cbb40cf3088a6267f90d646f077e624afcc4a4d010274d3d0e33ef007468fafc",
+    ("school-agreement", "1.0", "uk"): "5c9228dcc6fa403a7894eab48c3ec8db62e0242cabf0c078039d7d90f4cb781c",
     # The provider list is fingerprinted too, although nobody signs it: the
     # page is the answer to "who held my data in September", and a page that
     # can be rewritten under that question answers it badly.
-    ("providers", "2026-09-17", "en"): "d80ed2f326eaab5ec8aad30698363904001700fedad0a908c4f6016be4048e5a",
-    ("providers", "2026-09-17", "ru"): "b7bb545d03f610dfe94f93b88dff8bd10226fc2dfdd749e4f8c6e13118291bc1",
-    ("providers", "2026-09-17", "de"): "efd92c11e8bfc51b50e9fbeafadab97b130ae86ea4337554b47b2d9c84001a8d",
-    ("providers", "2026-09-17", "uk"): "2959f11fa30e4a2f79dd320706061d1b34475fb17c13195cafb2ff410ad3b095",
+    ("providers", "2026-09-17", "en"): "2702288bae1d48274ba8cd8fe1e6b3af8ecd7d15ae1e1c92de3ca66a26f0d944",
+    ("providers", "2026-09-17", "ru"): "b9cf68bc6900bcddcd4dd2a9180b907671be050e655bdd89b0a00a07ae261a65",
+    ("providers", "2026-09-17", "de"): "f0aed52f54bf5b231fa45642295e50caa60b68f6fbd0617962853269422166cd",
+    ("providers", "2026-09-17", "uk"): "376a908f200784bcb64fb43a3dc94eafb885206b65694d2d756166f741d37ced",
 }
 
 
@@ -331,3 +349,43 @@ def document_for(slug: str, locale: str) -> LegalDocument:
         locale=served,
         body=path.read_text(encoding="utf-8"),
     )
+
+
+#: How a document's own headline states its version, in each language it is
+#: published in. Group 1 is the version, group 2 the day, group 3 the month
+#: name as that language writes it, group 4 the year.
+#:
+#: This exists because the headline and the registry drifted apart and nobody
+#: noticed: ``terms.en.md`` said "Version 1.0" for a month while the registry
+#: served 1.1 and nine people accepted it. Every one of those acceptance rows
+#: names a version that was nowhere on the page the person read, which makes
+#: "you agreed to version 1.1" a claim we could not show anybody.
+# The Cyrillic prepositions below look like Latin letters to a linter and are
+# the actual words these documents are published with, hence the per-line
+# suppressions.
+VERSION_HEADLINE = {
+    "en": r"^\*\*Version (\S+) · in force from (\d{1,2}) (\w+) (\d{4})\*\*$",
+    "ru": r"^\*\*Версия (\S+) · действует с (\d{1,2}) (\S+) (\d{4})\*\*$",  # noqa: RUF001
+    "de": r"^\*\*Fassung (\S+) · in Kraft ab (\d{1,2})\. (\S+) (\d{4})\*\*$",
+    "uk": r"^\*\*Версія (\S+) · чинна з (\d{1,2}) (\S+) (\d{4})\*\*$",
+}
+
+
+def headline_version(body: str, locale: str) -> str | None:
+    """The version a document claims on its own second line, or ``None``.
+
+    Read from the text rather than from the registry on purpose: the point is
+    to compare the two. ``None`` means the headline is missing or malformed,
+    which is itself a failure — a legal document that does not say which
+    version it is cannot be the evidence for an acceptance that names one.
+    """
+    import re
+
+    pattern = VERSION_HEADLINE.get(locale)
+    if pattern is None:
+        return None
+    for line in body.splitlines()[:8]:
+        match = re.match(pattern, line.strip())
+        if match:
+            return match.group(1)
+    return None

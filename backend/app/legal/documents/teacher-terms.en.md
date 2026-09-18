@@ -5,7 +5,9 @@
 This agreement is for people who **teach** on Equip: teachers and directors. It
 is in addition to the [Terms of Use](/terms) and the
 [Privacy Policy](/privacy), which still apply to you; where this document says
-something more specific, this document wins.
+something more specific, this document wins. If you teach for a school, that
+school has also accepted the [School Agreement](/school-agreement), and it is
+answerable alongside you for what goes into its courses.
 
 You are being asked to accept it because you can now do three things a student
 cannot: put material in front of other people, see other people's work, and
@@ -44,7 +46,11 @@ of this agreement by you:
 - a **photograph or recording of a person** who did not agree to be shown, and
   of a child without the permission of whoever is responsible for them;
 - anything you are under a **confidentiality obligation** about — from an
-  employer, another school, or a publisher.
+  employer, another school, or a publisher;
+- a copy of anything with the **copyright line, the author's name, the source
+  citation or the watermark taken off it**. Removing that information is a
+  separate wrong from copying, with its own penalties, and the Terms of Use say
+  so at length. Upload the page with the line on it.
 
 If you are not sure, do not upload it. Link to where it is lawfully published
 instead, or ask us at supportequip@gmail.com.
@@ -180,10 +186,12 @@ school.
 
 ## 8. No warranties, and the limits of liability
 
-The **no warranties**, **limits of liability** and **disputes** sections of the
-[Terms of Use](/terms) apply to this agreement in full, including the
-arbitration clause and the class-action waiver — and including your right to
-opt out of them by email within 30 days.
+The **no warranties**, **limits of liability**, **time limit on claims** and
+**disputes** sections of the [Terms of Use](/terms) apply to this agreement in
+full. That means: the platform is provided as it is; our liability to you is
+capped at the greater of what you have paid us in twelve months or US $100; a
+claim has to be brought within a year of arising; and before either of us
+starts anything formal we write to the other and wait 30 days.
 
 ## 9. Changes to this agreement
 

@@ -2,9 +2,13 @@
 
 **Last changed 17 September 2026**
 
-This page is referred to by the [Privacy Policy](/privacy) and is not part of
-it. Changing it does not change what the policy promises, which is why swapping
-a supplier does not ask a hundred people to agree to anything again. What the
+**This page is an annex to the [Privacy Policy](/privacy) and part of it.** It
+is kept separately because it changes on a different clock, not because it
+carries less weight: what it says about a provider is as binding as anything in
+the policy itself.
+
+Changing it does not change what the policy promises, which is why swapping a
+supplier does not ask a hundred people to agree to anything again. What the
 policy promises about all of them is the same in every case: each processes data
 on our instructions and on our behalf, none owns it, and none may use it for
 their own purposes.
@@ -37,8 +41,13 @@ says what the provider holds — and it will never be us holding a card number.
 
 ## If this list changes
 
-The date at the top moves and the row changes. The Privacy Policy keeps its
-version, because the promises in it have not moved. If a change ever does move
-them — a provider that would hold a new category of data, or hold it for a new
-purpose — that is a change to the policy itself, and it comes with a new version
-and a fresh request to agree.
+**You are told, 60 days before it takes effect.** The date at the top moves, the
+row changes, and the change is announced inside the platform. The Privacy Policy
+keeps its version, because the promises in it have not moved — but "we did not
+have to ask you" is not the same as "we did not have to tell you", and you have
+those 60 days to ask us about a new provider, to object, or to close your
+account if the answer does not satisfy you. Write to **supportequip@gmail.com**.
+
+If a change ever does move the promises — a provider that would hold a new
+category of data, or hold it for a new purpose — that is a change to the policy
+itself, and it comes with a new version and a fresh request to agree.

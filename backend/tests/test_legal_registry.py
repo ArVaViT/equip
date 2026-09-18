@@ -14,6 +14,7 @@ opposite is not testing the rule.
 from __future__ import annotations
 
 import dataclasses
+import re
 from datetime import date
 
 from app.legal import (
@@ -30,6 +31,7 @@ from app.legal import (
     outstanding_for,
     required_slugs,
 )
+from app.legal.registry import VERSION_HEADLINE, headline_version
 from app.models.user import UserRole
 
 # ── The shape of the registry itself ──────────────────────────────────
@@ -215,9 +217,12 @@ def _shape(body: str) -> dict[str, object]:
     return {
         "headings": [line.count("#") for line in lines if line.startswith("#")],
         "bullets": sum(1 for line in lines if line.startswith("- ")),
-        "numbered": sum(1 for line in lines if line[:3] in {"1. ", "2. ", "3. ", "4. ", "5. ", "6. "}),
+        "numbered": sum(1 for line in lines if re.match(r"^\d+\. ", line)),
         "table_rows": sum(1 for line in lines if line.startswith("|")),
         "bold": body.count("**"),
+        # Sorted with duplicates kept: a translation that drops one of the two
+        # links to the teacher agreement has dropped a cross-reference, and a
+        # cross-reference is how these documents say who else is bound.
         "links": sorted(part.split(")")[0] for part in body.split("](")[1:]),
     }
 
@@ -239,24 +244,117 @@ def test_every_translation_has_the_same_shape_as_the_english() -> None:
 
 def test_the_documents_keep_the_promises_the_product_makes_elsewhere() -> None:
     # Not stylistic assertions. Each of these is a claim the product makes in
-    # code, and a policy that contradicts it is worse than no policy.
+    # code or a decision recorded elsewhere, and a document that contradicts it
+    # is worse than no document.
     for locale in LOCALES:
         terms = document_for("terms", locale).body
         privacy = document_for("privacy", locale).body
         teacher = document_for("teacher-terms", locale).body
+        school = document_for("school-agreement", locale).body
 
-        # The self-registration floor, and the address every notice goes to.
+        # The address every notice goes to, in every document that names one.
+        for body in (terms, privacy, teacher, school):
+            assert "supportequip@gmail.com" in body
+
+        # Two age floors, and both have to be in both places that enforce them:
+        # 16 to sign up, 13 absolutely, whoever is doing the creating.
+        for body in (terms, privacy, school):
+            assert "13" in body
+        assert "16" in terms
         assert "16" in privacy
-        assert "supportequip@gmail.com" in privacy
-        assert "supportequip@gmail.com" in terms
-        assert "supportequip@gmail.com" in teacher
-        # The arbitration opt-out has to be findable in every language, or it
-        # is not an opt-out for the reader who needs it.
-        assert "Arbitration opt-out" in terms
-        assert "30" in terms
+
         # What the privacy policy exists to be honest about.
         assert "Datadog" in privacy
         assert "Gemini" in privacy
         assert "15" in privacy  # the request-log retention window
+        # The verification link shows a name to anybody holding the number, and
+        # both documents that could hide that say it instead.
+        assert "verify" in privacy
+        assert "verify" in terms
+
+        # The dispute route as it now is: write first, wait 30 days, Indiana.
+        # And as it is not — an arbitration clause that came out deliberately
+        # must not survive in one language because a translation was patched
+        # rather than rewritten.
+        assert "30" in terms
+        assert "Indiana" in terms or "Индиан" in terms or "Індіан" in terms
+        assert "Arbitration opt-out" not in terms
+
+        # The most expensive single risk, and the platform's own undertaking
+        # about it.
+        assert "1202" in terms
+
+        # The three occupied regions, named because US law requires it.
+        assert "WCAG 2.1" in terms
+
         # The teacher agreement's whole reason to exist.
         assert "PDF" in teacher
+
+
+def test_no_document_still_promises_arbitration() -> None:
+    """It was taken out on purpose, in every language, in every file.
+
+    A cross-reference is the easy place for a removed clause to survive: the
+    teacher agreement incorporated "the arbitration clause and the class-action
+    waiver — and your right to opt out of them" from the Terms of Use for
+    several hours after the Terms had stopped having any. Three translators
+    caught it independently, which is a good sign about them and a bad sign
+    about relying on a reader to notice.
+    """
+    allowed = {"terms"}  # the Terms say, once, that there is none
+    for spec in LEGAL_REGISTRY:
+        for locale in LOCALES:
+            body = document_for(spec.slug, locale).body.lower()
+            for word in ("arbitrat", "арбитраж", "арбітраж", "schieds"):
+                if word in body:
+                    assert spec.slug in allowed, (
+                        f"{spec.slug}.{locale}.md still mentions arbitration ({word!r}). "
+                        "The clause was removed; a cross-reference to it is a promise "
+                        "the Terms of Use expressly deny."
+                    )
+
+
+# ── A document has to say which version it is ─────────────────────────
+
+
+def test_every_document_says_its_own_version_and_says_the_right_one() -> None:
+    """The headline on the page and the version in the registry must agree.
+
+    They drifted apart once and nobody noticed: ``terms.en.md`` said "Version
+    1.0" for a month while the registry served 1.1, and nine people accepted
+    1.1. Every one of those rows names a version that was nowhere on the page
+    the person read — which turns "you agreed to version 1.1" into a claim we
+    could not show anybody.
+
+    A missing or malformed headline fails here too. A legal document that does
+    not state its own version cannot be the evidence for an acceptance that
+    names one.
+    """
+    for spec in LEGAL_REGISTRY:
+        if not spec.signable:
+            # The provider annex is dated rather than versioned; its own test
+            # is that the date in the file matches the registry, below.
+            continue
+        for locale in LOCALES:
+            doc = document_for(spec.slug, locale)
+            claimed = headline_version(doc.body, locale)
+            assert claimed is not None, (
+                f"{spec.slug}.{locale}.md has no version headline the parser recognises. "
+                f"Expected a second line matching {VERSION_HEADLINE[locale]!r}."
+            )
+            assert claimed == spec.current.version, (
+                f"{spec.slug}.{locale}.md says it is version {claimed!r}, "
+                f"but the registry serves {spec.current.version!r}. An acceptance would "
+                "name a version the reader never saw."
+            )
+
+
+def test_the_provider_annex_is_dated_the_day_the_registry_says() -> None:
+    # Its "version" is the date it last changed, so the two have to match in
+    # the one place a reader can check: the top of the page.
+    spec = document_spec("providers")
+    day, month, year = spec.current.effective.day, spec.current.effective.month, spec.current.effective.year
+    english = document_for("providers", "en").body
+    assert str(year) in english.splitlines()[2]
+    assert str(day) in english.splitlines()[2]
+    assert month == 9

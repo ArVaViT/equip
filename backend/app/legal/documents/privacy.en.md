@@ -18,6 +18,21 @@ platform rather than a legal entity, and questions go to
 **supportequip@gmail.com**. We say this plainly because it is worth knowing
 before you sign up: in a dispute there is nobody to escalate to except us.
 
+**Who decides what happens to your data.** For your account and for the running
+of the platform, that is us — in data-protection language, we are the
+controller, and supportequip@gmail.com is the address for every question,
+request or complaint about it. For your coursework, your marks and your
+progress, the school teaching you decides: the school is the controller and we
+act on its instructions, which is what the [School Agreement](/school-agreement)
+sets out. In practice write to us either way and we will sort out which of us
+answers.
+
+**If we get it wrong.** Tell us first — we would rather fix it than be told
+about it by somebody else. But if you are in the European Economic Area or the
+United Kingdom you also have the right to complain to the data-protection
+authority of the country you live in, and you do not need our permission or our
+agreement to do it.
+
 ## What we store
 
 **What you enter yourself.** Name, email address, profile photograph, preferred
@@ -93,9 +108,10 @@ no advertising or cross-site cookies.
 
 The platform runs on infrastructure we rent. Each provider processes data on
 our instructions and on our behalf; none owns it, and none may use it for their
-own purposes. **Who they are at any moment is listed at
-[/privacy/providers](/privacy/providers)**, with the date that list last
-changed. What they do is here, because that is the part that is a promise:
+own purposes. **Who they are at any moment is the list at
+[/privacy/providers](/privacy/providers), which is part of this policy** — an
+annex to it, not a leaflet beside it. What they do is here, because that is the
+part that is a promise:
 
 - **Supabase** — the database, sign-in, and uploaded files. Everything the
   platform stores is stored there, including the session record with your IP
@@ -117,9 +133,42 @@ changed. What they do is here, because that is the part that is a promise:
 - **Resend** — sends the platform's email. It holds the address the message went
   to, its subject and body, and whether it was accepted.
 
-If a provider is ever replaced by another doing the same job, the list changes
-and the date on it moves. That is not a change to this policy; see **Changes**
-below.
+**When that list changes, we tell you.** Adding a provider, or swapping one for
+another doing the same job, is published on the annex with the date it changed
+and announced to you inside the platform, 60 days before it takes effect. You do
+not have to agree to it — the promises in this policy have not moved — but you
+are told in time to object, to ask us about it, or to close your account if the
+answer does not satisfy you. Write to supportequip@gmail.com; we will answer.
+What is *not* a mere change of supplier is a provider that would hold a category
+of data no provider held before, or hold it for a new purpose. That is a change
+to this policy itself, and it comes with a new version and a fresh request to
+agree.
+
+**Where all of this is.** Every provider above is in the United States, and the
+platform is operated from there, so using it means your data is processed in the
+United States. If you are in the European Economic Area or the United Kingdom,
+that is a transfer out of your country. We are not going to dress that up: the
+transfer paperwork — which provider relies on which safeguard — is being put on
+a proper footing, and this section will name the mechanism for each provider
+when it is. Until it does, you should assume nothing more than what is written
+here, and if that is not enough for you, say so before you sign up rather than
+after.
+
+**Why we hold what we hold.** For the law that asks this question directly: we
+process your account and your coursework in order to provide the platform you
+asked for and to perform what is agreed in these documents; we process technical
+logs, error reports and session recordings on the basis of our legitimate
+interest in a platform that works and can be repaired, weighed against the
+honest description of it above; we process what a school gives us on that
+school's instructions; and where we ever ask for your consent to something, we
+ask for it separately and you can take it back. We do not sell anything, and
+there is no processing here for advertising.
+
+**Where your data comes from, when it is not from you.** Usually you type it in.
+But a school administrator can enrol a student, which means the school gives us
+that person's name and email address before that person has given us anything.
+If that is how your account came to exist, the school is where it came from, and
+you can ask us what we hold about you exactly as anybody else can.
 
 ## Who can see it inside the platform
 
@@ -131,6 +180,13 @@ below.
 - **The people who run the platform** — technically, anyone administering the
   database can see what is in it. We look when something is broken or when
   somebody reports a problem, not otherwise.
+- **Anybody holding one of your certificate numbers.** A certificate is checked
+  at `equipbible.com/verify/<number>`, without an account and without signing
+  in, and the answer shows **the name it was issued to, the course title and the
+  date**. That is what makes a certificate worth having; it also means those
+  three things are visible to whoever you give the number to, and to whoever
+  they give it to. Nothing else about you is shown, and a number that matches
+  nothing shows nothing.
 - **Nobody else.** We do not sell data, hand it to advertisers, or share it with
   third parties beyond the providers above.
 
@@ -184,9 +240,12 @@ Everything else goes.
   and we will put it together and send it. There is no self-service export
   button yet.
 - **Delete your account and your coursework** — write to
-  supportequip@gmail.com. We do it by hand today; there is no delete button in
-  the profile yet. Issued certificates stay, and so does the anonymised record
-  of your acceptance, per the note above.
+  supportequip@gmail.com with the subject line **Delete my account**. There is
+  no delete button in the profile and no self-service route: we do it by hand,
+  and **within 30 days** of your asking. We will confirm when it is done and
+  tell you what remained. What remains is the three things named above and
+  nothing else: certificates already issued, the grade sheets recording them,
+  and the record that you accepted these documents with you taken out of it.
 - **Correct something that is wrong** — tell us and we will fix it.
 - **Object to the session recording** — we cannot switch it off for one account
   today. If that is not acceptable to you, deleting the account is the honest
@@ -198,9 +257,17 @@ We answer these within 30 days.
 
 ## Age
 
-You can register yourself from **16**. A younger student is enrolled by a school
-administrator, and in that case parental consent is the school's responsibility
-— they know the family and we do not.
+You can register yourself from **16**. Between **13 and 16** an account can only
+be opened by a school administrator, and in that case the consent of whoever is
+responsible for the student is the school's responsibility — they know the
+family and we do not. That obligation is written into the
+[School Agreement](/school-agreement) rather than assumed.
+
+**Under 13, no account, by any route.** Not by signing up, and not by a school
+administrator creating one. If we find an account belongs to a child under 13 we
+close it and delete its data, and we will tell the school. If you believe a
+child under 13 has an account here, write to supportequip@gmail.com and we will
+deal with it.
 
 ## Email the platform sends
 
@@ -247,9 +314,12 @@ these:
 
 **Anything else is notified, not re-signed.** Swapping one provider for another
 doing the same job, shortening a retention window, adding a new right,
-correcting a mistake, or saying the same thing more clearly — these take effect
-when the new version is published, and you are told about it inside the
-platform. The provider list is kept on its own page for exactly this reason: a
+correcting a mistake, or saying the same thing more clearly — these are
+published, you are told about them inside the platform, and they **take effect
+60 days later**. You do not have to accept them; you may accept them sooner if
+you want the new version to apply to you straight away, and if you would rather
+not be bound by one you have those 60 days to ask us about it or to close your
+account. The provider annex changes on the same terms and for the same reason: a
 change of supplier moves no promise, and making it a fresh signing round would
 train people to click through a consent screen without reading it, which is the
 opposite of what consent is for.
