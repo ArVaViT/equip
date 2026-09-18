@@ -78,3 +78,44 @@ describe("renderLegalMarkdown", () => {
     expect(container.querySelectorAll("p")).toHaveLength(2)
   })
 })
+
+describe("the documents point at each other", () => {
+  it("renders a cross-reference as a link rather than as its own source", () => {
+    render(
+      <div>
+        {renderLegalMarkdown("Teachers are also bound by the [Teacher Agreement](/teacher-terms).")}
+      </div>,
+    )
+    const link = screen.getByRole("link", { name: "Teacher Agreement" })
+    expect(link).toHaveAttribute("href", "/teacher-terms")
+    // Until 2026-09-17 this rendered the square brackets, and a reader
+    // following a cross-reference was reading Markdown source.
+    expect(screen.queryByText(/\[Teacher Agreement\]/)).not.toBeInTheDocument()
+  })
+
+  it("leaves an external link as plain text rather than pointing a reader off the platform", () => {
+    render(<div>{renderLegalMarkdown("See [somewhere else](https://example.com).")}</div>)
+    expect(screen.queryByRole("link")).not.toBeInTheDocument()
+  })
+
+  it("keeps bold working next to a link", () => {
+    const { container } = render(
+      <div>{renderLegalMarkdown("**Counter-notice.** Write to us via the [Terms](/terms).")}</div>,
+    )
+    expect(container.querySelector("strong")).toHaveTextContent("Counter-notice.")
+    expect(screen.getByRole("link", { name: "Terms" })).toHaveAttribute("href", "/terms")
+  })
+
+  it("numbers the takedown notice, because the count is load-bearing", () => {
+    const { container } = render(
+      <div>
+        {renderLegalMarkdown(
+          ["Your notice should contain:", "", "1. Your signature.", "2. The work.", "3. Where it is."].join("\n"),
+        )}
+      </div>,
+    )
+    const items = container.querySelectorAll("ol > li")
+    expect(items).toHaveLength(3)
+    expect(items[0]).toHaveTextContent("Your signature.")
+  })
+})

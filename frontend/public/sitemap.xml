@@ -54,6 +54,16 @@
     <priority>0.4</priority>
   </url>
   <url>
+    <loc>https://equipbible.com/teacher-terms</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://equipbible.com/school-agreement</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
     <loc>https://equipbible.com/forgot-password</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>

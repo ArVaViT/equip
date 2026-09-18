@@ -109,3 +109,20 @@ describe("the language the reader is actually being shown", () => {
     expect(screen.queryByText("This document is available in English only.")).not.toBeInTheDocument()
   })
 })
+
+describe("the language of the document, not of the interface", () => {
+  it("marks the article with the language it is actually showing", async () => {
+    // The reader's interface is English here and the served document is
+    // Russian — which is the case the `<html lang>` on the page gets wrong.
+    await i18n.changeLanguage("en")
+    vi.spyOn(legalService, "document").mockResolvedValue(DOC)
+    const { container } = render(<LegalDocumentPage slug="privacy" />, { wrapper: Wrapper })
+
+    await screen.findByRole("heading", { level: 1 })
+    const article = container.querySelector("article")
+    expect(article).toHaveAttribute("lang", "ru")
+    // Hyphenation without a language is hyphenation by the wrong rules, and a
+    // German compound broken mid-morpheme looks like a rendering fault.
+    expect(article?.className).toContain("hyphens-auto")
+  })
+})

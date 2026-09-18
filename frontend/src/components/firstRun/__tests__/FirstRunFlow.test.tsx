@@ -68,15 +68,16 @@ vi.mock("@/lib/toast", () => ({
 vi.mock("@/services/legal", () => ({
   legalService: {
     documents: vi.fn().mockResolvedValue([
-      { slug: "privacy", version: "1.0" },
-      { slug: "terms", version: "1.0" },
+      { slug: "privacy", version: "1.0", effective: "2026-09-17", required_for: ["admin", "director", "student", "teacher"], requires_consent: true },
+      { slug: "terms", version: "1.0", effective: "2026-09-17", required_for: ["admin", "director", "student", "teacher"], requires_consent: true },
     ]),
     status: vi.fn().mockResolvedValue({
       accepted: [],
       outstanding: [
-        { slug: "privacy", version: "1.0" },
-        { slug: "terms", version: "1.0" },
+        { slug: "privacy", version: "1.0", effective: "2026-09-17", required_for: ["admin", "director", "student", "teacher"], requires_consent: true },
+        { slug: "terms", version: "1.0", effective: "2026-09-17", required_for: ["admin", "director", "student", "teacher"], requires_consent: true },
       ],
+      notices: [],
     }),
     accept: vi.fn().mockResolvedValue({
       slug: "privacy",
@@ -96,6 +97,7 @@ const NOTHING_OWED: LegalStatus = {
     { slug: "terms", version: "1.0", locale: "en", accepted_at: "2026-08-13T00:00:00Z" },
   ],
   outstanding: [],
+  notices: [],
 }
 
 function makeUser(overrides: Partial<User> = {}): User {
@@ -432,6 +434,38 @@ describe("FirstRunFlow", () => {
     await waitFor(() => expect(onboardingService.complete).toHaveBeenCalledTimes(1))
   })
 
+  it("does not slip the teacher agreement into a checkbox that names two other documents", async () => {
+    const { legalService } = await import("@/services/legal")
+    vi.mocked(legalService.status).mockResolvedValueOnce({
+      accepted: [
+        { slug: "privacy", version: "1.0", locale: "en", accepted_at: "2026-09-17T00:00:00Z" },
+        { slug: "terms", version: "1.0", locale: "en", accepted_at: "2026-09-17T00:00:00Z" },
+      ],
+      outstanding: [
+        {
+          slug: "teacher-terms",
+          version: "1.0",
+          effective: "2026-09-17",
+          required_for: ["admin", "director", "teacher"],
+          requires_consent: true,
+        },
+      ],
+      notices: [],
+    })
+    const { container } = render(
+      <Wrapper user={makeUser({ role: "teacher", onboarding_completed_at: "2026-05-01T00:00:00Z" })}>
+        <FirstRunFlow />
+      </Wrapper>,
+    )
+
+    // The teacher agreement has its own screen, with its own words. Riding
+    // along here would record somebody agreeing to it under a sentence that
+    // names the privacy policy and the terms of use and nothing else.
+    await waitFor(() => expect(legalService.status).toHaveBeenCalled())
+    await waitFor(() => expect(container.firstChild).toBeNull())
+    expect(legalService.accept).not.toHaveBeenCalledWith("teacher-terms", "1.0", expect.anything())
+  })
+
   it("tells somebody who accepted an earlier version that the documents changed, not «Before we begin»", async () => {
     const { legalService } = await import("@/services/legal")
     vi.mocked(legalService.status).mockResolvedValueOnce({
@@ -440,9 +474,10 @@ describe("FirstRunFlow", () => {
         { slug: "terms", version: "0.9", locale: "en", accepted_at: "2026-05-01T00:00:00Z" },
       ],
       outstanding: [
-        { slug: "privacy", version: "1.0" },
-        { slug: "terms", version: "1.0" },
+        { slug: "privacy", version: "1.0", effective: "2026-09-17", required_for: ["admin", "director", "student", "teacher"], requires_consent: true },
+        { slug: "terms", version: "1.0", effective: "2026-09-17", required_for: ["admin", "director", "student", "teacher"], requires_consent: true },
       ],
+      notices: [],
     })
     render(
       <Wrapper user={makeUser({ onboarding_completed_at: "2026-05-01T00:00:00Z" })}>
@@ -457,7 +492,10 @@ describe("FirstRunFlow", () => {
     const { legalService } = await import("@/services/legal")
     vi.mocked(legalService.status).mockResolvedValueOnce({
       accepted: [{ slug: "privacy", version: "0.9", locale: "en", accepted_at: "2026-05-01T00:00:00Z" }],
-      outstanding: [{ slug: "privacy", version: "1.0" }],
+      outstanding: [
+        { slug: "privacy", version: "1.0", effective: "2026-09-17", required_for: ["admin", "director", "student", "teacher"], requires_consent: true },
+      ],
+      notices: [],
     })
     const { container } = render(
       <Wrapper user={makeUser({ onboarding_completed_at: "2026-05-01T00:00:00Z" })}>

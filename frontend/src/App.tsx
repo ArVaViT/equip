@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef } from "react"
+import { Suspense, useEffect, useRef, useSyncExternalStore } from "react"
 import { lazyRoute } from "@/lib/lazyRoute"
 import { BrowserRouter, Route, Navigate, useLocation, useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
@@ -22,6 +22,7 @@ import { inviteAcceptPath } from "@/lib/inviteLink"
 import { returnPathFrom } from "@/lib/authRedirect"
 import { canTeach } from "@/lib/roles"
 import { DeniedRedirect } from "@/components/auth/DeniedRedirect"
+import { getTeacherAgreementOwed, subscribeTeacherAgreement } from "@/components/legal/useTeacherAgreement"
 
 // Lazy: FirstRunFlow renders null until a brand-new user's privacy/setup gate
 // activates, so it never needs to be on the critical path — its component code
@@ -33,6 +34,15 @@ import { DeniedRedirect } from "@/components/auth/DeniedRedirect"
 // its own inactive state.
 const FirstRunFlow = lazyRoute(() =>
   import("@/components/firstRun").then((m) => ({ default: m.FirstRunFlow })),
+)
+
+// Same reasoning: both render null until the server says somebody owes
+// something, which for almost every load is never.
+const TeacherAgreementGate = lazyRoute(() =>
+  import("@/components/legal").then((m) => ({ default: m.TeacherAgreementGate })),
+)
+const LegalNoticeBanner = lazyRoute(() =>
+  import("@/components/legal").then((m) => ({ default: m.LegalNoticeBanner })),
 )
 
 const NotFound = lazyRoute(() => import("./pages/NotFound"))
@@ -104,6 +114,16 @@ type RouteMode = "private" | "public" | "teacher" | "admin"
 function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }) {
   const { user, loading } = useAuth()
   const location = useLocation()
+  // Published by ``useTeacherAgreement``, which owns the poll. Read here so a
+  // teaching route is refused outright rather than merely covered by the
+  // overlay: the overlay is what a person sees, and this is what happens if
+  // they get past it — a deep link followed before the answer arrives, a
+  // stale tab, anything that puts a /teacher route on screen underneath.
+  const teacherAgreementOwed = useSyncExternalStore(
+    subscribeTeacherAgreement,
+    getTeacherAgreementOwed,
+    getTeacherAgreementOwed,
+  )
   if (loading) return <PageSpinner />
   if (mode === "public") {
     // Back to the page a private gate refused, once there is someone to
@@ -115,6 +135,12 @@ function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }
   }
   if (mode === "teacher" && !canTeach(user.role)) {
     return <DeniedRedirect />
+  }
+  if (mode === "teacher" && teacherAgreementOwed) {
+    // Not ``DeniedRedirect``: they are not denied, they have not read the
+    // thing yet, and the screen that says so is already up. Home is where
+    // they land when they close it.
+    return <Navigate to="/" replace />
   }
   if (mode === "admin" && user.role !== "admin") {
     return <DeniedRedirect />
@@ -209,6 +235,11 @@ function AppRoutes() {
         {t("common.skipToContent")}
       </a>
       <Header />
+      {/* A document changed in a way that changes nothing anybody agreed to.
+          A strip rather than a modal, because nothing is being asked. */}
+      <Suspense fallback={null}>
+        <LegalNoticeBanner />
+      </Suspense>
       <AnnouncementBanner />
       {/* ``min-h-[calc(100dvh-header)]`` keeps the footer permanently below
           the initial viewport on every authenticated page — you only see it
@@ -241,6 +272,13 @@ function AppRoutes() {
               <Route path="/verify/:certificateNumber" element={<VerifyCertificatePage />} />
               <Route path="/privacy" element={<LegalDocumentPage slug="privacy" />} />
               <Route path="/terms" element={<LegalDocumentPage slug="terms" />} />
+              {/* Public like the other two: somebody deciding whether to accept
+                  a teaching role has to be able to read what it binds them to
+                  before they are standing in front of the checkbox. */}
+              <Route path="/teacher-terms" element={<LegalDocumentPage slug="teacher-terms" />} />
+              {/* Public for the same reason: a director is asked to bind a
+                  whole school to this, and has to be able to read it first. */}
+              <Route path="/school-agreement" element={<LegalDocumentPage slug="school-agreement" />} />
               {/* Linked from the privacy policy; read, never signed. */}
               <Route path="/privacy/providers" element={<LegalDocumentPage slug="providers" />} />
               <Route path="/profile" element={<Gate mode="private"><ProfilePage /></Gate>} />
@@ -298,6 +336,13 @@ function AppRoutes() {
           actual stacking source of truth. */}
       <Suspense fallback={null}>
         <FirstRunFlow />
+      </Suspense>
+      {/* Congratulation and gate in one, the moment somebody becomes a
+          teacher. Sits one z-index below the first-run gate and hides itself
+          while that one is up, so a brand-new teacher is asked to consent
+          before being congratulated. */}
+      <Suspense fallback={null}>
+        <TeacherAgreementGate />
       </Suspense>
     </div>
   )
