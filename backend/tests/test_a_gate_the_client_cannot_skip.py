@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from app.api import consent_gate
-from app.legal import LEGAL_DOCUMENTS
+from app.legal import LEGAL_DOCUMENTS, required_slugs
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -69,7 +69,7 @@ def test_the_refusal_names_what_is_still_owed(student_client: TestClient) -> Non
     response = student_client.patch(PREFERENCES, json={"preferred_locale": "de"})
 
     outstanding = response.json()["detail"]["context"]["outstanding"]
-    assert set(outstanding) == set(LEGAL_DOCUMENTS)
+    assert set(outstanding) == set(required_slugs("student"))
 
 
 def test_the_same_change_goes_through_once_they_have_accepted(student_client: TestClient) -> None:
@@ -215,10 +215,10 @@ class TestWhatTheRegistrySays:
     def test_holding_an_old_version_owes_that_document(self) -> None:
         accepted = {(slug, "0.0") for slug in LEGAL_DOCUMENTS}
 
-        assert set(consent_gate.outstanding_slugs("student", accepted)) == set(LEGAL_DOCUMENTS)
+        assert set(consent_gate.outstanding_slugs("student", accepted)) == set(required_slugs("student"))
 
     def test_holding_nothing_owes_everything(self) -> None:
-        assert set(consent_gate.outstanding_slugs("teacher", set())) == set(LEGAL_DOCUMENTS)
+        assert set(consent_gate.outstanding_slugs("teacher", set())) == set(required_slugs("teacher"))
 
 
 def test_a_person_who_owes_one_document_of_two_is_still_stopped(student_client: TestClient, db: Session) -> None:

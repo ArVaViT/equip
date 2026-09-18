@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import pytest
+
 from app.legal import LEGAL_DOCUMENTS, required_slugs
 from app.models.legal_acceptance import LegalAcceptance
 
@@ -27,6 +29,18 @@ from .conftest import STUDENT_ID
 
 ACCEPT = "/api/v1/legal/acceptances"
 MINE = "/api/v1/legal/acceptances/me"
+
+
+@pytest.fixture(autouse=True)
+def _they_arrive_having_signed_nothing(nobody_has_signed_anything: None) -> None:
+    """These tests are about acceptances; a pre-signed fixture user hides them.
+
+    ``conftest._everybody_in_the_tests_has_already_signed`` gives every
+    fabricated profile the current acceptances so the several hundred tests
+    that write something are not stopped at a consent screen they are not
+    about. Here the rows under test *are* the acceptances.
+    """
+
 
 #: What the trigger leaves behind. sha256 of some account id that is gone.
 ORPHAN_FINGERPRINT = "9f2c8b1e" * 8
