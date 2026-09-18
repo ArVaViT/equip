@@ -1,5 +1,6 @@
 import type { Ref } from "react"
 import { useTranslation } from "react-i18next"
+import { UploadRightsNotice } from "@/components/legal/UploadRightsNotice"
 import type { TFunction } from "i18next"
 import { Button } from "@/components/ui/button"
 import { Download, Loader2, Paperclip, X } from "lucide-react"
@@ -85,6 +86,7 @@ export function MaterialsModal({
           className="hidden"
           onChange={onUploadChange}
         />
+        <UploadRightsNotice className="-mt-2" />
         {materials.length === 0 ? (
           <EmptyState
             variant="compact"
