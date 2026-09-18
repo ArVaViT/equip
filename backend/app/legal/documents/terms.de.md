@@ -244,7 +244,10 @@ handeln, eine Aufzeichnung gegen das Konto, das das Material hochgeladen hat.
 **Mehr als zwei begründete Beschwerden über ein Konto, und das Konto wird
 geschlossen** — und es wird nicht wieder geöffnet. Eine Beschwerde gilt als
 begründet, wenn wir das Material entfernt haben und entweder keine
-Gegendarstellung kam oder die Gegendarstellung sie nicht entkräftet hat.
+Gegendarstellung kam oder die Gegendarstellung sie nicht entkräftet hat. Eine
+Beschwerde, die wir zurückweisen, und eine, die der Absender zurückzieht, zählen
+gar nicht und hinterlassen am Konto keine Spur — gezählt wird, wie oft wir einem
+Rechteinhaber recht gegeben haben, nicht wie oft sich jemand beschwert hat.
 
 Eine Mitteilung zu senden, von der Sie wissen, dass sie falsch ist, ist selbst
 rechtswidrig nach § 512(f) und kann teuer werden.

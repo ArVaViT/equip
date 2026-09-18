@@ -159,6 +159,25 @@ LEGAL_REGISTRY: tuple[DocumentSpec, ...] = (
         required_for=RUNS_A_SCHOOL,
         revisions=(Revision("1.0", date(2026, 9, 17), consent=True),),
     ),
+    # ── Changing this list is a new revision, never an edit in place ──
+    #
+    # The Privacy Policy promises that a change of sub-processor is announced
+    # 60 days before it takes effect. That promise is kept by machinery that
+    # watches for a *new revision* of this document: it compares the version a
+    # person has been told about with the version the registry now serves, and
+    # says nothing when the two are equal.
+    #
+    # So editing ``providers.*.md`` and leaving the revision alone does not
+    # merely skip the announcement — it makes the promise false, silently, in
+    # the one direction nobody checks. A supplier would change, the annex would
+    # show a new date, and not one person would be told.
+    #
+    # The rule, therefore: **adding, removing or replacing a provider means
+    # appending a Revision here with a later effective date**, on the same day
+    # the files change, in the same commit. ``consent=False`` — nobody signs
+    # it — but a revision it must be. The fingerprint test will stop a text
+    # edit without one; nothing will stop a text edit *with* a hand-adjusted
+    # date, which is why this is written down rather than assumed.
     DocumentSpec(
         slug="providers",
         required_for=frozenset(),
@@ -215,10 +234,10 @@ LEGAL_DOCUMENT_FINGERPRINTS: dict[tuple[str, str, str], str] = {
     ("privacy", "2.0", "ru"): "fefbfa012fa3eaf0a7ad356ca1ddb13cd40986da3a5cac07cc87d677e72954ae",
     ("privacy", "2.0", "de"): "a689a5518d6dbd0688c5dd54b2dccf499cafc64a6ab456cb19dafce0938c6627",
     ("privacy", "2.0", "uk"): "53ca35aa796a7257670b7e5a920106a5e7131996a5692924dcca64cb84370a43",
-    ("terms", "2.0", "en"): "0510d5d4ff749029bee54b403a502ffefc5087b8fa882b5d5179490b06cbc2c4",
-    ("terms", "2.0", "ru"): "a48034c571ea23df68fe402adc1616846c5bc783845bbb0479678de024e16013",
-    ("terms", "2.0", "de"): "af438c6e6afe39cf07d966095278f7245abdb6ea29c02335e935415264809850",
-    ("terms", "2.0", "uk"): "940e226a76072ff07cd61b0d920752cec513272bb3913f99c5525fa488ff6c8b",
+    ("terms", "2.0", "en"): "7d28ec5c0ac4915069dd8d8b30329fb9a47e7a4126eb4c846cd2f2464feabd92",
+    ("terms", "2.0", "ru"): "81f0314fbf09dc4a46d28b640f6e44face12c02ca1db6505b53b7b8fdea0d014",
+    ("terms", "2.0", "de"): "0f9f3a28012cd03f27a13210604dacfd63918956f08f972075064ed6f2afa26d",
+    ("terms", "2.0", "uk"): "8396ef699222cce5c3141f381b715febcdc63160973b6b3e9744c8bc8bc5b9fe",
     ("teacher-terms", "1.0", "en"): "53292c0b7d076bb6bf7957adb125331c5f17e1afcec80978b3a87e93d8dc7b60",
     ("teacher-terms", "1.0", "ru"): "79b0b55f071d0255b7412183f2d7531b9e871d0383c04e122b99dc8debf14bef",
     ("teacher-terms", "1.0", "de"): "cba6237c2e38fbe292efb7324b4e80d91c2b491b912f8f7a6e14d4dd5242dbcc",
