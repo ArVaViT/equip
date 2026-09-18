@@ -64,6 +64,11 @@
     <priority>0.4</priority>
   </url>
   <url>
+    <loc>https://equipbible.com/dmca</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
     <loc>https://equipbible.com/forgot-password</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>

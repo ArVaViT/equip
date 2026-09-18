@@ -2504,6 +2504,50 @@
         "acceptError": "Konnte nicht angenommen werden — bitte erneut versuchen.",
         "retryError": "Konnte nicht zurückgegeben werden — bitte erneut versuchen."
       }
+    },
+    "tabDmca": "Urheberrecht",
+    "dmca": {
+      "title": "Urheberrechtsbeschwerden",
+      "description": "Jede eingegangene Mitteilung, was darüber entschieden wurde und wie oft es dieselbe Person war.",
+      "refresh": "Aktualisieren",
+      "loadError": "Die Beschwerden konnten nicht geladen werden.",
+      "empty": {
+        "title": "Keine Beschwerden",
+        "body": "Es ist nichts eingegangen. Kommt eine Mitteilung per E-Mail, halten Sie sie hier fest."
+      },
+      "status": {
+        "received": "Eingegangen",
+        "upheld": "Bestätigt",
+        "rejected": "Abgelehnt",
+        "withdrawn": "Zurückgezogen"
+      },
+      "strike": "Verstoß {{number}}",
+      "accountClosed": "Konto geschlossen",
+      "upheldCount_one": "{{count}} bestätigt",
+      "upheldCount_other": "{{count}} bestätigt",
+      "field": {
+        "complainant": "Von",
+        "uploader": "Hochgeladen von",
+        "unknownUploader": "nicht ermittelt",
+        "uploaderTold": "Hochladende Person benachrichtigt",
+        "notYet": "noch nicht",
+        "decision": "Entscheidung"
+      },
+      "action": {
+        "uphold": "Bestätigen und entfernen",
+        "reject": "Ablehnen"
+      },
+      "confirm": {
+        "upholdTitle": "Diese Beschwerde bestätigen?",
+        "rejectTitle": "Diese Beschwerde ablehnen?",
+        "body": "Dies wird einmal festgehalten und lässt sich danach nicht ändern. Ein Fehler wird durch einen neuen Eintrag berichtigt.",
+        "willCloseAccount": "Dies ist die dritte bestätigte Beschwerde über {{name}}; mit der Bestätigung wird dieses Konto geschlossen. Es wird einmal festgehalten und lässt sich danach nicht ändern.",
+        "confirm": "Festhalten"
+      },
+      "toast": {
+        "recorded": "Festgehalten.",
+        "failed": "Die Entscheidung konnte nicht festgehalten werden."
+      }
     }
   },
   "roles": {
@@ -2922,5 +2966,39 @@
     "linkLabel": "Link zum Meeting",
     "linkPlaceholder": "https://zoom.us/j/…",
     "linkHint": "Optional. Zoom, Google Meet — ein beliebiger Link. Studenten sehen dann eine Schaltfläche „Beitreten“."
+  },
+  "dmca": {
+    "title": "Urheberrechtsbeschwerden",
+    "intro": "Kurse auf Equip werden von den Lehrenden geschrieben und hochgeladen, die sie halten. Wenn hier etwas Ihnen gehört und nicht hier sein sollte, schreiben Sie uns, und wir sehen es uns an. Diese Seite sagt, wie — und was danach geschieht.",
+    "notice": {
+      "heading": "Eine Mitteilung senden",
+      "lead": "Schreiben Sie an die Adresse unten. Eine Mitteilung nach 17 U.S.C. § 512(c)(3) muss alle sechs Punkte enthalten, sonst dürfen wir möglicherweise nicht darauf reagieren:",
+      "item1": "Ihre Unterschrift — handschriftlich oder elektronisch — als Rechteinhaber oder als jemand, der befugt ist, für ihn zu handeln.",
+      "item2": "Das Werk, dessen Rechte Ihrer Ansicht nach verletzt werden. Bei mehreren Werken auf einer Seite: eine Liste.",
+      "item3": "Wo das Material auf Equip liegt: die Seitenadresse und genug Angaben, damit wir es finden.",
+      "item4": "Wie wir Sie erreichen: Anschrift, Telefon, E-Mail.",
+      "item5": "Eine Erklärung, dass Sie in gutem Glauben annehmen, diese Nutzung sei weder vom Rechteinhaber noch von seinem Vertreter noch vom Gesetz gestattet.",
+      "item6": "Eine Erklärung, dass die Angaben zutreffen, und — unter Strafe des Meineids — dass Sie befugt sind, für den Rechteinhaber zu handeln.",
+      "sendTo": "Senden Sie sie an",
+      "whatWeDo": "Wir halten die Mitteilung fest, entfernen oder sperren das benannte Material, wenn wir ihr folgen, und benachrichtigen die Person, die es hochgeladen hat."
+    },
+    "counter": {
+      "heading": "Auf eine Mitteilung antworten",
+      "lead": "Wurde Ihr Material entfernt und halten Sie das für einen Fehler, können Sie eine Gegendarstellung nach § 512(g)(3) senden. Sie muss alle vier Punkte enthalten:",
+      "item1": "Ihre Unterschrift, handschriftlich oder elektronisch.",
+      "item2": "Was entfernt wurde und wo es vor der Entfernung stand.",
+      "item3": "Eine Erklärung unter Strafe des Meineids, dass Sie in gutem Glauben annehmen, das Material sei irrtümlich oder aufgrund einer Verwechslung entfernt worden.",
+      "item4": "Ihren Namen, Ihre Anschrift und Telefonnummer sowie die Erklärung, dass Sie sich der Zuständigkeit des Bundesgerichts Ihres Bezirks unterwerfen — oder, außerhalb der Vereinigten Staaten, jedes Bezirks, in dem wir angetroffen werden können — und Zustellungen der beschwerdeführenden Person annehmen.",
+      "whatHappens": "Wir leiten Ihre Gegendarstellung an die beschwerdeführende Person weiter. Teilt sie uns nicht binnen zehn Werktagen mit, dass sie Klage erhoben hat, können wir das Material zehn bis vierzehn Werktage nach Eingang wieder einstellen."
+    },
+    "repeat": {
+      "heading": "Wiederholte Verstöße",
+      "body": "Wir halten jede Beschwerde und die Entscheidung darüber schriftlich fest. Mehr als zwei bestätigte Beschwerden über eine Person, und das Konto wird geschlossen. Das ist kein Ermessen von Fall zu Fall: Die Zählung führt dasselbe System, das das Konto schließt — beide können nicht auseinandergehen."
+    },
+    "misuse": {
+      "heading": "Eine leichtfertig gesendete Mitteilung",
+      "body": "Nach § 512(f) haftet, wer wissentlich falsch behauptet, Material verletze Rechte, für die dadurch entstandenen Kosten und Schäden — unsere und die der Person, deren Arbeit entfernt wurde. Bitte vergewissern Sie sich, bevor Sie schreiben."
+    },
+    "seeTerms": "Was wir übernehmen und was Lehrende beim Hochladen zusichern, steht in den"
   }
 }

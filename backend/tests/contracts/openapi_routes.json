@@ -162,6 +162,54 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/admin/dmca/complaints",
+    "params": [
+      [
+        "limit",
+        "query"
+      ],
+      [
+        "skip",
+        "query"
+      ],
+      [
+        "status",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/admin/dmca/complaints",
+    "params": [],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/admin/dmca/complaints/{complaint_id}",
+    "params": [
+      [
+        "complaint_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/admin/org-settings",
     "params": [],
     "responses": [
