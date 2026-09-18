@@ -73,6 +73,16 @@ def test_a_page_nobody_signs_never_asks_for_a_signature() -> None:
             assert spec.slug not in LEGAL_DOCUMENTS
 
 
+def test_the_school_agreement_is_asked_of_a_director_and_nobody_else() -> None:
+    # It is the one document accepted on somebody else's behalf: a director
+    # signing it binds the organisation. A platform administrator is us, not a
+    # school — there is no organisation for them to bind, so they are never
+    # shown it, and neither is a teacher or a student.
+    assert "school-agreement" in required_slugs("director")
+    for role in ("student", "teacher", "admin"):
+        assert "school-agreement" not in required_slugs(role), f"{role} is being asked to bind a school on its behalf"
+
+
 def test_the_teacher_agreement_is_asked_of_teachers_and_not_of_students() -> None:
     assert "teacher-terms" in required_slugs("teacher")
     assert "teacher-terms" in required_slugs("director")

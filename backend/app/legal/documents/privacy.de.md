@@ -137,7 +137,15 @@ Teil ist, der ein Versprechen ist:
   bedient. Gesendet wird von Lehrenden verfasstes Kursmaterial: Titel,
   Lektionstexte, Quizfragen, Ankündigungen. **Von Studierenden eingereichte
   Arbeiten werden niemals gesendet** — weder zur Übersetzung noch für sonst
-  etwas.
+  etwas. Wir nutzen bewusst den **kostenpflichtigen** Tarif, und genau darauf
+  kommt es hier an: Auf dem kostenpflichtigen Tarif sagen Googles eigene
+  Bedingungen, dass es **Eingaben und Antworten nicht zur Verbesserung seiner
+  Produkte verwendet**, sie nur für eine begrenzte Zeit und nur zur Erkennung
+  von Verstößen gegen seine Nutzungsrichtlinie protokolliert und sie nicht von
+  Menschen lesen lässt, um seine Modelle zu verbessern. Auf dem kostenlosen
+  Tarif ist alles drei umgekehrt. Sollten wir je vom kostenpflichtigen Tarif
+  weggehen, wäre dieser Absatz nicht mehr wahr — und das haben wir uns in der
+  Anbieter-Anlage als Selbstverpflichtung aufgeschrieben.
 - **Google (Anmeldung)** — nur wenn Sie „Weiter mit Google“ nutzen, und nur, um
   Sie zu authentifizieren.
 - **YouVersion** — die Plattform fragt die YouVersion-Bibel-API nach dem Text
@@ -160,16 +168,29 @@ würde, die bisher kein Anbieter hielt, oder sie zu einem neuen Zweck hält. Das
 ist eine Änderung dieser Erklärung selbst, und sie kommt mit einer neuen
 Fassung und einer erneuten Bitte um Zustimmung.
 
-**Wo das alles liegt.** Jeder Anbieter oben sitzt in den Vereinigten Staaten,
-und die Plattform wird von dort betrieben, die Nutzung bedeutet also, dass Ihre
-Daten in den Vereinigten Staaten verarbeitet werden. Wenn Sie im Europäischen
-Wirtschaftsraum oder im Vereinigten Königreich sind, ist das eine Übermittlung
-aus Ihrem Land heraus. Wir werden das nicht beschönigen: Die Unterlagen zur
-Übermittlung — welcher Anbieter sich auf welche Garantie stützt — werden gerade
-auf eine ordentliche Grundlage gestellt, und dieser Abschnitt wird dann für
-jeden Anbieter den Mechanismus nennen. Bis dahin sollten Sie von nichts
-ausgehen, was über das hier Geschriebene hinausgeht, und wenn Ihnen das nicht
-genügt, sagen Sie es vor der Anmeldung und nicht danach.
+**Wo das alles liegt, und was den Weg absichert.** Jeder Anbieter oben sitzt in
+den Vereinigten Staaten, und die Plattform wird von dort betrieben, die Nutzung
+bedeutet also, dass Ihre Daten in den Vereinigten Staaten verarbeitet werden.
+Wenn Sie im Europäischen Wirtschaftsraum oder im Vereinigten Königreich sind,
+ist das eine Übermittlung aus Ihrem Land heraus, und der Vertrag zur
+Auftragsverarbeitung des jeweiligen Anbieters sagt, was sie schützt:
+
+- **Supabase** — die EU-Standardvertragsklauseln, die sein Vertrag durch unsere
+  Annahme als unterzeichnet behandelt, dazu ein UK-Zusatz.
+- **Vercel** — die Standardvertragsklauseln, in dem Modul, das zu den jeweiligen
+  Rollen passt. Sie gelten für Pro- und Enterprise-Tarife; unserer ist Pro.
+- **Datadog** — die Standardvertragsklauseln und der UK-Zusatz zur
+  internationalen Datenübermittlung, beide ohne gesonderte Unterschrift im
+  Vertrag enthalten.
+- **Resend** — Zertifizierung nach dem EU–U.S. Data Privacy Framework samt
+  UK-Erweiterung **und** zusätzlich die Standardvertragsklauseln.
+- **Google** — **das haben wir nicht bestätigt und behaupten es nicht.** Die
+  Gemini-API wird über einen Google-AI-Studio-Schlüssel genutzt, und aus Googles
+  veröffentlichten Bedingungen konnten wir nicht feststellen, welcher
+  Übermittlungsmechanismus genau diesen Weg abdeckt. Bis wir das können,
+  behandeln Sie Google als die Lücke in dieser Liste und nicht als gleich wie
+  die anderen vier. Lieber lassen wir hier ein Loch, das Sie sehen können, als
+  es mit etwas zu füllen, das wir nicht gelesen haben.
 
 **Warum wir halten, was wir halten.** Für das Recht, das diese Frage direkt
 stellt: Wir verarbeiten Ihr Konto und Ihre Kursarbeiten, um die Plattform

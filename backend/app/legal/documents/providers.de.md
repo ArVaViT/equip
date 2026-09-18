@@ -42,6 +42,17 @@ speichern keine Zahlungsdaten. Sollte sich das je ändern, erscheint hier eine
 Zeile, und die Datenschutzerklärung sagt, was der Anbieter hält — und wir
 werden nie diejenigen sein, die eine Kartennummer halten.
 
+**Eine Selbstverpflichtung zu Gemini.** Die Datenschutzerklärung sagt, dass
+Google das, was wir senden, nicht zur Verbesserung seiner Produkte verwendet, es
+nicht länger als ein kurzes Fenster zur Missbrauchserkennung aufbewahrt und es
+nicht von Menschen lesen lässt, um Modelle zu trainieren. Das trifft auf Googles
+**kostenpflichtigen** Tarif zu und auf den kostenlosen nicht — in allen drei
+Punkten. Deshalb: Wir werden die Übersetzung dieser Plattform nicht auf den
+kostenlosen Tarif umstellen. Falls sich das je ändern muss — eine fehlgeschlagene
+Zahlung, eine Kostenentscheidung —, ändert sich die Datenschutzerklärung mit, im
+selben Release, und das ist eine wesentliche Änderung, die alle erneut fragt, und
+keine hier still bearbeitete Zeile.
+
 ## Wenn sich diese Liste ändert
 
 **Sie werden informiert, 60 Tage bevor es in Kraft tritt.** Das Datum oben

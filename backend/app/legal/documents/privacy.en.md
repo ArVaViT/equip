@@ -124,7 +124,14 @@ part that is a promise:
   machine-translated** into the four languages the platform serves. What is sent
   is teacher-authored course material: titles, lesson text, quiz questions,
   announcements. **Student submissions are not sent, ever** — not for
-  translation, not for anything else.
+  translation, not for anything else. We use the **paid** tier deliberately,
+  and it is the difference that matters here: on the paid tier Google's own
+  terms say it **does not use prompts or responses to improve its products**,
+  logs them only for a limited period and only to catch abuse of its use
+  policy, and does not have humans read them to make its models better. On the
+  free tier all three of those are the other way round. If we ever moved off
+  the paid tier this paragraph would stop being true, and we have written that
+  down as a commitment to ourselves in the provider annex.
 - **Google (sign-in)** — only if you use "Continue with Google", and only to
   authenticate you.
 - **YouVersion** — the platform asks the YouVersion Bible API for the text of a
@@ -144,15 +151,26 @@ of data no provider held before, or hold it for a new purpose. That is a change
 to this policy itself, and it comes with a new version and a fresh request to
 agree.
 
-**Where all of this is.** Every provider above is in the United States, and the
-platform is operated from there, so using it means your data is processed in the
-United States. If you are in the European Economic Area or the United Kingdom,
-that is a transfer out of your country. We are not going to dress that up: the
-transfer paperwork — which provider relies on which safeguard — is being put on
-a proper footing, and this section will name the mechanism for each provider
-when it is. Until it does, you should assume nothing more than what is written
-here, and if that is not enough for you, say so before you sign up rather than
-after.
+**Where all of this is, and what covers the journey.** Every provider above is
+in the United States, and the platform is operated from there, so using it means
+your data is processed in the United States. If you are in the European Economic
+Area or the United Kingdom, that is a transfer out of your country, and each
+provider's own data processing agreement says what protects it:
+
+- **Supabase** — the European Standard Contractual Clauses, which its agreement
+  treats as signed by our acceptance of it, with a UK addendum alongside.
+- **Vercel** — the Standard Contractual Clauses, in the module that fits each
+  role. They apply to Pro and Enterprise plans; ours is Pro.
+- **Datadog** — the Standard Contractual Clauses and the UK International Data
+  Transfer Addendum, both built into its agreement without a separate signature.
+- **Resend** — certification under the EU–U.S. Data Privacy Framework and its UK
+  extension, **and** the Standard Contractual Clauses on top.
+- **Google** — **we have not confirmed this one and will not claim it.** The
+  Gemini API is used through a Google AI Studio key, and we could not establish
+  from Google's published terms which transfer mechanism covers that route.
+  Until we can, treat Google as the gap in this list rather than assume it is
+  like the other four. We would rather leave a hole here you can see than fill
+  it with something we have not read.
 
 **Why we hold what we hold.** For the law that asks this question directly: we
 process your account and your coursework in order to provide the platform you
