@@ -30,6 +30,9 @@ if TYPE_CHECKING:
 
 from app.core.metrics import emit, increment
 from app.schemas.locale import LOCALE_DISPLAY_NAMES
+from app.services.attribution import AttributionSpan
+from app.services.attribution import post_substitute as restore_attributions
+from app.services.attribution import pre_substitute as hide_attributions
 from app.services.bible.substitution import post_substitute, pre_substitute
 from app.services.translation.html_split import markup_correction_note, split_html_for_translation
 from app.services.translation.prompt import build_system_prompt, build_user_prompt
@@ -284,7 +287,23 @@ class GeminiTranslationProvider:
                 # ask — the model was never told what it had got wrong.
                 request = replace(request, text=request_text)
 
-        pieces = self._pieces_for(request, bible_subs)
+        # Copyright-management information out next, on the same whole
+        # document and by the same mechanism: a copyright line, a source
+        # label, an ISBN, a credit under an extract. It is put back at the
+        # very end, after the typography pass, because § 1202(b) is about
+        # *alteration* — re-pointing the quotation marks in a rights line is
+        # an alteration, and this is the one string in the pipeline that has
+        # to come out exactly as it went in.
+        #
+        # Every content kind, not only the prose ones. A quiz option is too
+        # short to carry a Bible quotation, which is why the block above is
+        # narrowed; a course title carrying "© 2019 …" is not far-fetched at
+        # all, and the patterns only fire on a real notice.
+        request_text, attributions = hide_attributions(request.text)
+        if attributions:
+            request = replace(request, text=request_text)
+
+        pieces = self._pieces_for(request, bible_subs, attributions)
         if len(pieces) == 1:
             result = self._generate(request)
         else:
@@ -360,9 +379,35 @@ class GeminiTranslationProvider:
         pointed = normalize_typography(result.text, request.target_locale, request.content_kind)
         if pointed != result.text:
             result = replace(result, text=pointed)
+
+        # Last of all, and after the typography pass on purpose. A verse is
+        # restored early so the canonical text gets the target language's
+        # quotation marks; a copyright notice gets nothing at all. Whatever
+        # the author wrote is what comes out.
+        if attributions:
+            lost_attribution = [span.marker for span in attributions if span.marker not in result.text]
+            if lost_attribution:
+                # Not a quality warning. The row is about to be parked, and
+                # this line is what says why when somebody asks later.
+                logger.error(
+                    "attribution_marker_dropped locale=%s markers=%d kind=%s",
+                    request.target_locale,
+                    len(lost_attribution),
+                    request.content_kind,
+                )
+            result = replace(
+                result,
+                text=restore_attributions(result.text, attributions),
+                lost_attribution=bool(lost_attribution),
+            )
         return result
 
-    def _pieces_for(self, request: TranslationRequest, bible_subs: list[Substitution]) -> list[str]:
+    def _pieces_for(
+        self,
+        request: TranslationRequest,
+        bible_subs: list[Substitution],
+        attributions: list[AttributionSpan] | None = None,
+    ) -> list[str]:
         """How this document should be asked for: whole, or in pieces.
 
         Only ``html`` is ever cut. Every other kind is a heading, an
@@ -383,8 +428,8 @@ class GeminiTranslationProvider:
         # on, and an invariant nobody checks is a hope. Counted rather
         # than assumed; if the arithmetic ever disagrees, the document
         # goes in one call and the verses are safe.
-        for sub in bible_subs:
-            if sum(piece.count(sub.marker) for piece in pieces) != request.text.count(sub.marker):
+        for marker in [sub.marker for sub in bible_subs] + [span.marker for span in attributions or []]:
+            if sum(piece.count(marker) for piece in pieces) != request.text.count(marker):
                 logger.error("html_split_would_cut_a_marker kind=%s pieces=%d", request.content_kind, len(pieces))
                 return [request.text]
         return pieces

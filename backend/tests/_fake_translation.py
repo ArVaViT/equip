@@ -39,6 +39,7 @@ _PROTECTED: Final[re.Pattern[str]] = re.compile(
     r"(<[^>]*>"
     r"|EQV[0-9a-f]+"
     r"|VERSE_[0-9a-f]+"
+    r"|EQA[0-9a-f]+"
     r"|\{[a-zA-Z_][a-zA-Z0-9_]*\}"
     r"|%\([a-zA-Z_][a-zA-Z0-9_]*\)[sdifr]"
     r"|%[sdifr]"
