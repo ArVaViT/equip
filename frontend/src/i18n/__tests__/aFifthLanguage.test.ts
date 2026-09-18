@@ -34,7 +34,10 @@
  *     — hand-written locale arrays, checked by Playwright rather than
  *     vitest. A fifth language simply gets no smoke coverage there, which
  *     is a gap in coverage rather than a check reporting a pass.
- *   * `index.html`'s `hreflang` links — SEO markup, no runtime behaviour.
+ *   * `index.html`'s `hreflang` links — there are none. They were five tags
+ *     pointing at one URL, which describes no language-to-URL mapping
+ *     because this app has none; see the comment in `index.html`. A fifth
+ *     language would add nothing there either.
  */
 
 import { describe, expect, it } from "vitest"
