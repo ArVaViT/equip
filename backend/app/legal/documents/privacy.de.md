@@ -184,13 +184,15 @@ Auftragsverarbeitung des jeweiligen Anbieters sagt, was sie schützt:
   Vertrag enthalten.
 - **Resend** — Zertifizierung nach dem EU–U.S. Data Privacy Framework samt
   UK-Erweiterung **und** zusätzlich die Standardvertragsklauseln.
-- **Google** — **das haben wir nicht bestätigt und behaupten es nicht.** Die
-  Gemini-API wird über einen Google-AI-Studio-Schlüssel genutzt, und aus Googles
-  veröffentlichten Bedingungen konnten wir nicht feststellen, welcher
-  Übermittlungsmechanismus genau diesen Weg abdeckt. Bis wir das können,
-  behandeln Sie Google als die Lücke in dieser Liste und nicht als gleich wie
-  die anderen vier. Lieber lassen wir hier ein Loch, das Sie sehen können, als
-  es mit etwas zu füllen, das wir nicht gelesen haben.
+- **Google** — Empfänger ist **Google LLC**, zertifiziert nach dem **EU–U.S.
+  Data Privacy Framework** und dessen UK-Erweiterung. Diese Zertifizierung ist
+  für sich genommen eine Rechtsgrundlage für die Übermittlung — sie stützt sich
+  auf den Angemessenheitsbeschluss der Europäischen Kommission —, unabhängig
+  davon, welchen Vertrag wir mit ihnen haben. Getrennt davon und ehrlich: Ob
+  Googles Cloud Data Processing Addendum gerade Google AI Studio abdeckt, konnten
+  wir nicht bestätigen, weil sich die vollständigen Anlagen über das Web nicht
+  öffnen lassen. Das ist eine Frage unseres Vertrags, nicht der Rechtsgrundlage,
+  und es berührt die Rechtmäßigkeit der Übermittlung nicht.
 
 **Warum wir halten, was wir halten.** Für das Recht, das diese Frage direkt
 stellt: Wir verarbeiten Ihr Konto und Ihre Kursarbeiten, um die Plattform
