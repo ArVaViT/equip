@@ -8,6 +8,7 @@ from app.models.cohort import Cohort
 from app.models.content_version import ContentVersion
 from app.models.course import Chapter, Course, Module
 from app.models.course_event import CourseEvent
+from app.models.dmca_complaint import DmcaComplaint, DmcaComplaintStatus
 from app.models.enrollment import Enrollment
 from app.models.grade_exemption import GradeExemption
 from app.models.grade_sheet import GradeSheet, GradeSheetRow
@@ -55,6 +56,8 @@ __all__ = [
     "CourseEvent",
     "CoursePrerequisite",
     "CourseReview",
+    "DmcaComplaint",
+    "DmcaComplaintStatus",
     "Enrollment",
     "GradeExemption",
     "GradeSheet",

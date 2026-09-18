@@ -34,6 +34,9 @@ const InvitationsTab = lazyRoute(() =>
 const TranslationReviewTab = lazyRoute(() =>
   import("./translations/TranslationReviewTab").then((m) => ({ default: m.TranslationReviewTab })),
 )
+const DmcaTab = lazyRoute(() =>
+  import("./dmca/DmcaTab").then((m) => ({ default: m.DmcaTab })),
+)
 
 /**
  * Admin dashboard orchestrator. Delegates every piece of state to
@@ -235,6 +238,16 @@ export default function AdminDashboard() {
               their own endpoint, and a failed user list is no reason to hide
               the screen that puts a name on the documents. */}
           <SchoolSettingsTab />
+        </div>
+      )}
+
+      {tab === "dmca" && (
+        <div
+          role="tabpanel"
+          id={ADMIN_TAB_PANEL_ID.dmca}
+          aria-labelledby={ADMIN_TAB_TRIGGER_ID.dmca}
+        >
+          <DmcaTab />
         </div>
       )}
     </Section>

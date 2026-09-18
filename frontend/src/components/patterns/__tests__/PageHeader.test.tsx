@@ -67,7 +67,12 @@ describe("PageHeader", () => {
  * page with a genuinely unusual masthead is allowed, but it has to be a
  * decision somebody made rather than one nobody noticed.
  */
-const HAND_ROLLED_H1_BUDGET = 17
+// 18 from 2026-09-17: `/dmca` joins `/privacy` and `/terms` as a public
+// document page. It is the same masthead those two use — a back link to
+// the brand, then a serif heading in a 680px measure — and PageHeader's
+// icon/eyebrow/actions chrome belongs to the application, not to a page a
+// publisher reaches from a search result.
+const HAND_ROLLED_H1_BUDGET = 18
 
 describe("the page-heading census", () => {
   it("does not grow another hand-rolled page heading", () => {

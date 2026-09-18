@@ -2493,6 +2493,50 @@
         "acceptError": "Couldn't accept it — please try again.",
         "retryError": "Couldn't send it back — please try again."
       }
+    },
+    "tabDmca": "Copyright",
+    "dmca": {
+      "title": "Copyright complaints",
+      "description": "Every notice that arrived, what was decided, and how many times it has been the same person.",
+      "refresh": "Refresh",
+      "loadError": "Could not load the complaints.",
+      "empty": {
+        "title": "No complaints",
+        "body": "Nothing has been received. When a notice arrives by email, write it down here."
+      },
+      "status": {
+        "received": "Received",
+        "upheld": "Upheld",
+        "rejected": "Rejected",
+        "withdrawn": "Withdrawn"
+      },
+      "strike": "Strike {{number}}",
+      "accountClosed": "Account closed",
+      "upheldCount_one": "{{count}} upheld",
+      "upheldCount_other": "{{count}} upheld",
+      "field": {
+        "complainant": "From",
+        "uploader": "Uploaded by",
+        "unknownUploader": "Not identified",
+        "uploaderTold": "Uploader told",
+        "notYet": "not yet",
+        "decision": "Decision"
+      },
+      "action": {
+        "uphold": "Uphold and take down",
+        "reject": "Reject"
+      },
+      "confirm": {
+        "upholdTitle": "Uphold this complaint?",
+        "rejectTitle": "Reject this complaint?",
+        "body": "This is recorded once and cannot be changed afterwards. A mistake is corrected by a new entry.",
+        "willCloseAccount": "This is the third upheld complaint about {{name}}, so upholding it closes that account. This is recorded once and cannot be changed afterwards.",
+        "confirm": "Record it"
+      },
+      "toast": {
+        "recorded": "Recorded.",
+        "failed": "Could not record the decision."
+      }
     }
   },
   "roles": {
@@ -2884,5 +2928,39 @@
     "linkLabel": "Meeting link",
     "linkPlaceholder": "https://zoom.us/j/…",
     "linkHint": "Optional. Zoom, Google Meet — any link. Students will see a “Join” button."
+  },
+  "dmca": {
+    "title": "Copyright complaints",
+    "intro": "Courses on Equip are written and uploaded by the teachers who run them. If something here is yours and should not be, write to us and we will look at it. This page says how, and what happens next.",
+    "notice": {
+      "heading": "Sending a notice",
+      "lead": "Write to the address below. A notice under 17 U.S.C. § 512(c)(3) has to include all six of these, or we may not be able to act on it:",
+      "item1": "Your signature — physical or electronic — as the owner of the rights, or as somebody authorised to act for them.",
+      "item2": "The work you say is being infringed. If several works on one page, a list of them.",
+      "item3": "Where the material is on Equip: the page address, and enough detail for us to find it.",
+      "item4": "How to reach you: address, telephone, email.",
+      "item5": "A statement that you believe in good faith that this use is not authorised by the owner, their agent, or the law.",
+      "item6": "A statement that the information in your notice is accurate, and — under penalty of perjury — that you are authorised to act for the owner.",
+      "sendTo": "Send it to",
+      "whatWeDo": "We write the notice down, take down or block what it names if we agree with it, and tell the person who uploaded it."
+    },
+    "counter": {
+      "heading": "Answering a notice",
+      "lead": "If your material was taken down and you believe that was a mistake, you can send a counter-notice under § 512(g)(3). It has to include all four:",
+      "item1": "Your signature, physical or electronic.",
+      "item2": "What was removed, and where it was before it was removed.",
+      "item3": "A statement under penalty of perjury that you believe in good faith the material was removed by mistake or misidentification.",
+      "item4": "Your name, address and telephone number, and a statement that you accept the jurisdiction of the federal court for your district — or, if you are outside the United States, of any district where we may be found — and that you will accept service from the person who complained.",
+      "whatHappens": "We pass your counter-notice to the person who complained. Unless they tell us within ten business days that they have gone to court, we may put the material back between ten and fourteen business days after we receive it."
+    },
+    "repeat": {
+      "heading": "Repeat infringement",
+      "body": "We keep a record of every complaint and of what was decided about it. More than two upheld complaints about one person and that account is closed. This is not a discretion we exercise case by case — the count is kept by the system that closes the account, so the two cannot disagree."
+    },
+    "misuse": {
+      "heading": "A notice sent carelessly",
+      "body": "Under § 512(f), anyone who knowingly misrepresents that material is infringing is liable for the costs and damages that misrepresentation causes — including ours and those of the person whose work came down. Please be sure before you write."
+    },
+    "seeTerms": "What we undertake, and what a teacher promises when they upload something, are in the"
   }
 }

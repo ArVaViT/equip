@@ -89,6 +89,14 @@ export default function Footer() {
                   {t("legal.terms")}
                 </Link>
               </li>
+              {/* § 512(i)(1)(A) asks a platform to *inform* people of its
+                  repeat-infringer policy. A page nobody can find from the
+                  site does not inform anybody. */}
+              <li>
+                <Link to="/dmca" className={linkClass}>
+                  {t("dmca.title")}
+                </Link>
+              </li>
               <li>
                 <a href={`mailto:${SUPPORT_EMAIL}`} className={linkClass}>
                   {t("footer.support")}

@@ -47,6 +47,7 @@ const DashboardPage = lazyRoute(() => import("./pages/Dashboard/DashboardPage"))
 const CoursesPage = lazyRoute(() => import("./pages/Courses/CoursesPage"))
 const VerifyCertificatePage = lazyRoute(() => import("./pages/Verify/VerifyCertificatePage"))
 const LegalDocumentPage = lazyRoute(() => import("./pages/Legal/LegalDocumentPage"))
+const DmcaPage = lazyRoute(() => import("./pages/Legal/DmcaPage"))
 const ProfilePage = lazyRoute(() => import("./pages/Profile/ProfilePage"))
 const CourseDetail = lazyRoute(() => import("./pages/Course/CourseDetail"))
 const ModuleView = lazyRoute(() => import("./pages/Course/ModuleView"))
@@ -243,6 +244,11 @@ function AppRoutes() {
               <Route path="/terms" element={<LegalDocumentPage slug="terms" />} />
               {/* Linked from the privacy policy; read, never signed. */}
               <Route path="/privacy/providers" element={<LegalDocumentPage slug="providers" />} />
+              {/* Public for the same reason. The person who needs it is a
+                  publisher who has never heard of Equip and has no account
+                  to sign into; a takedown procedure behind a login is not
+                  one somebody can use. */}
+              <Route path="/dmca" element={<DmcaPage />} />
               <Route path="/profile" element={<Gate mode="private"><ProfilePage /></Gate>} />
               <Route path="/calendar" element={<Gate mode="private"><CalendarPage /></Gate>} />
               <Route path="/daily-challenge/archive" element={<Gate mode="private"><DailyChallengeArchivePage /></Gate>} />

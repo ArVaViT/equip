@@ -4,7 +4,14 @@ import type { UserRole } from "@/types"
 // reach into ``@/lib/roles`` directly for the i18n mapping.
 export { ROLE_I18N_KEY } from "@/lib/roles"
 
-export type AdminTab = "overview" | "cohorts" | "invitations" | "translations" | "audit" | "school"
+export type AdminTab =
+  | "overview"
+  | "cohorts"
+  | "invitations"
+  | "translations"
+  | "audit"
+  | "school"
+  | "dmca"
 export const ADMIN_TABS: readonly AdminTab[] = [
   "overview",
   "cohorts",
@@ -12,6 +19,7 @@ export const ADMIN_TABS: readonly AdminTab[] = [
   "translations",
   "audit",
   "school",
+  "dmca",
 ]
 
 /** Stable DOM ids for each admin tab's trigger button. Mirrors of these
@@ -28,6 +36,7 @@ export const ADMIN_TAB_TRIGGER_ID = {
   translations: "admin-tab-translations",
   audit: "admin-tab-audit",
   school: "admin-tab-school",
+  dmca: "admin-tab-dmca",
 } as const
 
 export const ADMIN_TAB_PANEL_ID = {
@@ -37,6 +46,7 @@ export const ADMIN_TAB_PANEL_ID = {
   translations: "admin-tabpanel-translations",
   audit: "admin-tabpanel-audit",
   school: "admin-tabpanel-school",
+  dmca: "admin-tabpanel-dmca",
 } as const
 
 export const ACTION_OPTIONS = [

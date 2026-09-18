@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1 import (
     admin_daily_challenge,
+    admin_dmca,
     admin_org_settings,
     admin_organizations,
     admin_translations,
@@ -68,4 +69,5 @@ api_router.include_router(internal_daily_challenge_worker.router)
 api_router.include_router(daily_challenge.router)
 api_router.include_router(daily_challenge_archive.router)
 api_router.include_router(admin_daily_challenge.router)
+api_router.include_router(admin_dmca.router)
 api_router.include_router(invitations.router)

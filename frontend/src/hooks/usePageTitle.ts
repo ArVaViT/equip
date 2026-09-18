@@ -61,6 +61,7 @@ export function matchTitleKey(pathname: string): string | null {
   // Checked before /privacy, which would otherwise swallow it.
   if (pathname === "/privacy/providers") return "pageTitle.providers"
   if (pathname === "/privacy") return "pageTitle.privacy"
+  if (pathname === "/dmca") return "dmca.title"
   if (pathname === "/terms") return "pageTitle.terms"
 
   return null
