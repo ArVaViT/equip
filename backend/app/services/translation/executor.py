@@ -714,6 +714,26 @@ def _issues_in(task: TranslationTask, result: TranslationResult) -> list[Validat
                 ),
             ),
         )
+    if result.lost_attribution:
+        # Blocking, and of the three provider-reported defects this is the
+        # one with a number attached. Storing a translation whose copyright
+        # line the model deleted is 17 U.S.C. § 1202(b) — removal of
+        # copyright-management information — and the safe harbour does not
+        # reach it, because the removal is ours and not a user's upload.
+        # Better a reader waits for the German than reads a German page with
+        # the author's name taken off it.
+        issues.insert(
+            0,
+            ValidationIssue(
+                code="attribution_dropped",
+                detail=(
+                    "A copyright notice, source line or author credit was left "
+                    "out of the translation. Anything handed to you as an EQA "
+                    "token must come back exactly as it was given, in the same "
+                    "position."
+                ),
+            ),
+        )
     if result.lost_scripture:
         issues.insert(
             0,

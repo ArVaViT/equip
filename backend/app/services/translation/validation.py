@@ -81,7 +81,13 @@ if TYPE_CHECKING:
 # These stand in for canonical scripture during the model call and are
 # restored afterwards; one that does not come back means a student
 # reads the raw token where the verse belongs.
-_MARKER_RE: Final[re.Pattern[str]] = re.compile(r"(?:EQV|VERSE_)[0-9a-f]+")
+#: ``VERSE_`` is the retired spelling of the Scripture marker, still
+#: matched so rows written before it changed keep validating. ``EQA``
+#: stands in for copyright-management information — an author, a source
+#: line, an ISBN — which travels through the model untranslated for the
+#: same reason Scripture does, and must come back for a stronger one.
+#: See ``app.services.attribution``.
+_MARKER_RE: Final[re.Pattern[str]] = re.compile(r"(?:EQV|VERSE_|EQA)[0-9a-f]+")
 
 # Tag names only — attributes get rewritten by translation (an
 # ``alt=""`` legitimately changes language), the structure must not.

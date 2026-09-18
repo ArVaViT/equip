@@ -134,6 +134,19 @@ class TranslationResult:
     # caught only because their English run happened to be long enough
     # for ``untranslated_run``. The provider knows; this is how it says so.
     scripture_in_source_language: bool = False
+    # A copyright line, a source label, an ISBN — handed to the model as an
+    # ``EQA`` marker and not handed back. Same invisibility as
+    # ``lost_scripture`` and for the same structural reason: neither the text
+    # we sent nor the text we got back contains a marker, so validation
+    # comparing the two sees a complete translation of a complete source.
+    #
+    # It is reported separately from ``lost_scripture`` because the stakes
+    # differ. A dropped verse is a defect. A dropped attribution is
+    # 17 U.S.C. § 1202(b) — removal of copyright-management information —
+    # which carries statutory damages per work and which § 512's safe harbour
+    # does not cover, because altering the notice is the platform's own act
+    # and not something a user uploaded.
+    lost_attribution: bool = False
     # Provider-specific model id actually used (so logs can pin a row to a
     # version of the upstream service).
     model: str | None = None
