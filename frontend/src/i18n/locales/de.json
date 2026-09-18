@@ -731,6 +731,7 @@
     "privacy": "Datenschutzerklärung",
     "terms": "Nutzungsbedingungen",
     "teacherTerms": "Lehrenden- und Beitragendenvereinbarung",
+    "schoolAgreement": "Schulvereinbarung",
     "providers": "Infrastrukturanbieter"
   },
   "notFound": {
@@ -2838,7 +2839,8 @@
     "fingerprint": "Fassung {{version}} · Textprüfsumme {{sha}}",
     "privacy": "Datenschutzerklärung",
     "terms": "Nutzungsbedingungen",
-    "teacherTerms": "Lehrenden- und Beitragendenvereinbarung"
+    "teacherTerms": "Lehrenden- und Beitragendenvereinbarung",
+    "schoolAgreement": "Schulvereinbarung"
   },
   "legalGate": {
     "signOut": "Nicht jetzt — abmelden",

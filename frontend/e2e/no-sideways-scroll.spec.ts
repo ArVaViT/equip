@@ -25,7 +25,7 @@ const LOCALES = ["ru", "en", "de", "uk"] as const;
 // somebody deciding whether to accept a teaching role has to be able to read
 // what it binds them to — and it carries the longest heading on the platform
 // in German: "Lehrenden- und Beitragendenvereinbarung".
-const PUBLIC_PAGES = ["/", "/login", "/register", "/courses", "/verify", "/privacy", "/terms", "/teacher-terms"];
+const PUBLIC_PAGES = ["/", "/login", "/register", "/courses", "/verify", "/privacy", "/terms", "/teacher-terms", "/school-agreement"];
 const WIDTHS = [390, 320];
 
 /** Names the element that overflows, so a failure points at a file rather than a number. */

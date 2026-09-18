@@ -47,7 +47,7 @@ describe("Footer (minimalist)", () => {
     expect(screen.queryByRole("link", { name: /^calendar$|^календарь$/i })).toBeNull()
     expect(screen.queryByRole("link", { name: /^certificates$|^сертификат/i })).toBeNull()
     // Everything that *is* here has to be reachable without an account.
-    const PUBLIC = ["/", "/courses", "/login", "/register", "/privacy", "/terms", "/teacher-terms"]
+    const PUBLIC = ["/", "/courses", "/login", "/register", "/privacy", "/terms", "/teacher-terms", "/school-agreement"]
     for (const link of screen.getAllByRole("link")) {
       const href = link.getAttribute("href")
       if (!href || href.startsWith("mailto:")) continue
