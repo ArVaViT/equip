@@ -80,7 +80,23 @@ export default function LegalDocumentPage({ slug }: { slug?: LegalSlug }) {
       )}
       {!doc && !failed && <PageSpinner variant="section" />}
       {doc && (
-        <article className="mt-8">
+        <article
+          // ``lang`` is what makes the hyphenation below correct rather than
+          // merely present: a browser hyphenates by the rules of the language
+          // it thinks it is reading, and the page's own ``<html lang>`` is the
+          // reader's interface language, which is not always the language of
+          // the document it is showing them. It is also the document's real
+          // language for a screen reader, which would otherwise read German
+          // legal prose with an English voice.
+          lang={doc.locale}
+          // German legal vocabulary produces words no column is wide enough
+          // for — "Lehrenden- und Beitragendenvereinbarung" contains a
+          // 24-character word. ``break-words`` already stops them widening the
+          // page; this lets the browser break them at syllables instead of
+          // mid-morpheme, which is the difference between a hyphenated word
+          // and a word that looks broken.
+          className="mt-8 hyphens-auto"
+        >
           {doc.locale !== locale && (
             // Said plainly, in their language: the alternative is a reader
             // who thinks the English text in front of them is a rendering
