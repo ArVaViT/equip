@@ -2449,6 +2449,15 @@
         "title": "Einladung zurückziehen?",
         "description": "Der an {{email}} gesendete Link funktioniert dann nicht mehr. Sie können später erneut einladen.",
         "confirm": "Zurückziehen"
+      },
+      "ageAttestation": {
+        "label": "Ich bestätige: Diese Person ist 13 Jahre oder älter.",
+        "help": "Unter 13 Jahren ist hier kein Konto möglich, auch nicht per Einladung. Nach dem Geburtsdatum fragen wir nicht — Ihr Wort ist der Nachweis, und es wird mit Ihrem Namen zu dieser Einladung gespeichert."
+      },
+      "resendConfirm": {
+        "title": "Einladung erneut senden?",
+        "body": "Der bereits an {{email}} gesendete Link bleibt mit seiner ursprünglichen Frist gültig. Mit dem erneuten Senden bestätigen Sie zugleich, dass diese Person 13 Jahre oder älter ist.",
+        "confirm": "Erneut senden"
       }
     },
     "tabSchool": "Schule",
@@ -2540,7 +2549,8 @@
       "resendIn": "Erneut senden in {{seconds}} s",
       "resent": "E-Mail erneut gesendet.",
       "resendFailed": "E-Mail konnte nicht gesendet werden. Bitte in einer Minute erneut versuchen."
-    }
+    },
+    "ageFloor": "Ein eigenes Konto können Sie ab 16 anlegen. Jünger? Dann lädt Sie eine Schulleitung ein."
   },
   "validation": {
     "titleRequired": "Der Titel ist erforderlich",

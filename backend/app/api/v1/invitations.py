@@ -54,6 +54,7 @@ def _to_response(invitation: Invitation) -> InvitationResponse:
         fulfilled_at=invitation.fulfilled_at,
         expires_at=invitation.expires_at,
         is_expired=is_expired,
+        age_attested_at=invitation.age_attested_at,
     )
 
 
