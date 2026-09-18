@@ -86,7 +86,7 @@ export function LegalNoticeBanner() {
     >
       <p className="flex-1">
         {t("legalGate.notice.body", { document: name, date: notice.effective })}{" "}
-        <Link to={path} className="text-brand underline-offset-4 hover:underline">
+        <Link to={path} className="text-brand underline underline-offset-4">
           {t("legalGate.notice.read")}
         </Link>
       </p>

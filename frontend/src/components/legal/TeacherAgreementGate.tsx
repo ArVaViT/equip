@@ -172,7 +172,7 @@ export function TeacherAgreementGate() {
         </div>
 
         <p className="text-sm text-ink-muted">
-          <Link to="/teacher-terms" target="_blank" className="text-brand underline-offset-4 hover:underline">
+          <Link to="/teacher-terms" target="_blank" className="text-brand underline underline-offset-4">
             {t("legal.teacherTerms")}
           </Link>
         </p>
@@ -194,7 +194,7 @@ export function TeacherAgreementGate() {
         <button
           type="button"
           onClick={() => void logout()}
-          className="text-xs text-ink-muted underline-offset-4 hover:text-ink hover:underline"
+          className="text-xs text-ink-muted underline underline-offset-4 hover:text-ink"
         >
           {t("legalGate.signOut")}
         </button>

@@ -28,7 +28,7 @@ export function UploadRightsNotice({ className = "" }: { className?: string }) {
         href="/teacher-terms"
         target="_blank"
         rel="noreferrer"
-        className="text-brand underline-offset-4 hover:underline"
+        className="text-brand underline underline-offset-4"
       >
         {t("legal.teacherTerms")}
       </a>

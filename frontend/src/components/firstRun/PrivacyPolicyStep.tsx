@@ -138,11 +138,11 @@ export function PrivacyPolicyStep({ onAccept, renewal = false, documents }: Prop
           Asking somebody to accept a text they cannot reach is the thing this
           screen was doing wrong. */}
       <p className="text-sm text-ink-muted">
-        <Link to="/privacy" target="_blank" className="text-brand underline-offset-4 hover:underline">
+        <Link to="/privacy" target="_blank" className="text-brand underline underline-offset-4">
           {t("legal.privacy")}
         </Link>
         {" · "}
-        <Link to="/terms" target="_blank" className="text-brand underline-offset-4 hover:underline">
+        <Link to="/terms" target="_blank" className="text-brand underline underline-offset-4">
           {t("legal.terms")}
         </Link>
       </p>
@@ -165,7 +165,7 @@ export function PrivacyPolicyStep({ onAccept, renewal = false, documents }: Prop
       <button
         type="button"
         onClick={() => void logout()}
-        className="text-xs text-ink-muted underline-offset-4 hover:text-ink hover:underline"
+        className="text-xs text-ink-muted underline underline-offset-4 hover:text-ink"
       >
         {t("legalGate.signOut")}
       </button>

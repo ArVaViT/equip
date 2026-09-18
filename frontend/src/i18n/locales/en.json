@@ -183,7 +183,7 @@
         "control": "You can see and change your data in your profile. To get a copy of everything, or to delete your account, write to us and we'll do it."
       },
       "checkbox": "I have read and accept the Privacy Policy and the Terms of Use",
-      "next": "Continue",
+      "next": "Accept and continue",
       "saveFailed": "Couldn't record your acceptance. Check your connection and try again.",
       "renewal": {
         "eyebrow": "Updated documents",
@@ -2854,7 +2854,7 @@
         "marks": "Mark honestly and on the work. A certificate carries your judgement and somebody will show it to somebody else."
       },
       "checkbox": "I have read and accept the Teacher & Contributor Agreement",
-      "next": "Continue",
+      "next": "Accept and continue",
       "saveFailed": "Couldn't record your acceptance. Check your connection and try again."
     },
     "notice": {
