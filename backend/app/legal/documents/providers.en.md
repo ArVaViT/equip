@@ -39,6 +39,15 @@ anywhere for translation or for anything else.
 payment details. If that ever changes, a row appears here and the Privacy Policy
 says what the provider holds — and it will never be us holding a card number.
 
+**A commitment to ourselves about Gemini.** The Privacy Policy says Google does
+not use what we send it to improve its products, does not keep it beyond a short
+abuse-detection window, and does not have people read it to train models. That
+is true of Google's **paid** tier and false of its free one, on all three counts.
+So: we will not move this platform's translation to the free tier. If that ever
+has to change — a billing failure, a decision about cost — the Privacy Policy
+changes with it, in the same release, and it is a material change that asks
+everyone again rather than a line quietly edited here.
+
 ## If this list changes
 
 **You are told, 60 days before it takes effect.** The date at the top moves, the

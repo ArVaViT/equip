@@ -56,10 +56,13 @@ TEACHING = frozenset({TEACHER, DIRECTOR, ADMIN})
 
 #: Who can bind a school. The School Agreement is the only document here that
 #: is accepted on somebody else's behalf: a director accepting it commits the
-#: organisation, not themselves. Admin is included because a platform
-#: administrator standing in for a school has to be able to do it; nobody else
-#: is ever shown it.
-RUNS_A_SCHOOL = frozenset({DIRECTOR, ADMIN})
+#: organisation, not themselves.
+#:
+#: Deliberately not ``admin``. A platform administrator is us, not a school —
+#: there is no organisation for them to bind, and showing them a screen that
+#: says "you are its director" would be asking somebody to agree to something
+#: on behalf of nobody.
+RUNS_A_SCHOOL = frozenset({DIRECTOR})
 
 
 @dataclass(frozen=True)
@@ -208,10 +211,10 @@ LEGAL_DOCUMENT_FINGERPRINTS: dict[tuple[str, str, str], str] = {
     # 2026-09-17: everything rewritten, and everything translated into the two
     # languages these documents never existed in. Sixteen files, four of them
     # a document nobody had been asked to sign before.
-    ("privacy", "2.0", "en"): "96e7a94b189dc3f004d35aab0a6bea4de36a757c46ac122d14038753ace3d2f8",
-    ("privacy", "2.0", "ru"): "782af21fd36b9df9d80e05b77a9d736c385d9363c5cfea7421c4d5974d1adcad",
-    ("privacy", "2.0", "de"): "e9718e79c2c795976f556a4bb6c2a8c4280082c339a449abbecefd6c5537968c",
-    ("privacy", "2.0", "uk"): "dd79170ea18bcc86d3dc472169351dde7b360573d7810cca267a1fe42c47e6ab",
+    ("privacy", "2.0", "en"): "e477cf0ed87cc60968861e9548a44933e99e276c4b5e488bad53c7482675bb60",
+    ("privacy", "2.0", "ru"): "3dd43098e185ddcdf96a1ecf0d4ee7c4210cef9252294e189765b57a83633469",
+    ("privacy", "2.0", "de"): "aa5b7424bf6a17151c942fc4654b5f7b799bd4a278c78674141077ce7d95936c",
+    ("privacy", "2.0", "uk"): "d48e1bb550254868db8f2e70076c1a051879edd5683dacc3294d8ab72b42158f",
     ("terms", "2.0", "en"): "0510d5d4ff749029bee54b403a502ffefc5087b8fa882b5d5179490b06cbc2c4",
     ("terms", "2.0", "ru"): "a48034c571ea23df68fe402adc1616846c5bc783845bbb0479678de024e16013",
     ("terms", "2.0", "de"): "af438c6e6afe39cf07d966095278f7245abdb6ea29c02335e935415264809850",
@@ -229,10 +232,10 @@ LEGAL_DOCUMENT_FINGERPRINTS: dict[tuple[str, str, str], str] = {
     # The provider list is fingerprinted too, although nobody signs it: the
     # page is the answer to "who held my data in September", and a page that
     # can be rewritten under that question answers it badly.
-    ("providers", "2026-09-17", "en"): "2702288bae1d48274ba8cd8fe1e6b3af8ecd7d15ae1e1c92de3ca66a26f0d944",
-    ("providers", "2026-09-17", "ru"): "b9cf68bc6900bcddcd4dd2a9180b907671be050e655bdd89b0a00a07ae261a65",
-    ("providers", "2026-09-17", "de"): "f0aed52f54bf5b231fa45642295e50caa60b68f6fbd0617962853269422166cd",
-    ("providers", "2026-09-17", "uk"): "376a908f200784bcb64fb43a3dc94eafb885206b65694d2d756166f741d37ced",
+    ("providers", "2026-09-17", "en"): "041bdef44c17acf7fa4f9f17cff71fbedb4c4e9d09936417b262ec9d9d3c2502",
+    ("providers", "2026-09-17", "ru"): "7ca91ce9468648dbdccb9764d9660b471b651f3c763f6943abd7e4d2fe07b150",
+    ("providers", "2026-09-17", "de"): "30c6abf32501b70cb906d191a018b0fd16cb2ea985e64f3e88ec85c627f7ccde",
+    ("providers", "2026-09-17", "uk"): "fb0644cb00a6363556e3ab1a66c64f7fcd23f19c84d90b1e4a2da0469dc5676b",
 }
 
 
