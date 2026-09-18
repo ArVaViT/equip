@@ -14,12 +14,17 @@ fails here, with the two things the author has to do spelled out.
 
 from __future__ import annotations
 
-from app.legal import LEGAL_DOCUMENT_FINGERPRINTS, LEGAL_DOCUMENTS, document_for
-from app.legal.registry import LOCALES
+from app.legal import LEGAL_DOCUMENT_FINGERPRINTS, LEGAL_DOCUMENTS, REFERENCE_DOCUMENTS
+from app.legal.registry import LOCALES, document_for
+
+#: Signed or not. The provider list is nobody's contract, but it is the answer
+#: to "who held my data in September", and a page that can be rewritten under
+#: that question answers it badly.
+_EVERY_CURRENT_DOCUMENT = {**LEGAL_DOCUMENTS, **REFERENCE_DOCUMENTS}
 
 
 def test_every_served_text_matches_its_pinned_fingerprint() -> None:
-    for slug, version in LEGAL_DOCUMENTS.items():
+    for slug, version in _EVERY_CURRENT_DOCUMENT.items():
         for locale in LOCALES:
             doc = document_for(slug, locale)
             pinned = LEGAL_DOCUMENT_FINGERPRINTS.get((slug, version, locale))
@@ -35,5 +40,5 @@ def test_every_served_text_matches_its_pinned_fingerprint() -> None:
 
 
 def test_the_current_version_of_every_document_is_pinned() -> None:
-    current = {(slug, version, locale) for slug, version in LEGAL_DOCUMENTS.items() for locale in LOCALES}
+    current = {(slug, version, locale) for slug, version in _EVERY_CURRENT_DOCUMENT.items() for locale in LOCALES}
     assert current <= set(LEGAL_DOCUMENT_FINGERPRINTS)

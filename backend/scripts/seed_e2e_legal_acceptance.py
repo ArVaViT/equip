@@ -1,12 +1,19 @@
 """Pre-accept the required legal documents for the e2e role users.
 
 ``GET /legal/acceptances/me`` (``app/api/v1/legal.py``) tells the frontend's
-``FirstRunFlow`` whether a document in ``required_slugs()`` (currently
-``privacy`` + ``terms``) is outstanding for the signed-in user. A freshly
-created CI role user has no ``legal_acceptances`` rows at all, so the server
-truthfully reports both as outstanding — and ``FirstRunFlow`` opens its
-full-screen consent dialog on top of every page, exactly as it would for a
-real new signup.
+gates whether a document in ``required_slugs()`` is outstanding for the
+signed-in user. A freshly created CI role user has no ``legal_acceptances``
+rows at all, so the server truthfully reports every one of them as
+outstanding — and ``FirstRunFlow`` opens its full-screen consent dialog on top
+of every page, exactly as it would for a real new signup.
+
+``required_slugs()`` with no argument is deliberately *every* signable
+document, not the ones a particular role owes: ``privacy``, ``terms`` and —
+since 2026-09-17 — ``teacher-terms``. So this seeds the teacher agreement for
+all three CI users, including the student, who would never be shown it. That
+is the right trade here: the alternative is a teacher spec that has to click
+through a congratulation screen before it can reach the analytics link, and
+the screen it would be clicking through is covered by its own tests.
 
 That dialog intercepts pointer events (z-index above everything, including
 the tour overlay), which is what broke ``teacher-flow.spec.ts``'s analytics

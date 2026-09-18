@@ -16,8 +16,8 @@ from __future__ import annotations
 import hashlib
 from typing import TYPE_CHECKING
 
-from app.legal import LEGAL_DOCUMENTS, document_for
-from app.legal.registry import REFERENCE_DOCUMENTS, required_slugs
+from app.legal import LEGAL_DOCUMENTS, LOCALES, document_for, required_slugs
+from app.legal.registry import REFERENCE_DOCUMENTS
 from app.models.legal_acceptance import LegalAcceptance
 
 if TYPE_CHECKING:
@@ -31,12 +31,13 @@ ACCEPT = "/api/v1/legal/acceptances"
 MINE = "/api/v1/legal/acceptances/me"
 
 
-def test_every_document_exists_in_both_languages() -> None:
+def test_every_document_exists_in_every_language_the_interface_serves() -> None:
     # A missing translation is a broken deployment, not a fallback to English:
     # half this school reads Russian, and a policy they cannot read is not a
-    # policy they can accept.
+    # policy they can accept. The interface has served four languages for a
+    # year; these documents caught up on 2026-09-17.
     for slug in LEGAL_DOCUMENTS:
-        for locale in ("ru", "en"):
+        for locale in LOCALES:
             doc = document_for(slug, locale)
             assert doc.body.strip(), f"{slug}.{locale} is empty"
             assert doc.version == LEGAL_DOCUMENTS[slug]
@@ -104,16 +105,50 @@ def test_a_stale_page_cannot_manufacture_consent(student_client: TestClient, db:
 
 
 def test_status_says_what_is_still_outstanding(student_client: TestClient) -> None:
+    student_owes = set(required_slugs("student"))
     before = student_client.get(MINE).json()
-    assert {d["slug"] for d in before["outstanding"]} == set(LEGAL_DOCUMENTS)
+    assert {d["slug"] for d in before["outstanding"]} == student_owes
 
     student_client.post(ACCEPT, json={"slug": "privacy", "version": LEGAL_DOCUMENTS["privacy"], "locale": "ru"})
     after = student_client.get(MINE).json()
 
     # The gate asks one question — "is there anything left" — and the server
     # answers it, rather than the client reconstructing it by comparing lists.
-    assert {d["slug"] for d in after["outstanding"]} == set(LEGAL_DOCUMENTS) - {"privacy"}
+    assert {d["slug"] for d in after["outstanding"]} == student_owes - {"privacy"}
     assert [a["slug"] for a in after["accepted"]] == ["privacy"]
+
+
+def test_a_student_is_never_shown_the_teacher_agreement(student_client: TestClient) -> None:
+    # Two tests rather than one, because the client fixtures share a single
+    # ``get_current_user`` override and the last one requested wins — asking
+    # for both in one test would have both answers come back as the teacher's.
+    assert "teacher-terms" not in {d["slug"] for d in student_client.get(MINE).json()["outstanding"]}
+
+
+def test_a_teacher_cannot_get_past_the_teacher_agreement(client: TestClient) -> None:
+    # The reason the status route reads the role off the profile row rather
+    # than trusting the caller: this is the answer a promotion changes.
+    assert "teacher-terms" in {d["slug"] for d in client.get(MINE).json()["outstanding"]}
+
+
+def test_the_summary_carries_what_the_gate_needs_to_decide(anon_client: TestClient) -> None:
+    # Which roles owe it, and whether this version asks for a signature —
+    # both off the registry, so no client has to reconstruct either.
+    documents = {d["slug"]: d for d in anon_client.get(DOCS).json()}
+    assert documents["teacher-terms"]["required_for"] == ["admin", "director", "teacher"]
+    assert sorted(documents["privacy"]["required_for"]) == ["admin", "director", "student", "teacher"]
+    assert documents["terms"]["requires_consent"] is True
+    assert documents["terms"]["effective"] == "2026-09-17"
+    assert "providers" not in documents
+
+
+def test_a_person_who_is_up_to_date_owes_nothing_and_is_told_nothing(student_client: TestClient) -> None:
+    for slug in required_slugs("student"):
+        student_client.post(ACCEPT, json={"slug": slug, "version": LEGAL_DOCUMENTS[slug], "locale": "ru"})
+
+    status = student_client.get(MINE).json()
+    assert status["outstanding"] == []
+    assert status["notices"] == []
 
 
 def test_the_locale_recorded_is_the_one_they_read(student_client: TestClient, db: Session) -> None:
@@ -128,49 +163,51 @@ def test_the_locale_recorded_is_the_one_they_read(student_client: TestClient, db
 
 
 class TestTheLanguageAPersonIsActuallyReading:
-    """The platform speaks four languages; these documents exist in two.
+    """The platform speaks four languages, and now so do these documents.
 
     A German or Ukrainian reader used to be handed the *Russian* privacy
     policy — the frontend collapsed every non-English language to ``ru`` —
     which is a text they cannot read, presented as the thing they are
-    agreeing to. They get English now, and the response says so, because a
-    page cannot tell somebody "this one is in English" unless the server
-    tells the page which language it sent.
+    agreeing to. Then they were handed the English one with a line
+    apologising for it, which is better and still not the document in their
+    language. Since 2026-09-17 every document exists in all four, and the
+    response says which one it sent, because a page cannot tell somebody
+    what they are reading unless the server tells the page.
     """
 
-    def test_a_reader_whose_language_we_have_gets_their_own(self, anon_client: TestClient) -> None:
-        for locale in ("ru", "en"):
+    def test_every_language_the_interface_serves_gets_its_own_text(self, anon_client: TestClient) -> None:
+        bodies = {}
+        for locale in LOCALES:
             body = anon_client.get(f"{DOCS}/privacy", params={"locale": locale}).json()
             assert body["locale"] == locale
+            bodies[locale] = body["body"]
+        # Four genuinely different texts, not four copies of one. A parity
+        # check that counts files would pass on four identical English ones.
+        assert len(set(bodies.values())) == len(LOCALES)
 
-    def test_a_reader_whose_language_we_lack_gets_english_not_russian(self, anon_client: TestClient) -> None:
-        russian = anon_client.get(f"{DOCS}/privacy", params={"locale": "ru"}).json()
+    def test_a_language_we_do_not_serve_gets_the_governing_text(self, anon_client: TestClient) -> None:
         english = anon_client.get(f"{DOCS}/privacy", params={"locale": "en"}).json()
-        for locale in ("de", "uk"):
-            body = anon_client.get(f"{DOCS}/privacy", params={"locale": locale}).json()
-            assert body["locale"] == "en", f"{locale} was answered in {body['locale']}"
-            assert body["body"] == english["body"]
-            assert body["body"] != russian["body"]
+        body = anon_client.get(f"{DOCS}/privacy", params={"locale": "fr"}).json()
+        assert body["locale"] == "en"
+        assert body["body"] == english["body"]
 
     def test_a_bare_request_is_not_answered_in_russian(self, anon_client: TestClient) -> None:
         # The default used to be ``ru``, which made the language a person got
         # depend on whether the client remembered to ask.
         assert anon_client.get(f"{DOCS}/terms").json()["locale"] == "en"
 
-    def test_the_record_names_the_text_they_saw_not_the_one_they_asked_for(
-        self, student_client: TestClient, db: Session
-    ) -> None:
+    def test_the_record_names_the_text_they_saw(self, student_client: TestClient, db: Session) -> None:
         response = student_client.post(
             ACCEPT, json={"slug": "privacy", "version": LEGAL_DOCUMENTS["privacy"], "locale": "de"}
         )
         assert response.status_code == 201
-        assert response.json()["locale"] == "en"
+        assert response.json()["locale"] == "de"
 
         row = db.query(LegalAcceptance).filter_by(user_id=STUDENT_ID, document_slug="privacy").one()
-        assert row.locale == "en"
-        # And the fingerprint is of the English text, so "you agreed to this"
-        # still points at something reproducible.
-        assert row.content_sha256 == hashlib.sha256(document_for("privacy", "en").body.encode()).hexdigest()
+        assert row.locale == "de"
+        # And the fingerprint is of the German text, so "you agreed to this"
+        # points at the words this person actually read.
+        assert row.content_sha256 == hashlib.sha256(document_for("privacy", "de").body.encode()).hexdigest()
 
 
 class TestAReferencePageIsNotAContract:
@@ -197,9 +234,10 @@ class TestAReferencePageIsNotAContract:
         assert "providers" not in required_slugs()
 
     def test_it_exists_in_every_locale_the_policy_does(self, anon_client: TestClient) -> None:
-        # A person reading the policy in Russian and following its link
-        # must not land in English.
-        assert anon_client.get(f"{DOCS}/providers?locale=ru").json()["locale"] == "ru"
+        # A person reading the policy in their own language and following its
+        # link must not land in another one.
+        for locale in LOCALES:
+            assert anon_client.get(f"{DOCS}/providers?locale={locale}").json()["locale"] == locale
 
     def test_accepting_it_is_refused(self, student_client: TestClient) -> None:
         """Even if a stale page or a curious caller tries.

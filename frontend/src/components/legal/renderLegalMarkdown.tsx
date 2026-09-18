@@ -11,26 +11,58 @@ import type { ReactNode } from "react"
  * 2. This produces React elements, so there is no HTML string anywhere in the
  *    path and therefore nothing to sanitise. The question does not arise.
  *
- * The subset is deliberately closed: headings, paragraphs, bullets, tables,
- * bold, horizontal rules. Anything else renders as plain text rather than
- * silently disappearing — a legal document that drops a clause because the
- * renderer did not recognise it is the worst failure this file could have.
+ * The subset is deliberately closed: headings, paragraphs, bullets, numbered
+ * lists, tables, bold, links, horizontal rules. Anything else renders as plain
+ * text rather than silently disappearing — a legal document that drops a
+ * clause because the renderer did not recognise it is the worst failure this
+ * file could have.
  */
 
-/** `**bold**` and nothing else. Legal prose needs emphasis, not typography. */
+/**
+ * `**bold**` and `[text](/path)`, and nothing else.
+ *
+ * Links were missing until 2026-09-17, so every cross-reference between the
+ * documents rendered as its own source: a reader following "see the
+ * [Privacy Policy](/privacy)" was reading square brackets. The documents now
+ * point at each other in earnest — the terms send teachers to the Teacher &
+ * Contributor Agreement, the privacy policy sends everyone to the provider
+ * list — and a legal cross-reference that is not a link is a cross-reference
+ * most people will not follow.
+ *
+ * A plain anchor rather than a router `Link`: these render inside a page that
+ * has a router, but the renderer itself is a pure function that other things
+ * (and its own tests) call without one, and a full navigation to a document
+ * page costs nothing anybody will notice.
+ *
+ * Only in-app paths. A link to `https://` from a document body would be a way
+ * to point a reader off the platform from text that is supposed to be ours,
+ * and nothing in these documents needs one.
+ */
 function inline(text: string, keyPrefix: string): ReactNode[] {
   const out: ReactNode[] = []
-  const pattern = /\*\*([^*]+)\*\*/g
+  const pattern = /\*\*([^*]+)\*\*|\[([^\]]+)\]\((\/[^)\s]*)\)/g
   let last = 0
   let match: RegExpExecArray | null
   let i = 0
   while ((match = pattern.exec(text)) !== null) {
     if (match.index > last) out.push(text.slice(last, match.index))
-    out.push(
-      <strong key={`${keyPrefix}-b${i++}`} className="font-semibold text-ink">
-        {match[1]}
-      </strong>,
-    )
+    if (match[1] !== undefined) {
+      out.push(
+        <strong key={`${keyPrefix}-b${i++}`} className="font-semibold text-ink">
+          {match[1]}
+        </strong>,
+      )
+    } else {
+      out.push(
+        <a
+          key={`${keyPrefix}-a${i++}`}
+          href={match[3]}
+          className="text-brand underline underline-offset-4"
+        >
+          {match[2]}
+        </a>,
+      )
+    }
     last = match.index + match[0].length
   }
   if (last < text.length) out.push(text.slice(last))
@@ -52,6 +84,7 @@ export function renderLegalMarkdown(source: string): ReactNode[] {
   const blocks: ReactNode[] = []
   let paragraph: string[] = []
   let bullets: string[] = []
+  let numbered: string[] = []
 
   const flushParagraph = () => {
     if (paragraph.length === 0) return
@@ -78,9 +111,24 @@ export function renderLegalMarkdown(source: string): ReactNode[] {
     bullets = []
   }
 
+  const flushNumbered = () => {
+    if (numbered.length === 0) return
+    blocks.push(
+      <ol key={`ol${blocks.length}`} className="mt-4 space-y-2 pl-5">
+        {numbered.map((item, i) => (
+          <li key={i} className="list-decimal leading-[1.7] text-ink marker:text-ink-muted">
+            {inline(item, `ol${blocks.length}-${i}`)}
+          </li>
+        ))}
+      </ol>,
+    )
+    numbered = []
+  }
+
   const flush = () => {
     flushParagraph()
     flushBullets()
+    flushNumbered()
   }
 
   for (let i = 0; i < lines.length; i++) {
@@ -114,7 +162,12 @@ export function renderLegalMarkdown(source: string): ReactNode[] {
       blocks.push(
         <h2
           key={`h${blocks.length}`}
-          className="mt-10 font-serif text-xl font-semibold tracking-tight text-ink"
+          /* ``break-words`` for the same reason the h1 has it, found the same
+             way: "Urheberrechtsbeschwerden" is a single 24-character word and
+             at 320px it pushed the German terms 13px wider than the viewport.
+             German compounds this document cannot avoid — Haftungsbeschränkung,
+             Datenschutzerklärung — are all in this range. */
+          className="mt-10 break-words font-serif text-xl font-semibold tracking-tight text-ink"
         >
           {trimmed.slice(3)}
         </h2>,
@@ -124,7 +177,20 @@ export function renderLegalMarkdown(source: string): ReactNode[] {
 
     if (trimmed.startsWith("- ")) {
       flushParagraph()
+      flushNumbered()
       bullets.push(trimmed.slice(2))
+      continue
+    }
+
+    // `1.` through `9.` — the notice-and-counter-notice procedure in the terms
+    // is a numbered list, and the numbers are load-bearing: a takedown notice
+    // has to contain six specific things, and a reader has to be able to count
+    // them.
+    const ordered = /^(\d{1,2})\.\s+(.*)$/.exec(trimmed)
+    if (ordered) {
+      flushParagraph()
+      flushBullets()
+      numbered.push(ordered[2]!)
       continue
     }
 

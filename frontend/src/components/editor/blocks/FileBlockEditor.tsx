@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { UploadRightsNotice } from "@/components/legal/UploadRightsNotice"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { FileText, Loader2, Paperclip, Upload, X } from "lucide-react"
@@ -166,6 +167,7 @@ export function FileBlockEditor({ block, courseId, chapterId, onUpdated }: Props
           e.target.value = ""
         }}
       />
+      <UploadRightsNotice />
     </div>
   )
 }

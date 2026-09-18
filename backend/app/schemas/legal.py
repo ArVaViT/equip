@@ -1,6 +1,6 @@
 """Shapes for the legal documents and the record of accepting them."""
 
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -19,10 +19,22 @@ class LegalDocumentOut(BaseModel):
 
 
 class LegalDocumentSummary(BaseModel):
-    """What exists and at which version — enough to decide whether to ask."""
+    """What exists and at which version — enough to decide whether to ask.
+
+    ``required_for`` and ``requires_consent`` come straight off the registry so
+    the client never has to reconstruct either. A gate that decides for itself
+    which documents a teacher owes is a gate that will disagree with the server
+    the first time the two are edited apart.
+    """
 
     slug: str
     version: str
+    effective: date
+    #: Roles that must accept it. Empty for a page nobody signs.
+    required_for: list[str]
+    #: Whether arriving at this version asks for a fresh acceptance, or is
+    #: published and announced without one.
+    requires_consent: bool
 
 
 class LegalAcceptanceIn(RequestModel):
@@ -36,11 +48,23 @@ class LegalAcceptanceIn(RequestModel):
     slug: str
     version: str
     #: The reader's language, not the document's. It used to be pinned to the
-    #: two languages the documents exist in, so a German reader could only
+    #: two languages the documents existed in, so a German reader could only
     #: consent by claiming to have read the Russian policy — and the record
     #: then said exactly that. The server answers with the language it
     #: actually served and stores that.
     locale: LocaleCode
+
+
+class LegalNoticeIn(RequestModel):
+    """Which notice somebody has just been shown and closed.
+
+    No locale and no hash. A notice says "this document changed, here is what
+    moved, here is the full text" — the reader is being told, not asked, and a
+    record of a telling does not have to pin down which words were on screen.
+    """
+
+    slug: str
+    version: str
 
 
 class LegalAcceptanceOut(BaseModel):
@@ -51,12 +75,18 @@ class LegalAcceptanceOut(BaseModel):
 
 
 class LegalStatusOut(BaseModel):
-    """Whether this person still has something to accept.
+    """Whether this person still has something to accept, or to be told about.
 
-    `outstanding` is the question the first-run gate actually asks, answered
-    once by the server rather than reconstructed by comparing two lists on the
-    client — where a mismatch shows up as a gate that will not close.
+    `outstanding` is the question the gate actually asks, answered once by the
+    server rather than reconstructed by comparing lists on the client — where a
+    mismatch shows up as a gate that will not close. It is answered for *this*
+    person's role, which is how a promotion to teacher becomes a thing the
+    client can notice without having re-read its own profile.
+
+    `notices` is the other half of the promise: a document that changed without
+    changing what anybody agreed to. The reader is told and not asked.
     """
 
     accepted: list[LegalAcceptanceOut]
     outstanding: list[LegalDocumentSummary]
+    notices: list[LegalDocumentSummary]
