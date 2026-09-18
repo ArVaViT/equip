@@ -13,6 +13,7 @@ from app.models.grade_exemption import GradeExemption
 from app.models.grade_sheet import GradeSheet, GradeSheetRow
 from app.models.invitation import Invitation, InvitationRole, InvitationStatus
 from app.models.legal_acceptance import LegalAcceptance
+from app.models.legal_notice_seen import LegalNoticeSeen
 from app.models.notification import Notification
 from app.models.org_settings import DEFAULT_GRADE_BANDS, OrgSettings
 from app.models.organization import Organization
@@ -63,6 +64,7 @@ __all__ = [
     "InvitationRole",
     "InvitationStatus",
     "LegalAcceptance",
+    "LegalNoticeSeen",
     "Module",
     "Notification",
     "OrgSettings",

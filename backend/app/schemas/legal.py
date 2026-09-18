@@ -55,6 +55,18 @@ class LegalAcceptanceIn(RequestModel):
     locale: LocaleCode
 
 
+class LegalNoticeIn(RequestModel):
+    """Which notice somebody has just been shown and closed.
+
+    No locale and no hash. A notice says "this document changed, here is what
+    moved, here is the full text" — the reader is being told, not asked, and a
+    record of a telling does not have to pin down which words were on screen.
+    """
+
+    slug: str
+    version: str
+
+
 class LegalAcceptanceOut(BaseModel):
     slug: str
     version: str

@@ -2628,6 +2628,16 @@
     "body": false
   },
   {
+    "method": "POST",
+    "path": "/api/v1/legal/notices/seen",
+    "params": [],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": true
+  },
+  {
     "method": "GET",
     "path": "/api/v1/notifications",
     "params": [

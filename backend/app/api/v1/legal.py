@@ -16,17 +16,20 @@ from app.legal import (
     LEGAL_REGISTRY,
     DocumentSpec,
     document_for,
+    document_spec,
     notices_for,
     outstanding_for,
     required_slugs,
 )
 from app.models.legal_acceptance import LegalAcceptance
+from app.models.legal_notice_seen import LegalNoticeSeen
 from app.models.user import User
 from app.schemas.legal import (
     LegalAcceptanceIn,
     LegalAcceptanceOut,
     LegalDocumentOut,
     LegalDocumentSummary,
+    LegalNoticeIn,
     LegalStatusOut,
 )
 
@@ -107,6 +110,15 @@ def my_acceptances(
     rows = _accepted_rows(db, current_user.id)
     accepted = {(row.document_slug, row.version) for row in rows}
     role = current_user.role
+    # A notice is shown until it has been read, and then not again — on this
+    # device or any other. A browser flag would re-show it on the laptop after
+    # it was closed on the phone, which teaches people to dismiss banners
+    # without reading them: the failure this whole mechanism exists to avoid,
+    # one notch quieter.
+    told = {
+        (row.document_slug, row.version)
+        for row in db.scalars(select(LegalNoticeSeen).where(LegalNoticeSeen.user_id == current_user.id)).all()
+    }
     return LegalStatusOut(
         accepted=[
             LegalAcceptanceOut(
@@ -118,7 +130,9 @@ def my_acceptances(
             for row in rows
         ],
         outstanding=[_summary(spec) for spec in outstanding_for(role, accepted)],
-        notices=[_summary(spec) for spec in notices_for(role, accepted)],
+        notices=[
+            _summary(spec) for spec in notices_for(role, accepted) if (spec.slug, spec.current.version) not in told
+        ],
     )
 
 
@@ -211,3 +225,38 @@ def accept(
         locale=row.locale,
         accepted_at=row.accepted_at,
     )
+
+
+@router.post("/notices/seen", status_code=status.HTTP_204_NO_CONTENT)
+def mark_notice_seen(
+    payload: LegalNoticeIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Record that somebody has been told about a notice-only change.
+
+    Deliberately not an acceptance and deliberately not on the acceptance
+    route. The row this writes asserts "they were told", which is a weaker
+    claim than "they agreed" and has to stay weaker: a consent table that also
+    holds dismissals answers its own question ambiguously.
+
+    No 409 for a version we no longer serve, unlike accepting. A stale tab
+    closing a banner about a superseded version is closing a banner; there is
+    nothing to get wrong, and refusing it would leave it on screen forever.
+    """
+    try:
+        spec = document_spec(payload.slug)
+    except KeyError as exc:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message=f"Legal document '{payload.slug}' not found",
+            context={"resource_type": "legal_document", "resource_id": payload.slug},
+        ) from exc
+
+    db.add(LegalNoticeSeen(user_id=current_user.id, document_slug=spec.slug, version=payload.version))
+    try:
+        db.commit()
+    except IntegrityError:
+        # Two tabs, or a double-click. Being told twice is being told.
+        db.rollback()

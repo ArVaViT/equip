@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { legalService, type LegalDocumentSummary } from "@/services/legal"
+import { useAuth } from "@/context/useAuth"
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import { toast } from "@/lib/toast"
 
@@ -58,6 +59,7 @@ interface Props {
  */
 export function PrivacyPolicyStep({ onAccept, renewal = false, documents }: Props) {
   const { i18n, t } = useTranslation()
+  const { logout } = useAuth()
   // The language the reader is actually in. It used to collapse to "ru" for
   // everyone but English readers, so a German student's consent record said
   // they had read the Russian policy — a claim the record exists to make
@@ -136,11 +138,11 @@ export function PrivacyPolicyStep({ onAccept, renewal = false, documents }: Prop
           Asking somebody to accept a text they cannot reach is the thing this
           screen was doing wrong. */}
       <p className="text-sm text-ink-muted">
-        <Link to="/privacy" target="_blank" className="text-brand underline-offset-4 hover:underline">
+        <Link to="/privacy" target="_blank" className="text-brand underline underline-offset-4">
           {t("legal.privacy")}
         </Link>
         {" · "}
-        <Link to="/terms" target="_blank" className="text-brand underline-offset-4 hover:underline">
+        <Link to="/terms" target="_blank" className="text-brand underline underline-offset-4">
           {t("legal.terms")}
         </Link>
       </p>
@@ -155,6 +157,18 @@ export function PrivacyPolicyStep({ onAccept, renewal = false, documents }: Prop
         {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />}
         {t("firstRun.privacy.next")}
       </Button>
+
+      {/* The door. There is no skip path here and there should not be — this
+          is the legal gate. But a screen somebody cannot dismiss must not
+          also be a screen they cannot walk away from, and the alternative to
+          agreeing has to be visible rather than guessed at. */}
+      <button
+        type="button"
+        onClick={() => void logout()}
+        className="text-xs text-ink-muted underline underline-offset-4 hover:text-ink"
+      >
+        {t("legalGate.signOut")}
+      </button>
     </div>
   )
 }
