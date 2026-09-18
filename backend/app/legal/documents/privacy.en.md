@@ -165,12 +165,14 @@ provider's own data processing agreement says what protects it:
   Transfer Addendum, both built into its agreement without a separate signature.
 - **Resend** — certification under the EU–U.S. Data Privacy Framework and its UK
   extension, **and** the Standard Contractual Clauses on top.
-- **Google** — **we have not confirmed this one and will not claim it.** The
-  Gemini API is used through a Google AI Studio key, and we could not establish
-  from Google's published terms which transfer mechanism covers that route.
-  Until we can, treat Google as the gap in this list rather than assume it is
-  like the other four. We would rather leave a hole here you can see than fill
-  it with something we have not read.
+- **Google** — the recipient is **Google LLC**, which is certified under the
+  **EU–U.S. Data Privacy Framework** and its UK extension. That certification is
+  a lawful basis for the transfer in its own right, resting on the European
+  Commission's adequacy decision, whatever contract we hold with them. Separately
+  and honestly: we could not confirm whether Google's Cloud Data Processing
+  Addendum covers Google AI Studio specifically, because the full appendices do
+  not open over the web. That is a question about our contract, not about the
+  basis for the transfer, and it does not affect whether the transfer is lawful.
 
 **Why we hold what we hold.** For the law that asks this question directly: we
 process your account and your coursework in order to provide the platform you
