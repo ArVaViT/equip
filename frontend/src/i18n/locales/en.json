@@ -2447,6 +2447,15 @@
         "title": "Revoke this invitation?",
         "description": "The link sent to {{email}} will stop working. You can invite them again later.",
         "confirm": "Revoke"
+      },
+      "ageAttestation": {
+        "label": "I confirm this person is 13 or older.",
+        "help": "Anyone under 13 cannot have an account here, invited or not. We do not ask for a date of birth — your word is the record, and it is kept with your name against this invitation."
+      },
+      "resendConfirm": {
+        "title": "Send this invitation again?",
+        "body": "The link already sent to {{email}} stays valid on its original clock. Sending again also records you as confirming this person is 13 or older.",
+        "confirm": "Send again"
       }
     },
     "tabSchool": "School",
@@ -2538,7 +2547,8 @@
       "resendIn": "Send again in {{seconds}}s",
       "resent": "Email sent again.",
       "resendFailed": "Could not send the email. Please try again in a minute."
-    }
+    },
+    "ageFloor": "You can create an account for yourself from 16. Younger than that, a school administrator invites you."
   },
   "validation": {
     "titleRequired": "Title is required",

@@ -241,6 +241,13 @@ def create_or_resend_invitation(
 
     standing = next((row for row in live if _subsumes(row, scope=scope, course_id=course_id)), None)
     if standing is not None:
+        # A resend is a fresh statement about a person's age by whoever
+        # clicked it, not an echo of the first one — and it may not be the
+        # same person clicking. Overwriting is the honest record: what is
+        # stored is who last stood behind the invitation that is live.
+        standing.age_attested_at = datetime.now(UTC)
+        standing.age_attested_by = invited_by
+        db.commit()
         increment("equip.invitations.created_total", scope=scope, role=role, kind="resend")
         _mail_the_invitation(db, standing, invited_by=invited_by)
         return standing, False
@@ -274,6 +281,8 @@ def create_or_resend_invitation(
         course_id=course_id,
         token=_generate_token(),
         invited_by=invited_by,
+        age_attested_at=datetime.now(UTC),
+        age_attested_by=invited_by,
     )
     db.add(invitation)
     db.commit()
@@ -285,7 +294,15 @@ def create_or_resend_invitation(
         "create",
         "invitation",
         str(invitation.id),
-        details={"email": normalized_email, "role": role, "scope": scope, "course_id": course_id},
+        details={
+            "email": normalized_email,
+            "role": role,
+            "scope": scope,
+            "course_id": course_id,
+            # The statement, in the log as well as in the row. A column can
+            # be dropped by a migration; the audit line is what survives it.
+            "age_attested": True,
+        },
     )
 
     increment("equip.invitations.created_total", scope=scope, role=role, kind="new")

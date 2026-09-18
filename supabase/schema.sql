@@ -823,6 +823,9 @@ CREATE TABLE public.invitations (
     scope text DEFAULT 'organization'::text NOT NULL,
     course_id character varying,
     fulfilled_at timestamp with time zone,
+    age_attested_at timestamp with time zone,
+    age_attested_by uuid,
+    CONSTRAINT chk_invitations_age_attested_together CHECK (((age_attested_at IS NULL) = (age_attested_by IS NULL))),
     CONSTRAINT chk_invitations_course_matches_scope CHECK ((((scope = 'course'::text) AND (course_id IS NOT NULL)) OR ((scope <> 'course'::text) AND (course_id IS NULL)))),
     CONSTRAINT chk_invitations_fulfilled_at_matches_status CHECK (((status = 'fulfilled'::text) = (fulfilled_at IS NOT NULL))),
     CONSTRAINT chk_invitations_scope CHECK ((scope = ANY (ARRAY['platform'::text, 'organization'::text, 'course'::text]))),
@@ -3024,6 +3027,14 @@ ALTER TABLE ONLY public.grade_sheets
 
 ALTER TABLE ONLY public.grade_sheets
     ADD CONSTRAINT grade_sheets_reopened_by_fkey FOREIGN KEY (reopened_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: invitations invitations_age_attested_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.invitations
+    ADD CONSTRAINT invitations_age_attested_by_fkey FOREIGN KEY (age_attested_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
 
 
 --

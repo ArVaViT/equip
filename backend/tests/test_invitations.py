@@ -86,7 +86,9 @@ def invitee_client(db: Session, teacher: User, admin: User):
 
 
 def test_create_invitation_admin_ok(admin_client: TestClient):
-    resp = admin_client.post(INVITATIONS_PREFIX, json={"email": "new.teacher@example.com", "role": "teacher"})
+    resp = admin_client.post(
+        INVITATIONS_PREFIX, json={"email": "new.teacher@example.com", "role": "teacher", "age_attested": True}
+    )
     assert resp.status_code == 201, resp.text
     body = resp.json()
     assert body["email"] == "new.teacher@example.com"
@@ -97,7 +99,9 @@ def test_create_invitation_admin_ok(admin_client: TestClient):
 
 
 def test_create_invitation_normalizes_email_case(admin_client: TestClient):
-    resp = admin_client.post(INVITATIONS_PREFIX, json={"email": "Mixed.Case@Example.com", "role": "student"})
+    resp = admin_client.post(
+        INVITATIONS_PREFIX, json={"email": "Mixed.Case@Example.com", "role": "student", "age_attested": True}
+    )
     assert resp.status_code == 201, resp.text
     assert resp.json()["email"] == "mixed.case@example.com"
 
@@ -105,29 +109,37 @@ def test_create_invitation_normalizes_email_case(admin_client: TestClient):
 def test_create_invitation_rejects_admin_role(admin_client: TestClient):
     # Literal["teacher", "student"] on the schema -- an invite can never
     # grant admin, regardless of what the request body claims.
-    resp = admin_client.post(INVITATIONS_PREFIX, json={"email": "x@example.com", "role": "admin"})
+    resp = admin_client.post(INVITATIONS_PREFIX, json={"email": "x@example.com", "role": "admin", "age_attested": True})
     assert resp.status_code == 422, resp.text
 
 
 def test_create_invitation_forbidden_for_student(student_client: TestClient):
-    resp = student_client.post(INVITATIONS_PREFIX, json={"email": "x@example.com", "role": "student"})
+    resp = student_client.post(
+        INVITATIONS_PREFIX, json={"email": "x@example.com", "role": "student", "age_attested": True}
+    )
     assert resp.status_code == 403, resp.text
 
 
 def test_create_invitation_forbidden_for_teacher(client: TestClient):
     # ``client`` fixture is teacher-authenticated by default.
-    resp = client.post(INVITATIONS_PREFIX, json={"email": "x@example.com", "role": "student"})
+    resp = client.post(INVITATIONS_PREFIX, json={"email": "x@example.com", "role": "student", "age_attested": True})
     assert resp.status_code == 403, resp.text
 
 
 def test_create_invitation_forbidden_anonymous(anon_client: TestClient):
-    resp = anon_client.post(INVITATIONS_PREFIX, json={"email": "x@example.com", "role": "student"})
+    resp = anon_client.post(
+        INVITATIONS_PREFIX, json={"email": "x@example.com", "role": "student", "age_attested": True}
+    )
     assert resp.status_code == 401, resp.text
 
 
 def test_create_invitation_dedupes_pending(admin_client: TestClient, db: Session):
-    first = admin_client.post(INVITATIONS_PREFIX, json={"email": "dup@example.com", "role": "teacher"})
-    second = admin_client.post(INVITATIONS_PREFIX, json={"email": "dup@example.com", "role": "teacher"})
+    first = admin_client.post(
+        INVITATIONS_PREFIX, json={"email": "dup@example.com", "role": "teacher", "age_attested": True}
+    )
+    second = admin_client.post(
+        INVITATIONS_PREFIX, json={"email": "dup@example.com", "role": "teacher", "age_attested": True}
+    )
     assert first.status_code == 201
     assert second.status_code == 201
     # Same row resent, not a fresh duplicate -- same id/token, and the
@@ -138,13 +150,17 @@ def test_create_invitation_dedupes_pending(admin_client: TestClient, db: Session
 
 
 def test_create_invitation_new_row_after_prior_revoked_or_accepted(admin_client: TestClient, db: Session):
-    first = admin_client.post(INVITATIONS_PREFIX, json={"email": "again@example.com", "role": "student"})
+    first = admin_client.post(
+        INVITATIONS_PREFIX, json={"email": "again@example.com", "role": "student", "age_attested": True}
+    )
     invitation_id = uuid.UUID(first.json()["id"])
     row = db.query(Invitation).filter(Invitation.id == invitation_id).one()
     row.status = "revoked"
     db.commit()
 
-    second = admin_client.post(INVITATIONS_PREFIX, json={"email": "again@example.com", "role": "student"})
+    second = admin_client.post(
+        INVITATIONS_PREFIX, json={"email": "again@example.com", "role": "student", "age_attested": True}
+    )
     assert second.status_code == 201, second.text
     assert second.json()["id"] != str(invitation_id)
 
@@ -155,8 +171,8 @@ def test_create_invitation_new_row_after_prior_revoked_or_accepted(admin_client:
 
 
 def test_list_invitations_admin_ok(admin_client: TestClient):
-    admin_client.post(INVITATIONS_PREFIX, json={"email": "a@example.com", "role": "teacher"})
-    admin_client.post(INVITATIONS_PREFIX, json={"email": "b@example.com", "role": "student"})
+    admin_client.post(INVITATIONS_PREFIX, json={"email": "a@example.com", "role": "teacher", "age_attested": True})
+    admin_client.post(INVITATIONS_PREFIX, json={"email": "b@example.com", "role": "student", "age_attested": True})
 
     resp = admin_client.get(INVITATIONS_PREFIX)
     assert resp.status_code == 200, resp.text
@@ -165,8 +181,8 @@ def test_list_invitations_admin_ok(admin_client: TestClient):
 
 
 def test_list_invitations_filters_by_role_and_status(admin_client: TestClient):
-    admin_client.post(INVITATIONS_PREFIX, json={"email": "t1@example.com", "role": "teacher"})
-    admin_client.post(INVITATIONS_PREFIX, json={"email": "s1@example.com", "role": "student"})
+    admin_client.post(INVITATIONS_PREFIX, json={"email": "t1@example.com", "role": "teacher", "age_attested": True})
+    admin_client.post(INVITATIONS_PREFIX, json={"email": "s1@example.com", "role": "student", "age_attested": True})
 
     resp = admin_client.get(INVITATIONS_PREFIX, params={"role": "teacher"})
     assert resp.status_code == 200
@@ -188,7 +204,9 @@ def test_list_invitations_forbidden_for_non_admin(student_client: TestClient):
 
 
 def test_preview_invitation_by_token_ok(admin_client: TestClient, anon_client: TestClient, db: Session):
-    admin_client.post(INVITATIONS_PREFIX, json={"email": "preview@example.com", "role": "teacher"})
+    admin_client.post(
+        INVITATIONS_PREFIX, json={"email": "preview@example.com", "role": "teacher", "age_attested": True}
+    )
     token = db.query(Invitation).filter(Invitation.email == "preview@example.com").one().token
 
     resp = anon_client.post(f"{INVITATIONS_PREFIX}/preview", json={"token": token})
@@ -213,7 +231,7 @@ def test_the_path_preview_still_answers_a_stale_bundle(admin_client: TestClient,
     bundle, and that bundle knows only this shape. Same answer as the body
     route, byte for byte.
     """
-    admin_client.post(INVITATIONS_PREFIX, json={"email": "stale@example.com", "role": "student"})
+    admin_client.post(INVITATIONS_PREFIX, json={"email": "stale@example.com", "role": "student", "age_attested": True})
     token = db.query(Invitation).filter(Invitation.email == "stale@example.com").one().token
 
     by_path = anon_client.get(f"{INVITATIONS_PREFIX}/token/{token}")
@@ -311,7 +329,7 @@ def test_accept_invitation_requires_auth(anon_client: TestClient):
 
 def test_revoking_stops_the_link_from_working(admin_client: TestClient, db: Session):
     created = admin_client.post(
-        INVITATIONS_PREFIX, json={"email": "wrong.address@example.com", "role": "teacher"}
+        INVITATIONS_PREFIX, json={"email": "wrong.address@example.com", "role": "teacher", "age_attested": True}
     ).json()
 
     resp = admin_client.delete(f"{INVITATIONS_PREFIX}/{created['id']}")
@@ -329,7 +347,9 @@ def test_revoking_stops_the_link_from_working(admin_client: TestClient, db: Sess
 
 
 def test_revoking_twice_is_not_an_error(admin_client: TestClient):
-    created = admin_client.post(INVITATIONS_PREFIX, json={"email": "twice@example.com", "role": "student"}).json()
+    created = admin_client.post(
+        INVITATIONS_PREFIX, json={"email": "twice@example.com", "role": "student", "age_attested": True}
+    ).json()
     assert admin_client.delete(f"{INVITATIONS_PREFIX}/{created['id']}").status_code == 200
     second = admin_client.delete(f"{INVITATIONS_PREFIX}/{created['id']}")
     assert second.status_code == 200
@@ -339,7 +359,9 @@ def test_revoking_twice_is_not_an_error(admin_client: TestClient):
 def test_an_accepted_invitation_cannot_be_revoked(admin_client: TestClient, db: Session):
     # Revoking here would read as "that access is gone", and it is not: the
     # person has an account. Removing the role is the other operation.
-    created = admin_client.post(INVITATIONS_PREFIX, json={"email": "already.in@example.com", "role": "teacher"}).json()
+    created = admin_client.post(
+        INVITATIONS_PREFIX, json={"email": "already.in@example.com", "role": "teacher", "age_attested": True}
+    ).json()
     row = db.query(Invitation).filter(Invitation.id == uuid.UUID(created["id"])).first()
     assert row is not None
     row.status = "accepted"
