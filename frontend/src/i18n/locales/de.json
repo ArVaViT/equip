@@ -730,6 +730,7 @@
     "courses": "Kurse",
     "privacy": "Datenschutzerklärung",
     "terms": "Nutzungsbedingungen",
+    "teacherTerms": "Lehrenden- und Beitragendenvereinbarung",
     "providers": "Infrastrukturanbieter"
   },
   "notFound": {
@@ -2836,7 +2837,8 @@
     "englishOnly": "Dieses Dokument ist nur auf Englisch verfügbar.",
     "fingerprint": "Fassung {{version}} · Textprüfsumme {{sha}}",
     "privacy": "Datenschutzerklärung",
-    "terms": "Nutzungsbedingungen"
+    "terms": "Nutzungsbedingungen",
+    "teacherTerms": "Lehrenden- und Beitragendenvereinbarung"
   },
   "meta": {
     "documentTitle": "Equip — Bibelstudium online",
