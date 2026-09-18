@@ -23,8 +23,24 @@ export interface InvitationPreview {
  * (admin-only create/list vs. public/self-serve accept).
  */
 export const invitationsService = {
-  async createInvitation(email: string, role: InvitationRole): Promise<Invitation> {
-    const response = await api.post<Invitation>("/invitations", { email, role })
+  /**
+   * Write (or resend) an invitation.
+   *
+   * ``ageAttested`` is the sender's statement that this person is thirteen
+   * or older. It has no default and the server refuses ``false`` exactly as
+   * firmly as it refuses a missing field — an attestation nobody made is not
+   * an attestation, and a default here would make it one.
+   */
+  async createInvitation(
+    email: string,
+    role: InvitationRole,
+    ageAttested: boolean,
+  ): Promise<Invitation> {
+    const response = await api.post<Invitation>("/invitations", {
+      email,
+      role,
+      age_attested: ageAttested,
+    })
     return response.data
   },
 

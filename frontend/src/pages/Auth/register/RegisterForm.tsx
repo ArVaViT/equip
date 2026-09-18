@@ -161,6 +161,15 @@ export function RegisterForm({
             onGeneratePassword={onGeneratePassword}
           />
 
+          {/* The age floor for signing yourself up, said on the form rather
+              than only in a policy two clicks away. It has been 16 in the
+              Privacy Policy and the Terms since they were written; until now
+              nobody met it before they had an account. Somebody younger is
+              brought in by a school administrator, who states their age. */}
+          <p className="text-xs leading-snug text-ink-muted">
+            {t("authRegister.ageFloor")}
+          </p>
+
           <Button
             type="submit"
             size="lg"

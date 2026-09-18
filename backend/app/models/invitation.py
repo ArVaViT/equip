@@ -72,6 +72,12 @@ class Invitation(Base):
             "(scope = 'course' AND course_id IS NOT NULL) OR (scope <> 'course' AND course_id IS NULL)",
             name="chk_invitations_course_matches_scope",
         ),
+        # An attestation with no attester answers "who said so" with silence,
+        # which is the one question the record is kept to answer.
+        CheckConstraint(
+            "(age_attested_at IS NULL) = (age_attested_by IS NULL)",
+            name="chk_invitations_age_attested_together",
+        ),
         Index("ix_invitations_email_role", "email", "role", "created_at"),
     )
 
@@ -94,6 +100,29 @@ class Invitation(Base):
     #: When the person arrived without the link (status ``fulfilled``).
     fulfilled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_default_expires_at)
+    #: When the inviter said this person is thirteen or older, and who said it.
+    #:
+    #: A school administrator can bring somebody in who is too young to sign
+    #: up for themselves — that is the whole point of an invitation, and the
+    #: product rule from 2026-09-17 is that the floor for it is thirteen.
+    #: Below that the platform does not want an account at all: COPPA turns a
+    #: known under-13 into verifiable parental consent, a records-access duty
+    #: and a deletion duty, and none of that is a thing nine teachers should
+    #: be running.
+    #:
+    #: No date of birth. The platform does not need one, and asking would
+    #: collect a piece of personal data about a child in order to protect
+    #: children. What it needs is a person who knows the family saying so,
+    #: and a record of who that was — which is these two columns.
+    #:
+    #: Nullable because every invitation written before this existed has no
+    #: answer, and inventing one would be the opposite of a record. Both
+    #: columns move together (``chk_invitations_age_attested_together``): an
+    #: attestation with no attester is an assertion nobody made.
+    age_attested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    age_attested_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("profiles.id", ondelete="SET NULL"), default=None
+    )
 
     inviter: Mapped["User | None"] = relationship(foreign_keys=[invited_by])
 

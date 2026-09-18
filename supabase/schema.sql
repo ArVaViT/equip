@@ -745,6 +745,31 @@ CREATE TABLE public.daily_challenge_streaks (
 
 
 --
+-- Name: dmca_complaints; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.dmca_complaints (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    received_at timestamp with time zone DEFAULT now() NOT NULL,
+    complainant_name text NOT NULL,
+    complainant_email text NOT NULL,
+    complainant_organization text,
+    work_described text NOT NULL,
+    material_location text NOT NULL,
+    uploaded_by uuid,
+    uploader_notified_at timestamp with time zone,
+    status text DEFAULT 'received'::text NOT NULL,
+    resolved_at timestamp with time zone,
+    resolved_by uuid,
+    resolution_note text,
+    strike_number integer,
+    CONSTRAINT chk_dmca_complaints_resolved_together CHECK (((resolved_at IS NULL) = (resolved_by IS NULL))),
+    CONSTRAINT chk_dmca_complaints_status CHECK ((status = ANY (ARRAY['received'::text, 'upheld'::text, 'rejected'::text, 'withdrawn'::text]))),
+    CONSTRAINT chk_dmca_complaints_strike_is_upheld CHECK (((strike_number IS NULL) OR (status = 'upheld'::text)))
+);
+
+
+--
 -- Name: enrollments; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -852,6 +877,9 @@ CREATE TABLE public.invitations (
     scope text DEFAULT 'organization'::text NOT NULL,
     course_id character varying,
     fulfilled_at timestamp with time zone,
+    age_attested_at timestamp with time zone,
+    age_attested_by uuid,
+    CONSTRAINT chk_invitations_age_attested_together CHECK (((age_attested_at IS NULL) = (age_attested_by IS NULL))),
     CONSTRAINT chk_invitations_course_matches_scope CHECK ((((scope = 'course'::text) AND (course_id IS NOT NULL)) OR ((scope <> 'course'::text) AND (course_id IS NULL)))),
     CONSTRAINT chk_invitations_fulfilled_at_matches_status CHECK (((status = 'fulfilled'::text) = (fulfilled_at IS NOT NULL))),
     CONSTRAINT chk_invitations_scope CHECK ((scope = ANY (ARRAY['platform'::text, 'organization'::text, 'course'::text]))),
@@ -1468,6 +1496,14 @@ ALTER TABLE ONLY public.daily_challenge_schedule
 
 ALTER TABLE ONLY public.daily_challenge_streaks
     ADD CONSTRAINT daily_challenge_streaks_pkey PRIMARY KEY (user_id);
+
+
+--
+-- Name: dmca_complaints dmca_complaints_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dmca_complaints
+    ADD CONSTRAINT dmca_complaints_pkey PRIMARY KEY (id);
 
 
 --
@@ -2188,6 +2224,20 @@ CREATE INDEX ix_dc_schedule_scheduled_by ON public.daily_challenge_schedule USIN
 --
 
 CREATE INDEX ix_dc_streaks_last_engaged ON public.daily_challenge_streaks USING btree (last_engaged_date) WHERE (current_streak >= 1);
+
+
+--
+-- Name: ix_dmca_complaints_received_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_dmca_complaints_received_at ON public.dmca_complaints USING btree (received_at);
+
+
+--
+-- Name: ix_dmca_complaints_uploaded_by; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_dmca_complaints_uploaded_by ON public.dmca_complaints USING btree (uploaded_by);
 
 
 --
@@ -3025,6 +3075,22 @@ ALTER TABLE ONLY public.enrollments
 
 
 --
+-- Name: dmca_complaints dmca_complaints_resolved_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dmca_complaints
+    ADD CONSTRAINT dmca_complaints_resolved_by_fkey FOREIGN KEY (resolved_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: dmca_complaints dmca_complaints_uploaded_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dmca_complaints
+    ADD CONSTRAINT dmca_complaints_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
 -- Name: enrollments enrollments_course_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3118,6 +3184,14 @@ ALTER TABLE ONLY public.grade_sheets
 
 ALTER TABLE ONLY public.grade_sheets
     ADD CONSTRAINT grade_sheets_reopened_by_fkey FOREIGN KEY (reopened_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: invitations invitations_age_attested_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.invitations
+    ADD CONSTRAINT invitations_age_attested_by_fkey FOREIGN KEY (age_attested_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
 
 
 --
@@ -3729,6 +3803,12 @@ CREATE POLICY dc_schedule_select_visible ON public.daily_challenge_schedule FOR 
 
 CREATE POLICY dc_streaks_select_own ON public.daily_challenge_streaks FOR SELECT TO authenticated USING ((user_id = ( SELECT auth.uid() AS uid)));
 
+
+--
+-- Name: dmca_complaints; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.dmca_complaints ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: enrollments; Type: ROW SECURITY; Schema: public; Owner: -

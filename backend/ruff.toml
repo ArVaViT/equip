@@ -33,6 +33,13 @@ known-first-party = ["app"]
 "app/services/bible/substitution.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/test_bible_substitution.py" = ["RUF001", "RUF002", "RUF003"]
 "tests/test_a_citation_pasted_from_word.py" = ["RUF001", "RUF002", "RUF003"]
+# Recognizing a copyright line in Russian and Ukrainian means writing the
+# Cyrillic forms out verbatim: «Все права защищены», «Источник:», «Из книги».
+# A Latin look-alike in any of them would mean a notice that goes to the
+# translator and comes back rewritten, which is what the module exists to
+# prevent.
+"app/services/attribution/substitution.py" = ["RUF001", "RUF002", "RUF003"]
+"tests/test_the_name_on_the_extract_survives_translation.py" = ["RUF001", "RUF002", "RUF003"]
 # The typography pass and its tests are *about* the characters RUF001/2/3
 # calls ambiguous: a straight quote against a curly one, a hyphen against
 # an en dash, a Cyrillic apostrophe against a Latin one. Telling them

@@ -26,6 +26,29 @@ class InvitationCreate(RequestModel):
     #: so a client that predates this field keeps working unchanged.
     scope: InvitationScopeLiteral = "organization"
     course_id: str | None = Field(default=None, max_length=64)
+    #: The inviter's statement that this person is thirteen or older.
+    #:
+    #: Required, and required to be ``True``: a default would make it
+    #: something the client can leave out, and an attestation nobody made is
+    #: not an attestation. The client shows the sentence next to an unticked
+    #: box; this is the server refusing to take the word for granted.
+    #:
+    #: Not a date of birth. Asking one would collect a piece of personal data
+    #: about a child in order to protect children, and the platform has no
+    #: use for it afterwards. What it needs is somebody who knows the family
+    #: saying so, and a record of who — see ``invitations.age_attested_by``.
+    age_attested: bool
+
+    @model_validator(mode="after")
+    def _the_age_is_attested(self) -> "InvitationCreate":
+        """Refuse an invitation whose sender did not make the statement.
+
+        ``False`` and "absent" are the same answer to the only question
+        being asked, and both are refused rather than recorded.
+        """
+        if not self.age_attested:
+            raise ValueError("age_attested must be true: the invitation states that this person is 13 or older")
+        return self
 
     @model_validator(mode="after")
     def _course_matches_scope(self) -> "InvitationCreate":
@@ -56,6 +79,9 @@ class InvitationResponse(BaseModel):
     accepted_at: datetime | None
     fulfilled_at: datetime | None = None
     expires_at: datetime
+    #: When the sender stated this person is 13 or older. ``None`` on an
+    #: invitation written before the statement was asked for.
+    age_attested_at: datetime | None = None
     # Derived, not stored -- a 'pending' row past its expiry is treated as
     # expired at read time rather than requiring a cron to flip a stored
     # status. Only meaningful when status == "pending".

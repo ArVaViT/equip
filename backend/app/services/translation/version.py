@@ -86,12 +86,26 @@ History
     reference was rewritten by the model, the quotation marks were
     destroyed before the row was written, and a heading already decided
     is a heading nothing will ask about again.
+11  Copyright-management information stopped being ordinary prose. A
+    copyright line, a source label, an author credit under an extract, an
+    ISBN — each now leaves the text as an ``EQA`` marker before the call and
+    comes back character for character afterwards, later even than the
+    typography pass, because re-pointing the quotation marks in a rights
+    line is itself an alteration. Before this the model was free to render
+    an attribution into German, shorten it, or drop it as boilerplate, and
+    17 U.S.C. § 1202(b) prices that per work.
+
+    The corpus on the day this shipped held no attributions at all — 29,015
+    rows, zero matches for the anchored patterns — so nothing is being
+    repaired here. Rows are re-made anyway, because the number means "made
+    under the current rules" and a corpus that is half one thing and half
+    another cannot be asked about.
 """
 
 from __future__ import annotations
 
 from typing import Final
 
-TRANSLATOR_VERSION: Final[int] = 10
+TRANSLATOR_VERSION: Final[int] = 11
 
 __all__ = ["TRANSLATOR_VERSION"]

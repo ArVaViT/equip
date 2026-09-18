@@ -98,10 +98,21 @@ export function InvitationsTab() {
   // Re-inviting the same (email, role) is a safe, idempotent resend --
   // see create_or_resend_invitation on the backend. Reuses the same
   // create-invite call; no separate "resend" endpoint exists.
+  //
+  // The age statement goes with it, and the backend overwrites the stored
+  // one with whoever clicked this. Re-stating is the point: the row should
+  // say who last stood behind the invitation that is live, and that may not
+  // be the person who wrote it. The confirmation dialog is where they say it.
   const handleResend = async (inv: Invitation) => {
+    const restated = await confirm({
+      title: t("admin.invitations.resendConfirm.title"),
+      description: t("admin.invitations.resendConfirm.body", { email: inv.email }),
+      confirmLabel: t("admin.invitations.resendConfirm.confirm"),
+    })
+    if (!restated) return
     setResendingId(inv.id)
     try {
-      await invitationsService.createInvitation(inv.email, inv.role)
+      await invitationsService.createInvitation(inv.email, inv.role, true)
       toast({ title: t("admin.invitations.toast.resent"), variant: "success" })
       reload()
     } catch (err) {

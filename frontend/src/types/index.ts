@@ -472,6 +472,10 @@ export interface Invitation {
   // Derived server-side: a 'pending' row past expires_at. Only
   // meaningful when status === 'pending'.
   is_expired: boolean
+  // When the sender stated this person is 13 or older. Null on an
+  // invitation written before the statement was asked for — a record of
+  // nothing, which is the honest value; it is never backfilled.
+  age_attested_at?: string | null
 }
 
 /**
