@@ -195,6 +195,14 @@ def decide_complaint(
             context={"resource_type": "dmca_complaint", "current_status": complaint.status},
         )
 
+    # Counted BEFORE this row is touched. Written the other way round it
+    # still gives the right answer today, but only because the session is
+    # configured ``autoflush=False``: a SELECT after the assignment would
+    # otherwise flush the pending status first and count this complaint among
+    # the ones that came before it. A strike number should not depend on a
+    # sessionmaker argument three modules away.
+    already_upheld = upheld_count(db, complaint.uploaded_by) if complaint.uploaded_by is not None else 0
+
     now = datetime.now(UTC)
     complaint.status = body.status
     complaint.resolved_at = now
@@ -205,9 +213,8 @@ def decide_complaint(
 
     closed = False
     if body.status == DmcaComplaintStatus.UPHELD.value and complaint.uploaded_by is not None:
-        # Counted before this row is committed, then stamped: the strike
-        # number is this complaint's position in the person's sequence.
-        complaint.strike_number = upheld_count(db, complaint.uploaded_by) + 1
+        # This complaint's position in the person's sequence.
+        complaint.strike_number = already_upheld + 1
         if complaint.strike_number > UPHELD_COMPLAINTS_BEFORE_CLOSURE:
             uploader = db.get(User, complaint.uploaded_by)
             if uploader is not None and uploader.deactivated_at is None:
