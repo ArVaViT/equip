@@ -43,6 +43,18 @@ SEEN = "/api/v1/legal/notices/seen"
 PROVIDERS = "providers"
 
 
+@pytest.fixture(autouse=True)
+def _they_arrive_having_signed_nothing(nobody_has_signed_anything: None) -> None:
+    """These tests place the acceptances themselves, at chosen times.
+
+    ``conftest._everybody_in_the_tests_has_already_signed`` hands every
+    fabricated profile the current acceptances so that the several hundred
+    tests which write something are not stopped at a consent screen they are
+    not about. Here the acceptance date is the thing under test: who is told
+    about a supplier change depends on whether they agreed before it.
+    """
+
+
 def _accept_everything(db: Session, user: User, *, on: datetime) -> None:
     """Put this person through the gate, at a moment of our choosing."""
     for spec in LEGAL_REGISTRY:
