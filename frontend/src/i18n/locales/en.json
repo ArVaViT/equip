@@ -778,6 +778,7 @@
       "invitation_already_used": "This invitation has already been used.",
       "invitation_email_mismatch": "This invitation was sent to a different address.",
       "validation_failed": "Something you entered isn't right.",
+      "legal_consent_required": "Please accept the current Terms of Use and Privacy Policy before making changes.",
       "legal_document_changed": "This document has changed. Please reload and read it again."
     },
     "byStatus": {

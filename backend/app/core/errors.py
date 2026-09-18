@@ -179,6 +179,13 @@ class ErrorCode(enum.StrEnum):
     """Request body / params failed semantic validation beyond the
     Pydantic schema layer."""
 
+    LEGAL_CONSENT_REQUIRED = "legal.consent_required"
+    """This person has not accepted the documents their role requires, and the
+    request would change something. Reads are unaffected — including reading
+    the documents themselves, which is the way out. ``context.outstanding``
+    carries the slugs still owed, so the client opens the gate on exactly
+    those instead of guessing. See ``app.api.consent_gate``."""
+
     LEGAL_DOCUMENT_CHANGED = "legal.document_changed"
     """The client tried to accept a version of a policy we no longer serve —
     a page left open across a deploy. Recording it would produce a consent row

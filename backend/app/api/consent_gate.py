@@ -1,0 +1,183 @@
+"""The consent gate, enforced where it cannot be skipped.
+
+Until now the gate lived entirely in ``FirstRunFlow.tsx``: a full-screen
+dialog that covers the app until the person accepts. It is a good dialog.
+It is also the only thing standing between an unaccepted account and the
+whole API — and it is JavaScript running on the reader's own machine. A
+second tab pointed at ``api.equipbible.com``, a stale bundle, a script
+somebody wrote against the API, or simply the dialog failing to mount, and
+the platform hands over every write it has while the consent table says
+nothing was ever agreed to.
+
+That gap is the difference between a consent record and consent. The record
+answers "did this person agree, and to what"; enforcement answers "and were
+they allowed to act before they did". Only the server can answer the second
+one, because only the server sees every request.
+
+What this refuses, and what it does not
+---------------------------------------
+
+**Refused:** ``POST`` / ``PUT`` / ``PATCH`` / ``DELETE`` from a signed-in
+person who still owes an acceptance, anywhere under ``/api/v1``.
+
+**Allowed:** every read. Somebody who has not yet accepted can still see
+their dashboard behind the dialog, and — more to the point — can still read
+the documents they are being asked to accept. A gate that blocks its own
+escape hatch is a wall; the frontend learned that the hard way (see the
+``exempt`` constant in ``FirstRunFlow.tsx``) and the server must not
+reintroduce it from the other side.
+
+**Not their business:** anonymous callers. The Datadog Synthetics browser
+tests and the uptime checks carry no session, and the internal cron workers
+authenticate with a shared secret rather than a user. None of them has a
+person behind it who could accept anything, and none of them reaches an
+authenticated surface anyway — whatever gate already guards a route still
+guards it. This dependency simply has nothing to say about a request with
+no user, and says nothing.
+
+Why a router dependency and not middleware
+------------------------------------------
+
+Middleware would have to decode the bearer token and load the profile a
+second time, duplicating ``get_current_user`` and drifting from it. A
+dependency declared on ``include_router`` runs before the route's own
+dependencies, shares FastAPI's per-request cache with them, and is
+overridable in tests the same way every other dependency here is.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING, Any
+
+from fastapi import Depends, Request, status
+from sqlalchemy import select
+
+from app.api.dependencies import get_optional_user
+from app.core.database import get_db
+from app.core.errors import ErrorCode, equip_error
+from app.legal import registry as legal_registry
+from app.models.legal_acceptance import LegalAcceptance
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+    from app.models.user import User
+
+#: The methods that change something. ``HEAD`` and ``OPTIONS`` are reads by
+#: definition; ``OPTIONS`` is also the CORS preflight, which carries no
+#: credentials at all and must never be answered with a 403.
+MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+#: Paths this gate must never close, matched as prefixes of the full path.
+#:
+#: Each one is here because closing it would make the gate impossible to
+#: pass, not because the route is unimportant:
+#:
+#: ``/api/v1/legal/``
+#:     Reading a document, recording an acceptance, and closing a notice.
+#:     This is the way out; it is the one thing that cannot be gated.
+#: ``/api/v1/auth/``
+#:     The identity probe the client makes on every page load, and signing
+#:     out. Somebody who does not want to accept must be able to leave.
+#: ``/api/v1/health``
+#:     Liveness. No user, no consent, no opinion.
+#: ``/api/v1/internal/``
+#:     The cron workers, authenticated by shared secret. Anonymous to this
+#:     gate already; listed so a future worker route that does carry a user
+#:     does not silently start failing at 03:00.
+EXEMPT_PREFIXES: tuple[str, ...] = (
+    "/api/v1/legal/",
+    "/api/v1/auth/",
+    "/api/v1/health",
+    "/api/v1/internal/",
+)
+
+#: The registry's role-aware answer, when the registry has one.
+#:
+#: ``outstanding_for(role, accepted)`` arrives with the document registry
+#: (PR #1291): it knows that a teacher signs the teacher terms and a student
+#: does not, and that a version published as a correction does not bring
+#: anybody back to the gate. This module treats the registry as data and
+#: asks it the question rather than re-deriving the answer, so a new
+#: document or a new role changes one table and nothing here.
+#:
+#: Until that lands, ``_outstanding_from_current_versions`` below answers the
+#: same question from what today's registry does expose — one current version
+#: per signable document, required of everybody. Same shape, coarser rule,
+#: and coarser in the safe direction: it can ask somebody for a document they
+#: would not have been asked for, never the reverse.
+_RoleAwareOutstanding = Callable[[str, set[tuple[str, str]]], Sequence[Any]]
+_registry_outstanding: _RoleAwareOutstanding | None = getattr(legal_registry, "outstanding_for", None)
+
+
+def _outstanding_from_current_versions(role: str, accepted: set[tuple[str, str]]) -> tuple[str, ...]:
+    """Which signable documents this person has not accepted at its current version."""
+    required = set(legal_registry.required_slugs())
+    return tuple(
+        slug
+        for slug, version in sorted(legal_registry.LEGAL_DOCUMENTS.items())
+        if slug in required and (slug, version) not in accepted
+    )
+
+
+def outstanding_slugs(role: str, accepted: set[tuple[str, str]]) -> tuple[str, ...]:
+    """What this person still owes, as slugs, newest rule first."""
+    if _registry_outstanding is not None:
+        return tuple(str(spec.slug) for spec in _registry_outstanding(role, accepted))
+    return _outstanding_from_current_versions(role, accepted)
+
+
+def user_owes_consent(db: Session, user: User) -> tuple[str, ...]:
+    """The documents ``user`` must accept before they may change anything.
+
+    One indexed read of ``legal_acceptances`` on ``user_id`` — the same
+    index ``GET /legal/acceptances/me`` uses — per mutating request. Reads
+    never reach here.
+    """
+    accepted = {
+        (row.document_slug, row.version)
+        for row in db.scalars(select(LegalAcceptance).where(LegalAcceptance.user_id == user.id)).all()
+    }
+    return outstanding_slugs(user.role, accepted)
+
+
+def require_legal_consent(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_user),
+) -> None:
+    """Refuse a change from somebody who has not accepted the current documents.
+
+    Raises ``legal.consent_required`` (403) carrying the outstanding slugs,
+    so a client that meets it can open the gate on exactly those documents
+    instead of guessing — and so a script that meets it is told what it is
+    missing rather than a bare "forbidden".
+    """
+    if request.method not in MUTATING_METHODS:
+        return
+    if current_user is None:
+        return
+    path = request.url.path
+    if any(path.startswith(prefix) for prefix in EXEMPT_PREFIXES):
+        return
+
+    owed = user_owes_consent(db, current_user)
+    if not owed:
+        return
+
+    raise equip_error(
+        ErrorCode.LEGAL_CONSENT_REQUIRED,
+        status_code=status.HTTP_403_FORBIDDEN,
+        message="Accept the current terms and privacy policy before making changes",
+        context={"outstanding": list(owed)},
+    )
+
+
+__all__ = [
+    "EXEMPT_PREFIXES",
+    "MUTATING_METHODS",
+    "outstanding_slugs",
+    "require_legal_consent",
+    "user_owes_consent",
+]
