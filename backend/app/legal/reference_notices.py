@@ -32,6 +32,13 @@ change. Two consequences, both deliberate:
   noise is what trains people to close banners unread.
 * A person who accepted in August and comes back in October is told, once,
   because for them it did change.
+* A person standing at the consent gate right now is not told either. Their
+  most recent acceptance predates the change, so the date comparison alone
+  would announce it — behind a blocking dialog asking them to accept the very
+  policy the supplier list hangs off. Two demands for attention about one
+  thing, one of which explicitly says no action is needed: exactly the noise
+  this module was written to avoid. They are told nothing, and a moment later
+  there is nothing to tell them: accepting moves their date past the revision.
 
 The comparison is against the date of their most recent acceptance rather than
 against a stored "providers version I was shown". No new column for a question
@@ -41,6 +48,7 @@ an answer for the rows that predate the question.
 
 from __future__ import annotations
 
+from collections.abc import Sequence  # noqa: TC003  (runtime annotation)
 from datetime import date  # noqa: TC003  (runtime annotation)
 
 from app.legal.registry import LEGAL_REGISTRY, DocumentSpec
@@ -49,6 +57,7 @@ from app.legal.registry import LEGAL_REGISTRY, DocumentSpec
 def reference_notices_for(
     last_agreed_on: date | None,
     seen: set[tuple[str, str]],
+    outstanding: Sequence[DocumentSpec],
 ) -> tuple[DocumentSpec, ...]:
     """Pages this person reads but never signs, that changed after they agreed.
 
@@ -59,11 +68,19 @@ def reference_notices_for(
     ``seen`` is every ``(slug, version)`` already in ``legal_notices_seen`` for
     them, so a banner closed on a phone is not waiting on the laptop.
 
+    ``outstanding`` is what they are being asked to accept right now. While it
+    is non-empty they are held at a blocking consent dialog, and a banner
+    beside it saying a page they need not sign has changed competes with the
+    one thing they are there to do. It is also redundant: the new supplier list
+    is already part of the policy on the screen in front of them.
+
     A reference page with only its original revision is never news: there is
     nothing to have changed. That falls out of the date comparison, since the
     first revision cannot post-date an acceptance made after it — but it is
     stated here because it is the property that keeps a fresh deployment quiet.
     """
+    if outstanding:
+        return ()
     if last_agreed_on is None:
         return ()
     return tuple(

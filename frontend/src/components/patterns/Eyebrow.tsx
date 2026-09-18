@@ -16,9 +16,9 @@ interface EyebrowProps extends LabelHTMLAttributes<HTMLElement> {
 
 /**
  * Editorial eyebrow — the tiny uppercase label that sits above a
- * heading. Encodes the DESIGN.md recipe (11px is the one documented
- * arbitrary-size exception; the wide tracking is load-bearing) so
- * call sites stop drifting between 10px/11px/text-xs re-typings.
+ * heading. Encodes the DESIGN.md recipe (`text-xs`, the bottom rung of
+ * the scale; the wide tracking is load-bearing) so call sites stop
+ * drifting between 10px/11px/text-xs re-typings.
  */
 export function Eyebrow({ as: Comp = "p", tone = "muted", className, ...props }: EyebrowProps) {
   return (

@@ -133,6 +133,7 @@ def my_acceptances(
         (row.document_slug, row.version)
         for row in db.scalars(select(LegalNoticeSeen).where(LegalNoticeSeen.user_id == current_user.id)).all()
     }
+    owed = outstanding_for(role, accepted)
     return LegalStatusOut(
         accepted=[
             LegalAcceptanceOut(
@@ -143,7 +144,7 @@ def my_acceptances(
             )
             for row in rows
         ],
-        outstanding=[_summary(spec) for spec in outstanding_for(role, accepted)],
+        outstanding=[_summary(spec) for spec in owed],
         # Two kinds of telling, one list, because the reader is not being asked
         # to care about the difference. ``notices_for`` answers for the
         # documents they signed; ``reference_notices_for`` answers for the
@@ -151,9 +152,13 @@ def my_acceptances(
         # the policy promises to say when it moves and until now said nothing,
         # because a notice mechanism built out of ``required_slugs`` could
         # never reach a document nobody is required to sign.
+        #
+        # ``owed`` goes in so the second kind stays quiet while the consent
+        # gate is up: a banner about a page nobody signs, next to a dialog
+        # demanding a signature, is two claims on attention for one change.
         notices=[
             _summary(spec)
-            for spec in (*notices_for(role, accepted), *reference_notices_for(_last_agreed_on(rows), told))
+            for spec in (*notices_for(role, accepted), *reference_notices_for(_last_agreed_on(rows), told, owed))
             if (spec.slug, spec.current.version) not in told
         ],
     )

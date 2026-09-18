@@ -73,10 +73,39 @@ def _accept_everything(db: Session, user: User, *, on: datetime) -> None:
     db.commit()
 
 
-def _notice_slugs(client: TestClient) -> list[str]:
+def _accept_the_versions_before_this_one(db: Session, user: User, *, on: datetime) -> None:
+    """Put this person through the gate as it stood one revision ago.
+
+    What almost everybody's row looked like on the morning of 2026-09-17: they
+    signed what was current in September, and overnight privacy and terms went
+    to 2.0. They owe two signatures and they are standing at the dialog asking
+    for them.
+    """
+    for spec in LEGAL_REGISTRY:
+        if not spec.signable or len(spec.revisions) < 2:
+            continue
+        db.add(
+            LegalAcceptance(
+                user_id=user.id,
+                document_slug=spec.slug,
+                version=spec.revisions[-2].version,
+                locale="en",
+                content_sha256="hash",
+                accepted_at=on,
+            )
+        )
+    db.commit()
+
+
+def _mine(client: TestClient) -> dict[str, list[dict[str, str]]]:
     response = client.get(MINE)
     assert response.status_code == 200, response.text
-    return [notice["slug"] for notice in response.json()["notices"]]
+    body: dict[str, list[dict[str, str]]] = response.json()
+    return body
+
+
+def _notice_slugs(client: TestClient) -> list[str]:
+    return [notice["slug"] for notice in _mine(client)["notices"]]
 
 
 def test_the_supplier_page_has_more_than_one_revision() -> None:
@@ -148,23 +177,85 @@ class TestBeingToldOnce:
         assert signed == []
 
 
+class TestNotWhileTheGateIsUp:
+    """Somebody being asked to sign is not also told about a page they don't.
+
+    The two collided on 2026-09-17: privacy and terms went to 2.0 the same day
+    the supplier list did, so everybody who had signed the September versions
+    met a blocking consent dialog *and* a banner saying the provider annex had
+    changed and needed no signature. The banner was true and useless — the new
+    list is inside the policy on the screen behind it — and it is the exact
+    kind of noise this mechanism exists to avoid producing.
+    """
+
+    def test_nobody_is_told_while_they_still_owe_a_signature(
+        self, student_client: TestClient, db: Session, student: User
+    ) -> None:
+        before = datetime.combine(document_spec(PROVIDERS).current.effective, datetime.min.time(), UTC)
+        _accept_the_versions_before_this_one(db, student, on=before - timedelta(days=5))
+
+        body = _mine(student_client)
+
+        assert [doc["slug"] for doc in body["outstanding"]] == ["privacy", "terms"]
+        assert body["notices"] == []
+
+    def test_and_afterwards_there_is_nothing_left_to_tell(
+        self, student_client: TestClient, db: Session, student: User
+    ) -> None:
+        """Accepting moves their date past the revision, so the banner that was
+        suppressed never becomes due. Suppression here is not deferral."""
+        before = datetime.combine(document_spec(PROVIDERS).current.effective, datetime.min.time(), UTC)
+        _accept_the_versions_before_this_one(db, student, on=before - timedelta(days=5))
+
+        for slug in ("privacy", "terms"):
+            accepted = student_client.post(
+                "/api/v1/legal/acceptances",
+                json={"slug": slug, "version": document_spec(slug).current.version, "locale": "en"},
+            )
+            assert accepted.status_code == 201, accepted.text
+
+        body = _mine(student_client)
+
+        assert body["outstanding"] == []
+        assert PROVIDERS not in [notice["slug"] for notice in body["notices"]]
+
+    def test_the_banner_still_reaches_somebody_who_owes_nothing(
+        self, student_client: TestClient, db: Session, student: User
+    ) -> None:
+        """The case the mechanism was written for, unharmed: agreed in August,
+        the supplier changed in September, they come back with nothing owed."""
+        before = datetime.combine(document_spec(PROVIDERS).current.effective, datetime.min.time(), UTC)
+        _accept_everything(db, student, on=before - timedelta(days=30))
+
+        body = _mine(student_client)
+
+        assert body["outstanding"] == []
+        assert PROVIDERS in [notice["slug"] for notice in body["notices"]]
+
+
 class TestTheRuleItself:
     """The decision, away from HTTP, so the edges are readable."""
 
     def test_nobody_is_told_who_has_agreed_to_nothing(self) -> None:
-        assert reference_notices_for(None, set()) == ()
+        assert reference_notices_for(None, set(), ()) == ()
 
     def test_a_page_already_seen_is_not_repeated(self) -> None:
         spec = document_spec(PROVIDERS)
 
-        told = reference_notices_for(date(2020, 1, 1), {(spec.slug, spec.current.version)})
+        told = reference_notices_for(date(2020, 1, 1), {(spec.slug, spec.current.version)}, ())
 
         assert told == ()
+
+    def test_an_unsigned_document_silences_the_lot(self) -> None:
+        """Otherwise the answer is non-empty for this very argument list — which
+        is what makes this a test of the rule and not of the date comparison."""
+        assert reference_notices_for(date(2020, 1, 1), set(), ())
+        assert reference_notices_for(date(2020, 1, 1), set(), (document_spec("privacy"),)) == ()
 
     def test_only_pages_nobody_signs_come_through_here(self) -> None:
         """The signed ones are ``notices_for``'s answer, and a document
         arriving from both would be announced twice."""
-        specs = reference_notices_for(date(2020, 1, 1), set())
+        specs = reference_notices_for(date(2020, 1, 1), set(), ())
 
         assert specs
         assert all(not spec.signable for spec in specs)

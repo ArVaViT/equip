@@ -13,15 +13,23 @@
     <meta name="theme-color" content="#F8F8F6" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#131211" media="(prefers-color-scheme: dark)" />
 
-    <!-- Alternates for search engines. The app is one URL per page in
-         every language (the locale lives in the profile, not the path),
-         so x-default points at the same place: the site itself decides,
-         from the visitor's browser, which language to open in. -->
-    <link rel="alternate" hreflang="ru" href="https://equipbible.com/" />
-    <link rel="alternate" hreflang="en" href="https://equipbible.com/" />
-    <link rel="alternate" hreflang="de" href="https://equipbible.com/" />
-    <link rel="alternate" hreflang="uk" href="https://equipbible.com/" />
-    <link rel="alternate" hreflang="x-default" href="https://equipbible.com/" />
+    <!-- No hreflang here, deliberately — do not add it back.
+         `hreflang` publishes a mapping from a language to the URL that
+         serves it. This app has no such mapping: one URL per page in all
+         four languages, the locale living in the profile and in the
+         interface rather than in the path. There used to be five tags (ru,
+         en, de, uk, x-default) all pointing at https://equipbible.com/ —
+         five contradictory claims that this one address is *the* Russian
+         page and *the* English page and so on, which a crawler can only
+         discard. A lone self-referential x-default fares no better: an
+         hreflang cluster of one has no return links and is ignored, so it
+         would be markup kept for the look of completeness.
+         `<link rel="canonical">` above already states this URL's identity.
+         If per-language URLs ever exist (/ru/, /en/, …), hreflang becomes
+         meaningful and belongs here again — but not before.
+         The og:locale:alternate lines below are a different statement and
+         stay: they describe which languages the *content* is available in,
+         not which URL serves each one. -->
 
     <!-- Open Graph + Twitter share-preview cards. Static defaults are
          intentional: the SPA renders client-side, so anything dynamic

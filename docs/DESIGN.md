@@ -53,11 +53,17 @@ One scale, one serif, one sans.
 - **Sans (`Golos Text`):** everything else. It replaced Inter for its
   Cyrillic (see the comment in `frontend/tailwind.config.js`); Golos has
   no italic and no Greek, both stay in Literata.
-- **Scale:** `32 / 24 / 18 / 16 / 14 / 13` px. No `text-[Npx]` arbitrary
-  values — the single documented exception is the 11px eyebrow below.
+- **Scale:** nine rungs, from `frontend/tailwind.config.js` — `text-xs` 12,
+  `text-sm` 14, `text-base` 17, `text-lg` 21, `text-xl` 24, `text-2xl` 28,
+  `text-3xl` 34, `text-4xl` 42, `text-5xl` 52 px. Body is 17, not 16. Plus
+  `text-reading` (18px/1.7) for long-form prose — chapters, essays, anything
+  somebody reads rather than scans. Each rung carries its own line-height and
+  tracking in the config, so a size is chosen and never tuned at the callsite.
+  No `text-[Npx]` arbitrary values, and there is no exception: `text-xs` is
+  the floor, below which Cyrillic stops being legible on a mid-range phone.
 - **Weights:** 400 body, 500 UI, 600 emphasis, 700 display. No 800/900.
 - **Editorial eyebrow:** the tiny uppercase label that sits above a heading
-  (e.g. VerseOfTheDayCard, CourseReadinessCard) is `text-[11px] font-medium
+  (e.g. VerseOfTheDayCard, CourseReadinessCard) is `text-xs font-medium
   uppercase tracking-[0.18em] text-ink-muted`. The wide tracking is
   load-bearing — that's what makes it read as an eyebrow rather than a
   shrunk body line. Use the `<Eyebrow>` pattern component
@@ -144,13 +150,12 @@ page-by-page, not a big-bang rewrite.
 |------------------------|---------------------|
 | Confirm destructive    | `useConfirm()` → Radix `AlertDialog` |
 | Toast                  | `sonner`, bottom-right |
-| Form                   | `react-hook-form` + `zod` + shadcn `Form` |
-| Table                  | `@tanstack/react-table` + `<DataTable>` |
+| Form                   | Controlled `useState` + a `zod` schema from `lib/validations/` (pattern: `pages/Auth/Login.tsx`) |
+| Table                  | A plain semantic `<table>` (pattern: `pages/Teacher/gradebook/GradeTableTab.tsx`) |
 | Overlay (menu)         | Radix `DropdownMenu` |
 | Overlay (info)         | Radix `Popover` |
 | Overlay (hint)         | Radix `Tooltip` |
 | Drawer / mobile nav    | Radix `Sheet` |
-| Command palette (⌘K)   | `cmdk` |
 | Editor                 | `@tiptap/*` |
 | Drag & drop            | `@hello-pangea/dnd` |
 | Virtualisation         | `react-window` |
