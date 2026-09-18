@@ -214,7 +214,10 @@ later unless they tell us they have gone to court.
 the account that uploaded the material. **More than two substantiated
 complaints about one account and the account is closed** — and it is not
 reopened. A complaint counts as substantiated when we removed the material and
-either no counter-notice came, or the counter-notice did not answer it.
+either no counter-notice came, or the counter-notice did not answer it. A
+complaint we reject, and a complaint the sender withdraws, count for nothing and
+leave no mark on the account — so the tally is of times we agreed with a rights
+holder, not of times somebody complained.
 
 Sending a notice you know to be false is itself unlawful under § 512(f) and can
 be expensive.
