@@ -1,6 +1,7 @@
 """Serving the documents, and recording that somebody accepted one."""
 
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy import select
@@ -21,6 +22,7 @@ from app.legal import (
     outstanding_for,
     required_slugs,
 )
+from app.legal.reference_notices import reference_notices_for
 from app.models.legal_acceptance import LegalAcceptance
 from app.models.legal_notice_seen import LegalNoticeSeen
 from app.models.user import User
@@ -89,6 +91,18 @@ def get_document(slug: str, locale: str = GOVERNING_LOCALE) -> LegalDocumentOut:
     )
 
 
+def _last_agreed_on(rows: list[LegalAcceptance]) -> date | None:
+    """The day this person most recently agreed to anything, or ``None``.
+
+    What a change to a reference page is measured against. Somebody who has
+    agreed to nothing is about to meet the gate and does not need a banner in
+    front of it.
+    """
+    if not rows:
+        return None
+    return max(row.accepted_at for row in rows).date()
+
+
 def _accepted_rows(db: Session, user_id: uuid.UUID) -> list[LegalAcceptance]:
     return list(db.scalars(select(LegalAcceptance).where(LegalAcceptance.user_id == user_id)).all())
 
@@ -130,8 +144,17 @@ def my_acceptances(
             for row in rows
         ],
         outstanding=[_summary(spec) for spec in outstanding_for(role, accepted)],
+        # Two kinds of telling, one list, because the reader is not being asked
+        # to care about the difference. ``notices_for`` answers for the
+        # documents they signed; ``reference_notices_for`` answers for the
+        # pages those documents point at — the supplier list above all, where
+        # the policy promises to say when it moves and until now said nothing,
+        # because a notice mechanism built out of ``required_slugs`` could
+        # never reach a document nobody is required to sign.
         notices=[
-            _summary(spec) for spec in notices_for(role, accepted) if (spec.slug, spec.current.version) not in told
+            _summary(spec)
+            for spec in (*notices_for(role, accepted), *reference_notices_for(_last_agreed_on(rows), told))
+            if (spec.slug, spec.current.version) not in told
         ],
     )
 

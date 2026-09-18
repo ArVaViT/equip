@@ -5,11 +5,15 @@ import { X } from "lucide-react"
 import { legalService, type LegalDocumentSummary } from "@/services/legal"
 import { useAuth } from "@/context/useAuth"
 
-/** Where each document lives, so the banner can link to the thing it names. */
+/** Where each document lives, so the banner can link to the thing it names.
+ *  ``providers`` is here because the supplier list is the one page this
+ *  banner exists to announce and the one the old fallback would have sent
+ *  people to ``/terms`` for. */
 const PATHS: Record<string, string> = {
   privacy: "/privacy",
   terms: "/terms",
   "teacher-terms": "/teacher-terms",
+  providers: "/privacy/providers",
 }
 
 /** The i18n key for each document's name. */
@@ -17,6 +21,7 @@ const NAMES: Record<string, string> = {
   privacy: "legal.privacy",
   terms: "legal.terms",
   "teacher-terms": "legal.teacherTerms",
+  providers: "legal.providers",
 }
 
 /**

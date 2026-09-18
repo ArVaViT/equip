@@ -2838,7 +2838,8 @@
     "fingerprint": "Fassung {{version}} · Textprüfsumme {{sha}}",
     "privacy": "Datenschutzerklärung",
     "terms": "Nutzungsbedingungen",
-    "teacherTerms": "Lehrenden- und Beitragendenvereinbarung"
+    "teacherTerms": "Lehrenden- und Beitragendenvereinbarung",
+    "providers": "Infrastrukturanbieter"
   },
   "legalGate": {
     "signOut": "Nicht jetzt — abmelden",

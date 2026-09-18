@@ -2838,7 +2838,8 @@
     "fingerprint": "Version {{version}} · text fingerprint {{sha}}",
     "privacy": "Privacy Policy",
     "terms": "Terms of Use",
-    "teacherTerms": "Teacher & Contributor Agreement"
+    "teacherTerms": "Teacher & Contributor Agreement",
+    "providers": "Infrastructure providers"
   },
   "legalGate": {
     "signOut": "Not now — sign out",
