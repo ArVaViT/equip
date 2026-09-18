@@ -73,6 +73,7 @@ def test_enum_values_are_stable_strings():
         "invitation.already_used",
         "invitation.email_mismatch",
         "validation.failed",
+        "legal.consent_required",
         "legal.document_changed",
     }
     assert {member.value for member in ErrorCode} == expected

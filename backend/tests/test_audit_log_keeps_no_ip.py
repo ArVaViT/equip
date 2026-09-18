@@ -99,6 +99,17 @@ def test_audited_actions_leave_no_ip_or_user_agent(
 ) -> None:
     assignment = _seed_assignment(db)
 
+    # The fixtures arrive already consented, because from 2026-09-17 an
+    # unaccepted account may not change anything (``app.api.consent_gate``)
+    # and four hundred tests are not about that. Drop the student's seeded
+    # privacy row so the POST below is a real acceptance carrying a real
+    # address, which is what makes the control at the bottom a control.
+    db.query(LegalAcceptance).filter(
+        LegalAcceptance.user_id == student.id,
+        LegalAcceptance.document_slug == "privacy",
+    ).delete()
+    db.commit()
+
     # Student: accept the privacy policy, change a setting, enroll, hand in work.
     accepted = student_client.post(
         "/api/v1/legal/acceptances",
@@ -130,7 +141,7 @@ def test_audited_actions_leave_no_ip_or_user_agent(
 
     # Control: the two records the policy names did get the address, so the
     # request really carried one.
-    assert db.query(LegalAcceptance).one().ip == CLIENT_IP
+    assert db.query(LegalAcceptance).filter(LegalAcceptance.ip.is_not(None)).one().ip == CLIENT_IP
     assert db.query(SubmissionDeclaration).one().ip == CLIENT_IP
 
     rows = db.query(AuditLog).all()

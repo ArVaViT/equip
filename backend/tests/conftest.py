@@ -22,8 +22,10 @@ from sqlalchemy.pool import StaticPool
 
 from app.api.dependencies import get_current_user, get_optional_user
 from app.core.database import Base, get_db
+from app.legal import LEGAL_DOCUMENTS
 from app.main import app
 from app.models.course import Chapter, Module
+from app.models.legal_acceptance import LegalAcceptance
 from app.models.organization import Organization
 from app.models.user import User, UserRole
 
@@ -97,6 +99,66 @@ def _belong_to_the_test_organization(session, _flush_context, _instances):
     for obj in session.new:
         if hasattr(obj, "organization_id") and getattr(obj, "organization_id", None) is None:
             obj.organization_id = TEST_ORGANIZATION_ID
+
+
+#: ``session.info`` key: set to switch the acceptance autopopulator below off.
+NOBODY_HAS_SIGNED_ANYTHING = "nobody_has_signed_anything"
+
+
+@pytest.fixture()
+def nobody_has_signed_anything(db: Session) -> None:
+    """Make this test's session create users who have accepted nothing.
+
+    For the tests of the consent gate itself, and of the acceptance record:
+    a person who has not signed must actually not have signed, or the thing
+    under test is seeded out of existence.
+    """
+    db.info[NOBODY_HAS_SIGNED_ANYTHING] = True
+
+
+@event.listens_for(Session, "after_flush")
+def _everybody_in_the_tests_has_already_signed(session, _flush_context):
+    """Give every new user the acceptances the API now insists on.
+
+    From 2026-09-17 a signed-in person who has not accepted the current
+    documents is refused every POST/PUT/PATCH/DELETE (see
+    ``app.api.consent_gate``). That is the point of the gate, and it means
+    several hundred tests that create a user and then write something would
+    all fail on a consent screen none of them are about.
+
+    In production a person signs before they can act, so the faithful thing
+    for a fabricated profile is to arrive already signed — the same shape the
+    e2e suite gets from ``scripts/seed_e2e_legal_acceptance.py``. Test
+    infrastructure, like the organization and course autopopulators above,
+    and deliberately not a model default: production has none, so a code path
+    that skips the gate fails loudly rather than being quietly forgiven.
+
+    Every signable slug at its current version, regardless of role: the
+    registry decides which of them a given role is actually asked for, and
+    holding a row for one it is not asked for changes no answer.
+
+    ``after_flush`` rather than ``before_flush``, and a Core insert rather
+    than ``session.add``: the acceptance carries a foreign key to the profile,
+    and adding both in one flush leaves the order to the unit of work, which
+    sorts on relationships — and there is no relationship between these two,
+    only a column. It put the child first, and SQLite said so.
+    """
+    if session.info.get(NOBODY_HAS_SIGNED_ANYTHING):
+        return
+    rows = [
+        {
+            "user_id": obj.id,
+            "document_slug": slug,
+            "version": version,
+            "locale": "en",
+            "content_sha256": "seeded-by-the-test-suite",
+        }
+        for obj in session.new
+        if isinstance(obj, User) and obj.id is not None
+        for slug, version in LEGAL_DOCUMENTS.items()
+    ]
+    if rows:
+        session.execute(LegalAcceptance.__table__.insert(), rows)
 
 
 #: ``session.info`` key: set to switch the chapter autopopulator below off.

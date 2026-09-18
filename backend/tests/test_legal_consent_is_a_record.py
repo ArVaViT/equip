@@ -16,6 +16,8 @@ from __future__ import annotations
 import hashlib
 from typing import TYPE_CHECKING
 
+import pytest
+
 from app.legal import LEGAL_DOCUMENTS, LOCALES, document_for, required_slugs
 from app.legal.registry import REFERENCE_DOCUMENTS
 from app.models.legal_acceptance import LegalAcceptance
@@ -29,6 +31,18 @@ from .conftest import STUDENT_ID
 DOCS = "/api/v1/legal/documents"
 ACCEPT = "/api/v1/legal/acceptances"
 MINE = "/api/v1/legal/acceptances/me"
+
+
+@pytest.fixture(autouse=True)
+def _they_arrive_having_signed_nothing(nobody_has_signed_anything: None) -> None:
+    """Every fixture user in this file has accepted nothing yet.
+
+    The suite otherwise hands every fabricated profile the current
+    acceptances, so that the several hundred tests that write something are
+    not all stopped at a consent screen they are not about (see
+    ``conftest._everybody_in_the_tests_has_already_signed``). This file *is*
+    about that screen, and a person who has already signed proves none of it.
+    """
 
 
 def test_every_document_exists_in_every_language_the_interface_serves() -> None:

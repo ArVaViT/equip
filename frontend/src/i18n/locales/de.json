@@ -780,6 +780,7 @@
       "invitation_already_used": "Diese Einladung wurde bereits verwendet.",
       "invitation_email_mismatch": "Diese Einladung wurde an eine andere Adresse geschickt.",
       "validation_failed": "Etwas an Ihrer Eingabe stimmt nicht.",
+      "legal_consent_required": "Bitte akzeptieren Sie die aktuellen Nutzungsbedingungen und die Datenschutzerklärung, bevor Sie etwas ändern.",
       "legal_document_changed": "Dieses Dokument hat sich geändert. Bitte laden Sie die Seite neu und lesen Sie es erneut."
     },
     "byStatus": {

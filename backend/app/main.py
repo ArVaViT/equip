@@ -3,12 +3,13 @@ import time
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
+from app.api.consent_gate import require_legal_consent
 from app.api.v1 import api_router
 from app.core.config import env_flag, settings
 from app.core.logging import setup_logging, vercel_request_id
@@ -105,7 +106,13 @@ app.add_middleware(
 # shipped without security headers.)
 app.add_middleware(SecurityHeadersMiddleware)
 
-app.include_router(api_router, prefix="/api/v1")
+# The consent gate, declared here rather than on each router so that a route
+# added tomorrow is covered by default and an exemption has to be written down
+# (see ``app.api.consent_gate.EXEMPT_PREFIXES``). Router-level dependencies run
+# before a route's own, so an unaccepted person is refused before the handler
+# and its permission checks are reached — and an anonymous caller falls
+# straight through to whatever gate the route already had.
+app.include_router(api_router, prefix="/api/v1", dependencies=[Depends(require_legal_consent)])
 
 
 @app.exception_handler(IntegrityError)
