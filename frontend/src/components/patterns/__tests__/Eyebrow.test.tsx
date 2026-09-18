@@ -7,8 +7,8 @@ describe("Eyebrow", () => {
     render(<Eyebrow>Section label</Eyebrow>)
     const el = screen.getByText("Section label")
     expect(el.tagName).toBe("P")
-    // The DESIGN.md recipe — 11px is the one documented arbitrary-size
-    // exception and the wide tracking is load-bearing.
+    // The DESIGN.md recipe — `text-xs` is the bottom rung of the scale
+    // and the wide tracking is load-bearing.
     expect(el).toHaveClass(
       "text-xs",
       "font-medium",
