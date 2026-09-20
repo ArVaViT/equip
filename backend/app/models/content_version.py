@@ -16,7 +16,12 @@ Design rules pinned by the schema
 * Exactly one ACTIVE version per ``(entity, field, locale)`` via the
   partial unique index ``uniq_content_versions_active``. Updates
   supersede (set the old row's ``superseded_by``) instead of
-  overwriting — translation history is never destroyed.
+  overwriting, so a text's history stays readable. What a *person*
+  wrote is kept for good. What the machine produced has a retention
+  window — ``TRANSLATION_HISTORY_RETENTION_DAYS``, thirty days by
+  default — after which the idle worker deletes it, because it is
+  reproducible from the source and two thirds of this table by weight.
+  See ``app/services/content_versions/prune.py``.
 * ``origin`` distinguishes ``human`` (typed by a teacher / admin) from
   ``mt`` (Gemini output). The MT pipeline never overwrites a ``human``
   row; that's enforced by the orchestrator, not by a DB constraint
@@ -146,6 +151,15 @@ class ContentVersion(Base):
             "created_at",
             postgresql_where="superseded_by IS NULL AND status = 'needs_review'",
             sqlite_where=text("superseded_by IS NULL AND status = 'needs_review'"),
+        ),
+        # The retention pass's only question: which superseded machine
+        # rows are past the cutoff. Partial, because that predicate is
+        # the query — see ``services/content_versions/prune.py``.
+        Index(
+            "ix_content_versions_prunable",
+            "updated_at",
+            postgresql_where="origin = 'mt' AND superseded_by IS NOT NULL",
+            sqlite_where=text("origin = 'mt' AND superseded_by IS NOT NULL"),
         ),
         Index(
             "ix_content_versions_source_version",
