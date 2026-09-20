@@ -72,7 +72,14 @@ export function PublicLanding() {
             without WebGL, and for the first moments of every load. */}
         {!prefersReducedMotion && (
           <Suspense fallback={null}>
-            <HeroScene className="pointer-events-none absolute inset-0 z-0" />
+            <HeroScene
+              // The canvas ends where the section does, and a plane crossing
+              // that line was getting sliced flat — a hard horizontal edge
+              // across the picture, which reads as a rendering bug rather
+              // than as a composition. Fading the bottom of the canvas lets
+              // the scene run out of the frame instead of being cut off.
+              className="pointer-events-none absolute inset-0 z-0 [mask-image:linear-gradient(to_bottom,black_62%,transparent_100%)]"
+            />
           </Suspense>
         )}
 

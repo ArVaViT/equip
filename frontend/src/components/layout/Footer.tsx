@@ -31,15 +31,23 @@ export default function Footer() {
 
   const linkClass =
     "rounded-sm text-ink-muted transition-colors duration-fast ease-out hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-  const headingClass = "text-xs font-medium uppercase tracking-[0.14em] text-ink"
 
   // Half the height it used to be. The footer is small print and a few
   // links; at `mt-24` over `py-16` it took most of a screen on the one page
   // it appears on, directly after a hero built to be looked at.
   return (
     <footer className="mt-16 border-t border-edge">
-      <div className="container mx-auto max-w-5xl px-4 py-10 md:py-12">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="container mx-auto max-w-5xl px-4 py-8">
+        {/* One row, not three columns.
+            The column layout stacked a tagline, a "Продукт" heading over
+            three links and a "Документы" heading over six, which came to
+            387px — a third of a screen of small print directly after a hero
+            built to be looked at, and Vadym read it as not having been
+            shrunk at all, because in the part he could see it had not been.
+            The links are the same links; headings a reader does not need in
+            order to recognise "Политика конфиденциальности" are gone, and
+            the row wraps instead of stacking. */}
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-baseline sm:justify-between">
           <div className="max-w-xs">
             <Link
               to="/"
@@ -47,18 +55,21 @@ export default function Footer() {
             >
               {t("common.appName")}
             </Link>
-            <p className="mt-3 text-sm leading-relaxed text-ink-muted">{t("footer.tagline")}</p>
+            {/* Kept, and kept small. `Footer.test.tsx` pins it, and rightly:
+                it is the only place on a page a crawler reads that says in
+                one line what this is. */}
+            <p className="mt-2 text-sm leading-relaxed text-ink-muted">{t("footer.tagline")}</p>
           </div>
 
-          <nav aria-labelledby="footer-product">
-            <p id="footer-product" className={headingClass}>
-              {t("footer.product")}
-            </p>
-            {/* Only destinations a signed-out visitor can actually reach.
-                `/calendar` and `/certificates` are behind `Gate mode="private"`,
-                so putting them here would send a stranger who is reading the
-                marketing page straight into a login wall. */}
-            <ul className="mt-4 space-y-2.5 text-sm">
+          {/* Only destinations a signed-out visitor can actually reach.
+              `/calendar` and `/certificates` are behind `Gate mode="private"`,
+              so putting them here would send a stranger who is reading the
+              marketing page straight into a login wall.
+              `/dmca` stays: § 512(i)(1)(A) asks a platform to *inform* people
+              of its repeat-infringer policy, and a page nobody can find from
+              the site does not inform anybody. */}
+          <nav aria-label={t("footer.product")}>
+            <ul className="flex flex-wrap gap-x-5 gap-y-2.5 text-sm sm:justify-end">
               <li>
                 <Link to="/courses" className={linkClass}>
                   {t("header.courses")}
@@ -74,14 +85,6 @@ export default function Footer() {
                   {t("common.signIn")}
                 </Link>
               </li>
-            </ul>
-          </nav>
-
-          <nav aria-labelledby="footer-legal">
-            <p id="footer-legal" className={headingClass}>
-              {t("footer.legal")}
-            </p>
-            <ul className="mt-4 space-y-2.5 text-sm">
               <li>
                 <Link to="/privacy" className={linkClass}>
                   {t("legal.privacy")}
@@ -92,9 +95,6 @@ export default function Footer() {
                   {t("legal.terms")}
                 </Link>
               </li>
-              {/* § 512(i)(1)(A) asks a platform to *inform* people of its
-                  repeat-infringer policy. A page nobody can find from the
-                  site does not inform anybody. */}
               <li>
                 <Link to="/dmca" className={linkClass}>
                   {t("dmca.title")}
@@ -121,7 +121,7 @@ export default function Footer() {
 
         {/* The colophon line, last and smallest. It is the only thing here
             that is not a way of getting somewhere. */}
-        <p className="mt-8 border-t border-edge pt-5 text-xs text-ink-muted">
+        <p className="mt-6 border-t border-edge pt-4 text-xs text-ink-muted">
           © {year} {t("common.appName")}
         </p>
       </div>

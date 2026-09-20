@@ -40,7 +40,12 @@ export function StorySection() {
 
   // Each caption holds, then hands over. The gaps are where the scene is
   // mid-transition and a fixed sentence would be describing the wrong shape.
-  const first = useTransform(scrollYProgress, [0, 0.06, 0.27, 0.34], [0, 1, 1, 0])
+  // The first caption starts *visible*. It used to fade up from zero over
+  // the opening 6% of the track, which meant the reader arrived at the
+  // section and found a moving scene with no words against it — the caption
+  // only appeared once they had already scrolled past the question it was
+  // answering.
+  const first = useTransform(scrollYProgress, [0, 0.27, 0.34], [1, 1, 0])
   const second = useTransform(scrollYProgress, [0.34, 0.41, 0.6, 0.67], [0, 1, 1, 0])
   const third = useTransform(scrollYProgress, [0.67, 0.74, 0.95, 1], [0, 1, 1, 1])
 
@@ -78,7 +83,12 @@ export function StorySection() {
     <div ref={trackRef} className="relative h-[300svh]">
       <div className="sticky top-0 isolate flex h-[100svh] items-center overflow-hidden">
         <Suspense fallback={null}>
-          <StoryScene className="pointer-events-none absolute inset-0 z-0" />
+          <StoryScene
+            // Same fade top and bottom as the hero: the sticky frame has a
+            // hard edge at both ends, and a leaf crossing either one was
+            // being cut flat.
+            className="pointer-events-none absolute inset-0 z-0 [mask-image:linear-gradient(to_bottom,transparent_0%,black_18%,black_82%,transparent_100%)]"
+          />
         </Suspense>
 
         {/* The captions share one grid cell, so they cross-fade in place
