@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useReducedMotion } from "motion/react";
@@ -57,6 +57,24 @@ export function PublicLanding() {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
 
+  // The backdrop is a desktop luxury, and on a phone it was three things at
+  // once: unreadable, expensive and hot. At 390px the planes are the size of
+  // the screen, so they stop reading as texture and start reading as grey
+  // shapes lying across the headline; it costs 128KB of `three` on a mobile
+  // connection; and it keeps a GPU busy on the device least able to afford
+  // it. Below `lg` the page is simply clean — which is what a phone wants
+  // from a landing page anyway.
+  const [wideEnough, setWideEnough] = useState(false);
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const query = window.matchMedia("(min-width: 1024px)");
+    const sync = () => setWideEnough(query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
+  const showBackdrop = wideEnough && !prefersReducedMotion;
+
   return (
     <div className="relative w-full">
       {/* One scene behind the entire page rather than one per section.
@@ -64,7 +82,7 @@ export function PublicLanding() {
           the shelf, the close and the film sat against a still page —
           «почему он дальше не продолжается до конца страницы?». Fixed has
           no track to leave. */}
-      {!prefersReducedMotion && (
+      {showBackdrop && (
         <Suspense fallback={null}>
           <LandingBackdrop className="pointer-events-none fixed inset-0 z-0" />
         </Suspense>
@@ -77,7 +95,12 @@ export function PublicLanding() {
           background. A negative z-index did exactly that: the scene rendered
           every frame and was invisible the whole time. */}
       <section
-        className="relative flex min-h-[88svh] items-center justify-center"
+        // No forced height on a phone. Centring a compact block inside 78svh
+        // left a third of the screen empty under the links — on a desktop
+        // that space is where the scene lives, and on a phone there is no
+        // scene, so it was just a hole. The content sets the height; the
+        // screen holds it from `sm` up, where the backdrop returns.
+        className="relative flex items-center justify-center py-24 sm:min-h-[88svh] sm:py-0"
         aria-labelledby="landing-hero-heading"
       >
         <div className="container relative z-10 mx-auto flex max-w-3xl flex-col items-center px-5 text-center lg:max-w-5xl">
@@ -109,7 +132,12 @@ export function PublicLanding() {
             </Link>
           </div>
 
-          <p className="mt-8 text-[0.6875rem] uppercase tracking-[0.12em] text-ink-muted sm:text-xs sm:tracking-[0.14em]">
+          {/* Hidden on the narrowest screens. At 390px it wrapped as
+              «VERIFIABLE / CERTIFICATE» — a line broken through the middle of
+              its own meaning — and it is the least load-bearing line in the
+              hero: the same four claims are made again, in full sentences,
+              further down. */}
+          <p className="mt-8 hidden text-[0.6875rem] uppercase tracking-[0.12em] text-ink-muted sm:block sm:text-xs sm:tracking-[0.14em]">
             {t("landing.hero.facts")}
           </p>
           <p className="mt-6 text-sm text-ink-muted">
@@ -165,7 +193,7 @@ export function PublicLanding() {
           stops. */}
       <section
         aria-label={t("landing.value.heading")}
-        className="flex min-h-[44svh] items-center justify-center px-5 pb-16 sm:min-h-[52svh]"
+        className="flex items-center justify-center px-5 py-20 sm:min-h-[52svh] sm:py-0"
       >
         <ScrollReveal className="flex flex-col items-center text-center">
           <h2 className="max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl">

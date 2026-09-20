@@ -57,7 +57,7 @@ export function HeroVideo() {
   if (!INTRO) return null
 
   return (
-    <Section as="section">
+    <Section as="section" className="py-0 pb-16 sm:py-10">
       <video
         className="w-full rounded-xl border border-line bg-surface"
         controls
