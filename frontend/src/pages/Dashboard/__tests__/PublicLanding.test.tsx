@@ -73,21 +73,24 @@ describe("PublicLanding (unauth marketing page)", () => {
     expect(hrefs).toContain("/login")
   })
 
-  it("shows exactly one claim at a time", () => {
+  it("makes all three claims where there is no pinned scene", () => {
     renderLanding()
-    // The three claims used to share a grid cell and cross-fade by opacity.
-    // The ranges never overlap on paper; on a real wheel they do, because a
-    // fast scroll jumps straight past the handover and paints two full
-    // paragraphs on top of each other. Only the active one is mounted now,
-    // so collision is not a thing that can happen at any scroll speed.
-    const claimTitles = [
-      i18n.t("landing.value.structure.title"),
-      i18n.t("landing.value.assessment.title"),
-      i18n.t("landing.value.certificates.title"),
-    ]
-    const shown = claimTitles.filter((title) => screen.queryByText(title) !== null)
-
-    expect(shown).toEqual([claimTitles[0]])
+    // jsdom has no `matchMedia`, so the page renders its narrow layout —
+    // the same one a phone gets. There the claims are an ordinary column
+    // and all three are present at once.
+    //
+    // Cross-fading one at a time is a property of the *pinned* layout,
+    // where each claim captions the stretch of the backdrop it belongs to.
+    // Below `lg` there is no backdrop and so no stage: the sticky track was
+    // three screens of scrolling with one short sentence floating in the
+    // middle of each empty one.
+    for (const key of [
+      "landing.value.structure.title",
+      "landing.value.assessment.title",
+      "landing.value.certificates.title",
+    ]) {
+      expect(screen.getByText(i18n.t(key))).toBeInTheDocument()
+    }
   })
 
   it("offers the film behind a poster, and never starts it by itself", () => {

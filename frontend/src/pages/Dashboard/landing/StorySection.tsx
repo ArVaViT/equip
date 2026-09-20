@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll } from "motion/react"
 
@@ -34,6 +34,22 @@ export function StorySection() {
   const { t } = useTranslation()
   const prefersReducedMotion = useReducedMotion()
   const trackRef = useRef<HTMLDivElement>(null)
+
+  // The sticky track exists to hold the reader still while the backdrop
+  // moves behind them. Below `lg` there is no backdrop — it is a desktop
+  // luxury that reads as grey shapes across the headline on a phone — so
+  // the track was three screens of scrolling with one short sentence
+  // floating in the middle of each empty one. Same breakpoint as the
+  // backdrop on purpose: when the scene goes, its stage goes with it.
+  const [pinned, setPinned] = useState(false)
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return
+    const query = window.matchMedia("(min-width: 1024px)")
+    const sync = () => setPinned(query.matches)
+    sync()
+    query.addEventListener("change", sync)
+    return () => query.removeEventListener("change", sync)
+  }, [])
 
   const { scrollYProgress } = useScroll({
     target: trackRef,
@@ -74,9 +90,9 @@ export function StorySection() {
     },
   ]
 
-  if (prefersReducedMotion) {
+  if (prefersReducedMotion || !pinned) {
     return (
-      <div className="flex flex-col gap-16">
+      <div className="mx-auto flex max-w-2xl flex-col gap-14 px-5 py-20 sm:gap-16">
         {claims.map((claim) => (
           <Claim key={claim.title} title={claim.title} body={claim.body} />
         ))}
