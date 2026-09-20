@@ -55,13 +55,22 @@ def get_current_user(
     return user
 
 
-def get_optional_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security),
-    db: Session = Depends(get_db),
-) -> User | None:
-    if credentials is None:
+def resolve_optional_user(token: str | None, db: Session) -> User | None:
+    """Resolve a bearer token to the user it names, or ``None``.
+
+    ``None`` covers every way a request can fail to name a user: no token,
+    a token we cannot verify, one naming an account that no longer exists,
+    and one naming a deactivated account.
+
+    Split out of ``get_optional_user`` so a caller that must first decide
+    *whether* the token is any of its business can reuse the same logic
+    instead of decoding a second time. A declared ``Depends`` is resolved
+    before the route body runs, which is exactly what such a caller needs
+    to avoid — see ``app.api.consent_gate``.
+    """
+    if token is None:
         return None
-    payload = decode_access_token(credentials.credentials)
+    payload = decode_access_token(token)
     if payload is None:
         return None
     user_id: str | None = payload.get("sub")
@@ -73,6 +82,13 @@ def get_optional_user(
     if user is not None and user.deactivated_at is not None:
         return None
     return user
+
+
+def get_optional_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security),
+    db: Session = Depends(get_db),
+) -> User | None:
+    return resolve_optional_user(credentials.credentials if credentials is not None else None, db)
 
 
 def require_teacher(

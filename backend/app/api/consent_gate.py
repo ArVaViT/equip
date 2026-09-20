@@ -41,8 +41,14 @@ Why a router dependency and not middleware
 Middleware would have to decode the bearer token and load the profile a
 second time, duplicating ``get_current_user`` and drifting from it. A
 dependency declared on ``include_router`` runs before the route's own
-dependencies, shares FastAPI's per-request cache with them, and is
-overridable in tests the same way every other dependency here is.
+dependencies and is overridable in tests the same way every other
+dependency here is.
+
+The identity itself is resolved by ``consent_subject``, which reads the
+token only once it knows this gate has an opinion about the request — not
+by depending on ``get_optional_user``, which would resolve for every read
+and every exempt path as well. See that function for what the shortcut
+cost in practice.
 """
 
 from __future__ import annotations
@@ -51,9 +57,10 @@ from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any
 
 from fastapi import Depends, Request, status
+from fastapi.security import HTTPAuthorizationCredentials  # noqa: TC002 — used by FastAPI Depends at runtime
 from sqlalchemy import select
 
-from app.api.dependencies import get_optional_user
+from app.api.dependencies import optional_security, resolve_optional_user
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.legal import registry as legal_registry
@@ -142,10 +149,45 @@ def user_owes_consent(db: Session, user: User) -> tuple[str, ...]:
     return outstanding_slugs(user.role, accepted)
 
 
+def consent_subject(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(optional_security),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """Who is making this change, when the change is one this gate judges.
+
+    ``None`` for everything the gate ignores — and the point is that it
+    answers ``None`` *without reading the token*. A read, or a path on
+    ``EXEMPT_PREFIXES``, is decided from the request line alone.
+
+    That matters because this gate is declared on ``include_router`` and so
+    runs for every request under ``/api/v1``. Depending on
+    ``get_optional_user`` directly decoded the bearer header of requests the
+    gate had already decided it had nothing to say about — including
+    ``/api/v1/internal/``, where Vercel Cron authenticates the worker by
+    sending its shared secret as ``Authorization: Bearer <secret>``. That
+    secret is not a JWT, so every tick of the minutely cron logged
+    ``JWT decode failed: Not enough segments``: 1,747 warnings across two
+    days in September 2026, roughly 90% of the backend's whole warning
+    volume, every one of them for a request this module's own docstring
+    says it has no opinion about.
+
+    The exemption was always written down — ``/api/v1/internal/`` has been
+    in ``EXEMPT_PREFIXES`` from the start. It just could not take effect,
+    because FastAPI resolves a declared dependency before the body that
+    consults the exemption list ever runs.
+    """
+    if request.method not in MUTATING_METHODS:
+        return None
+    if any(request.url.path.startswith(prefix) for prefix in EXEMPT_PREFIXES):
+        return None
+    return resolve_optional_user(credentials.credentials if credentials is not None else None, db)
+
+
 def require_legal_consent(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User | None = Depends(get_optional_user),
+    current_user: User | None = Depends(consent_subject),
 ) -> None:
     """Refuse a change from somebody who has not accepted the current documents.
 
@@ -177,6 +219,7 @@ def require_legal_consent(
 __all__ = [
     "EXEMPT_PREFIXES",
     "MUTATING_METHODS",
+    "consent_subject",
     "outstanding_slugs",
     "require_legal_consent",
     "user_owes_consent",

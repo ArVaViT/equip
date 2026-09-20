@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session  # noqa: TC002 — used by FastAPI Depends at runtime
 
@@ -67,6 +68,42 @@ logger = logging.getLogger(__name__)
 # dozen provider calls, so this is roughly a minute of work — and it only
 # ever runs on a tick that had nothing else to do.
 _IDLE_POOL_SWEEP_LIMIT = 5
+
+#: Advisory-lock key for the idle pool sweep. Any stable 64-bit constant
+#: will do; this one is arbitrary and must simply never collide with
+#: another advisory lock in this database.
+_POOL_SWEEP_LOCK_KEY = 0x5FA17E51
+
+
+def _claim_pool_sweep(db: Session) -> bool:
+    """Whether this tick may sweep the question pool, or another already is.
+
+    The cron fires every minute and ``vercel.json`` gives the function
+    ``maxDuration: 300``, so up to five ticks legitimately overlap. The
+    queue survives that because ``claim_next_job`` takes the row
+    ``FOR UPDATE SKIP LOCKED``; the pool sweep had no such guard. It
+    selects its work by reading state — "questions missing a language" —
+    so two overlapping ticks read the same answer, translated the same
+    question, and both inserted the row. The second one met
+    ``uniq_content_versions_active`` and raised ``UniqueViolation``,
+    which unwound the whole sweep and discarded the work the tick had
+    already done. Production logged seven of those between 04:29 and
+    05:16 UTC on 2026-09-18.
+
+    A transaction-scoped advisory lock serialises the sweep without
+    holding a row lock: the loser skips the sweep entirely and the cron
+    comes back in sixty seconds. Postgres releases the lock when the
+    transaction ends, including when it ends by crashing, so a tick that
+    dies mid-sweep cannot wedge the next one.
+
+    SQLite (the test database) has no advisory locks and no concurrent
+    ticks either, so it always gets the lock.
+    """
+    bind = db.get_bind()
+    if bind is not None and bind.dialect.name != "postgresql":
+        return True
+    return bool(db.execute(select(func.pg_try_advisory_xact_lock(_POOL_SWEEP_LOCK_KEY))).scalar())
+
 
 router = APIRouter(prefix="/internal", tags=["internal"])
 
@@ -241,12 +278,18 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
         # This tick is idle and paid for either way. Sweeping the pool
         # here costs nothing extra and leaves the nightly budget alone,
         # and the time budget keeps it inside one invocation.
-        try:
-            pool = translate_pending_questions(db, limit=_IDLE_POOL_SWEEP_LIMIT, budget=idle_budget)
-        except Exception as exc:
-            db.rollback()
-            logger.warning("worker: idle pool sweep failed: %s", exc)
-            pool = PoolSweepReport(questions=0, rows=OrchestratorReport())
+        pool = PoolSweepReport(questions=0, rows=OrchestratorReport())
+        if _claim_pool_sweep(db):
+            try:
+                pool = translate_pending_questions(db, limit=_IDLE_POOL_SWEEP_LIMIT, budget=idle_budget)
+            except Exception as exc:
+                db.rollback()
+                logger.warning("worker: idle pool sweep failed: %s", exc)
+                pool = PoolSweepReport(questions=0, rows=OrchestratorReport())
+        else:
+            # Another overlapping tick holds the sweep. Not a failure and
+            # not worth a warning: the cron returns in a minute.
+            logger.debug("worker: idle pool sweep skipped (another tick holds it)")
         # An announcement the sweep repaired is work this tick did, and
         # "idle" would be a lie about it — the same lie "done" told about
         # a tick that walked a thousand fields and wrote none.

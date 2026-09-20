@@ -26,6 +26,7 @@ import re
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -142,18 +143,29 @@ class TestWhatItSays:
 
         Half of this school is on the west coast: "20:00" has meant two
         different evenings to two readers of the same letter.
+
+        The moment is computed, not written down. This test pinned
+        ``2026-09-19 00:00 UTC`` and read "20:00" and "17:00" out of it,
+        which was true until 2026-09-19 itself: the date became the past,
+        ``_next_session`` correctly stopped advertising a session that had
+        already happened, and the test failed on a calendar day rather than
+        on a code change. A later fixed date only moves that day. It would
+        also have been wrong for half of each year — those two offsets hold
+        in daylight saving time and not in standard time — so the expected
+        clock times are asked of ``zoneinfo`` instead of assumed, and the
+        assertion now holds in both seasons.
         """
         _school(db)
         _course_with_title(db)
-        # 2026-09-19 00:00 UTC is the 18th, 20:00 Eastern / 17:00 Pacific.
-        _session(db, when=datetime(2026, 9, 19, 0, 0, tzinfo=UTC))
+        when = (datetime.now(UTC) + timedelta(days=30)).replace(hour=0, minute=0, second=0, microsecond=0)
+        _session(db, when=when)
         invitation = _invitation(db, scope=InvitationScope.COURSE.value, course_id=COURSE_ID)
 
         message = build_invitation_message(db, invitation, accept_url=ACCEPT_URL, locale="ru", inviter_name="Д")
         session_row = next(fact for fact in message.facts if "занятие" in fact.label.lower())
 
-        assert "20:00" in session_row.value
-        assert "17:00" in session_row.value
+        assert when.astimezone(ZoneInfo("America/Indiana/Indianapolis")).strftime("%H:%M") in session_row.value
+        assert when.astimezone(ZoneInfo("America/Los_Angeles")).strftime("%H:%M") in session_row.value
         assert "восточному" in session_row.value
 
     def test_a_session_that_has_passed_is_not_advertised(self, db: Session, admin: User) -> None:
