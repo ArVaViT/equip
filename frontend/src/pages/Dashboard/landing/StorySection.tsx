@@ -1,6 +1,8 @@
-import { lazy, Suspense, useRef } from "react"
+import { lazy, Suspense, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { motion, useReducedMotion, useScroll, useTransform } from "motion/react"
+import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll } from "motion/react"
+
+import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
 
 /**
  * Three claims told over one scene that never stops moving.
@@ -38,16 +40,22 @@ export function StorySection() {
     offset: ["start start", "end end"],
   })
 
-  // Each caption holds, then hands over. The gaps are where the scene is
-  // mid-transition and a fixed sentence would be describing the wrong shape.
-  // The first caption starts *visible*. It used to fade up from zero over
-  // the opening 6% of the track, which meant the reader arrived at the
-  // section and found a moving scene with no words against it — the caption
-  // only appeared once they had already scrolled past the question it was
-  // answering.
-  const first = useTransform(scrollYProgress, [0, 0.27, 0.34], [1, 1, 0])
-  const second = useTransform(scrollYProgress, [0.34, 0.41, 0.6, 0.67], [0, 1, 1, 0])
-  const third = useTransform(scrollYProgress, [0.67, 0.74, 0.95, 1], [0, 1, 1, 1])
+  // One caption exists at a time.
+  //
+  // Three of them used to sit in the same grid cell, cross-fading by
+  // opacity. On paper the ranges never overlap; on a real wheel they do —
+  // a fast scroll jumps the progress value straight past the handover, and
+  // for those frames two full paragraphs are painted on top of each other.
+  // Vadym saw exactly that: «он стал перекрывать друг друга».
+  //
+  // So the index is state, and only the active caption is mounted.
+  // Overlapping text is then not a thing that can happen, at any scroll
+  // speed, rather than a thing the numbers say should not.
+  const [active, setActive] = useState(0)
+  useMotionValueEvent(scrollYProgress, "change", (value) => {
+    const next = value < 0.34 ? 0 : value < 0.67 ? 1 : 2
+    setActive((current) => (current === next ? current : next))
+  })
 
   // Literal keys, one call per string — a template key would be invisible to
   // the ``keyCoverage`` check (docs/I18N.md).
@@ -55,17 +63,14 @@ export function StorySection() {
     {
       title: t("landing.value.structure.title"),
       body: t("landing.value.structure.body"),
-      opacity: first,
     },
     {
       title: t("landing.value.assessment.title"),
       body: t("landing.value.assessment.body"),
-      opacity: second,
     },
     {
       title: t("landing.value.certificates.title"),
       body: t("landing.value.certificates.body"),
-      opacity: third,
     },
   ]
 
@@ -91,18 +96,21 @@ export function StorySection() {
           />
         </Suspense>
 
-        {/* The captions share one grid cell, so they cross-fade in place
-            instead of the block changing height under the reader. */}
-        <div className="relative z-10 mx-auto grid w-full max-w-5xl px-4">
-          {claims.map((claim) => (
+        {/* `mode="wait"` would leave a gap with no caption at all; the
+            default lets the outgoing one fade while the incoming arrives,
+            and since only one is ever mounted they cannot collide. */}
+        <div className="relative z-10 mx-auto w-full max-w-5xl px-4">
+          <AnimatePresence initial={false}>
             <motion.div
-              key={claim.title}
-              style={{ opacity: claim.opacity, gridArea: "1 / 1" }}
-              className="flex items-center"
+              key={active}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, position: "absolute" }}
+              transition={{ duration: MOTION_DURATION.panel, ease: EDITORIAL_EASE }}
             >
-              <Claim title={claim.title} body={claim.body} />
+              <Claim title={claims[active]?.title ?? ""} body={claims[active]?.body ?? ""} />
             </motion.div>
-          ))}
+          </AnimatePresence>
         </div>
       </div>
     </div>

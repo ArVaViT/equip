@@ -11,6 +11,7 @@ import { HeroVideo } from "./landing/HeroVideo";
 import { ScrollReveal } from "./landing/ScrollReveal";
 import { StorySection } from "./landing/StorySection";
 import { CourseShowcase } from "./landing/CourseShowcase";
+import { ProductTour } from "./landing/ProductTour";
 
 /**
  * Marketing landing rendered at ``/`` for unauthenticated visitors.
@@ -127,14 +128,22 @@ export function PublicLanding() {
       {/* ── 2. Three claims, told over one moving scene ──────────── */}
       <StorySection />
 
-      {/* ── 3. What is actually on the shelf ─────────────────────── */}
+      {/* ── 3. Twenty seconds of it working ──────────────────────── */}
+      {/* Silent, looping, and not the film. The film is a minute with a
+          voice and lives at the end, where Vadym wants it; this is the
+          product in motion — a lesson changing language — and it earns its
+          place here because the three claims above it have just been made
+          and this is what they look like. */}
+      <ProductTour />
+
+      {/* ── 4. What is actually on the shelf ─────────────────────── */}
       {/* Everything above argues about how the platform teaches; this is
           the first thing that says what is on it. Live from the public
           catalogue endpoint, so it cannot advertise a course that was
           unpublished last month. */}
       <CourseShowcase />
 
-      {/* ── 4. The way in ────────────────────────────────────────── */}
+      {/* ── 5. The way in ────────────────────────────────────────── */}
       {/* `<Section>` rather than another bespoke `container mx-auto …`
           string: the geometry census in `Section.test.tsx` caps how many
           distinct page shells may exist, and a landing page is not special
@@ -156,7 +165,7 @@ export function PublicLanding() {
         </ScrollReveal>
       </Section>
 
-      {/* ── 5. The film ──────────────────────────────────────────── */}
+      {/* ── 6. The film ──────────────────────────────────────────── */}
       {/* Deliberately last. Vadym: «его надо явно ближе к концу, чтоб он не
           было первым впечатлением» — a minute of explanation is what you
           offer somebody already deciding, not what you open with. */}

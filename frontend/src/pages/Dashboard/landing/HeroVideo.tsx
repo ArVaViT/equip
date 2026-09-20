@@ -41,8 +41,13 @@ type VideoSource = {
   height: number
 }
 
-/** Set this when the film is ready. `null` renders the section away. */
-const INTRO: VideoSource | null = null
+/** The film, delivered 2026-09-20. `null` would render the section away. */
+const INTRO: VideoSource | null = {
+  src: "/video/intro.mp4",
+  poster: "/video/intro-poster.jpg",
+  width: 1920,
+  height: 1080,
+}
 
 export function HeroVideo() {
   if (!INTRO) return null

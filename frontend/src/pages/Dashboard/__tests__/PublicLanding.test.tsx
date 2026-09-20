@@ -73,33 +73,47 @@ describe("PublicLanding (unauth marketing page)", () => {
     expect(hrefs).toContain("/login")
   })
 
-  it("makes its claims in a few words each, not in paragraphs", () => {
+  it("shows exactly one claim at a time", () => {
     renderLanding()
-    // Three claims now, not four: the page was rebuilt around the intro
-    // film, and «многоязычность» is one of the things the film says better
-    // than a block of prose can. What is asserted is the claim itself, not
-    // the element carrying it — a wrapper rename is not a regression.
-    const headings = screen
-      .getAllByRole("heading")
-      .map((h) => h.textContent?.trim())
-      .filter(Boolean)
+    // The three claims used to share a grid cell and cross-fade by opacity.
+    // The ranges never overlap on paper; on a real wheel they do, because a
+    // fast scroll jumps straight past the handover and paints two full
+    // paragraphs on top of each other. Only the active one is mounted now,
+    // so collision is not a thing that can happen at any scroll speed.
+    const claimTitles = [
+      i18n.t("landing.value.structure.title"),
+      i18n.t("landing.value.assessment.title"),
+      i18n.t("landing.value.certificates.title"),
+    ]
+    const shown = claimTitles.filter((title) => screen.queryByText(title) !== null)
 
-    for (const key of [
-      "landing.value.structure.title",
-      "landing.value.assessment.title",
-      "landing.value.certificates.title",
-    ]) {
-      expect(headings).toContain(i18n.t(key))
-    }
+    expect(shown).toEqual([claimTitles[0]])
   })
 
-  it("does not advertise a video it cannot play", () => {
+  it("offers the film behind a poster, and never starts it by itself", () => {
     renderLanding()
-    // The intro film is Vadym's to produce, and until the file exists the
-    // section renders nothing at all. A frame with a play button over a
-    // video that will not start is the same failure as a mock standing in
-    // for a screenshot — this page has had enough of those.
-    expect(document.querySelector("video")).toBeNull()
+    const videos = [...document.querySelectorAll("video")]
+    const film = videos.find((v) => v.hasAttribute("controls"))
+
+    // A minute of speech: it waits, it is asked for, and it can be paused.
+    expect(film).toBeDefined()
+    expect(film?.getAttribute("poster")).toBeTruthy()
+    expect(film?.hasAttribute("autoplay")).toBe(false)
+    expect(film?.getAttribute("preload")).toBe("none")
+  })
+
+  it("plays the silent tour by itself, and only silently", () => {
+    renderLanding()
+    const videos = [...document.querySelectorAll("video")]
+    const tour = videos.find((v) => !v.hasAttribute("controls"))
+
+    // The opposite contract to the film: it is a caption that moves, so it
+    // loops on its own — which every browser allows only while muted, and
+    // which would be an ambush with sound.
+    expect(tour).toBeDefined()
+    expect(tour?.muted || tour?.hasAttribute("muted")).toBe(true)
+    expect(tour?.hasAttribute("loop")).toBe(true)
+    expect(tour?.hasAttribute("controls")).toBe(false)
   })
 
   it("does not render a generic 'reset password' marketing card", () => {
