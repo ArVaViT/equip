@@ -33,10 +33,13 @@ export default function Footer() {
     "rounded-sm text-ink-muted transition-colors duration-fast ease-out hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
   const headingClass = "text-xs font-medium uppercase tracking-[0.14em] text-ink"
 
+  // Half the height it used to be. The footer is small print and a few
+  // links; at `mt-24` over `py-16` it took most of a screen on the one page
+  // it appears on, directly after a hero built to be looked at.
   return (
-    <footer className="mt-24 border-t border-edge">
-      <div className="container mx-auto max-w-5xl px-4 py-14 md:py-16">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+    <footer className="mt-16 border-t border-edge">
+      <div className="container mx-auto max-w-5xl px-4 py-10 md:py-12">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <div className="max-w-xs">
             <Link
               to="/"
@@ -118,7 +121,7 @@ export default function Footer() {
 
         {/* The colophon line, last and smallest. It is the only thing here
             that is not a way of getting somewhere. */}
-        <p className="mt-12 border-t border-edge pt-6 text-xs text-ink-muted">
+        <p className="mt-8 border-t border-edge pt-5 text-xs text-ink-muted">
           © {year} {t("common.appName")}
         </p>
       </div>

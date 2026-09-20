@@ -9,6 +9,7 @@ import Footer from "@/components/layout/Footer";
 import { Section } from "@/components/layout/Section";
 import { HeroVideo } from "./landing/HeroVideo";
 import { ScrollReveal } from "./landing/ScrollReveal";
+import { StorySection } from "./landing/StorySection";
 
 /**
  * Marketing landing rendered at ``/`` for unauthenticated visitors.
@@ -115,39 +116,16 @@ export function PublicLanding() {
         </div>
       </section>
 
-      {/* ── 2. The minute that explains it ───────────────────────── */}
-      <HeroVideo />
+      {/* ── 2. Three claims, told over one moving scene ──────────── */}
+      <StorySection />
 
-      {/* ── 3. Three claims, then the way in ─────────────────────── */}
+      {/* ── 3. The way in ────────────────────────────────────────── */}
       {/* `<Section>` rather than another bespoke `container mx-auto …`
           string: the geometry census in `Section.test.tsx` caps how many
           distinct page shells may exist, and a landing page is not special
           enough to be the nineteenth. */}
       <Section as="section" aria-label={t("landing.value.heading")} className="py-24 sm:py-32">
-        <div className="flex flex-col gap-20 sm:gap-28">
-          {/* Literal keys, one call per string — a template key would be
-              invisible to the ``keyCoverage`` check (docs/I18N.md). */}
-          <ScrollReveal>
-            <Claim
-              title={t("landing.value.structure.title")}
-              body={t("landing.value.structure.body")}
-            />
-          </ScrollReveal>
-          <ScrollReveal>
-            <Claim
-              title={t("landing.value.assessment.title")}
-              body={t("landing.value.assessment.body")}
-            />
-          </ScrollReveal>
-          <ScrollReveal>
-            <Claim
-              title={t("landing.value.certificates.title")}
-              body={t("landing.value.certificates.body")}
-            />
-          </ScrollReveal>
-        </div>
-
-        <ScrollReveal className="mt-28 flex flex-col items-center text-center sm:mt-36">
+        <ScrollReveal className="flex flex-col items-center text-center">
           <h2 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-4xl">
             {t("landing.finalCta.heading")}
           </h2>
@@ -163,19 +141,13 @@ export function PublicLanding() {
         </ScrollReveal>
       </Section>
 
-      <Footer />
-    </div>
-  );
-}
+      {/* ── 4. The film ──────────────────────────────────────────── */}
+      {/* Deliberately last. Vadym: «его надо явно ближе к концу, чтоб он не
+          было первым впечатлением» — a minute of explanation is what you
+          offer somebody already deciding, not what you open with. */}
+      <HeroVideo />
 
-/** One claim: a few words and a line. Anything longer belongs in the video. */
-function Claim({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="max-w-2xl">
-      <h3 className="font-serif text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-4xl">
-        {title}
-      </h3>
-      <p className="mt-4 text-base leading-relaxed text-ink-muted sm:text-lg">{body}</p>
+      <Footer />
     </div>
   );
 }
