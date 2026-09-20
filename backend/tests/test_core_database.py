@@ -167,3 +167,112 @@ class TestServerlessPoolerGuard:
             core_db._get_engine()
         monkeypatch.setattr(core_db, "_engine", None)
         assert not any("POOLER" in r.getMessage() for r in caplog.records)
+
+
+class TestConcurrentColdStart:
+    """Ten requests arrive at an uninitialised module at the same time.
+
+    FastAPI runs a sync dependency such as ``get_db`` in a threadpool, so a
+    cold serverless instance handed a burst of calls really does start
+    several threads through ``_get_engine`` together. Opening one course
+    page fires about ten.
+
+    Production showed what that cost on 2026-09-20 at 14:36 UTC: nine of
+    those calls returned 200 and ``GET /api/v1/calendar/events`` returned
+    503. One thread had published ``_engine`` and had not yet built
+    ``_SessionLocal``; a second took the early return, found the factory
+    still ``None`` and raised. Nothing was logged, because that branch
+    raises an ``HTTPException`` without a log line — an error the user saw
+    and the logs did not contain.
+
+    The fix publishes the engine last, under a lock. The first test below
+    fails against the ordering that preceded it: a fake engine that is slow
+    to answer ``.dialect`` holds open the exact window between the two
+    globals, and the nine later arrivals land in it.
+    """
+
+    def test_no_thread_sees_an_engine_without_its_session_factory(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        import threading
+        import time
+
+        monkeypatch.setattr(core_db, "_engine", None)
+        monkeypatch.setattr(core_db, "_SessionLocal", None)
+
+        class SlowToDescribeItself:
+            """An engine that takes a moment to answer ``.dialect``.
+
+            That single attribute is read between building the engine and
+            building the session factory, so making it slow holds open
+            exactly the window the outage happened in, and only that one.
+            A fixed module keeps the window inside the lock and behind an
+            unpublished global; a broken one lets nine threads through it.
+            """
+
+            def __init__(self) -> None:
+                self._dialect = MagicMock()
+                self._dialect.name = "sqlite"
+
+            @property
+            def dialect(self) -> MagicMock:
+                time.sleep(0.1)
+                return self._dialect
+
+        monkeypatch.setattr(core_db, "create_engine", lambda url, **kwargs: SlowToDescribeItself())
+
+        observed: list[object] = []
+        record = threading.Lock()
+
+        def arrive() -> None:
+            try:
+                core_db._get_engine()
+                # What ``get_db`` does next, and the exact read that failed.
+                with record:
+                    observed.append(core_db._SessionLocal)
+            except Exception as exc:
+                with record:
+                    observed.append(exc)
+
+        # One request lands first and the rest arrive while it is still
+        # setting up, which is what a cold instance with a course page
+        # pointed at it looks like.
+        pioneer = threading.Thread(target=arrive)
+        pioneer.start()
+        time.sleep(0.02)
+        rest = [threading.Thread(target=arrive) for _ in range(9)]
+        for thread in rest:
+            thread.start()
+        for thread in [pioneer, *rest]:
+            thread.join(timeout=10)
+
+        assert len(observed) == 10
+        assert [o for o in observed if isinstance(o, Exception)] == []
+        assert all(o is not None for o in observed), (
+            "a thread was handed an engine while the session factory was still None - this is the 503 from 2026-09-20"
+        )
+
+    def test_the_engine_is_built_once_however_many_arrive(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The lock must not turn into ten engines, each with its own pool."""
+        import threading
+
+        monkeypatch.setattr(core_db, "_engine", None)
+        monkeypatch.setattr(core_db, "_SessionLocal", None)
+
+        calls: list[str] = []
+        lock = threading.Lock()
+
+        def counting_create_engine(url: str, **kwargs: object) -> MagicMock:
+            with lock:
+                calls.append(url)
+            engine = MagicMock()
+            engine.dialect.name = "sqlite"
+            return engine
+
+        monkeypatch.setattr(core_db, "create_engine", counting_create_engine)
+
+        threads = [threading.Thread(target=core_db._get_engine) for _ in range(10)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=10)
+
+        assert len(calls) == 1

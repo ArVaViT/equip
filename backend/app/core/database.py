@@ -1,4 +1,5 @@
 import logging
+import threading
 from collections.abc import Generator
 from urllib.parse import urlparse
 
@@ -17,6 +18,20 @@ class Base(DeclarativeBase):
 
 _engine: Engine | None = None
 _SessionLocal: sessionmaker | None = None
+
+# Initialisation happens once per process, and more than one thread can
+# arrive at an uninitialised module. FastAPI runs a sync dependency like
+# ``get_db`` in a threadpool, so a cold instance that is handed ten
+# requests at once starts ten real threads through here together.
+#
+# On 2026-09-20 at 14:36 UTC that produced a 503 on
+# ``GET /api/v1/calendar/events`` while the nine requests beside it
+# returned 200: one thread had published ``_engine`` and had not yet
+# built ``_SessionLocal``, and a second thread took the early return
+# above, found the factory still ``None``, and raised "Database session
+# factory not initialized". That path logs nothing, which is why a user
+# saw an error the logs did not contain.
+_init_lock = threading.Lock()
 
 IS_SERVERLESS = env_flag("VERCEL", "AWS_LAMBDA_FUNCTION_NAME")
 
@@ -80,8 +95,22 @@ def _get_engine() -> Engine:
     """Lazy initialization of the database engine."""
     global _engine, _SessionLocal
 
-    if _engine is not None:
+    # Both halves, because a caller that sees the engine goes straight on to
+    # use the factory. Reading them together is what makes the fast path
+    # safe without taking the lock.
+    if _engine is not None and _SessionLocal is not None:
         return _engine
+
+    with _init_lock:
+        # Another thread may have finished while this one waited.
+        if _engine is not None and _SessionLocal is not None:
+            return _engine
+        return _create_engine_and_session_factory()
+
+
+def _create_engine_and_session_factory() -> Engine:
+    """Build both halves and publish them. Called under ``_init_lock``."""
+    global _engine, _SessionLocal
 
     try:
         db_url = settings.DATABASE_URL
@@ -196,9 +225,12 @@ def _get_engine() -> Engine:
                 }
             )
 
-        _engine = create_engine(db_url, **pool_kwargs)
+        # Built into a local and published at the end of this block: a
+        # half-initialised module must never be visible to another thread,
+        # which is the whole point of the lock above.
+        engine = create_engine(db_url, **pool_kwargs)
 
-        if _engine.dialect.name == "postgresql":
+        if engine.dialect.name == "postgresql":
             # Transaction-scoped statement timeout. SET LOCAL is the only
             # form that survives Supavisor transaction pooling (a session
             # SET would leak onto whatever client gets the server connection
@@ -206,11 +238,13 @@ def _get_engine() -> Engine:
             # One cheap round-trip per transaction restores the designed 30s
             # bound — without it a pathological query holds a pooler slot
             # for the 2min cluster default.
-            event.listen(_engine, "begin", open_the_transaction_the_way_we_mean_it)
+            event.listen(engine, "begin", open_the_transaction_the_way_we_mean_it)
 
         logger.info("Database engine created successfully")
 
-        _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
+        _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        # Last, and only once the factory exists.
+        _engine = engine
     except RuntimeError:
         raise
     except Exception as e:
