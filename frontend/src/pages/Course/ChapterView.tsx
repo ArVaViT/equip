@@ -104,6 +104,19 @@ function TextBlockRender({ html }: { html: string }) {
         // is later in the built stylesheet at equal specificity, so the measure
         // always won. One of the two was a lie; the measure is the one we meant.
         className="prose"
+        // The one place the browser's translator is welcome, re-opening
+        // what `translate="no"` on <html> closes (see index.html for why
+        // it is closed). Equip ships four languages; a reader whose
+        // language is not among them has no other way to read a lesson,
+        // and refusing the translator everywhere would have cost them
+        // the text rather than protected it.
+        //
+        // Safe here in a way it is not elsewhere: this subtree is set
+        // through `dangerouslySetInnerHTML`, so React holds no child
+        // fibers inside it and never tries to reconcile the nodes the
+        // translator rewrites. That is exactly the mismatch that threw
+        // `insertBefore` on the interface chrome.
+        translate="yes"
         dangerouslySetInnerHTML={{ __html: html }}
       />
       {lightbox && (
