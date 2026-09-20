@@ -42,6 +42,12 @@ const gzipAsync = promisify(gzip);
 // download under 8.2.
 const BUDGETS_GZIP_KB = {
   ChapterEditor: 252, // teacher TipTap surface; lazy per /teacher/courses.
+  HeroScene: 147, // `three` for the landing hero. Larger than the shell, and
+  //           deliberate: it is `lazy()`-imported from PublicLanding alone,
+  //           skipped entirely under `prefers-reduced-motion` and where WebGL
+  //           is unavailable, so a student opening a lesson never fetches a
+  //           byte of it. If this ever appears in a route a signed-in user
+  //           reaches, that is the bug, not the size.
   index: 109, // shell — always loaded. Under 8.2 this was 29 kB and the
   //           Datadog RUM core sat beside it in a nameless `esm` chunk;
   //           8.3 folds that core, sonner and the radix dialog/tooltip in.

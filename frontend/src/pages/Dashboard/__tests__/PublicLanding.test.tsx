@@ -73,12 +73,33 @@ describe("PublicLanding (unauth marketing page)", () => {
     expect(hrefs).toContain("/login")
   })
 
-  it("renders the four value-proposition rows as h3 headings", () => {
+  it("makes its claims in a few words each, not in paragraphs", () => {
     renderLanding()
-    // Each row is a concrete claim (structure / assessment /
-    // certificates / bilingual), not a generic icon+adjective grid.
-    const h3s = screen.getAllByRole("heading", { level: 3 })
-    expect(h3s.length).toBe(4)
+    // Three claims now, not four: the page was rebuilt around the intro
+    // film, and «многоязычность» is one of the things the film says better
+    // than a block of prose can. What is asserted is the claim itself, not
+    // the element carrying it — a wrapper rename is not a regression.
+    const headings = screen
+      .getAllByRole("heading")
+      .map((h) => h.textContent?.trim())
+      .filter(Boolean)
+
+    for (const key of [
+      "landing.value.structure.title",
+      "landing.value.assessment.title",
+      "landing.value.certificates.title",
+    ]) {
+      expect(headings).toContain(i18n.t(key))
+    }
+  })
+
+  it("does not advertise a video it cannot play", () => {
+    renderLanding()
+    // The intro film is Vadym's to produce, and until the file exists the
+    // section renders nothing at all. A frame with a play button over a
+    // video that will not start is the same failure as a mock standing in
+    // for a screenshot — this page has had enough of those.
+    expect(document.querySelector("video")).toBeNull()
   })
 
   it("does not render a generic 'reset password' marketing card", () => {
