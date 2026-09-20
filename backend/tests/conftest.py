@@ -20,6 +20,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.api.consent_gate import consent_subject
 from app.api.dependencies import get_current_user, get_optional_user
 from app.core.database import Base, get_db
 from app.legal import LEGAL_DOCUMENTS
@@ -371,6 +372,9 @@ def client(db: Session, teacher: User) -> TestClient:
     app.dependency_overrides[get_db] = _override_db
     app.dependency_overrides[get_current_user] = _override_user
     app.dependency_overrides[get_optional_user] = _override_user
+    # The consent gate resolves its own subject so it can skip the token on
+    # reads and exempt paths; it still has to see the same person here.
+    app.dependency_overrides[consent_subject] = _override_user
 
     with TestClient(app, raise_server_exceptions=False) as tc:
         yield tc
@@ -391,6 +395,9 @@ def student_client(db: Session, teacher: User, student: User) -> TestClient:
     app.dependency_overrides[get_db] = _override_db
     app.dependency_overrides[get_current_user] = _override_user
     app.dependency_overrides[get_optional_user] = _override_user
+    # The consent gate resolves its own subject so it can skip the token on
+    # reads and exempt paths; it still has to see the same person here.
+    app.dependency_overrides[consent_subject] = _override_user
 
     with TestClient(app, raise_server_exceptions=False) as tc:
         yield tc
@@ -412,6 +419,9 @@ def admin_client(db: Session, teacher: User, admin: User) -> TestClient:
     app.dependency_overrides[get_db] = _override_db
     app.dependency_overrides[get_current_user] = _override_user
     app.dependency_overrides[get_optional_user] = _override_user
+    # The consent gate resolves its own subject so it can skip the token on
+    # reads and exempt paths; it still has to see the same person here.
+    app.dependency_overrides[consent_subject] = _override_user
 
     with TestClient(app, raise_server_exceptions=False) as tc:
         yield tc
@@ -436,6 +446,7 @@ def anon_client(db: Session, teacher: User) -> TestClient:
 
     app.dependency_overrides[get_db] = _override_db
     app.dependency_overrides[get_optional_user] = _override_anon
+    app.dependency_overrides[consent_subject] = _override_anon
 
     with TestClient(app, raise_server_exceptions=False) as tc:
         yield tc

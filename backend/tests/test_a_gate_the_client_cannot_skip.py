@@ -23,6 +23,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+from fastapi.security import HTTPAuthorizationCredentials
+from starlette.requests import Request
 
 from app.api import consent_gate
 from app.legal import LEGAL_DOCUMENTS, required_slugs
@@ -231,3 +233,74 @@ def test_a_person_who_owes_one_document_of_two_is_still_stopped(student_client: 
 
     assert response.status_code == 403
     assert slug not in response.json()["detail"]["context"]["outstanding"]
+
+
+class TestTheGateDoesNotReadATokenItHasNoOpinionAbout:
+    """What the gate looks at, and — the point of this class — what it does not.
+
+    ``/api/v1/internal/`` has been on ``EXEMPT_PREFIXES`` since the gate
+    shipped, but the exemption could not take effect: the subject was
+    declared as ``Depends(get_optional_user)``, and FastAPI resolves a
+    declared dependency *before* the body that consults the exemption list.
+    So every request under ``/api/v1`` had its bearer header decoded,
+    including the minutely cron tick, whose ``Authorization`` carries the
+    worker's shared secret rather than a JWT. Each one logged
+    ``JWT decode failed: Not enough segments`` — 1,747 of them over two days
+    in September 2026, about 90% of the backend's warning volume.
+
+    These tests fail if the subject goes back to being resolved eagerly.
+    """
+
+    @staticmethod
+    def _request(method: str, path: str) -> Request:
+        return Request(
+            {
+                "type": "http",
+                "method": method,
+                "path": path,
+                "raw_path": path.encode(),
+                "query_string": b"",
+                "headers": [],
+                "scheme": "https",
+                "server": ("api.equipbible.com", 443),
+            }
+        )
+
+    @staticmethod
+    def _secret() -> HTTPAuthorizationCredentials:
+        """What Vercel Cron sends: a shared secret, which is not a JWT."""
+        return HTTPAuthorizationCredentials(scheme="Bearer", credentials="a-shared-secret-with-no-dots")
+
+    @pytest.fixture()
+    def _tokens_read(self, monkeypatch: pytest.MonkeyPatch) -> list[str | None]:
+        seen: list[str | None] = []
+
+        def _spy(token: str | None, session: Session) -> None:
+            seen.append(token)
+            return None
+
+        monkeypatch.setattr(consent_gate, "resolve_optional_user", _spy)
+        return seen
+
+    def test_a_read_is_decided_without_the_token(self, db: Session, _tokens_read: list[str | None]) -> None:
+        assert consent_gate.consent_subject(self._request("GET", COURSES), self._secret(), db) is None
+        assert _tokens_read == []
+
+    def test_the_cron_worker_is_decided_without_the_token(self, db: Session, _tokens_read: list[str | None]) -> None:
+        """A POST — so the method alone does not save it — on an exempt path."""
+        request = self._request("POST", "/api/v1/internal/translation-worker")
+
+        assert consent_gate.consent_subject(request, self._secret(), db) is None
+        assert _tokens_read == []
+
+    def test_a_change_the_gate_judges_still_reads_the_token(self, db: Session, _tokens_read: list[str | None]) -> None:
+        """The exemptions must not have turned the gate off for real traffic."""
+        consent_gate.consent_subject(self._request("PATCH", PREFERENCES), self._secret(), db)
+
+        assert _tokens_read == ["a-shared-secret-with-no-dots"]
+
+    def test_an_unauthenticated_change_reads_no_token_and_names_nobody(
+        self, db: Session, _tokens_read: list[str | None]
+    ) -> None:
+        assert consent_gate.consent_subject(self._request("PATCH", PREFERENCES), None, db) is None
+        assert _tokens_read == [None]

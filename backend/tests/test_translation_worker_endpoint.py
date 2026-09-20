@@ -321,3 +321,50 @@ def test_sqlalchemy_poison_job_terminates_within_cap_ticks(client: TestClient, d
     db.refresh(job)
     assert job.attempts == TRANSLATION_JOB_MAX_ATTEMPTS
     assert job.status == TranslationJobStatus.FAILED_PERMANENT
+
+
+class TestTwoOverlappingTicksDoNotSweepThePoolTogether:
+    """The cron fires every minute; the function may run for five.
+
+    So up to five ticks overlap by design. ``claim_next_job`` handles that
+    with ``FOR UPDATE SKIP LOCKED``, but the idle pool sweep selects its
+    work by reading state rather than claiming a row — two overlapping
+    ticks read the same "questions missing a language", translated the
+    same question and both inserted it. The second hit
+    ``uniq_content_versions_active``; the ``UniqueViolation`` unwound the
+    sweep and threw away the work the tick had already done. Seven of
+    those reached production between 04:29 and 05:16 UTC on 2026-09-18.
+
+    The sweep now runs under a transaction-scoped advisory lock.
+    """
+
+    def test_a_tick_that_cannot_take_the_lock_skips_the_sweep(self, client: TestClient, configured_worker, db) -> None:
+        from app.api.v1 import internal_translation_worker as worker
+
+        with (
+            patch.object(worker, "_claim_pool_sweep", return_value=False),
+            patch.object(worker, "translate_pending_questions") as swept,
+        ):
+            resp = client.get(_WORKER_PATH, headers={"Authorization": f"Bearer {_GOOD_SECRET}"})
+
+        assert resp.status_code == 200, resp.text
+        swept.assert_not_called()
+
+    def test_a_tick_that_takes_the_lock_sweeps(self, client: TestClient, configured_worker, db) -> None:
+        from app.api.v1 import internal_translation_worker as worker
+
+        with (
+            patch.object(worker, "_claim_pool_sweep", return_value=True),
+            patch.object(worker, "translate_pending_questions") as swept,
+        ):
+            swept.return_value = worker.PoolSweepReport(questions=0, rows=OrchestratorReport())
+            resp = client.get(_WORKER_PATH, headers={"Authorization": f"Bearer {_GOOD_SECRET}"})
+
+        assert resp.status_code == 200, resp.text
+        swept.assert_called_once()
+
+    def test_sqlite_always_gets_the_lock(self, db) -> None:
+        """The test database has no advisory locks and no concurrency either."""
+        from app.api.v1.internal_translation_worker import _claim_pool_sweep
+
+        assert _claim_pool_sweep(db) is True
