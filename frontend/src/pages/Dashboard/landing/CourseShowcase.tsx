@@ -174,18 +174,20 @@ export function CourseShowcase() {
 
   if (courses.length === 0) return null
 
-  const heading = (
-    <h2 className="font-serif text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-      {t("header.courses")}
-    </h2>
-  )
+  // No heading. «Убери слово Courses, просто карусель курсов и все» — and
+  // he is right: five covers with their titles on them do not need a label
+  // reading "Courses" any more than a shelf of books needs one reading
+  // "Books". The page still has an accessible name for the region, which is
+  // what the heading was carrying that the covers do not.
 
   // Phones, tablets, and anybody who asked for less movement: a plain strip
   // they can swipe, or a grid if even that is too much.
   if (prefersReducedMotion || !pinned) {
     return (
-      <section className="mx-auto w-full max-w-5xl px-5 py-20 sm:px-6 sm:py-24">
-        {heading}
+      <section
+        aria-label={t("header.courses")}
+        className="mx-auto w-full max-w-5xl px-5 py-20 sm:px-6 sm:py-24"
+      >
         {prefersReducedMotion ? (
           <ul className="mt-10 grid gap-6 sm:grid-cols-2">
             {courses.map((course) => (
@@ -213,9 +215,10 @@ export function CourseShowcase() {
 
   return (
     <div ref={trackRef} className="relative" style={{ height: `calc(100svh + ${travel}px)` }}>
-      <div className="sticky top-0 flex h-[100svh] flex-col justify-center overflow-hidden">
-        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">{heading}</div>
-
+      <section
+        aria-label={t("header.courses")}
+        className="sticky top-0 flex h-[100svh] flex-col justify-center overflow-hidden"
+      >
         {/* The row starts at the page's own left margin and runs off the
             right edge — a shelf that continues past the window, rather than
             a set of cards arranged to fit inside it. */}
@@ -226,7 +229,7 @@ export function CourseShowcase() {
             </li>
           ))}
         </ul>
-      </div>
+      </section>
     </div>
   )
 }

@@ -3002,5 +3002,9 @@
       "body": "Nach § 512(f) haftet, wer wissentlich falsch behauptet, Material verletze Rechte, für die dadurch entstandenen Kosten und Schäden — unsere und die der Person, deren Arbeit entfernt wurde. Bitte vergewissern Sie sich, bevor Sie schreiben."
     },
     "seeTerms": "Was wir übernehmen und was Lehrende beim Hochladen zusichern, steht in den"
+  },
+  "theme": {
+    "switchToLight": "Helles Design",
+    "switchToDark": "Dunkles Design"
   }
 }

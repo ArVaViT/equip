@@ -1,4 +1,4 @@
-import { lazy, Suspense, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll } from "motion/react"
 
@@ -11,10 +11,11 @@ import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
  * fading in once. Next to a hero that moves, prose that sits still reads as
  * the page giving up — «а дальше слабенько», and fairly.
  *
- * Now the canvas is held (`sticky`) for three screens of scrolling while the
- * leaves pass from stack to row to single sheet, and each claim is on screen
- * for exactly the stretch where the scene is making its point. The words are
- * captions; the scene is the argument.
+ * The scene itself now lives in `LandingBackdrop`, fixed behind the whole
+ * page, so this section holds only the words. It still holds them for three
+ * screens of scrolling, against the stretch of the backdrop where the
+ * leaves stack, fan and come forward — the claims are captions to that
+ * movement, which is why their timings are tuned to it.
  *
  * WHY THE TRACK IS 300svh. The sticky child is one viewport tall, so the
  * scrollable remainder — 200svh — is the distance over which the three
@@ -28,7 +29,6 @@ import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
  * which is what a screen reader and a crawler see in every case.
  */
 
-const StoryScene = lazy(() => import("./StoryScene"))
 
 export function StorySection() {
   const { t } = useTranslation()
@@ -87,15 +87,6 @@ export function StorySection() {
   return (
     <div ref={trackRef} className="relative h-[300svh]">
       <div className="sticky top-0 isolate flex h-[100svh] items-center overflow-hidden">
-        <Suspense fallback={null}>
-          <StoryScene
-            // Same fade top and bottom as the hero: the sticky frame has a
-            // hard edge at both ends, and a leaf crossing either one was
-            // being cut flat.
-            className="pointer-events-none absolute inset-0 z-0 [mask-image:linear-gradient(to_bottom,transparent_0%,black_18%,black_82%,transparent_100%)]"
-          />
-        </Suspense>
-
         {/* `mode="wait"` would leave a gap with no caption at all; the
             default lets the outgoing one fade while the incoming arrives,
             and since only one is ever mounted they cannot collide. */}

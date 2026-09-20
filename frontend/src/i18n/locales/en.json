@@ -3002,5 +3002,9 @@
       "body": "Under § 512(f), anyone who knowingly misrepresents that material is infringing is liable for the costs and damages that misrepresentation causes — including ours and those of the person whose work came down. Please be sure before you write."
     },
     "seeTerms": "What we undertake, and what a teacher promises when they upload something, are in the"
+  },
+  "theme": {
+    "switchToLight": "Light theme",
+    "switchToDark": "Dark theme"
   }
 }

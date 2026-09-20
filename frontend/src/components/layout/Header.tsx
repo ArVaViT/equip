@@ -5,6 +5,7 @@ import { useAuth } from "@/context/useAuth"
 import { canTeach } from "@/lib/roles"
 import { cn } from "@/lib/utils"
 import LanguageSwitcher from "./LanguageSwitcher"
+import { ThemeToggle } from "./ThemeToggle"
 import { HeaderDesktopNav } from "./header/HeaderDesktopNav"
 import { HeaderMobileMenuTrigger } from "./header/HeaderMobileMenuTrigger"
 import { HeaderMobileSheet } from "./header/HeaderMobileSheet"
@@ -110,7 +111,12 @@ export default function Header() {
                 браузера?» is a question a visitor should be able to answer
                 themselves. For a signed-in user it stays in the profile,
                 where it is saved to their account. */}
-            {!user ? <LanguageSwitcher variant="compact" /> : null}
+            {!user ? (
+              <>
+                <ThemeToggle />
+                <LanguageSwitcher variant="compact" />
+              </>
+            ) : null}
             <HeaderUserMenu user={user} />
             <HeaderMobileMenuTrigger onOpen={() => setMobileOpen(true)} isOpen={mobileOpen} />
           </div>

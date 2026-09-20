@@ -48,42 +48,38 @@ import { ProductTour } from "./landing/ProductTour";
  * contract has to survive a redesign.
  */
 
-// `three` is ~150KB gzipped, larger than the whole app shell. It is reached
+// `three` is ~126KB gzipped, larger than the whole app shell. It is reached
 // only from here, only after this module renders, and never by a student
 // opening a lesson.
-const HeroScene = lazy(() => import("./landing/HeroScene"));
+const LandingBackdrop = lazy(() => import("./landing/LandingBackdrop"));
 
 export function PublicLanding() {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
 
   return (
-    <div className="w-full">
+    <div className="relative w-full">
+      {/* One scene behind the entire page rather than one per section.
+          Pinned canvases were released at the end of their own tracks, so
+          the shelf, the close and the film sat against a still page —
+          «почему он дальше не продолжается до конца страницы?». Fixed has
+          no track to leave. */}
+      {!prefersReducedMotion && (
+        <Suspense fallback={null}>
+          <LandingBackdrop className="pointer-events-none fixed inset-0 z-0" />
+        </Suspense>
+      )}
+
+      <div className="relative z-10">
       {/* ── 1. The claim ─────────────────────────────────────────── */}
       {/* `isolate` gives the section its own stacking context, so the canvas
           can sit at z-0 behind the words without falling behind the page
           background. A negative z-index did exactly that: the scene rendered
           every frame and was invisible the whole time. */}
       <section
-        className="relative isolate flex min-h-[88svh] items-center justify-center overflow-hidden"
+        className="relative flex min-h-[88svh] items-center justify-center"
         aria-labelledby="landing-hero-heading"
       >
-        {/* Decoration in the strict sense: the section reads identically
-            with it absent, which is what happens under reduced motion,
-            without WebGL, and for the first moments of every load. */}
-        {!prefersReducedMotion && (
-          <Suspense fallback={null}>
-            <HeroScene
-              // The canvas ends where the section does, and a plane crossing
-              // that line was getting sliced flat — a hard horizontal edge
-              // across the picture, which reads as a rendering bug rather
-              // than as a composition. Fading the bottom of the canvas lets
-              // the scene run out of the frame instead of being cut off.
-              className="pointer-events-none absolute inset-0 z-0 [mask-image:linear-gradient(to_bottom,black_62%,transparent_100%)]"
-            />
-          </Suspense>
-        )}
-
         <div className="container relative z-10 mx-auto flex max-w-3xl flex-col items-center px-5 text-center lg:max-w-5xl">
           <h1
             id="landing-hero-heading"
@@ -169,7 +165,7 @@ export function PublicLanding() {
           stops. */}
       <section
         aria-label={t("landing.value.heading")}
-        className="flex min-h-[52svh] items-center justify-center px-5 py-16 sm:min-h-[60svh]"
+        className="flex min-h-[44svh] items-center justify-center px-5 pb-16 sm:min-h-[52svh]"
       >
         <ScrollReveal className="flex flex-col items-center text-center">
           <h2 className="max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl">
@@ -195,7 +191,8 @@ export function PublicLanding() {
           offer somebody already deciding, not what you open with. */}
       <HeroVideo />
 
-      <Footer />
+        <Footer />
+      </div>
     </div>
   );
 }
