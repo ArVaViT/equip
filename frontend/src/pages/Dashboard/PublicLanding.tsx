@@ -6,12 +6,12 @@ import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import Footer from "@/components/layout/Footer";
-import { Section } from "@/components/layout/Section";
 import { HeroVideo } from "./landing/HeroVideo";
 import { ScrollReveal } from "./landing/ScrollReveal";
 import { StorySection } from "./landing/StorySection";
 import { CourseShowcase } from "./landing/CourseShowcase";
 import { ProductTour } from "./landing/ProductTour";
+import { LocaleMarquee } from "./landing/LocaleMarquee";
 
 /**
  * Marketing landing rendered at ``/`` for unauthenticated visitors.
@@ -136,25 +136,43 @@ export function PublicLanding() {
           and this is what they look like. */}
       <ProductTour />
 
-      {/* ── 4. What is actually on the shelf ─────────────────────── */}
+      {/* ── 4. The four languages, running ───────────────────────── */}
+      {/* Straight after the tour, which has just shown a lesson changing
+          language: the band names the four in their own scripts, which is
+          the claim stated by demonstration rather than by adjective. */}
+      <LocaleMarquee />
+
+      {/* ── 5. What is actually on the shelf ─────────────────────── */}
       {/* Everything above argues about how the platform teaches; this is
           the first thing that says what is on it. Live from the public
           catalogue endpoint, so it cannot advertise a course that was
           unpublished last month. */}
       <CourseShowcase />
 
-      {/* ── 5. The way in ────────────────────────────────────────── */}
+      {/* ── 6. The way in ────────────────────────────────────────── */}
       {/* `<Section>` rather than another bespoke `container mx-auto …`
           string: the geometry census in `Section.test.tsx` caps how many
           distinct page shells may exist, and a landing page is not special
           enough to be the nineteenth. */}
-      <Section as="section" aria-label={t("landing.value.heading")} className="py-24 sm:py-32">
+      {/* A close, not another block.
+          At `text-2xl` in a padded section this read as one more row among
+          the rows — «часть „Готовы начать?" немного странная» — arriving
+          after a pinned scene and a travelling shelf and asking for less
+          attention than either. It gets a screen of its own now, and the
+          question is set at the size of the opening claim, because it is
+          the same sentence asked back. */}
+      <section
+        aria-label={t("landing.value.heading")}
+        className="flex min-h-[70svh] items-center justify-center px-4 py-24"
+      >
         <ScrollReveal className="flex flex-col items-center text-center">
-          <h2 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-4xl">
+          <h2 className="max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl">
             {t("landing.finalCta.heading")}
           </h2>
-          <p className="mt-3 text-ink-muted">{t("landing.finalCta.body")}</p>
-          <div className="mt-8">
+          <p className="mt-6 max-w-md text-balance text-base text-ink-muted sm:text-lg">
+            {t("landing.finalCta.body")}
+          </p>
+          <div className="mt-10">
             <Link to="/register">
               <Button size="lg">
                 {t("landing.finalCta.primary")}
@@ -163,9 +181,9 @@ export function PublicLanding() {
             </Link>
           </div>
         </ScrollReveal>
-      </Section>
+      </section>
 
-      {/* ── 6. The film ──────────────────────────────────────────── */}
+      {/* ── 7. The film ──────────────────────────────────────────── */}
       {/* Deliberately last. Vadym: «его надо явно ближе к концу, чтоб он не
           было первым впечатлением» — a minute of explanation is what you
           offer somebody already deciding, not what you open with. */}

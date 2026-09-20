@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next"
 import { useAuth } from "@/context/useAuth"
 import { canTeach } from "@/lib/roles"
 import { cn } from "@/lib/utils"
+import LanguageSwitcher from "./LanguageSwitcher"
 import { HeaderDesktopNav } from "./header/HeaderDesktopNav"
 import { HeaderMobileMenuTrigger } from "./header/HeaderMobileMenuTrigger"
 import { HeaderMobileSheet } from "./header/HeaderMobileSheet"
@@ -101,6 +102,15 @@ export default function Header() {
           )}
 
           <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
+            {/* Signed-out visitors had no way to change language at all: the
+                switcher lived in the profile, behind a login. So a German
+                reader met a Russian landing page and their only move was to
+                leave. The locale comes from the browser, which is a good
+                guess and only a guess — «все на русском из-за моего
+                браузера?» is a question a visitor should be able to answer
+                themselves. For a signed-in user it stays in the profile,
+                where it is saved to their account. */}
+            {!user ? <LanguageSwitcher variant="compact" /> : null}
             <HeaderUserMenu user={user} />
             <HeaderMobileMenuTrigger onOpen={() => setMobileOpen(true)} isOpen={mobileOpen} />
           </div>
