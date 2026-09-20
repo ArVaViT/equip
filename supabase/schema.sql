@@ -2038,6 +2038,13 @@ CREATE INDEX ix_content_versions_needs_review ON public.content_versions USING b
 
 
 --
+-- Name: ix_content_versions_prunable; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_content_versions_prunable ON public.content_versions USING btree (updated_at) WHERE ((origin = 'mt'::text) AND (superseded_by IS NOT NULL));
+
+
+--
 -- Name: ix_content_versions_source_version; Type: INDEX; Schema: public; Owner: -
 --
 

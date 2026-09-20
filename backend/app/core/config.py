@@ -287,6 +287,22 @@ class Settings(BaseSettings):
         description="Wall-clock allowance for one translation worker tick",
     )
 
+    # How long a superseded MACHINE translation is kept before the idle
+    # worker deletes it. Human history is never pruned at any age.
+    #
+    # Thirty days is "long enough to look at a translation that went
+    # wrong while anyone still remembers the change that caused it".
+    # Production measured 16 604 superseded machine rows — 9 MB, two
+    # thirds of the whole table — accumulated in six weeks of editing,
+    # every one of them reproducible from its human source. Set to 0 to
+    # keep everything forever, which is the behaviour this setting
+    # replaces.
+    TRANSLATION_HISTORY_RETENTION_DAYS: int = Field(
+        default=30,
+        ge=0,
+        description="Days a superseded machine translation is kept (0 = keep forever)",
+    )
+
     @model_validator(mode="after")
     def load_alternative_env_vars(self):
         """Support alternative env var names from Vercel/Supabase integration."""

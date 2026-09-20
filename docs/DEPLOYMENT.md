@@ -332,6 +332,11 @@ Optional but production-set:
   `GEMINI_MIN_INTERVAL_SECONDS`, `TRANSLATION_WORKER_BUDGET_SECONDS`,
   `MAX_COURSES_PER_TEACHER` -- tuning knobs with measured defaults in
   `backend/app/core/config.py`; production runs the defaults.
+- `TRANSLATION_HISTORY_RETENTION_DAYS` -- how long a **superseded machine**
+  translation is kept before an idle worker tick deletes it. 30 by default;
+  `0` keeps everything forever, which is what the platform did until
+  2026-09-20. Superseded rows a human wrote are never pruned at any value.
+  See `backend/app/services/content_versions/prune.py`.
 
 Missing required vars do **not** crash boot. `settings.runtime_ready_errors()`
 collects them and logs a single `"booting in degraded mode; missing env
@@ -350,7 +355,7 @@ described below for the translation worker:
 
 | Path | Schedule | Purpose |
 |---|---|---|
-| `GET /api/v1/internal/translation-worker` | `*/1 * * * *` (every minute) | drains the translation queue |
+| `GET /api/v1/internal/translation-worker` | `*/1 * * * *` (every minute) | drains the translation queue; on a tick with nothing to drain, sweeps and then prunes superseded machine translations |
 | `GET /api/v1/internal/daily-challenge-worker` | `0 9 * * *` (09:00 UTC daily) | publishes the day's Daily Challenge and tops up the schedule |
 
 ##### Translation worker

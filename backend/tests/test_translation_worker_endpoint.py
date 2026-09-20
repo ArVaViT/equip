@@ -18,6 +18,7 @@ The worker has four behavioural invariants:
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -25,6 +26,7 @@ import pytest
 from pydantic import SecretStr
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.models.content_version import ContentVersion
 from app.models.course import Course
 from app.models.translation_job import (
     TRANSLATION_JOB_MAX_ATTEMPTS,
@@ -113,6 +115,95 @@ def test_idle_when_queue_is_empty(client: TestClient, configured_worker):
     body = resp.json()
     assert body["status"] == "idle"
     assert body["job_id"] is None
+
+
+def test_an_idle_tick_prunes_superseded_machine_translations(client: TestClient, db: Session, configured_worker):
+    """The queue is the job; this is what the tick does with what is
+    left of itself. See ``services/content_versions/prune.py``."""
+    entity = str(uuid.uuid4())
+    old = datetime.now(UTC) - timedelta(days=90)
+    live = ContentVersion(
+        id=uuid.uuid4(),
+        entity_type="chapter_block",
+        entity_id=entity,
+        field="content",
+        locale="de",
+        text="live",
+        origin="mt",
+        status="ok",
+        created_at=old,
+        updated_at=old,
+    )
+    db.add(live)
+    db.flush()
+    db.add(
+        ContentVersion(
+            id=uuid.uuid4(),
+            entity_type="chapter_block",
+            entity_id=entity,
+            field="content",
+            locale="de",
+            text="an older draft of the same paragraph",
+            origin="mt",
+            status="ok",
+            superseded_by=live.id,
+            created_at=old,
+            updated_at=old,
+        )
+    )
+    db.commit()
+
+    resp = client.post(_WORKER_PATH, headers={"X-Worker-Secret": _GOOD_SECRET})
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] == "pruned"
+    assert body["pruned"] == 1
+    survivors = db.query(ContentVersion).filter(ContentVersion.entity_id == entity).all()
+    assert [row.text for row in survivors] == ["live"]
+
+
+def test_retention_of_zero_keeps_everything_and_the_tick_stays_idle(
+    client: TestClient, db: Session, configured_worker, monkeypatch
+):
+    monkeypatch.setattr("app.core.config.settings.TRANSLATION_HISTORY_RETENTION_DAYS", 0)
+    entity = str(uuid.uuid4())
+    old = datetime.now(UTC) - timedelta(days=900)
+    live = ContentVersion(
+        id=uuid.uuid4(),
+        entity_type="chapter_block",
+        entity_id=entity,
+        field="content",
+        locale="de",
+        text="live",
+        origin="mt",
+        status="ok",
+        created_at=old,
+        updated_at=old,
+    )
+    db.add(live)
+    db.flush()
+    db.add(
+        ContentVersion(
+            id=uuid.uuid4(),
+            entity_type="chapter_block",
+            entity_id=entity,
+            field="content",
+            locale="de",
+            text="kept forever",
+            origin="mt",
+            status="ok",
+            superseded_by=live.id,
+            created_at=old,
+            updated_at=old,
+        )
+    )
+    db.commit()
+
+    resp = client.post(_WORKER_PATH, headers={"X-Worker-Secret": _GOOD_SECRET})
+
+    assert resp.json()["status"] == "idle"
+    assert db.query(ContentVersion).filter(ContentVersion.entity_id == entity).count() == 2
 
 
 def test_drains_one_job_to_done_on_success(client: TestClient, db: Session, teacher, configured_worker):

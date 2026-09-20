@@ -36,6 +36,7 @@ from app.api.dependencies import require_worker_secret
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.metrics import emit, gauge, timing
+from app.services.content_versions.prune import PruneReport, prune_superseded_machine_translations
 from app.services.course_service import get_course
 from app.services.daily_challenge.translate import SweepReport as PoolSweepReport
 from app.services.daily_challenge.translate import translate_pending_questions
@@ -73,6 +74,32 @@ _IDLE_POOL_SWEEP_LIMIT = 5
 #: will do; this one is arbitrary and must simply never collide with
 #: another advisory lock in this database.
 _POOL_SWEEP_LOCK_KEY = 0x5FA17E51
+
+#: Groups of superseded machine translations the idle tick prunes per
+#: call. A group is one text in one language, typically a handful of
+#: rows, so this is a few hundred deletes — small enough to be invisible
+#: next to the work a busy tick does, large enough that the six weeks of
+#: backlog production is carrying drains in an afternoon of idle ticks.
+_IDLE_PRUNE_GROUP_LIMIT = 200
+
+#: Advisory-lock key for the idle prune, distinct from the pool sweep's.
+#: Two overlapping ticks pruning the same groups would not corrupt
+#: anything — the delete is by primary key — but they would block each
+#: other on row locks for no gain.
+_PRUNE_LOCK_KEY = 0x5FA17E52
+
+
+def _claim_prune(db: Session) -> bool:
+    """Whether this tick may prune translation history, or another is.
+
+    Same reasoning as ``_claim_pool_sweep`` below, different key: the
+    cron fires every minute against a function allowed to run for five,
+    so ticks overlap by design.
+    """
+    bind = db.get_bind()
+    if bind is not None and bind.dialect.name != "postgresql":
+        return True
+    return bool(db.execute(select(func.pg_try_advisory_xact_lock(_PRUNE_LOCK_KEY))).scalar())
 
 
 def _claim_pool_sweep(db: Session) -> bool:
@@ -113,7 +140,8 @@ class WorkerTickResponse(BaseModel):
 
     ``status`` is one of ``"idle"`` (queue empty and nothing behind),
     ``"swept"`` (queue was empty, and the sweep found courses to
-    translate), ``"done"``,
+    translate), ``"pruned"`` (nothing to translate either, so the tick
+    spent itself deleting superseded machine translations), ``"done"``,
     ``"paused"`` (budget spent mid-course, job re-queued to continue on
     the next tick), or ``"failed"``. ``job_id`` is null only when idle.
     ``attempts`` is the post-tick count on the job.
@@ -136,6 +164,10 @@ class WorkerTickResponse(BaseModel):
     failed_fields: int | None = None
     needs_review: int | None = None
     planned: int | None = None
+    #: Superseded machine-translation rows this tick deleted. Only an
+    #: idle tick prunes, so this is null on every tick that had real
+    #: work to do.
+    pruned: int | None = None
 
 
 def _emit_queue_gauges(db: Session) -> None:
@@ -229,6 +261,30 @@ def _emit_translation_duration(start_monotonic: float, *, outcome: str) -> None:
         return
 
 
+def _prune_history(db: Session) -> PruneReport:
+    """Retention pass for superseded machine translations.
+
+    Wrapped like every other idle-tick chore: a failure here must never
+    turn a healthy tick into a failed one — the queue is the job, this
+    is housekeeping, and the cron comes back in a minute.
+    """
+    if not settings.TRANSLATION_HISTORY_RETENTION_DAYS:
+        return PruneReport()
+    if not _claim_prune(db):
+        logger.debug("worker: idle prune skipped (another tick holds it)")
+        return PruneReport()
+    try:
+        return prune_superseded_machine_translations(
+            db,
+            older_than_days=settings.TRANSLATION_HISTORY_RETENTION_DAYS,
+            max_groups=_IDLE_PRUNE_GROUP_LIMIT,
+        )
+    except Exception as exc:
+        db.rollback()
+        logger.warning("worker: idle prune failed: %s", exc)
+        return PruneReport()
+
+
 def _run_one_tick(db: Session) -> WorkerTickResponse:
     """One claim → process → mark cycle. Extracted so tests can drive
     it directly without going through the FastAPI dependency stack."""
@@ -307,6 +363,20 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
                 failed_fields=swept_rows.failed,
                 needs_review=swept_rows.needs_review,
             )
+        # Nothing to translate and nothing to sweep. The invocation is
+        # paid for, so spend the rest of it taking out the rubbish:
+        # superseded machine translations past the retention window.
+        # See ``services/content_versions/prune.py`` for why this is
+        # safe to delete and why human history never is.
+        pruned = _prune_history(db)
+        if pruned.did_work:
+            logger.warning(
+                "worker: idle queue, pruned %d superseded mt row(s) in %d group(s), %d group(s) pinned",
+                pruned.rows,
+                pruned.groups,
+                pruned.skipped,
+            )
+            return WorkerTickResponse(status="pruned", pruned=pruned.rows)
         return WorkerTickResponse(status="idle")
 
     course_id = job.course_id
