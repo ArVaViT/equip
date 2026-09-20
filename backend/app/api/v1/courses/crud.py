@@ -6,7 +6,6 @@ from fastapi import Depends, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import assert_course_owner, organization_of, require_teacher
-from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.sanitize import sanitize_plain_text
@@ -24,6 +23,7 @@ from app.services.course_service import (
     resync_course_progress,
     update_course,
 )
+from app.services.limits import assert_can_own_another_course
 from app.services.staged_edits import promote_staged_entity_unconditionally
 from app.services.translation.completeness import course_translation_completeness
 from app.services.translation.pipeline_hooks import (
@@ -42,27 +42,11 @@ def create_new_course(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> Course:
-    # Anti-abuse cap (pilot hygiene): one teacher hoarding hundreds of
-    # courses is either a runaway script or a misunderstanding — either way
-    # a human conversation, not more rows. Admins are exempt (they seed and
-    # migrate content). Soft-deleted courses don't count — trash-then-create
-    # must not dead-end a legitimate teacher.
-    if teacher.role != UserRole.ADMIN.value:
-        live_count = db.query(Course).filter(Course.created_by == teacher.id, Course.deleted_at.is_(None)).count()
-        if live_count >= settings.MAX_COURSES_PER_TEACHER:
-            raise equip_error(
-                ErrorCode.VALIDATION_FAILED,
-                status_code=status.HTTP_400_BAD_REQUEST,
-                message=(
-                    f"Course limit reached ({settings.MAX_COURSES_PER_TEACHER}). "
-                    "Contact an administrator if you need more."
-                ),
-                context={
-                    "resource_type": "course",
-                    "limit": settings.MAX_COURSES_PER_TEACHER,
-                    "current": live_count,
-                },
-            )
+    # How many courses one teacher may hold is a plan decision, not a
+    # rule this route owns — see ``app.services.limits``. Every path that
+    # hands a teacher a new live course asks the same gate: here, clone,
+    # and restore-from-trash.
+    assert_can_own_another_course(db, teacher)
 
     if data.title:
         data.title = sanitize_plain_text(data.title)
@@ -233,6 +217,10 @@ def clone_existing_course(
             message="Only the owner can clone a draft course",
             context={"resource_type": "course", "course_id": course_id},
         )
+    # A clone is the most expensive course a teacher can make: the whole
+    # tree is copied, and every translated string with it. Gate it before
+    # the copy, not after.
+    assert_can_own_another_course(db, teacher)
     new_course = clone_course(db, course_id, str(teacher.id))
     if not new_course:
         raise equip_error(
@@ -266,6 +254,10 @@ def restore_deleted_course(
             context={"resource_type": "course", "course_id": course_id},
         )
     assert_course_owner(course, teacher)
+    # The course is coming back to life, so it has to fit inside the cap
+    # like any other live course — otherwise the trash becomes a parking
+    # space where courses wait out the limit.
+    assert_can_own_another_course(db, teacher)
     result = restore_course(db, course)
     log_action(db, teacher.id, "restore", "course", course_id)
     return result

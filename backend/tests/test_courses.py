@@ -45,8 +45,8 @@ class TestCreateCourse:
     def test_course_limit_blocks_teacher_but_not_admin(
         self, client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
     ):
-        """Anti-abuse cap: live courses per teacher are limited; admins and
-        trash-then-create flows are not."""
+        """The plan's course cap: live courses per teacher are limited;
+        admins and trash-then-create flows are not."""
         from app.core.config import settings
 
         monkeypatch.setattr(settings, "MAX_COURSES_PER_TEACHER", 2)
@@ -54,8 +54,10 @@ class TestCreateCourse:
         second = _create_course(client, title="Two")
 
         resp = client.post(PREFIX, json={"title": "Three"})
-        assert resp.status_code == 400
-        assert "limit" in resp.json()["detail"]["message"].lower()
+        assert resp.status_code == 409
+        body = resp.json()["detail"]
+        assert body["code"] == "plan.limit_reached"
+        assert body["context"] == {"limit_key": "courses_per_teacher", "limit": 2, "current": 2}
 
         # Soft-deleting frees a slot - deleted courses must not count.
         del_resp = client.delete(f"{PREFIX}/{second['id']}")

@@ -174,6 +174,15 @@ class ErrorCode(enum.StrEnum):
     """The authenticated caller's email does not match the email the
     invitation was issued to."""
 
+    # ── Plan limits ─────────────────────────────────────────────────────
+    PLAN_LIMIT_REACHED = "plan.limit_reached"
+    """The account already holds as many of something as its plan allows.
+    ``context.limit_key`` names what was counted (``courses_per_teacher``),
+    ``context.limit`` the ceiling and ``context.current`` the count. Not a
+    permission failure and not a malformed request — the same call succeeds
+    once something is deleted, or once the plan changes. See
+    ``app.services.limits``."""
+
     # ── Validation ──────────────────────────────────────────────────────
     VALIDATION_FAILED = "validation.failed"
     """Request body / params failed semantic validation beyond the

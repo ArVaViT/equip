@@ -329,9 +329,14 @@ Optional but production-set:
   `/invite/accept` link). Defaults to `https://equipbible.com`; a local or
   preview backend should point it at its own frontend.
 - `GEMINI_REVIEW_MODEL`, `GEMINI_TIMEOUT_SECONDS`, `GEMINI_MAX_OUTPUT_TOKENS`,
-  `GEMINI_MIN_INTERVAL_SECONDS`, `TRANSLATION_WORKER_BUDGET_SECONDS`,
-  `MAX_COURSES_PER_TEACHER` -- tuning knobs with measured defaults in
-  `backend/app/core/config.py`; production runs the defaults.
+  `GEMINI_MIN_INTERVAL_SECONDS`, `TRANSLATION_WORKER_BUDGET_SECONDS` -- tuning
+  knobs with measured defaults in `backend/app/core/config.py`; production runs
+  the defaults.
+- `MAX_COURSES_PER_TEACHER` -- **unset on production**, which runs the base
+  plan's own number. The shipped limits live in
+  `backend/app/services/limits.py` (`BASE_PLAN`), not in the environment; this
+  var only overrides the course cap for a deployment that genuinely differs.
+  See [ADR-0014](adr/0014-a-plan-decides-what-an-account-may-hold.md).
 
 Missing required vars do **not** crash boot. `settings.runtime_ready_errors()`
 collects them and logs a single `"booting in degraded mode; missing env
