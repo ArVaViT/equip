@@ -36,8 +36,8 @@ export default function Footer() {
   // links; at `mt-24` over `py-16` it took most of a screen on the one page
   // it appears on, directly after a hero built to be looked at.
   return (
-    <footer className="mt-16 border-t border-edge">
-      <div className="container mx-auto max-w-5xl px-4 py-8">
+    <footer className="mt-10 border-t border-edge">
+      <div className="container mx-auto max-w-5xl px-4 py-7">
         {/* One row, not three columns.
             The column layout stacked a tagline, a "Продукт" heading over
             three links and a "Документы" heading over six, which came to
@@ -59,6 +59,9 @@ export default function Footer() {
                 it is the only place on a page a crawler reads that says in
                 one line what this is. */}
             <p className="mt-2 text-sm leading-relaxed text-ink-muted">{t("footer.tagline")}</p>
+            <p className="mt-3 text-xs text-ink-muted">
+              © {year} {t("common.appName")}
+            </p>
           </div>
 
           {/* Only destinations a signed-out visitor can actually reach.
@@ -119,11 +122,11 @@ export default function Footer() {
           </nav>
         </div>
 
-        {/* The colophon line, last and smallest. It is the only thing here
-            that is not a way of getting somewhere. */}
-        <p className="mt-6 border-t border-edge pt-4 text-xs text-ink-muted">
-          © {year} {t("common.appName")}
-        </p>
+        {/* The colophon sits with the brand, not on a rule of its own.
+            Standing alone under a divider it read as a third section of a
+            footer that has two — «© 2026 Equip стоит как-то отдельно» — and
+            it is the one line here that is not a way of getting somewhere,
+            so it should take the least room, not its own band. */}
       </div>
     </footer>
   )

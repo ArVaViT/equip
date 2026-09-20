@@ -11,7 +11,6 @@ import { ScrollReveal } from "./landing/ScrollReveal";
 import { StorySection } from "./landing/StorySection";
 import { CourseShowcase } from "./landing/CourseShowcase";
 import { ProductTour } from "./landing/ProductTour";
-import { LocaleMarquee } from "./landing/LocaleMarquee";
 
 /**
  * Marketing landing rendered at ``/`` for unauthenticated visitors.
@@ -136,20 +135,14 @@ export function PublicLanding() {
           and this is what they look like. */}
       <ProductTour />
 
-      {/* ── 4. The four languages, running ───────────────────────── */}
-      {/* Straight after the tour, which has just shown a lesson changing
-          language: the band names the four in their own scripts, which is
-          the claim stated by demonstration rather than by adjective. */}
-      <LocaleMarquee />
-
-      {/* ── 5. What is actually on the shelf ─────────────────────── */}
+      {/* ── 4. What is actually on the shelf ─────────────────────── */}
       {/* Everything above argues about how the platform teaches; this is
           the first thing that says what is on it. Live from the public
           catalogue endpoint, so it cannot advertise a course that was
           unpublished last month. */}
       <CourseShowcase />
 
-      {/* ── 6. The way in ────────────────────────────────────────── */}
+      {/* ── 5. The way in ────────────────────────────────────────── */}
       {/* `<Section>` rather than another bespoke `container mx-auto …`
           string: the geometry census in `Section.test.tsx` caps how many
           distinct page shells may exist, and a landing page is not special
@@ -161,9 +154,16 @@ export function PublicLanding() {
           attention than either. It gets a screen of its own now, and the
           question is set at the size of the opening claim, because it is
           the same sentence asked back. */}
+      {/* `min-h-[70svh]` plus `py-24` on top of the shelf's own sticky
+          screen left a long empty stretch before the question — «перед
+          ready to start много места и нет мушина в том моменте». The
+          padding is gone, the screen is what holds it, and `ScrollReveal`
+          gives the block the same parallax the claims have, so the approach
+          to the close is not the one moment on the page where everything
+          stops. */}
       <section
         aria-label={t("landing.value.heading")}
-        className="flex min-h-[70svh] items-center justify-center px-4 py-24"
+        className="flex min-h-[70svh] items-center justify-center px-4"
       >
         <ScrollReveal className="flex flex-col items-center text-center">
           <h2 className="max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl">
@@ -183,7 +183,7 @@ export function PublicLanding() {
         </ScrollReveal>
       </section>
 
-      {/* ── 7. The film ──────────────────────────────────────────── */}
+      {/* ── 6. The film ──────────────────────────────────────────── */}
       {/* Deliberately last. Vadym: «его надо явно ближе к концу, чтоб он не
           было первым впечатлением» — a minute of explanation is what you
           offer somebody already deciding, not what you open with. */}

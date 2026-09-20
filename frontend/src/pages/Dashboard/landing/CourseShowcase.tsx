@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { motion, useReducedMotion, useScroll, useTransform } from "motion/react"
+import { useReducedMotion } from "motion/react"
 
 import { coursesService } from "@/services/courses"
 import { toProxyImage } from "@/lib/images"
@@ -22,6 +22,15 @@ import type { Course } from "@/types"
  * likely to see it. At 420px the shelf runs past the edge of any desktop,
  * which is both the effect and the honest picture: a catalogue that
  * continues past the window.
+ *
+ * WHY NOT `useScroll` + `useTransform`. That was the first version and the
+ * row never moved: `travel` is 0 on the first render, so the transform was
+ * built over the range [0, -0], and a value that is always zero never
+ * reaches the DOM — `getComputedStyle(row).transform` stayed `"none"` at
+ * every scroll position. Re-rendering with the measured width did not
+ * rebuild it. The scroll handler below reads the distance from a ref, so it
+ * is never stale, and writes the transform itself, so there is nothing
+ * between the measurement and the pixels.
  *
  * HOW THE DISTANCE IS DECIDED. The track is as tall as the row is wide.
  * Travel and scroll are then the same number of pixels, so the row moves at
@@ -60,28 +69,88 @@ export function CourseShowcase() {
     }
   }, [])
 
-  // How far the row must move for its last card to reach the right edge.
+  // How far the row must move for its last card to reach the right edge,
+  // kept in a ref so the scroll handler always reads the current value.
+  const travelRef = useRef(0)
+
   useEffect(() => {
     const row = rowRef.current
-    if (!row || prefersReducedMotion) return
+    const track = trackRef.current
+    if (!row || !track || prefersReducedMotion) return
 
-    const measure = () => setTravel(Math.max(0, row.scrollWidth - window.innerWidth + 48))
+    const measure = () => {
+      travelRef.current = Math.max(0, row.scrollWidth - window.innerWidth + 48)
+      setTravel(travelRef.current)
+    }
+
+    // Written straight from the scroll handler, with no easing pass in
+    // between.
+    //
+    // The first version smoothed the value inside `requestAnimationFrame`,
+    // which is correct on paper and has one fatal property: rAF does not run
+    // in a background tab, so the row sat at its starting offset and the
+    // transform never changed. Scroll is already smooth; interpolating it
+    // adds lag and one more thing to be wrong. The shelf now moves exactly
+    // as far as the page did, which is what was asked for — «чтоб они при
+    // скроле двигались горизонтально».
+    const apply = () => {
+      const distance = travelRef.current
+      if (distance <= 0) {
+        row.style.transform = "translate3d(0, 0, 0)"
+        return
+      }
+      // 0 when the track's top meets the top of the window, 1 when the page
+      // has scrolled through exactly `distance`.
+      const progress = Math.min(1, Math.max(0, -track.getBoundingClientRect().top / distance))
+      row.style.transform = `translate3d(${-progress * distance}px, 0, 0)`
+    }
+
     measure()
+    apply()
 
-    const observer = new ResizeObserver(measure)
+    // Two independent paths to the same write, because each one fails in a
+    // situation the other survives.
+    //
+    // `scroll` is exact and cheap, and it is all that is needed while the
+    // tab is in front. A rAF loop, running only while the shelf is on
+    // screen, covers everything that moves the page without firing a scroll
+    // event at this element — anchor jumps, a restored scroll position, the
+    // moment a lazy image above resizes the document under the reader. Both
+    // call the same `apply`, which is idempotent.
+    const observer = new ResizeObserver(() => {
+      measure()
+      apply()
+    })
     observer.observe(row)
+    window.addEventListener("scroll", apply, { passive: true })
     window.addEventListener("resize", measure)
+
+    let frame = 0
+    let watching = false
+    const loop = () => {
+      frame = requestAnimationFrame(loop)
+      apply()
+    }
+    const visibility = new IntersectionObserver(([entry]) => {
+      const onScreen = entry?.isIntersecting ?? false
+      if (onScreen && !watching) {
+        watching = true
+        frame = requestAnimationFrame(loop)
+      } else if (!onScreen && watching) {
+        watching = false
+        cancelAnimationFrame(frame)
+      }
+    })
+    visibility.observe(track)
+
     return () => {
+      cancelAnimationFrame(frame)
       observer.disconnect()
+      visibility.disconnect()
+      window.removeEventListener("scroll", apply)
       window.removeEventListener("resize", measure)
     }
   }, [courses, prefersReducedMotion])
-
-  const { scrollYProgress } = useScroll({
-    target: trackRef,
-    offset: ["start start", "end end"],
-  })
-  const x = useTransform(scrollYProgress, [0, 1], [0, -travel])
 
   if (courses.length === 0) return null
 
@@ -114,13 +183,13 @@ export function CourseShowcase() {
         {/* The row starts at the page's own left margin and runs off the
             right edge — a shelf that continues past the window, rather than
             a set of cards arranged to fit inside it. */}
-        <motion.ul ref={rowRef} style={{ x }} className="mt-10 flex w-max gap-6 px-4 sm:px-6">
+        <ul ref={rowRef} className="mt-10 flex w-max gap-6 px-4 will-change-transform sm:px-6">
           {courses.map((course) => (
             <li key={course.id} className="w-[300px] shrink-0 sm:w-[420px]">
               <CourseCard course={course} />
             </li>
           ))}
-        </motion.ul>
+        </ul>
       </div>
     </div>
   )

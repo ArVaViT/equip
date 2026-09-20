@@ -27,6 +27,8 @@
  * - `playsInline` — iOS otherwise hijacks the video into fullscreen.
  */
 
+import { useTranslation } from "react-i18next"
+
 import { Section } from "@/components/layout/Section"
 
 type VideoSource = {
@@ -50,12 +52,21 @@ const INTRO: VideoSource | null = {
 }
 
 export function HeroVideo() {
+  const { t } = useTranslation()
+
   if (!INTRO) return null
 
   return (
     <Section as="section">
+      {/* The film had no label at all: a player appeared at the end of the
+          page and a visitor had to press play to find out what they were
+          being offered. One line, and it reuses the closing question's
+          subtitle rather than adding a string to translate four times. */}
+      <h2 className="font-serif text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
+        {t("common.appName")} — {t("footer.tagline")}
+      </h2>
       <video
-        className="w-full rounded-xl border border-line bg-surface"
+        className="mt-6 w-full rounded-xl border border-line bg-surface"
         controls
         playsInline
         preload="none"
