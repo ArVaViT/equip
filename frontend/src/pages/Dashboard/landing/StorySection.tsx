@@ -33,7 +33,6 @@ import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
 export function StorySection() {
   const { t } = useTranslation()
   const prefersReducedMotion = useReducedMotion()
-  const trackRef = useRef<HTMLDivElement>(null)
 
   // The sticky track exists to hold the reader still while the backdrop
   // moves behind them. Below `lg` there is no backdrop — it is a desktop
@@ -50,28 +49,6 @@ export function StorySection() {
     query.addEventListener("change", sync)
     return () => query.removeEventListener("change", sync)
   }, [])
-
-  const { scrollYProgress } = useScroll({
-    target: trackRef,
-    offset: ["start start", "end end"],
-  })
-
-  // One caption exists at a time.
-  //
-  // Three of them used to sit in the same grid cell, cross-fading by
-  // opacity. On paper the ranges never overlap; on a real wheel they do —
-  // a fast scroll jumps the progress value straight past the handover, and
-  // for those frames two full paragraphs are painted on top of each other.
-  // Vadym saw exactly that: «он стал перекрывать друг друга».
-  //
-  // So the index is state, and only the active caption is mounted.
-  // Overlapping text is then not a thing that can happen, at any scroll
-  // speed, rather than a thing the numbers say should not.
-  const [active, setActive] = useState(0)
-  useMotionValueEvent(scrollYProgress, "change", (value) => {
-    const next = value < 0.34 ? 0 : value < 0.67 ? 1 : 2
-    setActive((current) => (current === next ? current : next))
-  })
 
   // Literal keys, one call per string — a template key would be invisible to
   // the ``keyCoverage`` check (docs/I18N.md).
@@ -99,6 +76,49 @@ export function StorySection() {
       </div>
     )
   }
+
+  return <PinnedClaims claims={claims} />
+}
+
+/**
+ * The sticky version, and the only place `useScroll` is called.
+ *
+ * It lives in its own component because `useScroll({ target })` must never
+ * be called while the element it points at is unrendered. A hook cannot be
+ * called conditionally, so when the track and the hook sat in one component
+ * the hook still ran on a phone — where the plain column renders and the
+ * ref is never attached — and motion threw `Target ref is defined but not
+ * hydrated` from a microtask after the effects flushed. In production that
+ * invariant compiles away, so nobody saw it; in development and in CI it is
+ * an uncaught exception, and it turned the whole frontend suite red with
+ * 1,471 tests passing and no test failing.
+ *
+ * Mounting the hook together with its target removes the case rather than
+ * guarding against it.
+ */
+function PinnedClaims({ claims }: { claims: { title: string; body: string }[] }) {
+  const trackRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: trackRef,
+    offset: ["start start", "end end"],
+  })
+
+  // One caption exists at a time.
+  //
+  // Three of them used to sit in the same grid cell, cross-fading by
+  // opacity. On paper the ranges never overlap; on a real wheel they do —
+  // a fast scroll jumps the progress value straight past the handover, and
+  // for those frames two full paragraphs are painted on top of each other.
+  // Vadym saw exactly that: «он стал перекрывать друг друга».
+  //
+  // So the index is state, and only the active caption is mounted.
+  // Overlapping text is then not a thing that can happen, at any scroll
+  // speed, rather than a thing the numbers say should not.
+  const [active, setActive] = useState(0)
+  useMotionValueEvent(scrollYProgress, "change", (value) => {
+    const next = value < 0.34 ? 0 : value < 0.67 ? 1 : 2
+    setActive((current) => (current === next ? current : next))
+  })
 
   return (
     <div ref={trackRef} className="relative h-[300svh]">
