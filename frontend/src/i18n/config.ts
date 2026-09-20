@@ -257,7 +257,20 @@ export const i18nReady: Promise<unknown> = i18n
     // react-i18next's render path handles JSX escaping itself.
     interpolation: { escapeValue: false },
     detection: {
-      order: ["localStorage", "navigator", "htmlTag"],
+      // `navigator` deliberately dropped from this list (2026-09-20).
+      //
+      // The browser's language was the second thing consulted, so a visitor
+      // with a Russian browser met a Russian site and a German one met a
+      // German site — a reasonable guess, and the wrong default for a
+      // platform whose own primary language is English. It also made the
+      // page look, to its owner, as if it had no English version at all:
+      // «все на русском из-за моего браузера?»
+      //
+      // Now: an explicit choice wins (localStorage, written by the switcher
+      // in the header and by a signed-in profile), and everybody else gets
+      // `htmlTag` — `<html lang="en">` — which is `DEFAULT_LOCALE`. One
+      // click changes it, and the click is remembered.
+      order: ["localStorage", "htmlTag"],
       lookupLocalStorage: LOCALE_STORAGE_KEY,
       caches: ["localStorage"],
     },

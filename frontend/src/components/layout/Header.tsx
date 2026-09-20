@@ -3,6 +3,9 @@ import { Link, useLocation } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { useAuth } from "@/context/useAuth"
 import { canTeach } from "@/lib/roles"
+import { cn } from "@/lib/utils"
+import LanguageSwitcher from "./LanguageSwitcher"
+import { ThemeToggle } from "./ThemeToggle"
 import { HeaderDesktopNav } from "./header/HeaderDesktopNav"
 import { HeaderMobileMenuTrigger } from "./header/HeaderMobileMenuTrigger"
 import { HeaderMobileSheet } from "./header/HeaderMobileSheet"
@@ -32,8 +35,29 @@ export default function Header() {
   const location = useLocation()
   const { t } = useTranslation()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
 
   const isTeacher = canTeach(user?.role)
+
+  // The landing hero is a full-bleed WebGL scene, and a solid bar with a
+  // hairline across the top of it cuts the picture in half — the scene
+  // starts *under a shelf* instead of filling the screen. So on that one
+  // page, for signed-out visitors only, the bar floats transparent over the
+  // hero and takes its surface once the hero is behind you.
+  //
+  // This is the exception the comment below admits to not wanting, and it is
+  // scoped as narrowly as it can be: one route, one audience. Every other
+  // page keeps the hairline, and nothing here adds `backdrop-filter`.
+  const overHero = location.pathname === "/" && !user
+  const transparent = overHero && !scrolled
+
+  useEffect(() => {
+    if (!overHero) return
+    const onScroll = () => setScrolled(window.scrollY > 24)
+    onScroll()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [overHero])
 
   // Close the sheet on every route transition. Doing it here (not in
   // HeaderMobileSheet itself) keeps the sheet stateless w/r/t
@@ -54,7 +78,12 @@ export default function Header() {
     // Still no blur. `backdrop-filter` forces a full-screen readback every
     // frame on the mid-range Android our students actually read on, and it
     // buys nothing over a solid surface plus a line.
-    <header className="sticky top-0 z-50 border-b border-edge bg-surface">
+    <header
+      className={cn(
+        "sticky top-0 z-50 transition-colors duration-base ease-out",
+        transparent ? "border-b border-transparent bg-transparent" : "border-b border-edge bg-surface",
+      )}
+    >
       <div className="container mx-auto max-w-[1400px] px-4">
         <div className="flex h-14 items-center justify-between gap-3 md:h-16 md:gap-8">
           <Link
@@ -74,6 +103,20 @@ export default function Header() {
           )}
 
           <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
+            {/* Signed-out visitors had no way to change language at all: the
+                switcher lived in the profile, behind a login. So a German
+                reader met a Russian landing page and their only move was to
+                leave. The locale comes from the browser, which is a good
+                guess and only a guess — «все на русском из-за моего
+                браузера?» is a question a visitor should be able to answer
+                themselves. For a signed-in user it stays in the profile,
+                where it is saved to their account. */}
+            {!user ? (
+              <>
+                <ThemeToggle />
+                <LanguageSwitcher variant="compact" />
+              </>
+            ) : null}
             <HeaderUserMenu user={user} />
             <HeaderMobileMenuTrigger onOpen={() => setMobileOpen(true)} isOpen={mobileOpen} />
           </div>
