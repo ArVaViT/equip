@@ -47,18 +47,33 @@ _COURSE_TREE: tuple = (
     selectinload(Course.chapters.and_(Chapter.deleted_at.is_(None))),
 )
 
-# Slim loader for **catalog** views: pulls each course's modules so the UI
-# can show "X modules" on a card, but skips the chapter level entirely. A
-# typical catalog with 10 courses x 5 modules x 10 chapters drops from
-# ~500 rows of chapter wire data per page to zero, with no UI regression —
-# ``CourseCard`` only consumes ``course.modules?.length``. Course-detail
-# requests stay on the full ``_COURSE_TREE`` so the nested chapter list
-# is still there for the enrolled-course view.
+# Loader for **catalog** views. Lighter than ``_COURSE_TREE`` — it skips
+# the second, course-level chapter list — but it does load the chapters
+# under each module, and it has to.
+#
+# It used to stop at the module level, on the reasoning that a card only
+# consumes ``course.modules?.length``. That stopped being true when the
+# catalog card grew a localized tree: ``build_localized_course_summaries``
+# reads ``module.chapters`` twice — once to collect the title specs, once
+# to build the payload — and the chapters are serialised into the
+# response. Not loading them did not make them unread; it made every one
+# of them a separate lazy SELECT.
+#
+# Measured on the test suite: five courses with three modules each cost 24
+# round-trips, 15 of them one-per-module chapter loads. Production carries
+# 47 modules, so the catalog spent about 47 extra queries — and the
+# function runs in ``iad1`` while the database is in ``us-west-2``, where
+# each one costs a cross-country round-trip. That is the 2.4-2.9s the
+# endpoint was answering in while ``/health`` answered in 2ms.
 #
 # The card wants a lesson count, not a module count, and it still does not
-# want the chapter rows to get one: ``attach_counts`` answers that with a
-# single grouped COUNT per page.
-_COURSE_LIST_TREE: tuple = (selectinload(Course.modules.and_(Module.deleted_at.is_(None))),)
+# want the chapter rows counted in Python: ``attach_counts`` answers that
+# with a single grouped COUNT per page.
+_COURSE_LIST_TREE: tuple = (
+    selectinload(Course.modules.and_(Module.deleted_at.is_(None))).selectinload(
+        Module.chapters.and_(Chapter.deleted_at.is_(None))
+    ),
+)
 
 
 def attach_counts(db: Session, courses: list[Course]) -> None:
@@ -180,11 +195,12 @@ def get_teacher_courses(
     skip: int = 0,
     limit: int | None = None,
 ) -> list[Course]:
-    # ``_COURSE_LIST_TREE`` (modules only, no chapters) keeps the
-    # teacher dashboard fast even when the teacher owns many courses
-    # with many chapters each — the dashboard CourseCard only reads
-    # ``course.modules?.length`` and the per-course actions navigate
-    # into the editor for full-tree fetches.
+    # ``_COURSE_LIST_TREE`` keeps the teacher dashboard to a fixed number
+    # of queries even when the teacher owns many courses with many
+    # chapters each: modules and their chapters each arrive in one
+    # query for the whole page. The dashboard CourseCard reads
+    # ``course.modules?.length`` and the per-course actions navigate into
+    # the editor for full-tree fetches.
     query = db.query(Course).options(*_COURSE_LIST_TREE).filter(Course.created_by == teacher_id)
     query = query.filter(Course.deleted_at.isnot(None)) if deleted_only else query.filter(Course.deleted_at.is_(None))
     query = query.order_by(Course.created_at.desc())

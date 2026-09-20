@@ -240,14 +240,14 @@ class CourseSummary(_ReadTitle):
     ``CourseResponse`` so that if we later decide to, say, omit modules/
     chapters from list responses entirely, we can do that in one place.
 
-    No course-level ``chapters`` here, unlike ``CourseResponse``. The
-    list loader (``_COURSE_LIST_TREE``) fetches modules and stops, on
-    purpose — a catalog page of 10 courses would otherwise carry every
-    chapter of every course — and a field this loader never fills would
-    report "no loose lessons" for a course that has them, which is worse
-    than not answering. The list surfaces render a module count and a
-    title; nothing there reads a chapter. The course detail view
-    (``GET /courses/{id}``) is where the tree is served.
+    No course-level ``chapters`` here, unlike ``CourseResponse``: a field
+    the list loader never fills would report "no loose lessons" for a
+    course that has them, which is worse than not answering. Chapters
+    still reach this shape nested under their module — the localized
+    catalog card renders lesson titles — and ``_COURSE_LIST_TREE`` loads
+    them in one query for the whole page rather than one per module. The
+    course detail view (``GET /courses/{id}``) is where the full tree,
+    including the course-level chapter list, is served.
     """
 
     model_config = ConfigDict(from_attributes=True)
