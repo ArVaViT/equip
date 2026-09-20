@@ -393,10 +393,33 @@ Build-time only on Vercel (not in the bundle):
 | Node version | 22.x | n/a (Python 3.12) |
 | Max function duration | n/a (static) | 300 s (`functions` block in `vercel.json`) |
 | Function memory | n/a | default (1024 MB) |
-| Region | All edge / IAD1 | IAD1 (default Python serverless) |
+| Region | All edge / IAD1 | **PDX1** (`regions` in `vercel.json`) |
 | Custom domains | `equipbible.com` (`www` 308-redirects to apex) | `api.equipbible.com` |
 | Auto-deploy branch | `main` | `main` |
 | Log Drain | Same drain | `drn_anVGfaiUT6UPtBCo` → Datadog us5 (json) |
+
+### Why the backend runs in PDX1 and not next to its readers
+
+The Supabase project is in **`us-west-2` (Oregon)**. The backend ran in
+`iad1` (Virginia), the Vercel default, so every database round-trip
+crossed the continent -- and a single API request makes about ten of
+them. The school is on Eastern time, which makes `iad1` the intuitive
+choice, and that intuition is backwards here: the reader pays the
+distance to the function **once** per request, while the function pays
+the distance to the database **once per query**.
+
+Measured on 2026-09-20: `GET /api/v1/courses` spent 1141 ms server-side
+in `iad1` after its N+1 was fixed, on five courses -- roughly 100 ms per
+query, essentially all of it flight time. `/health`, which touches no
+database, answered in 2 ms from the same warm function.
+
+`pdx1` is Vercel's Portland region, the same AWS region the database is
+in, so those round-trips become intra-region. `vercel.json` carries the
+setting rather than the dashboard so it is reviewed, versioned, and
+reverted like anything else.
+
+If the database ever moves, this moves with it. The pairing is the
+point; neither value means anything alone.
 
 `backend/vercel.json` uses the modern `functions` + `rewrites` format:
 the FastAPI entrypoint lives at `api/index.py` (re-exporting
