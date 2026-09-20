@@ -84,14 +84,20 @@ export function PublicLanding() {
           </Suspense>
         )}
 
-        <div className="container relative z-10 mx-auto flex max-w-3xl flex-col items-center px-4 text-center">
+        <div className="container relative z-10 mx-auto flex max-w-3xl flex-col items-center px-5 text-center lg:max-w-5xl">
           <h1
             id="landing-hero-heading"
-            className="text-balance font-serif text-4xl font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl md:text-7xl"
+            // `text-balance` evens the line lengths, which on a wide screen
+            // squeezed a short sentence into three stacked lines with a
+            // column of air either side — «слишком сконцентрировано на
+            // центре». Balanced up to `lg`, where it helps a phone; plain
+            // wrapping above it, where the measure is wide enough to break
+            // the sentence where it wants to.
+            className="text-balance font-serif text-[2.5rem] font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl md:text-7xl lg:text-pretty"
           >
             {t("landing.hero.manifesto")}
           </h1>
-          <p className="mt-6 max-w-xl text-balance text-base leading-relaxed text-ink-muted sm:text-lg">
+          <p className="mt-5 max-w-xl text-balance text-[1.0625rem] leading-relaxed text-ink-muted sm:mt-6 sm:text-lg">
             {t("landing.hero.subline")}
           </p>
 
@@ -107,7 +113,7 @@ export function PublicLanding() {
             </Link>
           </div>
 
-          <p className="mt-8 text-xs uppercase tracking-[0.14em] text-ink-muted">
+          <p className="mt-8 text-[0.6875rem] uppercase tracking-[0.12em] text-ink-muted sm:text-xs sm:tracking-[0.14em]">
             {t("landing.hero.facts")}
           </p>
           <p className="mt-6 text-sm text-ink-muted">
@@ -163,7 +169,7 @@ export function PublicLanding() {
           stops. */}
       <section
         aria-label={t("landing.value.heading")}
-        className="flex min-h-[70svh] items-center justify-center px-4"
+        className="flex min-h-[52svh] items-center justify-center px-5 py-16 sm:min-h-[60svh]"
       >
         <ScrollReveal className="flex flex-col items-center text-center">
           <h2 className="max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl">

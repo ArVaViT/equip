@@ -48,6 +48,26 @@ import type { Course } from "@/types"
 export function CourseShowcase() {
   const { t } = useTranslation()
   const prefersReducedMotion = useReducedMotion()
+  // A pinned shelf is a desktop idea. On a phone it turned five courses
+  // into two and a half screens of vertical scrolling, and it competes with
+  // the gesture the reader already has: a thumb. Below `lg` the row is an
+  // ordinary swipeable strip with snap points — faster to get through, and
+  // the thing a phone user expects a row of cards to do.
+  const [pinned, setPinned] = useState(false)
+  useEffect(() => {
+    // `matchMedia` is missing in jsdom and in a few old mobile engines.
+    // Without this guard the whole landing page threw on render there —
+    // nine tests went red at once, all of them about the hero, none of them
+    // about this component. Falling back to the swipeable strip is also the
+    // right default: it works with a thumb and with a wheel.
+    if (typeof window.matchMedia !== "function") return
+
+    const query = window.matchMedia("(min-width: 1024px)")
+    const sync = () => setPinned(query.matches)
+    sync()
+    query.addEventListener("change", sync)
+    return () => query.removeEventListener("change", sync)
+  }, [])
   const [courses, setCourses] = useState<Course[]>([])
   const trackRef = useRef<HTMLDivElement>(null)
   const rowRef = useRef<HTMLUListElement>(null)
@@ -76,7 +96,7 @@ export function CourseShowcase() {
   useEffect(() => {
     const row = rowRef.current
     const track = trackRef.current
-    if (!row || !track || prefersReducedMotion) return
+    if (!row || !track || prefersReducedMotion || !pinned) return
 
     const measure = () => {
       travelRef.current = Math.max(0, row.scrollWidth - window.innerWidth + 48)
@@ -150,7 +170,7 @@ export function CourseShowcase() {
       window.removeEventListener("scroll", apply)
       window.removeEventListener("resize", measure)
     }
-  }, [courses, prefersReducedMotion])
+  }, [courses, prefersReducedMotion, pinned])
 
   if (courses.length === 0) return null
 
@@ -160,17 +180,33 @@ export function CourseShowcase() {
     </h2>
   )
 
-  if (prefersReducedMotion) {
+  // Phones, tablets, and anybody who asked for less movement: a plain strip
+  // they can swipe, or a grid if even that is too much.
+  if (prefersReducedMotion || !pinned) {
     return (
-      <section className="mx-auto w-full max-w-5xl px-4 py-24 sm:px-6">
+      <section className="mx-auto w-full max-w-5xl px-5 py-20 sm:px-6 sm:py-24">
         {heading}
-        <ul className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {courses.map((course) => (
-            <li key={course.id}>
-              <CourseCard course={course} />
-            </li>
-          ))}
-        </ul>
+        {prefersReducedMotion ? (
+          <ul className="mt-10 grid gap-6 sm:grid-cols-2">
+            {courses.map((course) => (
+              <li key={course.id}>
+                <CourseCard course={course} />
+              </li>
+            ))}
+          </ul>
+        ) : (
+          // `-mx-5`/`px-5` lets the strip bleed to both screen edges while
+          // the first card still lines up with the heading above it, so it
+          // reads as a shelf continuing past the phone rather than a box
+          // that happens to scroll.
+          <ul className="-mx-5 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {courses.map((course) => (
+              <li key={course.id} className="w-[78vw] max-w-[320px] shrink-0 snap-start">
+                <CourseCard course={course} />
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     )
   }

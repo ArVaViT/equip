@@ -58,9 +58,18 @@ export default function Footer() {
             {/* Kept, and kept small. `Footer.test.tsx` pins it, and rightly:
                 it is the only place on a page a crawler reads that says in
                 one line what this is. */}
-            <p className="mt-2 text-sm leading-relaxed text-ink-muted">{t("footer.tagline")}</p>
-            <p className="mt-3 text-xs text-ink-muted">
-              © {year} {t("common.appName")}
+            {/* The colophon rides on the end of the tagline. Given its own
+                line — even inside this block — it still read as a line of
+                its own, which is what it must not be: «© 2026 Equip — все
+                еще на отдельной строке». */}
+            <p className="mt-2 text-sm leading-relaxed text-ink-muted">
+              {t("footer.tagline")}{" "}
+              {/* No alpha modifier on a text colour: `contrast-floor.test.ts`
+                  forbids it, because opacity on type is how a palette
+                  quietly drops below AA. Same token as the line it joins. */}
+              <span className="whitespace-nowrap">
+                · © {year} {t("common.appName")}
+              </span>
             </p>
           </div>
 
