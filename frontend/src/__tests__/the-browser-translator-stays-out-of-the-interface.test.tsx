@@ -35,34 +35,39 @@ import { resolve } from "node:path"
 
 import { describe, expect, it } from "vitest"
 
+function indexHtml(): Document {
+  // Parsed rather than pattern-matched. index.html explains this choice
+  // in a comment that names the very tag it rejects, and a regex over the
+  // raw text would read that prose as markup — stripping comments first
+  // to dodge it is both fragile and indistinguishable from sanitisation,
+  // which is what CodeQL rightly flagged. A parser has no such problem:
+  // comments are not elements.
+  const source = readFileSync(resolve(__dirname, "../../index.html"), "utf8")
+  return new DOMParser().parseFromString(source, "text/html")
+}
+
+function chapterViewSource(): string {
+  return readFileSync(resolve(__dirname, "../pages/Course/ChapterView.tsx"), "utf8")
+}
+
 describe("the browser translator stays out of the interface", () => {
   it("the document opts out of automatic translation", () => {
-    const html = readFileSync(resolve(__dirname, "../../index.html"), "utf8")
-
-    expect(html).toMatch(/<html[^>]*\stranslate="no"/)
+    expect(indexHtml().documentElement.getAttribute("translate")).toBe("no")
   })
 
   it("does so with the attribute, which a subtree can override", () => {
-    const html = readFileSync(resolve(__dirname, "../../index.html"), "utf8")
-    // Comments stripped first: index.html explains this choice by naming
-    // the tag it rejects, and matching that prose would fail the test for
-    // saying why rather than for doing the thing.
-    const markup = html.replace(/<!--[\s\S]*?-->/g, "")
-
-    // The meta tag cannot be overridden further down, so it would close
-    // the lesson body along with the chrome. If it ever appears, the
-    // second half of the rule above is gone.
-    expect(markup).not.toMatch(/<meta[^>]*name="google"[^>]*content="notranslate"/)
+    // `<meta name="google" content="notranslate">` cannot be overridden
+    // further down, so it would close the lesson body along with the
+    // chrome. If it ever appears, half two of the rule above is gone.
+    expect(indexHtml().querySelector('meta[name="google"][content="notranslate"]')).toBeNull()
   })
 
   it("the chapter body opts back in", () => {
-    const source = readFileSync(resolve(__dirname, "../pages/Course/ChapterView.tsx"), "utf8")
-
-    expect(source).toMatch(/translate="yes"/)
+    expect(chapterViewSource()).toMatch(/translate="yes"/)
   })
 
   it("the chapter body opts back in on the element React does not reconcile", () => {
-    const source = readFileSync(resolve(__dirname, "../pages/Course/ChapterView.tsx"), "utf8")
+    const source = chapterViewSource()
     const optIn = source.indexOf('translate="yes"')
     const injected = source.indexOf("dangerouslySetInnerHTML", optIn)
     const elementEnd = source.indexOf("/>", optIn)
