@@ -22,11 +22,17 @@ function Wrapper({ children }: { children: ReactNode }) {
 }
 
 describe("Footer (minimalist)", () => {
-  it("renders the brand mark and tagline", () => {
+  it("renders the brand mark and the year, and no tagline", () => {
     render(<Footer />, { wrapper: Wrapper })
     const links = screen.getAllByRole("link", { name: /equip/i })
     expect(links.length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(/biblical|biblical teaching|Писани/i)).toBeInTheDocument()
+    expect(screen.getByText(new RegExp(`© ${new Date().getFullYear()}`))).toBeInTheDocument()
+
+    // The tagline used to be asserted here. It repeated, in small type, the
+    // sentence the landing hero already makes in the largest type on the
+    // page, and the footer was carrying too much prose for what it is —
+    // a way out, a date and the legal pages.
+    expect(screen.queryByText(/biblical teaching|Системное изучение/i)).not.toBeInTheDocument()
   })
 
   it("renders a support mailto link", () => {

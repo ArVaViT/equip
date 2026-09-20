@@ -37,7 +37,7 @@ export default function Footer() {
   // it appears on, directly after a hero built to be looked at.
   return (
     <footer className="mt-10 border-t border-edge">
-      <div className="container mx-auto max-w-5xl px-4 py-7">
+      <div className="container mx-auto max-w-5xl px-4 py-6">
         {/* One row, not three columns.
             The column layout stacked a tagline, a "Продукт" heading over
             three links and a "Документы" heading over six, which came to
@@ -48,38 +48,22 @@ export default function Footer() {
             order to recognise "Политика конфиденциальности" are gone, and
             the row wraps instead of stacking. */}
         <div className="flex flex-col gap-6 sm:flex-row sm:items-baseline sm:justify-between">
-          <div className="max-w-xs">
+          {/* Mark and date, nothing else.
+              The tagline that stood here repeated, in small type, the
+              sentence the hero already makes in the largest type on the
+              page — and a footer is not where somebody goes to learn what a
+              product is. «В футере очень много текста»: what a footer owes
+              a reader is a way out, a date and the legal pages. */}
+          <div className="flex items-baseline gap-3">
             <Link
               to="/"
               className="font-serif text-xl font-semibold tracking-[-0.02em] text-ink transition-opacity duration-fast hover:opacity-70"
             >
               {t("common.appName")}
             </Link>
-            {/* Kept, and kept small. `Footer.test.tsx` pins it, and rightly:
-                it is the only place on a page a crawler reads that says in
-                one line what this is. */}
-            {/* The colophon rides on the end of the tagline. Given its own
-                line — even inside this block — it still read as a line of
-                its own, which is what it must not be: «© 2026 Equip — все
-                еще на отдельной строке». */}
-            <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-              {t("footer.tagline")}{" "}
-              {/* No alpha modifier on a text colour: `contrast-floor.test.ts`
-                  forbids it, because opacity on type is how a palette
-                  quietly drops below AA. Same token as the line it joins. */}
-              <span className="whitespace-nowrap">
-                · © {year} {t("common.appName")}
-              </span>
-            </p>
+            <span className="whitespace-nowrap text-xs text-ink-muted">© {year}</span>
           </div>
 
-          {/* Only destinations a signed-out visitor can actually reach.
-              `/calendar` and `/certificates` are behind `Gate mode="private"`,
-              so putting them here would send a stranger who is reading the
-              marketing page straight into a login wall.
-              `/dmca` stays: § 512(i)(1)(A) asks a platform to *inform* people
-              of its repeat-infringer policy, and a page nobody can find from
-              the site does not inform anybody. */}
           <nav aria-label={t("footer.product")}>
             <ul className="flex flex-wrap gap-x-5 gap-y-2.5 text-sm sm:justify-end">
               <li>

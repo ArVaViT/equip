@@ -32,11 +32,11 @@ import type { Course } from "@/types"
  * is never stale, and writes the transform itself, so there is nothing
  * between the measurement and the pixels.
  *
- * HOW THE DISTANCE IS DECIDED. The track is as tall as the row is wide.
- * Travel and scroll are then the same number of pixels, so the row moves at
- * the speed of the wheel — neither dragging behind nor racing ahead, which
- * is what makes a pinned horizontal section feel broken when the ratio is
- * picked by eye instead of measured. It is measured again on resize and
+ * HOW FAR AND HOW FAST. The row's overhang — how much wider it is than the
+ * window — is measured, and spread across the section's whole journey
+ * through the viewport. So the last card arrives at the right edge exactly
+ * as the section leaves the top, and the speed follows from the geometry
+ * rather than from a ratio picked by eye. Re-measured on resize and
  * whenever the catalogue changes, because it depends on both.
  *
  * It renders nothing while loading, nothing if the request fails, and
@@ -71,7 +71,6 @@ export function CourseShowcase() {
   const [courses, setCourses] = useState<Course[]>([])
   const trackRef = useRef<HTMLDivElement>(null)
   const rowRef = useRef<HTMLUListElement>(null)
-  const [travel, setTravel] = useState(0)
 
   useEffect(() => {
     let alive = true
@@ -100,28 +99,32 @@ export function CourseShowcase() {
 
     const measure = () => {
       travelRef.current = Math.max(0, row.scrollWidth - window.innerWidth + 48)
-      setTravel(travelRef.current)
     }
 
-    // Written straight from the scroll handler, with no easing pass in
-    // between.
+    // The shelf moves *while* the page scrolls past it. It does not hold the
+    // page still to do it.
     //
-    // The first version smoothed the value inside `requestAnimationFrame`,
-    // which is correct on paper and has one fatal property: rAF does not run
-    // in a background tab, so the row sat at its starting offset and the
-    // transform never changed. Scroll is already smooth; interpolating it
-    // adds lag and one more thing to be wrong. The shelf now moves exactly
-    // as far as the page did, which is what was asked for — «чтоб они при
-    // скроле двигались горизонтально».
+    // The first version pinned the section: a tall track, a `sticky` child,
+    // and the row consuming 852px of vertical scroll before the page could
+    // continue. That is a common pattern and it is the one thing Vadym did
+    // not want — «не надо прерывать скрол». Taking over the wheel for a
+    // second and a half is the web equivalent of talking over somebody.
+    //
+    // So progress is measured from the section's *journey through the
+    // window*: 0 when its top edge enters at the bottom, 1 when its bottom
+    // edge leaves at the top. Scrolling stays exactly as long as the
+    // content, the row travels the whole time it is visible, and nothing is
+    // captured.
     const apply = () => {
       const distance = travelRef.current
       if (distance <= 0) {
         row.style.transform = "translate3d(0, 0, 0)"
         return
       }
-      // 0 when the track's top meets the top of the window, 1 when the page
-      // has scrolled through exactly `distance`.
-      const progress = Math.min(1, Math.max(0, -track.getBoundingClientRect().top / distance))
+      const rect = track.getBoundingClientRect()
+      const journey = window.innerHeight + rect.height
+      const travelled = window.innerHeight - rect.top
+      const progress = Math.min(1, Math.max(0, travelled / journey))
       row.style.transform = `translate3d(${-progress * distance}px, 0, 0)`
     }
 
@@ -214,10 +217,10 @@ export function CourseShowcase() {
   }
 
   return (
-    <div ref={trackRef} className="relative" style={{ height: `calc(100svh + ${travel}px)` }}>
+    <div ref={trackRef} className="relative">
       <section
         aria-label={t("header.courses")}
-        className="sticky top-0 flex h-[100svh] flex-col justify-center overflow-hidden"
+        className="flex flex-col justify-center overflow-hidden py-24 sm:py-32"
       >
         {/* The row starts at the page's own left margin and runs off the
             right edge — a shelf that continues past the window, rather than
