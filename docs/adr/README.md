@@ -20,6 +20,7 @@ first moved here (#236), and the sequence continued from it.
 | [011](0011-tailwind-v4-oklch-migration.md) | Tailwind v4 + OKLCH migration — not doing it | Superseded (2026-08-24) |
 | [012](0012-invitations-notifications-and-one-way-out.md) | Invitations, notifications, and one way out of the building | Proposed (2026-09-12) |
 | [013](0013-a-registry-decides-who-signs-what.md) | A registry decides who signs what, and which edits cost a signature | Accepted (2026-09-17) |
+| [014](0014-a-plan-decides-what-an-account-may-hold.md) | A plan decides what an account may hold | Accepted (2026-09-20) |
 
 ## Format
 

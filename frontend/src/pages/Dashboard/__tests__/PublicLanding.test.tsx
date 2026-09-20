@@ -73,12 +73,47 @@ describe("PublicLanding (unauth marketing page)", () => {
     expect(hrefs).toContain("/login")
   })
 
-  it("renders the four value-proposition rows as h3 headings", () => {
+  it("shows exactly one claim at a time", () => {
     renderLanding()
-    // Each row is a concrete claim (structure / assessment /
-    // certificates / bilingual), not a generic icon+adjective grid.
-    const h3s = screen.getAllByRole("heading", { level: 3 })
-    expect(h3s.length).toBe(4)
+    // The three claims used to share a grid cell and cross-fade by opacity.
+    // The ranges never overlap on paper; on a real wheel they do, because a
+    // fast scroll jumps straight past the handover and paints two full
+    // paragraphs on top of each other. Only the active one is mounted now,
+    // so collision is not a thing that can happen at any scroll speed.
+    const claimTitles = [
+      i18n.t("landing.value.structure.title"),
+      i18n.t("landing.value.assessment.title"),
+      i18n.t("landing.value.certificates.title"),
+    ]
+    const shown = claimTitles.filter((title) => screen.queryByText(title) !== null)
+
+    expect(shown).toEqual([claimTitles[0]])
+  })
+
+  it("offers the film behind a poster, and never starts it by itself", () => {
+    renderLanding()
+    const videos = [...document.querySelectorAll("video")]
+    const film = videos.find((v) => v.hasAttribute("controls"))
+
+    // A minute of speech: it waits, it is asked for, and it can be paused.
+    expect(film).toBeDefined()
+    expect(film?.getAttribute("poster")).toBeTruthy()
+    expect(film?.hasAttribute("autoplay")).toBe(false)
+    expect(film?.getAttribute("preload")).toBe("none")
+  })
+
+  it("plays the silent tour by itself, and only silently", () => {
+    renderLanding()
+    const videos = [...document.querySelectorAll("video")]
+    const tour = videos.find((v) => !v.hasAttribute("controls"))
+
+    // The opposite contract to the film: it is a caption that moves, so it
+    // loops on its own — which every browser allows only while muted, and
+    // which would be an ambush with sound.
+    expect(tour).toBeDefined()
+    expect(tour?.muted || tour?.hasAttribute("muted")).toBe(true)
+    expect(tour?.hasAttribute("loop")).toBe(true)
+    expect(tour?.hasAttribute("controls")).toBe(false)
   })
 
   it("does not render a generic 'reset password' marketing card", () => {

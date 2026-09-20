@@ -42,6 +42,20 @@ const gzipAsync = promisify(gzip);
 // download under 8.2.
 const BUDGETS_GZIP_KB = {
   ChapterEditor: 252, // teacher TipTap surface; lazy per /teacher/courses.
+  LandingBackdrop: 147, // WebGL for the landing page's one background scene.
+  //           Larger than the shell, and deliberate: `lazy()`-imported from
+  //           PublicLanding alone, never mounted under
+  //           `prefers-reduced-motion` or without WebGL, and its loop stops
+  //           while the document is hidden. A student opening a lesson never
+  //           fetches a byte of it — if this name appears in a route a
+  //           signed-in user reaches, that is the bug, not the size.
+  //
+  //           The name tracks the importer: with two scenes importing
+  //           `three` Rollup emitted a shared `three.module` chunk; with one
+  //           it names the chunk after the component. Worth knowing, because
+  //           the sentinel fails loudly either way — once for an unwatched
+  //           chunk, once for a budget pointing at a chunk that no longer
+  //           exists.
   index: 109, // shell — always loaded. Under 8.2 this was 29 kB and the
   //           Datadog RUM core sat beside it in a nameless `esm` chunk;
   //           8.3 folds that core, sonner and the radix dialog/tooltip in.

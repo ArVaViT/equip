@@ -1,359 +1,200 @@
+import { lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import {
-  ArrowRight,
-  Award,
-  BookOpen,
-  Check,
-  Circle,
-  Languages,
-  PenLine,
-  ShieldCheck,
-} from "lucide-react";
+import { useReducedMotion } from "motion/react";
+import { ArrowRight } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Eyebrow } from "@/components/patterns";
 import Footer from "@/components/layout/Footer";
-import { Reveal } from "@/components/motion";
-import { AUTHORING_LOCALE, SUPPORTED_LOCALES } from "@/i18n/config";
+import { HeroVideo } from "./landing/HeroVideo";
+import { ScrollReveal } from "./landing/ScrollReveal";
+import { StorySection } from "./landing/StorySection";
+import { CourseShowcase } from "./landing/CourseShowcase";
+import { ProductTour } from "./landing/ProductTour";
 
 /**
  * Marketing landing rendered at ``/`` for unauthenticated visitors.
  *
- * Rebuilt 2026-07 to replace the generic shadcn-template feel (a flat
- * 4-icon feature grid + a "Quick links" card grid whose weakest entry
- * was a "Восстановить пароль"/"Reset password" marketing card — real
- * template filler, not something worth landing-page real estate).
+ * REBUILT 2026-09-20, from nothing, on Vadym's instruction. What it replaced
+ * and why it had to go:
  *
- * Structure now:
+ * The previous page was four alternating text rows, each with a small drawn
+ * mock beside it, then a three-step list, then a closing card. Everything was
+ * the same weight, so nothing led; the only motion on it was one entrance
+ * animation repeated four times; and a reader who wanted to know what this
+ * platform is had to work through a great deal of prose to find out. Vadym's
+ * words, and they were fair: «какие-то чанки информации, все плотно».
  *
- * 1. **Hero** — brand, tagline, a qualitative trust strip (no invented
- *    numbers — see feedback-do-not-fabricate-numbers), two primary CTAs.
- * 2. **Value rows** — four alternating narrative rows, each pairing one
- *    concrete claim with a small illustrative UI mock built from the
- *    same tokens/components used elsewhere in the product (not stock
- *    icons + adjectives, and not a screenshot pipeline).
- * 3. **How it works** — unchanged 3-step list.
- * 4. **Final CTA** — single strong close, not a stacked link wall.
+ * An intermediate attempt added production screenshots to those same rows.
+ * That made it worse, and the reason is worth keeping: it *added*. The brief
+ * was less, and it was answered with more.
  *
- * SEO: crawlable internal links to /courses, /register, /login live in
- * the hero + final CTA (real ``<Link>`` elements, not button-look-alikes
- * wired to ``navigate()``). /forgot-password is intentionally NOT
- * linked from marketing copy — it's one click from /login, which is
- * where a real visitor needs it; giving it a landing-page feature card
- * was the filler tell being fixed here.
+ * So the shape now is three screens and nothing else:
+ *
+ * 1. **The claim, over a moving scene.** One sentence, one action, and a
+ *    WebGL group of leaves that squares up as the page scrolls and tilts
+ *    toward the cursor — the slogan as an object rather than a second
+ *    paragraph.
+ * 2. **The video.** A minute explaining what this is and what problem it
+ *    solves, which is Vadym's to produce. Until that file exists the section
+ *    renders nothing: a placeholder frame advertising a video that is not
+ *    there is worse than no section at all.
+ * 3. **Three claims and the way in.** A few words each. Anything needing a
+ *    paragraph belongs in the video, not here.
+ *
+ * SEO. The h1 still spends itself on the claim rather than the brand, and
+ * /courses, /register and /login are all still reachable as real anchors —
+ * `__tests__/PublicLanding.test.tsx` pins exactly that, because the crawler
+ * contract has to survive a redesign.
  */
+
+// `three` is ~126KB gzipped, larger than the whole app shell. It is reached
+// only from here, only after this module renders, and never by a student
+// opening a lesson.
+const LandingBackdrop = lazy(() => import("./landing/LandingBackdrop"));
+
 export function PublicLanding() {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
+
   return (
-    // The footer lives here now rather than in the app shell — this is the
-    // one page it was designed for. The content above keeps the landing
-    // page's own measure; the footer spans the full width beneath it.
-    <div className="w-full">
-      <div className="container mx-auto max-w-5xl px-4">
-        {/* ── Hero ────────────────────────────────────────────────── */}
-        <section className="relative" aria-labelledby="landing-hero-heading">
-          <div className="relative z-10 flex flex-col items-center pt-20 text-center sm:pt-32">
-            {/* The claim, not the brand. The name is in the header, the
-                title tag and the footer; spending the largest type on the
-                page repeating it says nothing to somebody deciding whether
-                this is for them. */}
-            <h1
-              id="landing-hero-heading"
-              className="max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.1] tracking-tight text-ink sm:text-5xl md:text-6xl"
-            >
-              {t("landing.hero.manifesto")}
-            </h1>
-            <p className="mt-6 max-w-xl text-balance text-base leading-relaxed text-ink-muted sm:text-lg">
-              {t("landing.hero.subline")}
-            </p>
-            {/* One quiet line instead of three badges: the facts are worth
-                stating, not worth three boxes. */}
-            <p className="mt-6 text-xs uppercase tracking-[0.14em] text-ink-muted">
-              {t("landing.hero.facts")}
-            </p>
-            <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:gap-3">
-              <Link to="/courses">
-                <Button size="lg">
-                  {t("dashboard.browseAllCta")}
-                  <ArrowRight
-                    className="ml-1.5 h-4 w-4"
-                    strokeWidth={1.75}
-                    aria-hidden
-                  />
-                </Button>
-              </Link>
-              <Link to="/register">
-                <Button size="lg" variant="outline">
-                  {t("landing.hero.registerCta")}
-                </Button>
-              </Link>
-            </div>
-            {/* Sign-in is for people who already decided. It does not need
-                to compete with the two actions above it. */}
-            <p className="mt-6 text-sm text-ink-muted">
-              <Link to="/login" className="font-medium text-brand hover:text-brand-ink">
-                {t("common.signIn")}
-              </Link>
-            </p>
-          </div>
-        </section>
+    <div className="relative w-full">
+      {/* One scene behind the entire page rather than one per section.
+          Pinned canvases were released at the end of their own tracks, so
+          the shelf, the close and the film sat against a still page —
+          «почему он дальше не продолжается до конца страницы?». Fixed has
+          no track to leave. */}
+      {!prefersReducedMotion && (
+        <Suspense fallback={null}>
+          <LandingBackdrop className="pointer-events-none fixed inset-0 z-0" />
+        </Suspense>
+      )}
 
-        {/* ── Value rows ──────────────────────────────────────────── */}
-        <section aria-label={t("landing.value.heading")} className="mt-24 sm:mt-36">
-          <div className="flex flex-col gap-24 sm:gap-32">
-            {/* Literal keys, one call per string — a template key would be
-                invisible to the ``keyCoverage`` check (docs/I18N.md). */}
-            <Reveal>
-              <ValueRow
-                eyebrow={t("landing.value.structure.eyebrow")}
-                title={t("landing.value.structure.title")}
-                body={t("landing.value.structure.body")}
-                visual={<StructureMock />}
-              />
-            </Reveal>
-            <Reveal>
-              <ValueRow
-                eyebrow={t("landing.value.assessment.eyebrow")}
-                title={t("landing.value.assessment.title")}
-                body={t("landing.value.assessment.body")}
-                visual={<AssessmentMock />}
-                reverse
-              />
-            </Reveal>
-            <Reveal>
-              <ValueRow
-                eyebrow={t("landing.value.certificates.eyebrow")}
-                title={t("landing.value.certificates.title")}
-                body={t("landing.value.certificates.body")}
-                visual={<CertificateMock />}
-              />
-            </Reveal>
-            <Reveal>
-              <ValueRow
-                eyebrow={t("landing.value.bilingual.eyebrow")}
-                title={t("landing.value.bilingual.title")}
-                body={t("landing.value.bilingual.body")}
-                visual={<MultilingualMock />}
-                reverse
-              />
-            </Reveal>
-          </div>
-        </section>
-
-        {/* ── How it works ────────────────────────────────────────── */}
-        <Reveal>
-          <section
-          aria-labelledby="landing-how-heading"
-          className="mt-20 rounded-lg bg-muted/40 px-6 py-10 sm:mt-28 sm:px-10 sm:py-12"
-        >
-          <h2
-            id="landing-how-heading"
-            className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl"
+      <div className="relative z-10">
+      {/* ── 1. The claim ─────────────────────────────────────────── */}
+      {/* `isolate` gives the section its own stacking context, so the canvas
+          can sit at z-0 behind the words without falling behind the page
+          background. A negative z-index did exactly that: the scene rendered
+          every frame and was invisible the whole time. */}
+      <section
+        className="relative flex min-h-[88svh] items-center justify-center"
+        aria-labelledby="landing-hero-heading"
+      >
+        <div className="container relative z-10 mx-auto flex max-w-3xl flex-col items-center px-5 text-center lg:max-w-5xl">
+          <h1
+            id="landing-hero-heading"
+            // `text-balance` evens the line lengths, which on a wide screen
+            // squeezed a short sentence into three stacked lines with a
+            // column of air either side — «слишком сконцентрировано на
+            // центре». Balanced up to `lg`, where it helps a phone; plain
+            // wrapping above it, where the measure is wide enough to break
+            // the sentence where it wants to.
+            className="text-balance font-serif text-[2.5rem] font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl md:text-7xl lg:text-pretty"
           >
-            {t("landing.how.heading")}
-          </h2>
-          <ol className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-3">
-            <Step n={1} text={t("landing.how.step1")} />
-            <Step n={2} text={t("landing.how.step2")} />
-              <Step n={3} text={t("landing.how.step3")} />
-            </ol>
-          </section>
-        </Reveal>
+            {t("landing.hero.manifesto")}
+          </h1>
+          <p className="mt-5 max-w-xl text-balance text-[1.0625rem] leading-relaxed text-ink-muted sm:mt-6 sm:text-lg">
+            {t("landing.hero.subline")}
+          </p>
 
-        {/* ── Final CTA ───────────────────────────────────────────── */}
-        <Reveal>
-          <section className="mt-20 flex flex-col items-center text-center sm:mt-28">
-          <h2 className="font-serif text-2xl font-semibold tracking-tight sm:text-3xl">
+          {/* One action. The old hero offered five — two buttons, a text
+              link and both header links — which is a page that has not
+              decided what it wants from a visitor. */}
+          <div className="mt-10">
+            <Link to="/courses">
+              <Button size="lg">
+                {t("dashboard.browseAllCta")}
+                <ArrowRight className="ml-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+              </Button>
+            </Link>
+          </div>
+
+          <p className="mt-8 text-[0.6875rem] uppercase tracking-[0.12em] text-ink-muted sm:text-xs sm:tracking-[0.14em]">
+            {t("landing.hero.facts")}
+          </p>
+          <p className="mt-6 text-sm text-ink-muted">
+            <Link to="/register" className="font-medium text-brand hover:text-brand-ink">
+              {t("landing.hero.registerCta")}
+            </Link>
+            <span className="px-2 text-line" aria-hidden>
+              ·
+            </span>
+            <Link to="/login" className="font-medium text-brand hover:text-brand-ink">
+              {t("common.signIn")}
+            </Link>
+          </p>
+        </div>
+      </section>
+
+      {/* ── 2. Three claims, told over one moving scene ──────────── */}
+      <StorySection />
+
+      {/* ── 3. Twenty seconds of it working ──────────────────────── */}
+      {/* Silent, looping, and not the film. The film is a minute with a
+          voice and lives at the end, where Vadym wants it; this is the
+          product in motion — a lesson changing language — and it earns its
+          place here because the three claims above it have just been made
+          and this is what they look like. */}
+      <ProductTour />
+
+      {/* ── 4. What is actually on the shelf ─────────────────────── */}
+      {/* Everything above argues about how the platform teaches; this is
+          the first thing that says what is on it. Live from the public
+          catalogue endpoint, so it cannot advertise a course that was
+          unpublished last month. */}
+      <CourseShowcase />
+
+      {/* ── 5. The way in ────────────────────────────────────────── */}
+      {/* `<Section>` rather than another bespoke `container mx-auto …`
+          string: the geometry census in `Section.test.tsx` caps how many
+          distinct page shells may exist, and a landing page is not special
+          enough to be the nineteenth. */}
+      {/* A close, not another block.
+          At `text-2xl` in a padded section this read as one more row among
+          the rows — «часть „Готовы начать?" немного странная» — arriving
+          after a pinned scene and a travelling shelf and asking for less
+          attention than either. It gets a screen of its own now, and the
+          question is set at the size of the opening claim, because it is
+          the same sentence asked back. */}
+      {/* `min-h-[70svh]` plus `py-24` on top of the shelf's own sticky
+          screen left a long empty stretch before the question — «перед
+          ready to start много места и нет мушина в том моменте». The
+          padding is gone, the screen is what holds it, and `ScrollReveal`
+          gives the block the same parallax the claims have, so the approach
+          to the close is not the one moment on the page where everything
+          stops. */}
+      <section
+        aria-label={t("landing.value.heading")}
+        className="flex min-h-[44svh] items-center justify-center px-5 pb-16 sm:min-h-[52svh]"
+      >
+        <ScrollReveal className="flex flex-col items-center text-center">
+          <h2 className="max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl">
             {t("landing.finalCta.heading")}
           </h2>
-          <p className="mt-3 max-w-xl text-balance text-sm text-ink-muted sm:text-base">
+          <p className="mt-6 max-w-md text-balance text-base text-ink-muted sm:text-lg">
             {t("landing.finalCta.body")}
           </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <div className="mt-10">
             <Link to="/register">
               <Button size="lg">
                 {t("landing.finalCta.primary")}
-                <ArrowRight
-                  className="ml-1.5 h-4 w-4"
-                  strokeWidth={1.75}
-                  aria-hidden
-                />
+                <ArrowRight className="ml-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
               </Button>
             </Link>
-              <Link to="/courses">
-                <Button size="lg" variant="outline">
-                  {t("dashboard.browseAllCta")}
-                </Button>
-              </Link>
-            </div>
-          </section>
-        </Reveal>
-      </div>
-      <Footer />
-    </div>
-  );
-}
+          </div>
+        </ScrollReveal>
+      </section>
 
-interface ValueRowProps {
-  eyebrow: string;
-  title: string;
-  body: string;
-  visual: React.ReactNode;
-  /** Puts the visual on the left / text on the right at ``lg+``, so
-   *  consecutive rows alternate sides instead of reading as a repeated
-   *  template block. */
-  reverse?: boolean;
-}
+      {/* ── 6. The film ──────────────────────────────────────────── */}
+      {/* Deliberately last. Vadym: «его надо явно ближе к концу, чтоб он не
+          было первым впечатлением» — a minute of explanation is what you
+          offer somebody already deciding, not what you open with. */}
+      <HeroVideo />
 
-function ValueRow({ eyebrow, title, body, visual, reverse }: ValueRowProps) {
-  return (
-    <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-2 lg:gap-12">
-      <div className={reverse ? "lg:order-2" : undefined}>
-        <Eyebrow>{eyebrow}</Eyebrow>
-        <h3 className="mt-2 font-serif text-xl font-semibold tracking-tight text-ink sm:text-2xl">
-          {title}
-        </h3>
-        <p className="mt-3 max-w-md text-sm leading-relaxed text-ink-muted sm:text-base">
-          {body}
-        </p>
-      </div>
-      <div className={reverse ? "lg:order-1" : undefined}>{visual}</div>
-    </div>
-  );
-}
-
-interface StepProps {
-  n: number;
-  text: string;
-}
-
-function Step({ n, text }: StepProps) {
-  return (
-    <li className="flex items-start gap-3">
-      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-semibold text-brand-foreground">
-        {n}
-      </span>
-      <p className="pt-0.5 text-sm leading-relaxed text-ink">{text}</p>
-    </li>
-  );
-}
-
-/** Mini module/chapter checklist — illustrates course structure. */
-function StructureMock() {
-  const { t } = useTranslation();
-  return (
-    <div className="surface-card mx-auto max-w-sm rounded-lg p-5">
-      <p className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-ink-muted">
-        <BookOpen className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-        {t("landing.value.structure.module")}
-      </p>
-      <ul className="mt-4 space-y-2.5">
-        <li className="flex items-center gap-2.5 text-sm text-ink">
-          <Check
-            className="h-4 w-4 shrink-0 text-success"
-            strokeWidth={1.75}
-            aria-hidden
-          />
-          {t("landing.value.structure.chapter1")}
-        </li>
-        <li className="flex items-center gap-2.5 text-sm text-ink">
-          <Check
-            className="h-4 w-4 shrink-0 text-success"
-            strokeWidth={1.75}
-            aria-hidden
-          />
-          {t("landing.value.structure.chapter2")}
-        </li>
-        <li className="flex items-center gap-2.5 text-sm text-ink-muted">
-          <Circle className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-          {t("landing.value.structure.chapter3")}
-        </li>
-      </ul>
-    </div>
-  );
-}
-
-/** Mini quiz question card — illustrates teacher-graded assessment. */
-function AssessmentMock() {
-  const { t } = useTranslation();
-  return (
-    <div className="surface-card mx-auto max-w-sm rounded-lg p-5">
-      <Badge variant="infoSubtle">
-        <PenLine className="mr-1 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-        {t("landing.value.assessment.gradedBadge")}
-      </Badge>
-      <p className="mt-3 text-sm font-medium leading-relaxed text-ink">
-        {t("landing.value.assessment.sampleQuestion")}
-      </p>
-    </div>
-  );
-}
-
-/** Mini certificate card — illustrates number-verifiable certificates. */
-function CertificateMock() {
-  const { t } = useTranslation();
-  return (
-    <div className="surface-card mx-auto max-w-sm rounded-lg p-6 text-center">
-      <span className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand-ink">
-        <Award className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-      </span>
-      <p className="mt-3 font-serif text-base font-semibold text-ink">
-        {t("landing.value.certificates.certTitle")}
-      </p>
-      <div className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-edge px-2.5 py-1 text-xs text-ink-muted">
-        <ShieldCheck className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-        {t("landing.value.certificates.verifyLabel")}
+        <Footer />
       </div>
     </div>
   );
 }
 
-/**
- * Mini locale fan-out — illustrates the auto-translation pipeline.
- *
- * It was called ``BilingualMock`` and it drew two badges, RU and EN, which
- * is what the product was when it was written. It sat a few centimetres
- * under a trust badge reading "Four languages: RU · EN · DE · UK" and body
- * copy promising English, German and Ukrainian — so the picture contradicted
- * the sentence above it, on the page whose whole job is to be believed.
- *
- * Derived from ``SUPPORTED_LOCALES`` rather than listed, so the picture
- * cannot fall behind the product a second time: the source language on the
- * left, everything it fans out into on the right.
- *
- * The badge on the left is ``AUTHORING_LOCALE``, not ``DEFAULT_LOCALE``.
- * They were the same value until the last resort became English, and this
- * picture is about the language courses are *written* in — flipping it to
- * EN would claim the pipeline translates out of English, which it does not.
- */
-function MultilingualMock() {
-  const { t } = useTranslation();
-  const targets = SUPPORTED_LOCALES.filter((code) => code !== AUTHORING_LOCALE);
-  return (
-    <div className="surface-card mx-auto max-w-sm rounded-lg p-5 text-center">
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        {/* The language courses are authored in — the input to the pipeline. */}
-        <span className="rounded-md bg-brand/10 px-3 py-1.5 text-sm font-medium text-brand-ink">
-          {AUTHORING_LOCALE.toUpperCase()}
-        </span>
-        <Languages
-          className="h-4 w-4 shrink-0 text-ink-muted"
-          strokeWidth={1.75}
-          aria-hidden
-        />
-        {targets.map((code) => (
-          <span
-            key={code}
-            className="rounded-md bg-muted px-3 py-1.5 text-sm font-medium text-ink-muted"
-          >
-            {code.toUpperCase()}
-          </span>
-        ))}
-      </div>
-      <p className="mt-3 text-xs text-ink-muted">
-        {t("landing.value.bilingual.caption")}
-      </p>
-    </div>
-  );
-}
+export default PublicLanding;
