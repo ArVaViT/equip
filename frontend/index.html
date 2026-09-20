@@ -1,5 +1,18 @@
 <!doctype html>
-<html lang="en">
+<!-- translate="no": the interface is not the browser's to translate.
+     Equip ships its own four languages through i18next, and Chrome's
+     translator rewrites text nodes underneath React — which is how
+     `NotFoundError: Failed to execute 'insertBefore'` reached three
+     readers on three continents (Chile, Singapore, USA) between
+     2026-08-25 and 2026-09-19, each time taking the page down to an
+     ErrorBoundary on /, /login and /register.
+     This is the standard HTML attribute rather than
+     `<meta name="google" content="notranslate">` precisely because it
+     can be overridden further down: the chapter body carries
+     translate="yes", so a reader whose language Equip does not ship
+     (Spanish, in the Chile case) can still translate what they came
+     to read. See ChapterView's TextBlockRender. -->
+<html lang="en" translate="no">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
