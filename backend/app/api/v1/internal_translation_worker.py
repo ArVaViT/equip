@@ -370,7 +370,21 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
         # safe to delete and why human history never is.
         pruned = _prune_history(db)
         if pruned.did_work:
-            logger.warning(
+            # INFO, not WARNING. A prune that deleted rows is the worker
+            # doing the job it was given on a tick that had nothing else to
+            # do — routine success, and nothing for a person to act on.
+            #
+            # At WARNING it counted toward "20+ backend warnings in 15
+            # minutes" (monitor 19730778), which exists to notice integrity
+            # errors. A single retention sweep walks two hundred groups per
+            # tick and the cron runs every minute, so a backlog day could
+            # raise that monitor with nothing wrong at all — an alert whose
+            # cause is the cleanup working.
+            #
+            # INFO is indexed for this service (verified against the live
+            # index 2026-09-20: `[INFO] api: GET ...` lines are searchable),
+            # so the line stays greppable and stays out of the count.
+            logger.info(
                 "worker: idle queue, pruned %d superseded mt row(s) in %d group(s), %d group(s) pinned",
                 pruned.rows,
                 pruned.groups,
