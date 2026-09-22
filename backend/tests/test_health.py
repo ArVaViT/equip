@@ -67,3 +67,34 @@ def test_response_echoes_vercel_request_id_when_present():
     with TestClient(app) as tc:
         resp = tc.get("/health", headers={"x-vercel-id": "iad1::test-abc-123"})
     assert resp.headers.get("X-Request-Id") == "iad1::test-abc-123"
+
+
+def test_the_api_host_tells_crawlers_to_stay_out():
+    """robots.txt is per-host, and this host is not the public site.
+
+    The frontend's robots.txt has a comment saying "do not crawl the API"
+    — a thing it cannot actually say, because it is served from
+    equipbible.com and governs only equipbible.com. A crawler arriving at
+    api.equipbible.com asked for this file on 2026-09-21 and got a 404,
+    which means "no rules, crawl what you like".
+    """
+    with TestClient(app) as tc:
+        resp = tc.get("/robots.txt")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/plain")
+    body = resp.text
+    assert "User-agent: *" in body
+    assert "Disallow: /" in body
+    # It must not accidentally allow anything: a stray Allow line is how a
+    # blanket Disallow stops meaning what it says.
+    assert "Allow:" not in body
+
+
+def test_robots_is_cacheable_and_answers_head():
+    """A crawler re-reads robots.txt before each crawl, and some issue a
+    HEAD first. Neither should reach the router as a 404."""
+    with TestClient(app) as tc:
+        get = tc.get("/robots.txt")
+        head = tc.head("/robots.txt")
+    assert head.status_code == 200
+    assert "max-age=86400" in get.headers["cache-control"]

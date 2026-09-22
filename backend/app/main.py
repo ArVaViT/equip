@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, Response
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.api.consent_gate import require_legal_consent
@@ -415,3 +415,30 @@ for _path, (_file, _mime) in _ICON_FILES.items():
 @app.head("/vite.svg", include_in_schema=False)
 async def _noise_icons() -> Response:
     return Response(status_code=204)
+
+
+# robots.txt is per-HOST, and this is a different host.
+#
+# The frontend ships a careful robots.txt whose comment says "do not crawl
+# the API" — and it cannot say that, because it is served from
+# equipbible.com and governs only equipbible.com. A crawler arriving at
+# api.equipbible.com asked for this file on 2026-09-21, got a 404, and a
+# 404 means "no rules, crawl what you like".
+#
+# Nothing here is worth indexing: every path answers JSON, the useful ones
+# need a bearer token, and a crawler following them spends our serverless
+# budget to file documents no search result should ever point at.
+_ROBOTS = """# Equip API. Nothing here is for a search index.
+# The public, crawlable surface is https://equipbible.com/ and its
+# robots.txt governs it; this file governs this host only.
+User-agent: *
+Disallow: /
+"""
+
+
+@app.get("/robots.txt", include_in_schema=False)
+@app.head("/robots.txt", include_in_schema=False)
+async def robots() -> Response:
+    # A day of caching: the answer never changes, and a crawler re-reads
+    # robots.txt before each crawl.
+    return PlainTextResponse(_ROBOTS, headers={"Cache-Control": "public, max-age=86400"})
