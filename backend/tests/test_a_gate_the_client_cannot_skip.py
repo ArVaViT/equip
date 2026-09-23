@@ -37,6 +37,15 @@ ACCEPT = "/api/v1/legal/acceptances"
 PREFERENCES = "/api/v1/users/me/preferences"
 COURSES = "/api/v1/courses"
 
+#: The specimen write these tests hold the gate against.
+#:
+#: It used to be ``PREFERENCES``, which is now exempt (see
+#: ``TestTheLanguageOfTheQuestionComesFirst`` below) — and a guard test whose
+#: specimen is exempt proves nothing at all. This one is a POST with no body,
+#: idempotent, reachable by any signed-in person, and it changes something:
+#: everything the old specimen gave these tests, minus the exemption.
+A_WRITE = "/api/v1/users/me/onboarding/complete"
+
 
 @pytest.fixture(autouse=True)
 def _they_arrive_having_signed_nothing(nobody_has_signed_anything: None) -> None:
@@ -60,7 +69,7 @@ def _code(response) -> str | None:
 
 
 def test_a_change_from_somebody_who_has_not_accepted_is_refused(student_client: TestClient) -> None:
-    response = student_client.patch(PREFERENCES, json={"preferred_locale": "de"})
+    response = student_client.post(A_WRITE)
 
     assert response.status_code == 403, response.text
     assert _code(response) == "legal.consent_required"
@@ -68,7 +77,7 @@ def test_a_change_from_somebody_who_has_not_accepted_is_refused(student_client: 
 
 def test_the_refusal_names_what_is_still_owed(student_client: TestClient) -> None:
     """A client that meets this opens the gate on those documents, not on a guess."""
-    response = student_client.patch(PREFERENCES, json={"preferred_locale": "de"})
+    response = student_client.post(A_WRITE)
 
     outstanding = response.json()["detail"]["context"]["outstanding"]
     assert set(outstanding) == set(required_slugs("student"))
@@ -77,7 +86,7 @@ def test_the_refusal_names_what_is_still_owed(student_client: TestClient) -> Non
 def test_the_same_change_goes_through_once_they_have_accepted(student_client: TestClient) -> None:
     _accept_everything(student_client)
 
-    response = student_client.patch(PREFERENCES, json={"preferred_locale": "de"})
+    response = student_client.post(A_WRITE)
 
     assert response.status_code == 200, response.text
 
@@ -124,11 +133,7 @@ def test_a_caller_with_no_session_is_not_this_gate_s_business(anon_client: TestC
     one has nothing to say, and says nothing — a synthetic run must never be
     told to go and read the privacy policy.
     """
-    response = anon_client.patch(
-        PREFERENCES,
-        json={"preferred_locale": "de"},
-        headers={"user-agent": "Datadog/Synthetics"},
-    )
+    response = anon_client.post(A_WRITE, headers={"user-agent": "Datadog/Synthetics"})
 
     assert response.status_code in (401, 403)
     assert _code(response) != "legal.consent_required"
@@ -182,21 +187,21 @@ class TestTheseTestsWouldNoticeIfTheGateWentAway:
     ) -> None:
         monkeypatch.setattr(consent_gate, "MUTATING_METHODS", frozenset())
 
-        assert student_client.patch(PREFERENCES, json={"preferred_locale": "de"}).status_code == 200
+        assert student_client.post(A_WRITE).status_code == 200
 
     def test_with_the_registry_answering_that_nothing_is_owed(
         self, student_client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(consent_gate, "user_owes_consent", lambda db, user: ())
 
-        assert student_client.patch(PREFERENCES, json={"preferred_locale": "de"}).status_code == 200
+        assert student_client.post(A_WRITE).status_code == 200
 
     def test_with_the_route_added_to_the_exemptions(
         self, student_client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setattr(consent_gate, "EXEMPT_PREFIXES", ("/api/v1/users/",))
 
-        assert student_client.patch(PREFERENCES, json={"preferred_locale": "de"}).status_code == 200
+        assert student_client.post(A_WRITE).status_code == 200
 
 
 class TestWhatTheRegistrySays:
@@ -229,7 +234,7 @@ def test_a_person_who_owes_one_document_of_two_is_still_stopped(student_client: 
     accepted = student_client.post(ACCEPT, json={"slug": slug, "version": LEGAL_DOCUMENTS[slug], "locale": "en"})
     assert accepted.status_code == 201, accepted.text
 
-    response = student_client.patch(PREFERENCES, json={"preferred_locale": "de"})
+    response = student_client.post(A_WRITE)
 
     assert response.status_code == 403
     assert slug not in response.json()["detail"]["context"]["outstanding"]
@@ -295,12 +300,69 @@ class TestTheGateDoesNotReadATokenItHasNoOpinionAbout:
 
     def test_a_change_the_gate_judges_still_reads_the_token(self, db: Session, _tokens_read: list[str | None]) -> None:
         """The exemptions must not have turned the gate off for real traffic."""
-        consent_gate.consent_subject(self._request("PATCH", PREFERENCES), self._secret(), db)
+        consent_gate.consent_subject(self._request("POST", A_WRITE), self._secret(), db)
 
         assert _tokens_read == ["a-shared-secret-with-no-dots"]
 
     def test_an_unauthenticated_change_reads_no_token_and_names_nobody(
         self, db: Session, _tokens_read: list[str | None]
     ) -> None:
-        assert consent_gate.consent_subject(self._request("PATCH", PREFERENCES), None, db) is None
+        assert consent_gate.consent_subject(self._request("POST", A_WRITE), None, db) is None
         assert _tokens_read == [None]
+
+
+class TestTheLanguageOfTheQuestionComesFirst:
+    """``/api/v1/users/me/preferences`` is exempt, and why that is not a hole.
+
+    Every other exemption is here because closing it would make the gate
+    impossible to *pass*. This one is here because closing it made the gate
+    impossible to *read*.
+
+    The client reports the browser's language for an account nobody ever set
+    one on — a Google sign-up carries no language into the signup trigger, so
+    the profile is created on the fallback. That report is a PATCH, so the
+    gate refused it, and production showed the whole shape on 2026-09-22 at
+    22:33 UTC: ``PATCH /users/me/preferences`` 403, then seven seconds later
+    two ``POST /legal/acceptances`` 201. Somebody read the consent screen in a
+    language they had not chosen, and the first-run setup went on offering it,
+    because the profile still said so.
+
+    What an un-consented caller gains is the ability to choose the language of
+    the page that is asking them to consent. The route changes
+    ``preferred_locale`` and nothing else — the test below is what keeps that
+    true, since the exemption is only as narrow as the route is.
+    """
+
+    def test_a_person_who_has_signed_nothing_can_still_choose_the_language(self, student_client: TestClient) -> None:
+        response = student_client.patch(PREFERENCES, json={"preferred_locale": "de"})
+
+        assert response.status_code == 200, response.text
+        assert response.json()["preferred_locale"] == "de"
+
+    def test_the_browser_s_report_lands_too(self, student_client: TestClient) -> None:
+        """The exact call production refused: a detected locale, not a choice."""
+        response = student_client.patch(
+            PREFERENCES,
+            json={"preferred_locale": "de", "detected": True},
+        )
+
+        assert response.status_code == 200, response.text
+        assert response.json()["locale_source"] == "detected"
+
+    def test_the_exemption_is_no_wider_than_the_language(self) -> None:
+        """The route's body model is the whole of what the exemption opens.
+
+        If somebody adds a field to ``PreferredLocaleUpdate`` — a role, a
+        flag, anything a person could want before accepting the terms — this
+        fails, and the exemption has to be argued again rather than inherited.
+        """
+        from app.schemas.user import PreferredLocaleUpdate
+
+        assert set(PreferredLocaleUpdate.model_fields) == {"preferred_locale", "detected"}
+
+    def test_it_still_needs_a_session(self, anon_client: TestClient) -> None:
+        """Exempt from the consent gate is not exempt from being signed in."""
+        response = anon_client.patch(PREFERENCES, json={"preferred_locale": "de"})
+
+        assert response.status_code in (401, 403)
+        assert _code(response) != "legal.consent_required"

@@ -39,6 +39,13 @@ class PreferredLocaleUpdate(RequestModel):
     Kept as a dedicated schema so we can grow it (timezone, theme, …) without
     breaking the existing endpoint contract.
 
+    ⚠️ Growing it is not free any more. ``/api/v1/users/me/preferences`` is
+    exempt from the consent gate, and the argument for that exemption is that
+    the route sets the language a person is being asked to consent in and
+    nothing else. A new field widens what somebody who has accepted nothing
+    can change. ``TestTheLanguageOfTheQuestionComesFirst`` fails on any field
+    added here, on purpose: add it, then decide the exemption again.
+
     ``detected`` marks the call as the client reporting what the browser
     asked for, not a person picking from a menu. The two must not be
     confused: a detected value may be replaced by a better signal later,
