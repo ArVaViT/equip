@@ -1,0 +1,37 @@
+-- A trigger function is not an API.
+--
+-- What this is for
+-- ================
+-- `public.anonymise_legal_acceptances()` runs on `BEFORE DELETE` of a
+-- profile and keeps the proof that somebody consented while removing who
+-- they were (see 20260917234500). It is `SECURITY DEFINER`, because it has
+-- to write rows the deleting session cannot.
+--
+-- Postgres grants `EXECUTE` on a new function to `PUBLIC` by default, so
+-- `anon` and `authenticated` inherited it, and PostgREST publishes anything
+-- executable by those roles at `/rest/v1/rpc/<name>`. The Supabase advisor
+-- has been reporting exactly that since the grace period on the finding
+-- expired, and the daily guardrail workflow has been red with it:
+--
+--   [WARN] security/anon_security_definer_function_executable
+--   Function `public.anonymise_legal_acceptances()` can be executed by the
+--   `anon` role as a `SECURITY DEFINER` function.
+--
+-- Why the grant is wrong even though the call would fail
+-- =====================================================
+-- The function `RETURNS trigger`, and Postgres refuses to invoke such a
+-- function directly: "trigger functions can only be called as triggers"
+-- (SQLSTATE 0A000). So an anonymous caller cannot in fact anonymise
+-- anybody's consent record through this route today.
+--
+-- The grant is still wrong, for two reasons. It is privilege nobody uses:
+-- the trigger executes as the function owner and never consults these
+-- grants at all. And it is one edit from being real — the day somebody
+-- changes the return type to make the routine callable by hand, the open
+-- door is already there and nothing says so.
+--
+-- Revoking also makes the advisor's report true rather than silenced,
+-- which is the difference between a guardrail and a nuisance.
+REVOKE EXECUTE ON FUNCTION public.anonymise_legal_acceptances() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.anonymise_legal_acceptances() FROM anon;
+REVOKE EXECUTE ON FUNCTION public.anonymise_legal_acceptances() FROM authenticated;
