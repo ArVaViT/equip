@@ -93,11 +93,33 @@ MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 #:     The cron workers, authenticated by shared secret. Anonymous to this
 #:     gate already; listed so a future worker route that does carry a user
 #:     does not silently start failing at 03:00.
+#: ``/api/v1/users/me/preferences``
+#:     The language the documents are shown in. This one is here for a
+#:     different reason than the others: closing it does not make the gate
+#:     impossible to pass, it makes it impossible to read.
+#:
+#:     The client reports the browser's language for an account nobody ever
+#:     set one on - a Google sign-up carries no language into the signup
+#:     trigger, so the profile is created on the fallback. That report is a
+#:     PATCH, so the gate refused it, and production showed the whole shape
+#:     on 2026-09-22 at 22:33 UTC: PATCH /users/me/preferences 403, then
+#:     seven seconds later two POST /legal/acceptances 201. The person read
+#:     the consent screen in a language they had not chosen, and the
+#:     first-run setup went on offering it, because the profile still said
+#:     so. It self-heals on the next load, which is one load too late.
+#:
+#:     Asking somebody to accept legal documents in a language they did not
+#:     choose is worse than letting them set that language first. The route
+#:     changes ``preferred_locale`` and nothing else - see
+#:     ``update_my_preferences``, whose body model is ``PreferredLocaleUpdate``
+#:     - so what an un-consented caller gains here is the ability to pick
+#:     the language of the page that is asking them to consent.
 EXEMPT_PREFIXES: tuple[str, ...] = (
     "/api/v1/legal/",
     "/api/v1/auth/",
     "/api/v1/health",
     "/api/v1/internal/",
+    "/api/v1/users/me/preferences",
 )
 
 #: The registry's role-aware answer, when the registry has one.
