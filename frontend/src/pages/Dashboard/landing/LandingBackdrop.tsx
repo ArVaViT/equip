@@ -122,11 +122,35 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     const host = hostRef.current
     if (!host) return
 
+    // Ask first, and ask on a canvas we throw away.
+    //
+    // The try/catch below is enough to keep the page working without WebGL
+    // — it always was. What it cannot do is keep three.js quiet: the
+    // renderer's constructor writes three `console.error` lines before it
+    // throws, and Datadog RUM records a console error as an error. One
+    // visitor on a machine with no GPU therefore filed five errors from
+    // the landing page on 2026-09-22 ("GpuChannelHost creation failed"),
+    // and the RUM monitor fires at ten in ten minutes: two such visitors
+    // in the same ten minutes raise an alert about a page that is working
+    // exactly as designed.
+    //
+    // A probe context on a detached canvas answers the same question
+    // silently. It is released immediately; the renderer below makes its
+    // own.
+    const probe = document.createElement("canvas")
+    const supported = Boolean(
+      probe.getContext("webgl2") ?? probe.getContext("webgl"),
+    )
+    probe.width = probe.height = 0
+    if (!supported) return
+
     let renderer: WebGLRenderer
     try {
       renderer = new WebGLRenderer({ alpha: true, antialias: true })
     } catch {
-      // No WebGL: nothing to show, nothing broken. The page reads the same.
+      // Still guarded: a context can be refused between the probe and here
+      // (a second tab exhausting the browser's context budget is the
+      // ordinary way). Nothing to show, nothing broken.
       return
     }
 
