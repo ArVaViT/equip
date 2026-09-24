@@ -101,8 +101,39 @@ type StaticKind = (typeof STATIC_KINDS)[number]
 const isStatic = (kind: Kind): kind is StaticKind =>
   (STATIC_KINDS as readonly string[]).includes(kind)
 
-/** The coordinate poses of leaf `i` — the ones that do not wrap an element. */
-function staticPose(kind: StaticKind, i: number): Pose {
+/**
+ * The coordinate poses of leaf `i` — the ones that do not wrap an element.
+ *
+ * `fit` (0..1) shrinks the whole choreography onto a narrow screen. The
+ * poses were drawn for a landscape window, where a leaf is a quarter of the
+ * width; on a portrait phone the same leaf is wider than the screen, which
+ * is what made the first phone attempt read as grey slabs across the
+ * headline. Scaling sizes *and* horizontal spread together keeps every
+ * pose the same shape, just smaller; vertical spread is kept, because a
+ * phone has more height to spend than width.
+ */
+function staticPose(kind: StaticKind, i: number, fit = 1): Pose {
+  const pose = rawStaticPose(kind, i)
+  if (fit === 1) return pose
+  // Behind the claims the leaves drop into the lower third on a narrow
+  // screen. On a desktop the caption sits left and the stack centre, so
+  // they only overlap at an edge; on a phone the caption spans the width,
+  // and sixteen overlapping sheets landed as a dark column across the body
+  // text. The hero's scatter is sparse enough to stay where it is.
+  const lowered = kind === "stacked" || kind === "fanned" || kind === "single"
+  return {
+    ...pose,
+    x: pose.x * fit,
+    y: lowered ? pose.y * fit - 2.4 : pose.y,
+    sx: pose.sx * fit,
+    sy: pose.sy * fit,
+    // Smaller sheets overlap more of each other: the same sixteen in a
+    // phone-sized stack compound to nearly solid. Half as strong.
+    o: lowered ? pose.o * 0.5 : pose.o,
+  }
+}
+
+function rawStaticPose(kind: StaticKind, i: number): Pose {
   const depth = -i * 0.36
   const centre = (LEAF_COUNT - 1) / 2
   const column = i - centre
@@ -199,8 +230,9 @@ function poseForRect(
  * 70px) and light: sixteen translucent layers compound, and at full
  * strength the first version read as a dark tunnel round the video.
  */
-function framePose(rect: DOMRect, i: number): Pose {
-  const pad = 4 + i * 4
+function framePose(rect: DOMRect, i: number, fit = 1): Pose {
+  // Half the step on a phone: the video is already nearly screen-wide.
+  const pad = (4 + i * 4) * (fit < 1 ? 0.5 : 1)
   return poseForRect(
     rect.left - pad,
     rect.top - pad,
@@ -291,11 +323,13 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     // Light ink on a dark page reads fainter than dark ink on a light one
     // at the same alpha — measured on 2026-09-23, the dark scene was all but
     // invisible at the opacity that looked right in light. One factor for
-    // the dark theme rather than a second palette.
+    // the dark theme rather than a second palette — a little more on a
+    // phone, where the leaves are less than half the size and so cover less.
     const DARK_BOOST = 1.9
     const isDark = () => document.documentElement.classList.contains("dark")
     const baseOpacity = (i: number) =>
-      (0.022 + 0.1 * (i / LEAF_COUNT)) * (isDark() ? DARK_BOOST : 1)
+      (0.022 + 0.1 * (i / LEAF_COUNT)) *
+      (isDark() ? DARK_BOOST * (window.innerWidth < 1024 ? 1.4 : 1) : 1)
 
     const readInk = () => {
       const raw = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim()
@@ -340,6 +374,7 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     const themeWatcher = new MutationObserver(() => {
       const ink = readInk()
       for (const leaf of leaves) leaf.material.color.copy(ink)
+      wake()
       // Opacity is re-applied every frame from `baseOpacity`, which reads
       // the theme itself.
     })
@@ -363,9 +398,16 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     let tiltY = 0
     let frame = 0
 
+    // How much of the landscape choreography fits this screen (see
+    // `staticPose`). 1 on a desktop; about 0.45 on a portrait phone.
+    let fit = 1
+
     const resize = () => {
       const { innerWidth, innerHeight } = window
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      fit = Math.min(1, Math.max(0.42, innerWidth / innerHeight / 1.6))
+      // A phone's 3x screen is 9x the pixels of 1x for translucent planes
+      // nobody inspects at that density.
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, innerWidth < 1024 ? 1.5 : 2))
       renderer.setSize(innerWidth, innerHeight, false)
       camera.aspect = innerWidth / innerHeight
       camera.updateProjectionMatrix()
@@ -391,6 +433,7 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     }
 
     const readScroll = () => {
+      wake()
       const y = window.scrollY
       const last = steps.length - 1
       let pose = last
@@ -406,6 +449,7 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     }
 
     const onPointerMove = (event: PointerEvent) => {
+      wake()
       pointerX = (event.clientX / window.innerWidth) * 2 - 1
       pointerY = (event.clientY / window.innerHeight) * 2 - 1
     }
@@ -415,13 +459,13 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     const posesOf = (step: Step): Pose[] => {
       if (isStatic(step.kind)) {
         const kind = step.kind
-        return leaves.map((_, i) => staticPose(kind, i))
+        return leaves.map((_, i) => staticPose(kind, i, fit))
       }
       const element = step.target
-      if (!element) return leaves.map((_, i) => staticPose("stacked", i))
+      if (!element) return leaves.map((_, i) => staticPose("stacked", i, fit))
       if (step.kind === "row") return leaves.map((_, i) => rowPose(element, i))
       const rect = element.getBoundingClientRect()
-      return leaves.map((_, i) => framePose(rect, i))
+      return leaves.map((_, i) => framePose(rect, i, fit))
     }
 
     // How much of the current blend is wrapped round an element. The
@@ -460,8 +504,20 @@ export default function LandingBackdrop({ className }: { className?: string }) {
       renderer.render(scene, camera)
     }
 
+    // Draw only while something is moving. The loop used to render every
+    // frame for as long as the page was open — on a desktop that is waste,
+    // on a phone it is heat and battery, and the phone is where the scene
+    // now runs too. Anything that can move a leaf (scroll, resize, the
+    // pointer, the theme) marks the scene awake; it sleeps a second after
+    // the last of them, once the easing has settled.
+    let awakeUntil = 0
+    const wake = () => {
+      awakeUntil = performance.now() + 1000
+    }
+
     const tick = () => {
       frame = requestAnimationFrame(tick)
+      if (performance.now() > awakeUntil && Math.abs(target - progress) < 1e-4) return
       progress += (target - progress) * 0.07
       tiltX += (pointerY * 0.1 - tiltX) * 0.05
       tiltY += (pointerX * 0.2 - tiltY) * 0.05
@@ -496,6 +552,10 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     layoutWatcher.observe(document.body)
     window.addEventListener("resize", onResize)
     window.addEventListener("scroll", readScroll, { passive: true })
+    // Any scroll anywhere wakes the scene — including the phone's sideways
+    // course strip, whose covers the `row` pose follows and which scrolls
+    // itself rather than the window. Scroll does not bubble; capture sees it.
+    document.addEventListener("scroll", wake, { capture: true, passive: true })
     window.addEventListener("pointermove", onPointerMove, { passive: true })
     document.addEventListener("visibilitychange", onVisibility)
     frame = requestAnimationFrame(tick)
@@ -506,6 +566,7 @@ export default function LandingBackdrop({ className }: { className?: string }) {
       layoutWatcher.disconnect()
       window.removeEventListener("resize", onResize)
       window.removeEventListener("scroll", readScroll)
+      document.removeEventListener("scroll", wake, { capture: true })
       window.removeEventListener("pointermove", onPointerMove)
       document.removeEventListener("visibilitychange", onVisibility)
       geometry.dispose()

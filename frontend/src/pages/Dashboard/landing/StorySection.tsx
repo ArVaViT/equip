@@ -43,19 +43,16 @@ export function StorySection() {
   const prefersReducedMotion = useReducedMotion()
 
   // The sticky track exists to hold the reader still while the backdrop
-  // moves behind them. Below `lg` there is no backdrop — it is a desktop
-  // luxury that reads as grey shapes across the headline on a phone — so
-  // the track was three screens of scrolling with one short sentence
-  // floating in the middle of each empty one. Same breakpoint as the
-  // backdrop on purpose: when the scene goes, its stage goes with it.
+  // moves behind them. Until 2026-09-23 there was no backdrop below `lg`,
+  // so the track stopped there too — three screens of scrolling with one
+  // short sentence floating in each would have been empty. The scene now
+  // runs on phones as well, so the stage goes wherever the scene goes: any
+  // real browser (`matchMedia` is the check; jsdom and a few old engines
+  // lack it and get the column) that has not asked for less motion.
   const [pinned, setPinned] = useState(false)
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return
-    const query = window.matchMedia("(min-width: 1024px)")
-    const sync = () => setPinned(query.matches)
-    sync()
-    query.addEventListener("change", sync)
-    return () => query.removeEventListener("change", sync)
+    setPinned(true)
   }, [])
 
   // Literal keys, one call per string — a template key would be invisible to
@@ -231,15 +228,17 @@ function PinnedClaims({ claims }: { claims: { title: string; body: string }[] })
             the side of its pinned band. Each mark is a button to its stop. */}
         <nav
           aria-label={t("landing.value.heading")}
-          className="absolute right-6 top-1/2 z-10 flex -translate-y-1/2 items-stretch gap-3 xl:right-10"
+          // On a phone the rail lies down: a row of numbers under the
+          // caption, where a thumb is, instead of a column in a 16px margin.
+          className="absolute bottom-10 left-1/2 z-10 flex -translate-x-1/2 items-stretch gap-3 lg:bottom-auto lg:left-auto lg:right-6 lg:top-1/2 lg:-translate-y-1/2 lg:translate-x-0 xl:right-10"
         >
-          <div className="relative w-px bg-line">
+          <div className="relative hidden w-px bg-line lg:block">
             <motion.div
               className="absolute inset-x-0 top-0 h-full origin-top bg-ink"
               style={{ scaleY: fill }}
             />
           </div>
-          <ol className="flex flex-col gap-7">
+          <ol className="flex flex-row gap-6 lg:flex-col lg:gap-7">
             {claims.map((claim, k) => (
               <li key={claim.title}>
                 <button
@@ -266,7 +265,7 @@ function PinnedClaims({ claims }: { claims: { title: string; body: string }[] })
 function Claim({ title, body }: { title: string; body: string }) {
   return (
     <div className="max-w-2xl">
-      <h3 className="font-serif text-3xl font-semibold leading-tight tracking-tight text-ink sm:text-5xl">
+      <h3 className="font-serif text-3xl font-medium leading-tight tracking-[-0.025em] text-ink sm:text-5xl">
         {title}
       </h3>
       <p className="mt-4 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg">{body}</p>

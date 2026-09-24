@@ -204,7 +204,7 @@ export function CourseShowcase() {
           // the first card still lines up with the heading above it, so it
           // reads as a shelf continuing past the phone rather than a box
           // that happens to scroll.
-          <ul className="-mx-5 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <ul data-backdrop-target className="-mx-5 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {courses.map((course) => (
               <li key={course.id} className="w-[78vw] max-w-[320px] shrink-0 snap-start">
                 <CourseCard course={course} />
@@ -273,7 +273,7 @@ function CourseCard({ course }: { course: Course }) {
           />
         ) : null}
       </div>
-      <h3 className="mt-5 text-pretty font-serif text-xl font-semibold leading-snug text-ink transition-colors duration-base group-hover:text-ink-muted">
+      <h3 className="mt-5 text-pretty font-serif text-xl font-medium leading-snug text-ink transition-colors duration-base group-hover:text-ink-muted">
         {course.title}
       </h3>
     </Link>
