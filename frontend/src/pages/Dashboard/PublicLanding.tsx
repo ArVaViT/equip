@@ -108,7 +108,11 @@ export function PublicLanding() {
   }, [smoothScroll]);
 
   return (
-    <div className="relative w-full">
+    // `overflow-x-clip`, not `hidden`: the text veils reach 128px past their
+    // blocks and pushed a phone's document to 518px in a 390px screen
+    // (caught by e2e/no-sideways-scroll). `hidden` would make this div a
+    // scroll container and break every `sticky` inside it; `clip` does not.
+    <div className="relative w-full overflow-x-clip">
       {/* One scene behind the entire page rather than one per section.
           Pinned canvases were released at the end of their own tracks, so
           the shelf, the close and the film sat against a still page —
