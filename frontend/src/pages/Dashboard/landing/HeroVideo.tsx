@@ -33,6 +33,8 @@
 
 import { Section } from "@/components/layout/Section"
 
+import { ScrollScale } from "./ScrollScale"
+
 type VideoSource = {
   /** Public path, e.g. `/video/equip-intro.mp4`. */
   src: string
@@ -57,7 +59,11 @@ export function HeroVideo() {
   if (!INTRO) return null
 
   return (
+    // A rest stop (see `pageScroll.ts`) — on the wrapper, so the film is
+    // centred on screen rather than the section with its bottom padding.
     <Section as="section" className="py-0 pb-16 sm:py-10">
+      <div data-scene-stop="center">
+      <ScrollScale>
       <video
         className="w-full rounded-xl border border-line bg-surface"
         controls
@@ -70,6 +76,8 @@ export function HeroVideo() {
         {INTRO.webm ? <source src={INTRO.webm} type="video/webm" /> : null}
         <source src={INTRO.src} type="video/mp4" />
       </video>
+      </ScrollScale>
+      </div>
     </Section>
   )
 }

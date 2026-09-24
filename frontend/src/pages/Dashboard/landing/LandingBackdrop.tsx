@@ -24,11 +24,22 @@ import {
  * Now a single fixed canvas sits behind everything and the leaves move
  * through five states as the document scrolls:
  *
- *   0.00  scattered   loose pieces — the hero, «не отрывками»
- *   0.22  stacked     squared up, one on another
- *   0.45  fanned      a row: the shape of a course
- *   0.68  single      one sheet forward, the rest receding
- *   1.00  dispersed   opening outward and fading as the page ends
+ *   scattered   loose pieces — the hero, «не отрывками»
+ *   stacked     squared up, one on another      (first claim)
+ *   fanned      a row: the shape of a course    (second claim)
+ *   single      one sheet forward, the rest back (third claim)
+ *   dispersed   opening outward as the page ends
+ *
+ * WHERE EACH POSE LANDS. They used to sit at fixed fractions of the
+ * document — 0.22, 0.45, 0.68 — which was true only for one page height.
+ * Lengthening the claims track (2026-09-23, «очень быстрая прокрутка»)
+ * would have slid every pose off the caption it belongs to. So the claims
+ * section marks its own stops with `data-backdrop-pose`, and the scene
+ * reads their positions: pose N is fully formed exactly when the reader
+ * rests on stop N. The first pose is the top of the page and the last is
+ * its end, so only the middle three need marking. If the markers are
+ * missing (phone layout, reduced motion) the poses spread evenly, which is
+ * what the fractions were approximating anyway.
  *
  * The states are the argument of the page told without words, and because
  * the canvas is `fixed` it is continuous: nothing restarts at a section
@@ -154,6 +165,15 @@ export default function LandingBackdrop({ className }: { className?: string }) {
       return
     }
 
+    // Light ink on a dark page reads fainter than dark ink on a light one
+    // at the same alpha — measured on 2026-09-23, the dark scene was all but
+    // invisible at the opacity that looked right in light. One factor for
+    // the dark theme rather than a second palette.
+    const DARK_BOOST = 1.9
+    const isDark = () => document.documentElement.classList.contains("dark")
+    const leafOpacity = (i: number) =>
+      (0.022 + 0.1 * (i / LEAF_COUNT)) * (isDark() ? DARK_BOOST : 1)
+
     const readInk = () => {
       const raw = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim()
       return new Color(raw ? `hsl(${raw})` : "#131211")
@@ -178,7 +198,13 @@ export default function LandingBackdrop({ className }: { className?: string }) {
         transparent: true,
         // Faint, and fainter toward the back. Translucent planes accumulate:
         // what is subtle alone goes solid where six of them cross.
-        opacity: 0.015 + 0.07 * (i / LEAF_COUNT),
+        //
+        // Raised by about 40% on 2026-09-23 — «анимацию на фоне сделай
+        // чуточку менее прозрачной, что в светлой что в тёмной теме». Both
+        // themes share this line because the colour is `--ink`, which is
+        // already the right contrast direction in each; the ceiling is set
+        // by the stacked pose, where all sixteen overlap behind a caption.
+        opacity: leafOpacity(i),
         roughness: 0.85,
         metalness: 0,
       })
@@ -190,15 +216,24 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     // Follows the theme without a second palette to keep in sync.
     const themeWatcher = new MutationObserver(() => {
       const ink = readInk()
-      for (const leaf of leaves) leaf.material.color.copy(ink)
+      leaves.forEach((leaf, i) => {
+        leaf.material.color.copy(ink)
+        leaf.material.opacity = leafOpacity(i)
+      })
     })
     themeWatcher.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["class", "data-theme"],
     })
 
+    // Pose coordinate: 0 = first pose, 4 = last, fractional in between.
     let progress = 0
     let target = 0
+    const lastPose = (leaves[0]?.poses.length ?? 1) - 1
+    // Scroll offsets at which each pose is complete. Re-measured on resize
+    // and whenever the document changes height (the shelf arriving from the
+    // network moves everything below the claims).
+    let stops: number[] = []
     let pointerX = 0
     let pointerY = 0
     let tiltX = 0
@@ -213,9 +248,30 @@ export default function LandingBackdrop({ className }: { className?: string }) {
       camera.updateProjectionMatrix()
     }
 
+    const measureStops = () => {
+      const travel = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+      const marked = [...document.querySelectorAll<HTMLElement>("[data-backdrop-pose]")]
+        .map((el) => el.getBoundingClientRect().top + window.scrollY)
+        .sort((a, b) => a - b)
+      const middle =
+        marked.length === lastPose - 1
+          ? marked
+          : Array.from({ length: lastPose - 1 }, (_, k) => (travel * (k + 1)) / lastPose)
+      stops = [0, ...middle, Math.max(travel, (middle[middle.length - 1] ?? 0) + 1)]
+    }
+
     const readScroll = () => {
-      const travel = document.documentElement.scrollHeight - window.innerHeight
-      target = travel > 0 ? Math.min(1, Math.max(0, window.scrollY / travel)) : 0
+      const y = window.scrollY
+      let pose = lastPose
+      for (let k = 0; k < stops.length - 1; k++) {
+        const from = stops[k] ?? 0
+        const to = stops[k + 1] ?? from + 1
+        if (y < to) {
+          pose = k + Math.max(0, (y - from) / Math.max(1, to - from))
+          break
+        }
+      }
+      target = Math.min(lastPose, Math.max(0, pose))
     }
 
     const onPointerMove = (event: PointerEvent) => {
@@ -224,10 +280,8 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     }
 
     const applyPose = () => {
-      const segments = leaves[0] ? leaves[0].poses.length - 1 : 1
-      const scaled = progress * segments
-      const index = Math.min(segments - 1, Math.floor(scaled))
-      const t = ease(scaled - index)
+      const index = Math.min(lastPose - 1, Math.floor(progress))
+      const t = ease(progress - index)
 
       for (const leaf of leaves) {
         const from = leaf.poses[index]
@@ -271,12 +325,23 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     renderer.domElement.style.height = "100%"
     renderer.domElement.style.display = "block"
     resize()
+    measureStops()
     readScroll()
     progress = target
     // One frame synchronously: rAF does not run in a background tab, and
     // this also removes the flash of empty canvas before the first frame.
     render()
-    window.addEventListener("resize", resize)
+    const onResize = () => {
+      resize()
+      measureStops()
+      readScroll()
+    }
+    const layoutWatcher = new ResizeObserver(() => {
+      measureStops()
+      readScroll()
+    })
+    layoutWatcher.observe(document.body)
+    window.addEventListener("resize", onResize)
     window.addEventListener("scroll", readScroll, { passive: true })
     window.addEventListener("pointermove", onPointerMove, { passive: true })
     document.addEventListener("visibilitychange", onVisibility)
@@ -285,7 +350,8 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     return () => {
       cancelAnimationFrame(frame)
       themeWatcher.disconnect()
-      window.removeEventListener("resize", resize)
+      layoutWatcher.disconnect()
+      window.removeEventListener("resize", onResize)
       window.removeEventListener("scroll", readScroll)
       window.removeEventListener("pointermove", onPointerMove)
       document.removeEventListener("visibilitychange", onVisibility)

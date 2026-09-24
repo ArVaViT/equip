@@ -1,8 +1,17 @@
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll } from "motion/react"
+import {
+  AnimatePresence,
+  motion,
+  useMotionValueEvent,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "motion/react"
 
 import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
+
+import { scrollPageTo } from "./scrollControl"
 
 /**
  * Three claims told over one scene that never stops moving.
@@ -17,10 +26,9 @@ import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
  * leaves stack, fan and come forward — the claims are captions to that
  * movement, which is why their timings are tuned to it.
  *
- * WHY THE TRACK IS 300svh. The sticky child is one viewport tall, so the
- * scrollable remainder — 200svh — is the distance over which the three
- * states play. Less and the transitions trip over each other; more and the
- * reader is scrolling through a section that has stopped saying anything.
+ * THE TRACK. The sticky child is one viewport tall; each claim then owns
+ * `STEP_SVH` of scrolling and the last is held for `TAIL_SVH` more. The
+ * numbers, and why the old 300svh was too short, are with the constants.
  * `svh` rather than `vh` because mobile browser chrome changes `vh`
  * mid-scroll, which would shift every caption boundary as the toolbar hides.
  *
@@ -81,6 +89,28 @@ export function StorySection() {
 }
 
 /**
+ * Scroll distance given to each claim, in `svh`.
+ *
+ * It was 300svh for the whole track, with the hand-over at a third and two
+ * thirds of the 200svh that actually scrolls — one claim every ~67svh, about
+ * 600px, which a single flick of a trackpad covers. «От A course, not a pile
+ * of videos до A certificate you can verify очень быстрая прокрутка»: the
+ * second claim was on screen for less time than it takes to read it.
+ *
+ * Now each claim owns 110svh, and there is a rest stop at each one (see
+ * `STOPS` below), so the reader arrives on a claim and stays there until
+ * they choose to move on.
+ */
+const STEP_SVH = 110
+
+/**
+ * How long the last claim is held before the track lets go. Without a tail
+ * the third claim would be released the instant it was complete — the page
+ * would move on at the exact moment it had finished making its point.
+ */
+const TAIL_SVH = 50
+
+/**
  * The sticky version, and the only place `useScroll` is called.
  *
  * It lives in its own component because `useScroll({ target })` must never
@@ -97,11 +127,19 @@ export function StorySection() {
  * guarding against it.
  */
 function PinnedClaims({ claims }: { claims: { title: string; body: string }[] }) {
+  const { t } = useTranslation()
   const trackRef = useRef<HTMLDivElement>(null)
+  const stopRefs = useRef<(HTMLDivElement | null)[]>([])
   const { scrollYProgress } = useScroll({
     target: trackRef,
     offset: ["start start", "end end"],
   })
+
+  const last = claims.length - 1
+  const trackSvh = 100 + STEP_SVH * last + TAIL_SVH
+  // Where each stop sits on the 0..1 progress of the track. Claim `k` is
+  // shown from halfway before its stop to halfway after it.
+  const stopAt = (k: number) => (STEP_SVH * k) / (trackSvh - 100)
 
   // One caption exists at a time.
   //
@@ -115,30 +153,107 @@ function PinnedClaims({ claims }: { claims: { title: string; body: string }[] })
   // Overlapping text is then not a thing that can happen, at any scroll
   // speed, rather than a thing the numbers say should not.
   const [active, setActive] = useState(0)
+  // Which way the reader is going, so a caption leaves in the direction the
+  // page is moving instead of always upward.
+  const [direction, setDirection] = useState(1)
   useMotionValueEvent(scrollYProgress, "change", (value) => {
-    const next = value < 0.34 ? 0 : value < 0.67 ? 1 : 2
-    setActive((current) => (current === next ? current : next))
+    let next = 0
+    for (let k = 1; k <= last; k++) {
+      if (value >= (stopAt(k - 1) + stopAt(k)) / 2) next = k
+    }
+    setActive((current) => {
+      if (current !== next) setDirection(next > current ? 1 : -1)
+      return next
+    })
   })
 
+  // The rail's fill runs from the first stop to the last, not across the
+  // tail, so it reads "complete" exactly when the third claim arrives.
+  const fill = useTransform(scrollYProgress, [0, stopAt(last)], [0, 1], { clamp: true })
+
+  const goTo = (k: number) => {
+    const stop = stopRefs.current[k]
+    if (!stop) return
+    scrollPageTo(stop.getBoundingClientRect().top + window.scrollY)
+  }
+
   return (
-    <div ref={trackRef} className="relative h-[300svh]">
+    <div ref={trackRef} className="relative" style={{ height: `${trackSvh}svh` }}>
+      {/* STOPS. One invisible marker per claim, at the scroll offset where
+          that claim is centred in its own stretch. Each is a rest stop for
+          the page's wheel handling (`pageScroll.ts`) and a pose anchor for
+          the backdrop, so a reader who stops scrolling comes to rest on a
+          claim with the scene fully formed behind it, not halfway between
+          two. */}
+      {claims.map((claim, k) => (
+        <div
+          key={claim.title}
+          ref={(el) => {
+            stopRefs.current[k] = el
+          }}
+          data-backdrop-pose={k + 1}
+          data-scene-stop="start"
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 h-px"
+          style={{ top: `${STEP_SVH * k}svh` }}
+        />
+      ))}
+
       <div className="sticky top-0 isolate flex h-[100svh] items-center overflow-hidden">
-        {/* `mode="wait"` would leave a gap with no caption at all; the
-            default lets the outgoing one fade while the incoming arrives,
-            and since only one is ever mounted they cannot collide. */}
         <div className="relative z-10 mx-auto w-full max-w-5xl px-4">
-          <AnimatePresence initial={false}>
+          <AnimatePresence initial={false} custom={direction}>
             <motion.div
               key={active}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, position: "absolute" }}
+              custom={direction}
+              variants={{
+                enter: (dir: number) => ({ opacity: 0, y: 28 * dir }),
+                shown: { opacity: 1, y: 0 },
+                leave: (dir: number) => ({ opacity: 0, y: -28 * dir, position: "absolute" }),
+              }}
+              initial="enter"
+              animate="shown"
+              exit="leave"
               transition={{ duration: MOTION_DURATION.panel, ease: EDITORIAL_EASE }}
             >
               <Claim title={claims[active]?.title ?? ""} body={claims[active]?.body ?? ""} />
             </motion.div>
           </AnimatePresence>
         </div>
+
+        {/* The rail. Where the reader is inside the section, and how much is
+            left — the thing a pinned section otherwise hides, because the
+            scrollbar stops meaning anything while the page is held. Claude's
+            product page does the same with a clock running 8AM → 4PM down
+            the side of its pinned band. Each mark is a button to its stop. */}
+        <nav
+          aria-label={t("landing.value.heading")}
+          className="absolute right-6 top-1/2 z-10 flex -translate-y-1/2 items-stretch gap-3 xl:right-10"
+        >
+          <div className="relative w-px bg-line">
+            <motion.div
+              className="absolute inset-x-0 top-0 h-full origin-top bg-ink"
+              style={{ scaleY: fill }}
+            />
+          </div>
+          <ol className="flex flex-col gap-7">
+            {claims.map((claim, k) => (
+              <li key={claim.title}>
+                <button
+                  type="button"
+                  onClick={() => goTo(k)}
+                  aria-current={k === active ? "step" : undefined}
+                  aria-label={claim.title}
+                  className={
+                    "font-mono text-xs tabular-nums tracking-wider transition-colors duration-base ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand " +
+                    (k === active ? "font-semibold text-ink" : "text-ink-muted hover:text-ink")
+                  }
+                >
+                  {String(k + 1).padStart(2, "0")}
+                </button>
+              </li>
+            ))}
+          </ol>
+        </nav>
       </div>
     </div>
   )

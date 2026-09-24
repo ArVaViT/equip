@@ -220,6 +220,9 @@ export function CourseShowcase() {
     <div ref={trackRef} className="relative">
       <section
         aria-label={t("header.courses")}
+        // A rest stop (see `pageScroll.ts`): the shelf is caught with the
+        // row in the middle of the screen, not with its top edge peeking up.
+        data-scene-stop="center"
         className="flex flex-col justify-center overflow-hidden py-24 sm:py-32"
       >
         {/* The row starts at the page's own left margin and runs off the

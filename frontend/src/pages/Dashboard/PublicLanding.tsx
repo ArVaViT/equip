@@ -75,6 +75,24 @@ export function PublicLanding() {
   }, []);
   const showBackdrop = wideEnough && !prefersReducedMotion;
 
+  // Weight and a pause at every scene — «как у них на сайте продумано, что
+  // на каждом блоке человек задерживается». The how and the why, including
+  // why it is not CSS scroll-snap, are in `landing/pageScroll.ts`. Same
+  // fence as the backdrop: desktop, motion allowed, loaded lazily so the
+  // library never reaches a phone or the app shell.
+  useEffect(() => {
+    if (!showBackdrop) return;
+    let stop: (() => void) | null = null;
+    let cancelled = false;
+    void import("./landing/pageScroll").then(({ default: start }) => {
+      if (!cancelled) stop = start();
+    });
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, [showBackdrop]);
+
   return (
     <div className="relative w-full">
       {/* One scene behind the entire page rather than one per section.
@@ -102,6 +120,7 @@ export function PublicLanding() {
         // screen holds it from `sm` up, where the backdrop returns.
         className="relative flex items-center justify-center py-24 sm:min-h-[88svh] sm:py-0"
         aria-labelledby="landing-hero-heading"
+        data-scene-stop="top"
       >
         <div className="container relative z-10 mx-auto flex max-w-3xl flex-col items-center px-5 text-center lg:max-w-5xl">
           <h1
@@ -120,37 +139,33 @@ export function PublicLanding() {
             {t("landing.hero.subline")}
           </p>
 
-          {/* One action. The old hero offered five — two buttons, a text
-              link and both header links — which is a page that has not
-              decided what it wants from a visitor. */}
-          <div className="mt-10">
+          {/* Two actions, and only two.
+              The old hero offered five — two buttons, a text link and both
+              header links — which is a page that has not decided what it
+              wants from a visitor. Then it went to one button with a line of
+              facts and a «Create account · Sign In» pair under it: still
+              three rows of choices, just smaller. Now it is the shape
+              claude.com uses («Try Claude» / «Download for Mac»): the thing
+              to do, filled, and the way back in for somebody who already
+              has an account, outlined beside it. Registering is in the
+              header and at the close; it does not need a third spot here.
+
+              The facts line («FREE · OPEN SOURCE · RU EN DE UK ·
+              VERIFIABLE CERTIFICATE») went with it — «лишний кусок». Each
+              of those is said again, in a sentence, further down the page. */}
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Link to="/courses">
               <Button size="lg">
                 {t("dashboard.browseAllCta")}
                 <ArrowRight className="ml-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
               </Button>
             </Link>
+            <Link to="/login">
+              <Button size="lg" variant="outline" className="bg-surface/70 backdrop-blur-sm">
+                {t("common.signIn")}
+              </Button>
+            </Link>
           </div>
-
-          {/* Hidden on the narrowest screens. At 390px it wrapped as
-              «VERIFIABLE / CERTIFICATE» — a line broken through the middle of
-              its own meaning — and it is the least load-bearing line in the
-              hero: the same four claims are made again, in full sentences,
-              further down. */}
-          <p className="mt-8 hidden text-[0.6875rem] uppercase tracking-[0.12em] text-ink-muted sm:block sm:text-xs sm:tracking-[0.14em]">
-            {t("landing.hero.facts")}
-          </p>
-          <p className="mt-6 text-sm text-ink-muted">
-            <Link to="/register" className="font-medium text-brand hover:text-brand-ink">
-              {t("landing.hero.registerCta")}
-            </Link>
-            <span className="px-2 text-line" aria-hidden>
-              ·
-            </span>
-            <Link to="/login" className="font-medium text-brand hover:text-brand-ink">
-              {t("common.signIn")}
-            </Link>
-          </p>
         </div>
       </section>
 
@@ -194,6 +209,7 @@ export function PublicLanding() {
       <section
         aria-label={t("landing.value.heading")}
         className="flex items-center justify-center px-5 py-20 sm:min-h-[52svh] sm:py-0"
+        data-scene-stop="center"
       >
         <ScrollReveal className="flex flex-col items-center text-center">
           <h2 className="max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl">
@@ -219,7 +235,11 @@ export function PublicLanding() {
           offer somebody already deciding, not what you open with. */}
       <HeroVideo />
 
-        <Footer />
+        {/* The last rest stop is the bottom of the page, so the wall that
+            holds the film does not stop a reader short of the legal links. */}
+        <div data-scene-stop="end">
+          <Footer />
+        </div>
       </div>
     </div>
   );

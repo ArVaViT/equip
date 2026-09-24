@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react"
 import { useReducedMotion } from "motion/react"
 
+import { ScrollScale } from "./ScrollScale"
+
 /**
  * Twenty seconds of the product working, silent and on a loop.
  *
@@ -68,8 +70,10 @@ export function ProductTour() {
     )
   }
 
+  // One of the page's rest stops (see `pageScroll.ts`).
   return (
-    <section className="mx-auto w-full max-w-5xl px-4 sm:px-6">
+    <section data-scene-stop="center" className="mx-auto w-full max-w-5xl px-4 sm:px-6">
+      <ScrollScale>
       <video
         ref={videoRef}
         className="w-full rounded-xl border border-line bg-surface"
@@ -85,6 +89,7 @@ export function ProductTour() {
         <source src="/video/tour.webm" type="video/webm" />
         <source src="/video/tour.mp4" type="video/mp4" />
       </video>
+      </ScrollScale>
     </section>
   )
 }
