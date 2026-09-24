@@ -22,16 +22,18 @@ function Wrapper({ children }: { children: ReactNode }) {
 }
 
 describe("Footer (minimalist)", () => {
-  it("renders the brand mark and the year, and no tagline", () => {
-    render(<Footer />, { wrapper: Wrapper })
-    const links = screen.getAllByRole("link", { name: /equip/i })
-    expect(links.length).toBeGreaterThanOrEqual(1)
+  it("is the year and the legal pages, without a wordmark or a rule", () => {
+    const { container } = render(<Footer />, { wrapper: Wrapper })
     expect(screen.getByText(new RegExp(`© ${new Date().getFullYear()}`))).toBeInTheDocument()
 
-    // The tagline used to be asserted here. It repeated, in small type, the
-    // sentence the landing hero already makes in the largest type on the
-    // page, and the footer was carrying too much prose for what it is —
-    // a way out, a date and the legal pages.
+    // The wordmark and the top border were removed on 2026-09-23 — «без
+    // названия … я хочу его невзрачным». The name is in the header on the
+    // same screen; a second one here only made the footer a section.
+    expect(screen.queryByRole("link", { name: /^equip$/i })).toBeNull()
+    expect(container.querySelector("footer")?.className ?? "").not.toMatch(/\bborder-t\b/)
+
+    // The tagline used to be asserted absent here and still is: it repeated,
+    // in small type, the sentence the hero makes in the largest type.
     expect(screen.queryByText(/biblical teaching|Системное изучение/i)).not.toBeInTheDocument()
   })
 

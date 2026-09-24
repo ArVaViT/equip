@@ -80,15 +80,6 @@ afterEach(() => {
 })
 
 describe("StorySection", () => {
-  it("tracks no scroll target on a narrow screen, where it renders no track", async () => {
-    restore = stubMatchMedia(false)
-    renderStory()
-    // motion defers its attempt to a microtask on its own frame loop, so
-    // let the queue drain before concluding anything.
-    await Promise.resolve()
-    expect(spy.useScroll).not.toHaveBeenCalled()
-  })
-
   it("tracks no scroll target when the environment has no matchMedia at all", async () => {
     // Old mobile engines and jsdom itself. The component falls back to the
     // column, and the hook must fall back with it.
@@ -108,8 +99,10 @@ describe("StorySection", () => {
     }
   })
 
-  it("tracks a target that is actually in the document on a wide screen", async () => {
-    restore = stubMatchMedia(true)
+  // The track runs on every width since 2026-09-23, when the backdrop
+  // learned the phone — so both widths must satisfy the same rule.
+  it.each([true, false])("tracks a target that is actually in the document (wide: %s)", async (wide) => {
+    restore = stubMatchMedia(wide)
     renderStory()
     await Promise.resolve()
     expect(spy.useScroll).toHaveBeenCalled()

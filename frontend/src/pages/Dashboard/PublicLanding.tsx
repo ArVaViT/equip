@@ -11,6 +11,7 @@ import { ScrollReveal } from "./landing/ScrollReveal";
 import { StorySection } from "./landing/StorySection";
 import { CourseShowcase } from "./landing/CourseShowcase";
 import { ProductTour } from "./landing/ProductTour";
+import { TEXT_VEIL } from "./landing/textVeil";
 
 /**
  * Marketing landing rendered at ``/`` for unauthenticated visitors.
@@ -57,26 +58,61 @@ export function PublicLanding() {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
 
-  // The backdrop is a desktop luxury, and on a phone it was three things at
-  // once: unreadable, expensive and hot. At 390px the planes are the size of
-  // the screen, so they stop reading as texture and start reading as grey
-  // shapes lying across the headline; it costs 128KB of `three` on a mobile
-  // connection; and it keeps a GPU busy on the device least able to afford
-  // it. Below `lg` the page is simply clean — which is what a phone wants
-  // from a landing page anyway.
+  // The backdrop runs on every width now.
+  //
+  // It was desktop-only until 2026-09-23, for three reasons that were each
+  // true of the desktop scene shrunk onto a phone: the planes were the size
+  // of the screen and read as grey shapes across the headline; `three` is
+  // 128KB on a mobile connection; and the loop kept a GPU busy for nothing.
+  // What that bought was a phone page of plain text — «адаптив слабый, на
+  // телефоне должен быть вау-эффект». So the scene learned the phone instead
+  // of leaving it: leaves sized to a portrait screen and lighter behind
+  // text, a pixel-ratio cap, and a loop that stops drawing when nothing is
+  // moving (see `LandingBackdrop`). The 128KB is still lazy — the hero text
+  // and the button render before it arrives.
+  //
+  // `matchMedia` doubles as the "is this a real browser" check: jsdom lacks
+  // it, and has no WebGL to give the scene either.
+  const [canAnimate, setCanAnimate] = useState(false);
   const [wideEnough, setWideEnough] = useState(false);
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
+    setCanAnimate(true);
     const query = window.matchMedia("(min-width: 1024px)");
     const sync = () => setWideEnough(query.matches);
     sync();
     query.addEventListener("change", sync);
     return () => query.removeEventListener("change", sync);
   }, []);
-  const showBackdrop = wideEnough && !prefersReducedMotion;
+  const showBackdrop = canAnimate && !prefersReducedMotion;
+  // Lenis and the wheel rules are about a wheel; a phone keeps its own
+  // physics, so they stay desktop-only.
+  const smoothScroll = wideEnough && !prefersReducedMotion;
+
+  // Weight and a pause at every scene — «как у них на сайте продумано, что
+  // на каждом блоке человек задерживается». The how and the why, including
+  // why it is not CSS scroll-snap, are in `landing/pageScroll.ts`. Same
+  // fence as the backdrop: desktop, motion allowed, loaded lazily so the
+  // library never reaches a phone or the app shell.
+  useEffect(() => {
+    if (!smoothScroll) return;
+    let stop: (() => void) | null = null;
+    let cancelled = false;
+    void import("./landing/pageScroll").then(({ default: start }) => {
+      if (!cancelled) stop = start();
+    });
+    return () => {
+      cancelled = true;
+      stop?.();
+    };
+  }, [smoothScroll]);
 
   return (
-    <div className="relative w-full">
+    // `overflow-x-clip`, not `hidden`: the text veils reach 128px past their
+    // blocks and pushed a phone's document to 518px in a 390px screen
+    // (caught by e2e/no-sideways-scroll). `hidden` would make this div a
+    // scroll container and break every `sticky` inside it; `clip` does not.
+    <div className="relative w-full overflow-x-clip">
       {/* One scene behind the entire page rather than one per section.
           Pinned canvases were released at the end of their own tracks, so
           the shelf, the close and the film sat against a still page —
@@ -100,10 +136,19 @@ export function PublicLanding() {
         // that space is where the scene lives, and on a phone there is no
         // scene, so it was just a hole. The content sets the height; the
         // screen holds it from `sm` up, where the backdrop returns.
-        className="relative flex items-center justify-center py-24 sm:min-h-[88svh] sm:py-0"
+        className="relative flex min-h-[calc(100svh-2.75rem)] items-center justify-center py-16 sm:min-h-[88svh] sm:py-0"
         aria-labelledby="landing-hero-heading"
+        data-scene-stop="top"
       >
-        <div className="container relative z-10 mx-auto flex max-w-3xl flex-col items-center px-5 text-center lg:max-w-5xl">
+        <div className={`container z-10 mx-auto flex max-w-3xl flex-col items-center px-5 text-center lg:max-w-5xl ${TEXT_VEIL}`}>
+          {/* Weight 500, not 700. Bold Literata at display size read as a
+              book blog; claude.com sets its serif display at regular weight
+              and that is most of why it reads as expensive. The typeface
+              stays — it is the one that holds Cyrillic — and every serif
+              heading on this page moved together (2026-09-23). The lighter
+              weight is also narrower, which let «not» climb onto the first
+              line — «in order, not / in fragments», the claim broken through
+              its middle. `max-w-4xl` puts the break back after the comma. */}
           <h1
             id="landing-hero-heading"
             // `text-balance` evens the line lengths, which on a wide screen
@@ -112,7 +157,7 @@ export function PublicLanding() {
             // центре». Balanced up to `lg`, where it helps a phone; plain
             // wrapping above it, where the measure is wide enough to break
             // the sentence where it wants to.
-            className="text-balance font-serif text-[2.5rem] font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl md:text-7xl lg:text-pretty"
+            className="text-balance font-serif text-[2.5rem] font-medium leading-[1.05] tracking-[-0.03em] text-ink sm:text-6xl md:text-7xl lg:max-w-4xl lg:text-pretty"
           >
             {t("landing.hero.manifesto")}
           </h1>
@@ -120,37 +165,33 @@ export function PublicLanding() {
             {t("landing.hero.subline")}
           </p>
 
-          {/* One action. The old hero offered five — two buttons, a text
-              link and both header links — which is a page that has not
-              decided what it wants from a visitor. */}
-          <div className="mt-10">
+          {/* Two actions, and only two.
+              The old hero offered five — two buttons, a text link and both
+              header links — which is a page that has not decided what it
+              wants from a visitor. Then it went to one button with a line of
+              facts and a «Create account · Sign In» pair under it: still
+              three rows of choices, just smaller. Now it is the shape
+              claude.com uses («Try Claude» / «Download for Mac»): the thing
+              to do, filled, and the way back in for somebody who already
+              has an account, outlined beside it. Registering is in the
+              header and at the close; it does not need a third spot here.
+
+              The facts line («FREE · OPEN SOURCE · RU EN DE UK ·
+              VERIFIABLE CERTIFICATE») went with it — «лишний кусок». Each
+              of those is said again, in a sentence, further down the page. */}
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Link to="/courses">
               <Button size="lg">
                 {t("dashboard.browseAllCta")}
                 <ArrowRight className="ml-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
               </Button>
             </Link>
+            <Link to="/login">
+              <Button size="lg" variant="outline" className="bg-surface/70 backdrop-blur-sm">
+                {t("common.signIn")}
+              </Button>
+            </Link>
           </div>
-
-          {/* Hidden on the narrowest screens. At 390px it wrapped as
-              «VERIFIABLE / CERTIFICATE» — a line broken through the middle of
-              its own meaning — and it is the least load-bearing line in the
-              hero: the same four claims are made again, in full sentences,
-              further down. */}
-          <p className="mt-8 hidden text-[0.6875rem] uppercase tracking-[0.12em] text-ink-muted sm:block sm:text-xs sm:tracking-[0.14em]">
-            {t("landing.hero.facts")}
-          </p>
-          <p className="mt-6 text-sm text-ink-muted">
-            <Link to="/register" className="font-medium text-brand hover:text-brand-ink">
-              {t("landing.hero.registerCta")}
-            </Link>
-            <span className="px-2 text-line" aria-hidden>
-              ·
-            </span>
-            <Link to="/login" className="font-medium text-brand hover:text-brand-ink">
-              {t("common.signIn")}
-            </Link>
-          </p>
         </div>
       </section>
 
@@ -191,12 +232,18 @@ export function PublicLanding() {
           gives the block the same parallax the claims have, so the approach
           to the close is not the one moment on the page where everything
           stops. */}
+      {/* A full screen from `lg`, like every scene: resting on the close
+          shows the close, not the bottom of the shelf and the top of the
+          film around it. */}
       <section
         aria-label={t("landing.value.heading")}
-        className="flex items-center justify-center px-5 py-20 sm:min-h-[52svh] sm:py-0"
+        className="flex min-h-[100svh] items-center justify-center px-5"
+        data-scene-stop="center"
+        // The pieces collect into one deck behind the question.
+        data-backdrop-pose="gather"
       >
-        <ScrollReveal className="flex flex-col items-center text-center">
-          <h2 className="max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl">
+        <ScrollReveal className={`flex flex-col items-center text-center ${TEXT_VEIL}`}>
+          <h2 className="max-w-3xl text-balance font-serif text-4xl font-medium leading-[1.05] tracking-[-0.03em] text-ink sm:text-6xl">
             {t("landing.finalCta.heading")}
           </h2>
           <p className="mt-6 max-w-md text-balance text-base text-ink-muted sm:text-lg">
@@ -219,7 +266,14 @@ export function PublicLanding() {
           offer somebody already deciding, not what you open with. */}
       <HeroVideo />
 
-        <Footer />
+        {/* The last rest stop is the bottom of the page, so the wall that
+            holds the film does not stop a reader short of the legal links. */}
+        {/* Veiled like every other block of text on the scene: the film's
+            frame holds to the end of the page, and its outer edge reached
+            the legal links. */}
+        <div data-scene-stop="end" className={TEXT_VEIL}>
+          <Footer />
+        </div>
       </div>
     </div>
   );

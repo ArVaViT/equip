@@ -1,5 +1,9 @@
-import { useEffect, useRef } from "react"
-import { useReducedMotion } from "motion/react"
+import { useEffect, useRef } from "react";
+import { useReducedMotion } from "motion/react";
+
+import { SceneBand } from "./SceneBand"
+import { MOBILE_VERTICAL } from "./mobileFrame";
+import { ScrollScale } from "./ScrollScale";
 
 /**
  * Twenty seconds of the product working, silent and on a loop.
@@ -30,61 +34,69 @@ import { useReducedMotion } from "motion/react"
  * choose between a seizure risk and the information.
  */
 export function ProductTour() {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const prefersReducedMotion = useReducedMotion()
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
-    const video = videoRef.current
-    if (!video || prefersReducedMotion) return
+    const video = videoRef.current;
+    if (!video || prefersReducedMotion) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry?.isIntersecting) {
           // `play()` rejects if the browser declines autoplay — that is a
           // decision, not a fault, and the poster stays up.
-          void video.play().catch(() => {})
+          void video.play().catch(() => {});
         } else {
-          video.pause()
+          video.pause();
         }
       },
       { threshold: 0.25 },
-    )
+    );
 
-    observer.observe(video)
-    return () => observer.disconnect()
-  }, [prefersReducedMotion])
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, [prefersReducedMotion]);
 
   if (prefersReducedMotion) {
     return (
-      <section className="mx-auto w-full max-w-5xl px-4 sm:px-6">
-        <img
-          src="/video/tour-poster.jpg"
-          alt=""
-          width={1920}
-          height={1080}
-          className="w-full rounded-xl border border-line"
-        />
-      </section>
-    )
+      <SceneBand pose="frame">
+        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
+          <img
+            src="/video/tour-poster.jpg"
+            alt=""
+            width={1920}
+            height={1080}
+            className={`w-full rounded-xl border border-line ${MOBILE_VERTICAL}`}
+          />
+        </div>
+      </SceneBand>
+    );
   }
 
+  // A scene of its own; the backdrop squares into a frame round it.
   return (
-    <section className="mx-auto w-full max-w-5xl px-4 sm:px-6">
-      <video
-        ref={videoRef}
-        className="w-full rounded-xl border border-line bg-surface"
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        poster="/video/tour-poster.jpg"
-        width={1920}
-        height={1080}
-        aria-hidden
-      >
-        <source src="/video/tour.webm" type="video/webm" />
-        <source src="/video/tour.mp4" type="video/mp4" />
-      </video>
-    </section>
-  )
+    <SceneBand pose="frame">
+      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
+        <ScrollScale>
+          <video
+            data-backdrop-target
+            ref={videoRef}
+            className={`w-full rounded-xl border border-line bg-surface ${MOBILE_VERTICAL}`}
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster="/video/tour-poster.jpg"
+            width={1920}
+            height={1080}
+            aria-hidden
+          >
+            <source src="/video/tour.webm" type="video/webm" />
+            <source src="/video/tour.mp4" type="video/mp4" />
+          </video>
+        </ScrollScale>
+      </div>
+    </SceneBand>
+  );
 }

@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
+
 import { render, screen } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { I18nextProvider } from "react-i18next"
@@ -48,16 +51,26 @@ describe("PublicLanding (unauth marketing page)", () => {
     expect(h1).toHaveTextContent(i18n.t("landing.hero.manifesto"))
   })
 
-  it("still names the product somewhere on the page", () => {
-    // Dropping it from the h1 must not drop it from the page: the footer
-    // carries it, and a visitor has to be able to learn what this is called.
-    const { container } = renderLanding()
-    expect(container.textContent).toMatch(/equip/i)
+  it("still names the product, in the document title", () => {
+    // Dropping the name from the h1 must not drop it from the page. The
+    // footer used to carry it; since 2026-09-23 the footer is one line of
+    // legal links with no wordmark («без названия»), so the name lives in
+    // the header — which this component does not render — and in the
+    // static `<title>`, which is what a crawler and a browser tab read.
+    const html = readFileSync(resolve(__dirname, "../../../../index.html"), "utf8")
+    expect(html).toMatch(/<title>[^<]*Equip[^<]*<\/title>/)
   })
 
-  it("states the facts once, quietly, instead of in three badges", () => {
+  it("offers two actions in the hero: browse, and sign back in", () => {
+    // claude.com's shape — the thing to do, and the way back for somebody
+    // who already has an account. The facts line and the «Create account ·
+    // Sign In» pair under the button were removed on 2026-09-23 as
+    // «лишний кусок»; registering lives in the header and at the close.
     renderLanding()
-    expect(screen.getByText(i18n.t("landing.hero.facts"))).toBeInTheDocument()
+    const hero = screen.getByRole("region", { name: i18n.t("landing.hero.manifesto") })
+    const hrefs = Array.from(hero.querySelectorAll("a[href]")).map((a) => a.getAttribute("href"))
+    expect(hrefs).toEqual(["/courses", "/login"])
+    expect(screen.queryByText(i18n.t("landing.hero.facts"))).not.toBeInTheDocument()
   })
 
   it("exposes the key internal destinations as real <a href>", () => {
