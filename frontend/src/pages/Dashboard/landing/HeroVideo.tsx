@@ -31,21 +31,22 @@
  * above it was labelling something that already introduces itself.
  */
 
-import { Section } from "@/components/layout/Section"
+import { Section } from "@/components/layout/Section";
 
-import { ScrollScale } from "./ScrollScale"
+import { SceneBand } from "./SceneBand";
+import { ScrollScale } from "./ScrollScale";
 
 type VideoSource = {
   /** Public path, e.g. `/video/equip-intro.mp4`. */
-  src: string
+  src: string;
   /** Still frame shown before playback, e.g. `/video/equip-intro.jpg`. */
-  poster: string
+  poster: string;
   /** Optional WebM at the same duration, offered to browsers that take it. */
-  webm?: string
+  webm?: string;
   /** Sizing only — keeps the layout from jumping while the file loads. */
-  width: number
-  height: number
-}
+  width: number;
+  height: number;
+};
 
 /** The film, delivered 2026-09-20. `null` would render the section away. */
 const INTRO: VideoSource | null = {
@@ -53,31 +54,34 @@ const INTRO: VideoSource | null = {
   poster: "/video/intro-poster.jpg",
   width: 1920,
   height: 1080,
-}
+};
 
 export function HeroVideo() {
-  if (!INTRO) return null
+  if (!INTRO) return null;
 
   return (
-    // A rest stop (see `pageScroll.ts`) — on the wrapper, so the film is
-    // centred on screen rather than the section with its bottom padding.
-    <Section as="section" className="py-0 pb-16 sm:py-10">
-      <div data-scene-stop="center">
-      <ScrollScale>
-      <video
-        className="w-full rounded-xl border border-line bg-surface"
-        controls
-        playsInline
-        preload="none"
-        poster={INTRO.poster}
-        width={INTRO.width}
-        height={INTRO.height}
-      >
-        {INTRO.webm ? <source src={INTRO.webm} type="video/webm" /> : null}
-        <source src={INTRO.src} type="video/mp4" />
-      </video>
-      </ScrollScale>
-      </div>
-    </Section>
-  )
+    // Staged on a band of its own — see `SceneBand` for why.
+    <SceneBand>
+      <Section as="div" className="py-0">
+        <div>
+          <ScrollScale>
+            <video
+              className="w-full rounded-xl border border-line bg-surface"
+              controls
+              playsInline
+              preload="none"
+              poster={INTRO.poster}
+              width={INTRO.width}
+              height={INTRO.height}
+            >
+              {INTRO.webm ? (
+                <source src={INTRO.webm} type="video/webm" />
+              ) : null}
+              <source src={INTRO.src} type="video/mp4" />
+            </video>
+          </ScrollScale>
+        </div>
+      </Section>
+    </SceneBand>
+  );
 }

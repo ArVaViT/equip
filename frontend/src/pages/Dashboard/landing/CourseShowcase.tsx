@@ -7,6 +7,8 @@ import { coursesService } from "@/services/courses"
 import { toProxyImage } from "@/lib/images"
 import type { Course } from "@/types"
 
+import { SceneBand } from "./SceneBand"
+
 /**
  * The whole shelf, travelling sideways while the page goes down.
  *
@@ -187,10 +189,8 @@ export function CourseShowcase() {
   // they can swipe, or a grid if even that is too much.
   if (prefersReducedMotion || !pinned) {
     return (
-      <section
-        aria-label={t("header.courses")}
-        className="mx-auto w-full max-w-5xl px-5 py-20 sm:px-6 sm:py-24"
-      >
+      <SceneBand label={t("header.courses")} tone="sunken">
+      <div className="mx-auto w-full max-w-5xl px-5 sm:px-6">
         {prefersReducedMotion ? (
           <ul className="mt-10 grid gap-6 sm:grid-cols-2">
             {courses.map((course) => (
@@ -212,45 +212,57 @@ export function CourseShowcase() {
             ))}
           </ul>
         )}
-      </section>
+      </div>
+      </SceneBand>
     )
   }
 
   return (
     <div ref={trackRef} className="relative">
-      <section
-        aria-label={t("header.courses")}
-        // A rest stop (see `pageScroll.ts`): the shelf is caught with the
-        // row in the middle of the screen, not with its top edge peeking up.
-        data-scene-stop="center"
-        className="flex flex-col justify-center overflow-hidden py-24 sm:py-32"
-      >
+      {/* Staged on the darker of the two bands, so the tour above it and
+          the shelf still read as two scenes — see `SceneBand`. */}
+      <SceneBand label={t("header.courses")} tone="sunken" className="overflow-hidden">
         {/* The row starts at the page's own left margin and runs off the
             right edge — a shelf that continues past the window, rather than
             a set of cards arranged to fit inside it. */}
-        <ul ref={rowRef} className="mt-10 flex w-max gap-6 px-4 will-change-transform sm:px-6">
+        <ul ref={rowRef} className="flex w-max gap-8 px-4 will-change-transform sm:px-6 lg:gap-10">
           {courses.map((course) => (
-            <li key={course.id} className="w-[300px] shrink-0 sm:w-[420px]">
+            <li key={course.id} className="w-[300px] shrink-0 sm:w-[460px]">
               <CourseCard course={course} />
             </li>
           ))}
         </ul>
-      </section>
+      </SceneBand>
     </div>
   )
 }
 
+/**
+ * A cover and its title — not a card.
+ *
+ * It was a white box with a hairline border, an image on top, a title and
+ * two clamped lines of description: the exact anatomy of a display ad, and
+ * Vadym read it as one — «карточки курсов выглядят как гугл реклама». The
+ * box is what did it. Nothing else on this page sits in a white rectangle,
+ * so five of them in a row read as inserted content rather than as the
+ * catalogue.
+ *
+ * Now the cover *is* the object: large, rounded, lifted off the band by a
+ * soft shadow, with the title set beneath it on the band itself, the way a
+ * shelf of books or a row of films is shown. The description is gone — the
+ * cover and the title are enough to choose from, and the course page is one
+ * click away. The covers are 16:10 artwork, several with their own lettering
+ * burnt in, so the title goes under the image, never over it.
+ */
 function CourseCard({ course }: { course: Course }) {
   const cover = toProxyImage(course.image_url)
 
   return (
     <Link
       to={`/courses/${course.id}`}
-      // The lift on hover is the only pointer-driven motion on the page,
-      // which is why it is on the one element a visitor is meant to click.
-      className="group flex h-full flex-col overflow-hidden rounded-xl border border-line bg-surface transition-transform duration-base ease-out hover:-translate-y-1"
+      className="group block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-4"
     >
-      <div className="aspect-[16/10] overflow-hidden bg-surface-muted">
+      <div className="aspect-[16/10] overflow-hidden rounded-2xl bg-surface shadow-[0_18px_40px_-18px_hsl(var(--ink)/0.35)] ring-1 ring-ink/5 transition-transform duration-panel ease-out group-hover:-translate-y-1.5">
         {cover ? (
           <img
             src={cover}
@@ -261,14 +273,9 @@ function CourseCard({ course }: { course: Course }) {
           />
         ) : null}
       </div>
-      <div className="flex flex-1 flex-col p-5">
-        <h3 className="font-serif text-lg font-semibold leading-snug text-ink">{course.title}</h3>
-        {course.description ? (
-          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-ink-muted">
-            {course.description}
-          </p>
-        ) : null}
-      </div>
+      <h3 className="mt-5 text-pretty font-serif text-xl font-semibold leading-snug text-ink transition-colors duration-base group-hover:text-ink-muted">
+        {course.title}
+      </h3>
     </Link>
   )
 }

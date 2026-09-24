@@ -27,8 +27,8 @@ import { scrollPageTo } from "./scrollControl"
  * movement, which is why their timings are tuned to it.
  *
  * THE TRACK. The sticky child is one viewport tall; each claim then owns
- * `STEP_SVH` of scrolling and the last is held for `TAIL_SVH` more. The
- * numbers, and why the old 300svh was too short, are with the constants.
+ * `STEP_SVH` of scrolling. The numbers, and why the old 300svh was too
+ * short, are with the constant.
  * `svh` rather than `vh` because mobile browser chrome changes `vh`
  * mid-scroll, which would shift every caption boundary as the toolbar hides.
  *
@@ -103,12 +103,13 @@ export function StorySection() {
  */
 const STEP_SVH = 110
 
-/**
- * How long the last claim is held before the track lets go. Without a tail
- * the third claim would be released the instant it was complete — the page
- * would move on at the exact moment it had finished making its point.
+/*
+ * No tail after the last claim. There was one (50svh) to hold the third
+ * claim before the track let go; the wall in `pageScroll.ts` now does that
+ * holding, and the tail had become a stretch with no scene in it — a flick
+ * off the third claim came to rest there, between the claims and the tour,
+ * looking at nothing.
  */
-const TAIL_SVH = 50
 
 /**
  * The sticky version, and the only place `useScroll` is called.
@@ -136,7 +137,7 @@ function PinnedClaims({ claims }: { claims: { title: string; body: string }[] })
   })
 
   const last = claims.length - 1
-  const trackSvh = 100 + STEP_SVH * last + TAIL_SVH
+  const trackSvh = 100 + STEP_SVH * last
   // Where each stop sits on the 0..1 progress of the track. Claim `k` is
   // shown from halfway before its stop to halfway after it.
   const stopAt = (k: number) => (STEP_SVH * k) / (trackSvh - 100)

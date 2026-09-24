@@ -1,7 +1,8 @@
-import { useEffect, useRef } from "react"
-import { useReducedMotion } from "motion/react"
+import { useEffect, useRef } from "react";
+import { useReducedMotion } from "motion/react";
 
-import { ScrollScale } from "./ScrollScale"
+import { SceneBand } from "./SceneBand";
+import { ScrollScale } from "./ScrollScale";
 
 /**
  * Twenty seconds of the product working, silent and on a loop.
@@ -32,64 +33,68 @@ import { ScrollScale } from "./ScrollScale"
  * choose between a seizure risk and the information.
  */
 export function ProductTour() {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const prefersReducedMotion = useReducedMotion()
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
-    const video = videoRef.current
-    if (!video || prefersReducedMotion) return
+    const video = videoRef.current;
+    if (!video || prefersReducedMotion) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry?.isIntersecting) {
           // `play()` rejects if the browser declines autoplay — that is a
           // decision, not a fault, and the poster stays up.
-          void video.play().catch(() => {})
+          void video.play().catch(() => {});
         } else {
-          video.pause()
+          video.pause();
         }
       },
       { threshold: 0.25 },
-    )
+    );
 
-    observer.observe(video)
-    return () => observer.disconnect()
-  }, [prefersReducedMotion])
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, [prefersReducedMotion]);
 
   if (prefersReducedMotion) {
     return (
-      <section className="mx-auto w-full max-w-5xl px-4 sm:px-6">
-        <img
-          src="/video/tour-poster.jpg"
-          alt=""
-          width={1920}
-          height={1080}
-          className="w-full rounded-xl border border-line"
-        />
-      </section>
-    )
+      <SceneBand>
+        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
+          <img
+            src="/video/tour-poster.jpg"
+            alt=""
+            width={1920}
+            height={1080}
+            className="w-full rounded-xl border border-line"
+          />
+        </div>
+      </SceneBand>
+    );
   }
 
-  // One of the page's rest stops (see `pageScroll.ts`).
+  // Staged on a band of its own — see `SceneBand` for why.
   return (
-    <section data-scene-stop="center" className="mx-auto w-full max-w-5xl px-4 sm:px-6">
-      <ScrollScale>
-      <video
-        ref={videoRef}
-        className="w-full rounded-xl border border-line bg-surface"
-        muted
-        loop
-        playsInline
-        preload="metadata"
-        poster="/video/tour-poster.jpg"
-        width={1920}
-        height={1080}
-        aria-hidden
-      >
-        <source src="/video/tour.webm" type="video/webm" />
-        <source src="/video/tour.mp4" type="video/mp4" />
-      </video>
-      </ScrollScale>
-    </section>
-  )
+    <SceneBand>
+      <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
+        <ScrollScale>
+          <video
+            ref={videoRef}
+            className="w-full rounded-xl border border-line bg-surface"
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster="/video/tour-poster.jpg"
+            width={1920}
+            height={1080}
+            aria-hidden
+          >
+            <source src="/video/tour.webm" type="video/webm" />
+            <source src="/video/tour.mp4" type="video/mp4" />
+          </video>
+        </ScrollScale>
+      </div>
+    </SceneBand>
+  );
 }

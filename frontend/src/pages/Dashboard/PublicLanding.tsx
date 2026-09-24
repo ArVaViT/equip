@@ -206,9 +206,12 @@ export function PublicLanding() {
           gives the block the same parallax the claims have, so the approach
           to the close is not the one moment on the page where everything
           stops. */}
+      {/* A full screen from `lg`, like every scene: resting on the close
+          shows the close, not the bottom of the shelf and the top of the
+          film around it. */}
       <section
         aria-label={t("landing.value.heading")}
-        className="flex items-center justify-center px-5 py-20 sm:min-h-[52svh] sm:py-0"
+        className="flex items-center justify-center px-5 py-20 sm:min-h-[52svh] sm:py-0 lg:min-h-[100svh]"
         data-scene-stop="center"
       >
         <ScrollReveal className="flex flex-col items-center text-center">

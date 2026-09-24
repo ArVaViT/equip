@@ -36,6 +36,12 @@ import { registerScroller } from "./scrollControl"
  *      travel, plus a small allowance for overshoot. It never drags anyone
  *      back up the page to where they were a second ago.
  *
+ * 3. THE KEYBOARD. PageDown, PageUp and Space move one scene, not one
+ *    screen — a screen is an arbitrary distance on a page whose scenes are
+ *    screens of their own, and it left the reader between two of them.
+ *    Arrows and Home/End keep their native meaning, and nothing is taken
+ *    while focus is in a field.
+ *
  * WHY NOT CSS `scroll-snap-type: y proximity`. It was the first version and
  * it trapped the page on the hero: every wheel notch (~100px) ended nearer
  * to the hero's snap point than to the next one ~800px down, so Chrome
@@ -49,10 +55,8 @@ import { registerScroller } from "./scrollControl"
 const WALL_HOLD_MS = 650
 /** A gap this long in wheel events means the gesture has ended. */
 const GESTURE_GAP_MS = 180
-/** Quiet time after the last scroll before a settle is considered. */
-const SETTLE_IDLE_MS = 160
 /** How far ahead of a stop a settle will reach, as a share of the viewport. */
-const SETTLE_AHEAD = 0.28
+const SETTLE_AHEAD = 0.35
 /** How far past a stop still counts as overshoot to correct. */
 const SETTLE_BEHIND = 0.06
 
@@ -82,8 +86,9 @@ function readStops(): number[] {
 
 export default function startPageScroll(): () => void {
   const lenis = new Lenis({
-    // Lower is heavier. 0.1 is Lenis's default and close to claude.com.
-    lerp: 0.1,
+    // Lower is heavier. Lenis's default is 0.1; a touch under it reads as
+    // weight without the page lagging behind the hand.
+    lerp: 0.085,
     smoothWheel: true,
     syncTouch: false,
     // Hash links still land where they point.
@@ -99,6 +104,16 @@ export default function startPageScroll(): () => void {
   let held: { stop: number; direction: 1 | -1; since: number } | null = null
   let lastWheelAt = 0
   let lastDirection: 1 | -1 = 1
+  // What moved the page last. A settle follows the wheel only: a drag of
+  // the scrollbar or a keyboard jump is a reader choosing an exact spot.
+  // Tracked as the last input rather than as "a wheel event within N ms",
+  // because a long glide outlasts any N — at lerp 0.085 a 700px flick is
+  // still moving 1.5s after the last wheel event, and a time window made
+  // the settle give up on exactly the flicks it exists for.
+  let lastInput: "wheel" | "other" = "other"
+  const onOtherInput = () => {
+    lastInput = "other"
+  }
 
   function wall(deltaY: number, event: WheelEvent | TouchEvent): boolean {
     if (!event.type.includes("wheel") || deltaY === 0) return true
@@ -106,6 +121,9 @@ export default function startPageScroll(): () => void {
     const direction: 1 | -1 = deltaY > 0 ? 1 : -1
     const sincePrevious = now - lastWheelAt
     lastWheelAt = now
+    lastInput = "wheel"
+    window.clearTimeout(gestureEnd)
+    gestureEnd = window.setTimeout(settle, GESTURE_GAP_MS)
     lastDirection = direction
 
     if (held) {
@@ -134,17 +152,15 @@ export default function startPageScroll(): () => void {
   }
 
   // ── the settle ───────────────────────────────────────────────────────
-  let idle = 0
-  const onScroll = () => {
-    window.clearTimeout(idle)
-    // Only after the wheel. A drag of the scrollbar or a keyboard jump is
-    // a reader choosing an exact position; do not second-guess it.
-    if (performance.now() - lastWheelAt > 1200) return
-    idle = window.setTimeout(settle, SETTLE_IDLE_MS)
-  }
+  // Decided the moment the gesture ends, against where the glide is going
+  // to stop (`targetScroll`), not after it has stopped. Waiting for the page
+  // to come to rest made it two motions — a long glide, a pause, then a
+  // second glide onto the scene. Retargeting the glide in flight makes it
+  // one: the page simply lands on the scene.
+  let gestureEnd = 0
   const settle = () => {
-    if (lenis.isScrolling) return
-    const y = window.scrollY
+    if (lastInput !== "wheel" || held) return
+    const y = lenis.targetScroll
     const vh = window.innerHeight
     const ahead = vh * SETTLE_AHEAD
     const behind = vh * SETTLE_BEHIND
@@ -154,9 +170,31 @@ export default function startPageScroll(): () => void {
       if (offset > ahead || offset < -behind || Math.abs(stop - y) < 2) continue
       if (best === null || Math.abs(stop - y) < Math.abs(best - y)) best = stop
     }
-    if (best !== null) glideTo(best)
+    if (best !== null) lenis.scrollTo(best, { programmatic: false, lerp: 0.085 })
   }
-  lenis.on("scroll", onScroll)
+
+  // ── the keyboard ─────────────────────────────────────────────────────
+  const onKey = (event: KeyboardEvent) => {
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return
+    const target = event.target as HTMLElement | null
+    if (target?.closest("input, textarea, select, [contenteditable], video, [role=slider]")) return
+    const forward =
+      event.key === "PageDown" || (event.key === " " && !event.shiftKey)
+    const backward =
+      event.key === "PageUp" || (event.key === " " && event.shiftKey)
+    if (!forward && !backward) return
+    const y = lenis.targetScroll
+    const stops = readStops()
+    const next = forward
+      ? stops.find((stop) => stop > y + 2)
+      : [...stops].reverse().find((stop) => stop < y - 2)
+    if (next === undefined) return
+    event.preventDefault()
+    glideTo(next)
+  }
+  window.addEventListener("keydown", onKey)
+  window.addEventListener("keydown", onOtherInput, { capture: true })
+  window.addEventListener("pointerdown", onOtherInput, { capture: true })
 
   let frame = 0
   const raf = (time: number) => {
@@ -167,7 +205,10 @@ export default function startPageScroll(): () => void {
 
   return () => {
     cancelAnimationFrame(frame)
-    window.clearTimeout(idle)
+    window.clearTimeout(gestureEnd)
+    window.removeEventListener("keydown", onKey)
+    window.removeEventListener("keydown", onOtherInput, { capture: true })
+    window.removeEventListener("pointerdown", onOtherInput, { capture: true })
     registerScroller(null)
     lenis.destroy()
   }
