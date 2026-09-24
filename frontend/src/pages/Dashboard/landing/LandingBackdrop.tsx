@@ -22,24 +22,35 @@ import {
  * WebGL contexts and one idea stated twice.
  *
  * Now a single fixed canvas sits behind everything and the leaves move
- * through five states as the document scrolls:
+ * through a sequence of poses as the document scrolls — one per scene:
  *
  *   scattered   loose pieces — the hero, «не отрывками»
- *   stacked     squared up, one on another      (first claim)
- *   fanned      a row: the shape of a course    (second claim)
+ *   stacked     squared up, one on another       (first claim)
+ *   fanned      a row: the shape of a course     (second claim)
  *   single      one sheet forward, the rest back (third claim)
- *   dispersed   opening outward as the page ends
+ *   frame       every piece squared into one rectangle around the tour
+ *   row         laid out in order, one per course, riding the shelf
+ *   gather      collected into one neat stack    (the close)
+ *   frame       squared round the film, and held to the end
  *
- * WHERE EACH POSE LANDS. They used to sit at fixed fractions of the
- * document — 0.22, 0.45, 0.68 — which was true only for one page height.
- * Lengthening the claims track (2026-09-23, «очень быстрая прокрутка»)
- * would have slid every pose off the caption it belongs to. So the claims
- * section marks its own stops with `data-backdrop-pose`, and the scene
- * reads their positions: pose N is fully formed exactly when the reader
- * rests on stop N. The first pose is the top of the page and the last is
- * its end, so only the middle three need marking. If the markers are
- * missing (phone layout, reduced motion) the poses spread evenly, which is
- * what the fractions were approximating anyway.
+ * THE SCENE LEADS THE EYE. Until 2026-09-23 the leaves stopped having
+ * anything to do with the page after the claims: the tour, the shelf and
+ * the film sat on top of them as if on an empty table. Vadym: «я думал ты
+ * будешь вести так анимацию, чтоб она выделяла блок … все фрагменты
+ * собираются в прямоугольник и потом раскладываются по порядку». So the
+ * last four poses are not coordinates but *elements*: `frame` and `row`
+ * read the live on-screen rectangle of what they surround (the video, the
+ * row of covers) every frame and convert it into world units, so the
+ * pieces close in on the video as it arrives and slide along with the
+ * shelf as it travels. The argument of the page — fragments put in order —
+ * is made by the scene around the product, not only above it.
+ *
+ * WHERE EACH POSE LANDS. Each scene marks itself with
+ * `data-backdrop-pose="<kind>"`; the pose is fully formed exactly when the
+ * reader rests on that scene's stop (the same stop `pageScroll.ts` uses).
+ * The DOM poses find what to wrap through `data-backdrop-target` inside the
+ * scene. A scene that is not rendered — the shelf with an empty catalogue —
+ * simply drops out of the sequence.
  *
  * The states are the argument of the page told without words, and because
  * the canvas is `fixed` it is continuous: nothing restarts at a section
@@ -58,6 +69,10 @@ import {
  */
 
 const LEAF_COUNT = 16
+const LEAF_W = 4
+const LEAF_H = 5.4
+const CAMERA_FOV = 32
+const CAMERA_Z = 14
 
 /** Deterministic pseudo-random in [0, 1) — the same scene on every load. */
 function noise(i: number, salt: number): number {
@@ -65,57 +80,165 @@ function noise(i: number, salt: number): number {
   return x - Math.floor(x)
 }
 
-type Pose = { x: number; y: number; z: number; rx: number; ry: number; rz: number }
+type Pose = {
+  x: number
+  y: number
+  z: number
+  rx: number
+  ry: number
+  rz: number
+  sx: number
+  sy: number
+  /** Multiplier on the leaf's own opacity. */
+  o: number
+}
 
-/** The five poses of leaf `i`, in scroll order. */
-function posesFor(i: number): Pose[] {
+type Kind = "scattered" | "stacked" | "fanned" | "single" | "gather" | "frame" | "row"
+
+const STATIC_KINDS = ["scattered", "stacked", "fanned", "single", "gather"] as const
+type StaticKind = (typeof STATIC_KINDS)[number]
+
+const isStatic = (kind: Kind): kind is StaticKind =>
+  (STATIC_KINDS as readonly string[]).includes(kind)
+
+/** The coordinate poses of leaf `i` — the ones that do not wrap an element. */
+function staticPose(kind: StaticKind, i: number): Pose {
   const depth = -i * 0.36
   const centre = (LEAF_COUNT - 1) / 2
   const column = i - centre
   const spread = centre === 0 ? 0 : column / centre
+  const flat = { rx: 0, ry: 0, rz: 0, sx: 1, sy: 1, o: 1 }
 
-  return [
-    // scattered
-    {
-      x: spread * 7.5,
-      y: (noise(i, 2) - 0.5) * 5.5,
-      z: depth,
-      rx: (noise(i, 3) - 0.5) * 1.1,
-      ry: (noise(i, 4) - 0.5) * 1.3,
-      rz: (noise(i, 5) - 0.5) * 0.9,
-    },
-    // stacked
-    { x: 0, y: 0, z: depth, rx: 0, ry: 0, rz: 0 },
-    // fanned into a row that runs off both edges
-    {
-      x: column * 2.1,
-      y: (noise(i, 7) - 0.5) * 0.6,
-      z: depth * 0.4,
-      rx: 0,
-      ry: -0.2,
-      rz: (noise(i, 8) - 0.5) * 0.07,
-    },
-    // one forward, the rest pushed back
-    i === LEAF_COUNT - 1
-      ? { x: 0, y: 0, z: 3.2, rx: 0, ry: 0, rz: 0 }
-      : {
-          x: column * 0.8,
-          y: (noise(i, 9) - 0.5) * 1.6,
-          z: depth - 3,
-          rx: 0,
-          ry: -0.1,
-          rz: (noise(i, 10) - 0.5) * 0.25,
-        },
-    // dispersed outward as the page runs out
-    {
-      x: spread * 13,
-      y: (noise(i, 11) - 0.5) * 9,
-      z: depth - 6,
-      rx: (noise(i, 12) - 0.5) * 0.9,
-      ry: (noise(i, 13) - 0.5) * 1.1,
-      rz: (noise(i, 14) - 0.5) * 0.8,
-    },
-  ]
+  switch (kind) {
+    case "scattered":
+      return {
+        x: spread * 7.5,
+        y: (noise(i, 2) - 0.5) * 5.5,
+        z: depth,
+        rx: (noise(i, 3) - 0.5) * 1.1,
+        ry: (noise(i, 4) - 0.5) * 1.3,
+        rz: (noise(i, 5) - 0.5) * 0.9,
+        sx: 1,
+        sy: 1,
+        o: 1,
+      }
+    case "stacked":
+      return { ...flat, x: 0, y: 0, z: depth }
+    case "fanned":
+      return {
+        ...flat,
+        x: column * 2.1,
+        y: (noise(i, 7) - 0.5) * 0.6,
+        z: depth * 0.4,
+        ry: -0.2,
+        rz: (noise(i, 8) - 0.5) * 0.07,
+      }
+    case "single":
+      return i === LEAF_COUNT - 1
+        ? { ...flat, x: 0, y: 0, z: 3.2 }
+        : {
+            ...flat,
+            x: column * 0.8,
+            y: (noise(i, 9) - 0.5) * 1.6,
+            z: depth - 3,
+            ry: -0.1,
+            rz: (noise(i, 10) - 0.5) * 0.25,
+          }
+    case "gather":
+      // One neat deck behind the question, each sheet a hair off square —
+      // the pieces collected, about to be handed over.
+      // Light: all sixteen overlap here, directly behind body text, and
+      // at full strength the deck was a grey slab the subline sank into.
+      return {
+        ...flat,
+        x: 0,
+        y: 0,
+        z: depth * 0.25 - 2,
+        rz: column * 0.028,
+        sx: 1.35,
+        sy: 0.95,
+        o: 0.22,
+      }
+  }
+}
+
+/** World units per CSS pixel at depth `z`, for this camera. */
+function worldPerPixel(z: number): number {
+  const distance = CAMERA_Z - z
+  return (2 * Math.tan(((CAMERA_FOV / 2) * Math.PI) / 180) * distance) / window.innerHeight
+}
+
+/** A screen rectangle, expressed as a pose for a plane at depth `z`. */
+function poseForRect(
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+  z: number,
+  o: number,
+): Pose {
+  const wpp = worldPerPixel(z)
+  return {
+    x: (left + width / 2 - window.innerWidth / 2) * wpp,
+    y: (window.innerHeight / 2 - (top + height / 2)) * wpp,
+    z,
+    rx: 0,
+    ry: 0,
+    rz: 0,
+    sx: (width * wpp) / LEAF_W,
+    sy: (height * wpp) / LEAF_H,
+    o,
+  }
+}
+
+/**
+ * `frame`: all sixteen squared into one rectangle around the element, each
+ * a few pixels larger than the one in front — so the edges step outward
+ * like the edges of a stack of paper, and the rectangle reads as made of
+ * the same pieces that were scattered over the hero. Kept close (under
+ * 70px) and light: sixteen translucent layers compound, and at full
+ * strength the first version read as a dark tunnel round the video.
+ */
+function framePose(rect: DOMRect, i: number): Pose {
+  const pad = 4 + i * 4
+  return poseForRect(
+    rect.left - pad,
+    rect.top - pad,
+    rect.width + pad * 2,
+    rect.height + pad * 2,
+    -0.4 - i * 0.02,
+    0.32,
+  )
+}
+
+/**
+ * `row`: the pieces dealt out in order, a few to each cover, as the pages
+ * behind it — every course becomes a small stack, offset down and to the
+ * right like a book seen from its corner. Read from the live row, so the
+ * stacks travel sideways with the covers.
+ *
+ * Every leaf goes to a real course. A first version laid one sheet per
+ * *slot* and ran the row past both ends of the catalogue: grey panels
+ * behind each card (the white box the cards had just lost) and empty ones
+ * after the last course — placeholders, which this page does not have.
+ */
+function rowPose(row: HTMLElement, i: number): Pose {
+  const count = row.children.length
+  if (count === 0) return staticPose("stacked", i)
+  const course = row.children[i % count]
+  const layer = Math.floor(i / count)
+  // The cover, not the whole card: the title underneath stays on the page.
+  const cover = course?.firstElementChild?.firstElementChild?.getBoundingClientRect()
+  if (!cover) return staticPose("stacked", i)
+  const offset = 7 + layer * 7
+  return poseForRect(
+    cover.left + offset,
+    cover.top + offset,
+    cover.width,
+    cover.height,
+    -0.4 - layer * 0.02,
+    0.55,
+  )
 }
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
@@ -171,7 +294,7 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     // the dark theme rather than a second palette.
     const DARK_BOOST = 1.9
     const isDark = () => document.documentElement.classList.contains("dark")
-    const leafOpacity = (i: number) =>
+    const baseOpacity = (i: number) =>
       (0.022 + 0.1 * (i / LEAF_COUNT)) * (isDark() ? DARK_BOOST : 1)
 
     const readInk = () => {
@@ -180,8 +303,8 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     }
 
     const scene = new Scene()
-    const camera = new PerspectiveCamera(32, 1, 0.1, 100)
-    camera.position.set(0, 0, 14)
+    const camera = new PerspectiveCamera(CAMERA_FOV, 1, 0.1, 100)
+    camera.position.set(0, 0, CAMERA_Z)
 
     scene.add(new AmbientLight(0xffffff, 1.6))
     const key = new DirectionalLight(0xffffff, 2.2)
@@ -191,7 +314,7 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     const group = new Group()
     scene.add(group)
 
-    const geometry = new PlaneGeometry(4, 5.4)
+    const geometry = new PlaneGeometry(LEAF_W, LEAF_H)
     const leaves = Array.from({ length: LEAF_COUNT }, (_, i) => {
       const material = new MeshStandardMaterial({
         color: readInk(),
@@ -204,36 +327,36 @@ export default function LandingBackdrop({ className }: { className?: string }) {
         // themes share this line because the colour is `--ink`, which is
         // already the right contrast direction in each; the ceiling is set
         // by the stacked pose, where all sixteen overlap behind a caption.
-        opacity: leafOpacity(i),
+        opacity: baseOpacity(i),
         roughness: 0.85,
         metalness: 0,
       })
       const mesh = new Mesh(geometry, material)
       group.add(mesh)
-      return { mesh, material, poses: posesFor(i) }
+      return { mesh, material }
     })
 
     // Follows the theme without a second palette to keep in sync.
     const themeWatcher = new MutationObserver(() => {
       const ink = readInk()
-      leaves.forEach((leaf, i) => {
-        leaf.material.color.copy(ink)
-        leaf.material.opacity = leafOpacity(i)
-      })
+      for (const leaf of leaves) leaf.material.color.copy(ink)
+      // Opacity is re-applied every frame from `baseOpacity`, which reads
+      // the theme itself.
     })
     themeWatcher.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["class", "data-theme"],
     })
 
-    // Pose coordinate: 0 = first pose, 4 = last, fractional in between.
+    // The sequence of scenes, in scroll order, and the scroll offset at
+    // which each one's pose is complete. Re-measured on resize and whenever
+    // the document changes height (the shelf arriving from the network
+    // moves everything below the claims).
+    type Step = { kind: Kind; stop: number; target: HTMLElement | null }
+    let steps: Step[] = [{ kind: "scattered", stop: 0, target: null }]
+    // Pose coordinate: 0 = first step, fractional in between.
     let progress = 0
     let target = 0
-    const lastPose = (leaves[0]?.poses.length ?? 1) - 1
-    // Scroll offsets at which each pose is complete. Re-measured on resize
-    // and whenever the document changes height (the shelf arriving from the
-    // network moves everything below the claims).
-    let stops: number[] = []
     let pointerX = 0
     let pointerY = 0
     let tiltX = 0
@@ -249,29 +372,37 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     }
 
     const measureStops = () => {
-      const travel = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+      const vh = window.innerHeight
+      const limit = Math.max(0, document.documentElement.scrollHeight - vh)
       const marked = [...document.querySelectorAll<HTMLElement>("[data-backdrop-pose]")]
-        .map((el) => el.getBoundingClientRect().top + window.scrollY)
-        .sort((a, b) => a - b)
-      const middle =
-        marked.length === lastPose - 1
-          ? marked
-          : Array.from({ length: lastPose - 1 }, (_, k) => (travel * (k + 1)) / lastPose)
-      stops = [0, ...middle, Math.max(travel, (middle[middle.length - 1] ?? 0) + 1)]
+        .map((el): Step => {
+          const rect = el.getBoundingClientRect()
+          const top = rect.top + window.scrollY
+          const stop = el.dataset.sceneStop === "center" ? top + rect.height / 2 - vh / 2 : top
+          return {
+            kind: (el.dataset.backdropPose ?? "stacked") as Kind,
+            stop: Math.min(limit, Math.max(1, stop)),
+            target: el.querySelector<HTMLElement>("[data-backdrop-target]"),
+          }
+        })
+        .filter((step) => isStatic(step.kind) || step.target !== null)
+        .sort((a, b) => a.stop - b.stop)
+      steps = [{ kind: "scattered", stop: 0, target: null }, ...marked]
     }
 
     const readScroll = () => {
       const y = window.scrollY
-      let pose = lastPose
-      for (let k = 0; k < stops.length - 1; k++) {
-        const from = stops[k] ?? 0
-        const to = stops[k + 1] ?? from + 1
+      const last = steps.length - 1
+      let pose = last
+      for (let k = 0; k < last; k++) {
+        const from = steps[k]?.stop ?? 0
+        const to = steps[k + 1]?.stop ?? from + 1
         if (y < to) {
           pose = k + Math.max(0, (y - from) / Math.max(1, to - from))
           break
         }
       }
-      target = Math.min(lastPose, Math.max(0, pose))
+      target = Math.min(last, Math.max(0, pose))
     }
 
     const onPointerMove = (event: PointerEvent) => {
@@ -279,31 +410,53 @@ export default function LandingBackdrop({ className }: { className?: string }) {
       pointerY = (event.clientY / window.innerHeight) * 2 - 1
     }
 
-    const applyPose = () => {
-      const index = Math.min(lastPose - 1, Math.floor(progress))
-      const t = ease(progress - index)
-
-      for (const leaf of leaves) {
-        const from = leaf.poses[index]
-        const to = leaf.poses[index + 1]
-        if (!from || !to) continue
-        leaf.mesh.position.set(
-          lerp(from.x, to.x, t),
-          lerp(from.y, to.y, t),
-          lerp(from.z, to.z, t),
-        )
-        leaf.mesh.rotation.set(
-          lerp(from.rx, to.rx, t),
-          lerp(from.ry, to.ry, t),
-          lerp(from.rz, to.rz, t),
-        )
+    // Poses of one step for every leaf. DOM steps read their element's
+    // rectangle once per frame, not once per leaf.
+    const posesOf = (step: Step): Pose[] => {
+      if (isStatic(step.kind)) {
+        const kind = step.kind
+        return leaves.map((_, i) => staticPose(kind, i))
       }
+      const element = step.target
+      if (!element) return leaves.map((_, i) => staticPose("stacked", i))
+      if (step.kind === "row") return leaves.map((_, i) => rowPose(element, i))
+      const rect = element.getBoundingClientRect()
+      return leaves.map((_, i) => framePose(rect, i))
+    }
+
+    // How much of the current blend is wrapped round an element. The
+    // pointer tilt is scaled down by it: a frame tilted by the cursor would
+    // no longer sit square around the thing it frames.
+    let anchored = 0
+
+    const applyPose = () => {
+      const last = steps.length - 1
+      if (last < 1) return
+      const index = Math.min(last - 1, Math.floor(progress))
+      const t = ease(progress - index)
+      const fromStep = steps[index]
+      const toStep = steps[index + 1]
+      if (!fromStep || !toStep) return
+      const from = posesOf(fromStep)
+      const to = posesOf(toStep)
+      anchored =
+        (isStatic(fromStep.kind) ? 0 : 1 - t) + (isStatic(toStep.kind) ? 0 : t)
+
+      leaves.forEach((leaf, i) => {
+        const a = from[i]
+        const b = to[i]
+        if (!a || !b) return
+        leaf.mesh.position.set(lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t))
+        leaf.mesh.rotation.set(lerp(a.rx, b.rx, t), lerp(a.ry, b.ry, t), lerp(a.rz, b.rz, t))
+        leaf.mesh.scale.set(lerp(a.sx, b.sx, t), lerp(a.sy, b.sy, t), 1)
+        leaf.material.opacity = baseOpacity(i) * lerp(a.o, b.o, t)
+      })
     }
 
     const render = () => {
       applyPose()
-      group.rotation.x = tiltX
-      group.rotation.y = tiltY
+      group.rotation.x = tiltX * (1 - anchored)
+      group.rotation.y = tiltY * (1 - anchored)
       renderer.render(scene, camera)
     }
 

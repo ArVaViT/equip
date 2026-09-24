@@ -189,7 +189,7 @@ export function CourseShowcase() {
   // they can swipe, or a grid if even that is too much.
   if (prefersReducedMotion || !pinned) {
     return (
-      <SceneBand label={t("header.courses")} tone="sunken">
+      <SceneBand label={t("header.courses")} pose="row">
       <div className="mx-auto w-full max-w-5xl px-5 sm:px-6">
         {prefersReducedMotion ? (
           <ul className="mt-10 grid gap-6 sm:grid-cols-2">
@@ -219,13 +219,13 @@ export function CourseShowcase() {
 
   return (
     <div ref={trackRef} className="relative">
-      {/* Staged on the darker of the two bands, so the tour above it and
-          the shelf still read as two scenes — see `SceneBand`. */}
-      <SceneBand label={t("header.courses")} tone="sunken" className="overflow-hidden">
+      {/* The backdrop lays one sheet behind each cover while the shelf is
+          on screen — see `SceneBand` and `LandingBackdrop`. */}
+      <SceneBand label={t("header.courses")} pose="row" className="overflow-hidden">
         {/* The row starts at the page's own left margin and runs off the
             right edge — a shelf that continues past the window, rather than
             a set of cards arranged to fit inside it. */}
-        <ul ref={rowRef} className="flex w-max gap-8 px-4 will-change-transform sm:px-6 lg:gap-10">
+        <ul ref={rowRef} data-backdrop-target className="flex w-max gap-8 px-4 will-change-transform sm:px-6 lg:gap-10">
           {courses.map((course) => (
             <li key={course.id} className="w-[300px] shrink-0 sm:w-[460px]">
               <CourseCard course={course} />

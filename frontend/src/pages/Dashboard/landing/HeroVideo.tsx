@@ -60,12 +60,13 @@ export function HeroVideo() {
   if (!INTRO) return null;
 
   return (
-    // Staged on a band of its own — see `SceneBand` for why.
-    <SceneBand>
+    // A scene of its own; the backdrop squares into a frame round it.
+    <SceneBand pose="frame">
       <Section as="div" className="py-0">
         <div>
           <ScrollScale>
             <video
+              data-backdrop-target
               className="w-full rounded-xl border border-line bg-surface"
               controls
               playsInline

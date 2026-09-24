@@ -59,7 +59,7 @@ export function ProductTour() {
 
   if (prefersReducedMotion) {
     return (
-      <SceneBand>
+      <SceneBand pose="frame">
         <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
           <img
             src="/video/tour-poster.jpg"
@@ -73,12 +73,13 @@ export function ProductTour() {
     );
   }
 
-  // Staged on a band of its own — see `SceneBand` for why.
+  // A scene of its own; the backdrop squares into a frame round it.
   return (
-    <SceneBand>
+    <SceneBand pose="frame">
       <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
         <ScrollScale>
           <video
+            data-backdrop-target
             ref={videoRef}
             className="w-full rounded-xl border border-line bg-surface"
             muted

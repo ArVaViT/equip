@@ -103,6 +103,9 @@ export function StorySection() {
  */
 const STEP_SVH = 110
 
+/** The backdrop's pose behind each claim, in order — see `LandingBackdrop`. */
+const CLAIM_POSES = ["stacked", "fanned", "single"] as const
+
 /*
  * No tail after the last claim. There was one (50svh) to hold the third
  * claim before the track let go; the wall in `pageScroll.ts` now does that
@@ -192,7 +195,7 @@ function PinnedClaims({ claims }: { claims: { title: string; body: string }[] })
           ref={(el) => {
             stopRefs.current[k] = el
           }}
-          data-backdrop-pose={k + 1}
+          data-backdrop-pose={CLAIM_POSES[k] ?? "stacked"}
           data-scene-stop="start"
           aria-hidden
           className="pointer-events-none absolute inset-x-0 h-px"

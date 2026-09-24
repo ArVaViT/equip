@@ -213,6 +213,8 @@ export function PublicLanding() {
         aria-label={t("landing.value.heading")}
         className="flex items-center justify-center px-5 py-20 sm:min-h-[52svh] sm:py-0 lg:min-h-[100svh]"
         data-scene-stop="center"
+        // The pieces collect into one deck behind the question.
+        data-backdrop-pose="gather"
       >
         <ScrollReveal className="flex flex-col items-center text-center">
           <h2 className="max-w-3xl text-balance font-serif text-4xl font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl">
