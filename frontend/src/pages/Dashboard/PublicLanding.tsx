@@ -11,6 +11,7 @@ import { ScrollReveal } from "./landing/ScrollReveal";
 import { StorySection } from "./landing/StorySection";
 import { CourseShowcase } from "./landing/CourseShowcase";
 import { ProductTour } from "./landing/ProductTour";
+import { TEXT_VEIL } from "./landing/textVeil";
 
 /**
  * Marketing landing rendered at ``/`` for unauthenticated visitors.
@@ -135,7 +136,7 @@ export function PublicLanding() {
         aria-labelledby="landing-hero-heading"
         data-scene-stop="top"
       >
-        <div className="container relative z-10 mx-auto flex max-w-3xl flex-col items-center px-5 text-center lg:max-w-5xl">
+        <div className={`container z-10 mx-auto flex max-w-3xl flex-col items-center px-5 text-center lg:max-w-5xl ${TEXT_VEIL}`}>
           {/* Weight 500, not 700. Bold Literata at display size read as a
               book blog; claude.com sets its serif display at regular weight
               and that is most of why it reads as expensive. The typeface
@@ -237,7 +238,7 @@ export function PublicLanding() {
         // The pieces collect into one deck behind the question.
         data-backdrop-pose="gather"
       >
-        <ScrollReveal className="flex flex-col items-center text-center">
+        <ScrollReveal className={`flex flex-col items-center text-center ${TEXT_VEIL}`}>
           <h2 className="max-w-3xl text-balance font-serif text-4xl font-medium leading-[1.05] tracking-[-0.03em] text-ink sm:text-6xl">
             {t("landing.finalCta.heading")}
           </h2>
@@ -263,7 +264,10 @@ export function PublicLanding() {
 
         {/* The last rest stop is the bottom of the page, so the wall that
             holds the film does not stop a reader short of the legal links. */}
-        <div data-scene-stop="end">
+        {/* Veiled like every other block of text on the scene: the film's
+            frame holds to the end of the page, and its outer edge reached
+            the legal links. */}
+        <div data-scene-stop="end" className={TEXT_VEIL}>
           <Footer />
         </div>
       </div>

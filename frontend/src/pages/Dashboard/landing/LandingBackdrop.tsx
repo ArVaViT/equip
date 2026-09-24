@@ -114,7 +114,12 @@ const isStatic = (kind: Kind): kind is StaticKind =>
  */
 function staticPose(kind: StaticKind, i: number, fit = 1): Pose {
   const pose = rawStaticPose(kind, i)
-  if (fit === 1) return pose
+  // On a desktop the claim sits on the left, so the stack and the single
+  // sheet move right, into the half of the screen the words do not use.
+  // Centred, they sat under the body text (measured at 1.0:1 contrast).
+  if (fit === 1) {
+    return kind === "stacked" || kind === "single" ? { ...pose, x: pose.x + 3.6 } : pose
+  }
   // Behind the claims the leaves drop into the lower third on a narrow
   // screen. On a desktop the caption sits left and the stack centre, so
   // they only overlap at an edge; on a phone the caption spans the width,
@@ -129,7 +134,9 @@ function staticPose(kind: StaticKind, i: number, fit = 1): Pose {
     sy: pose.sy * fit,
     // Smaller sheets overlap more of each other: the same sixteen in a
     // phone-sized stack compound to nearly solid. Half as strong.
-    o: lowered ? pose.o * 0.5 : pose.o,
+    // The scatter a little lighter too: on its way into the claims it
+    // crosses the first caption, where the audit measured 4.39:1.
+    o: pose.o * (lowered ? 0.5 : kind === "scattered" ? 0.75 : 1),
   }
 }
 
@@ -245,7 +252,7 @@ function framePose(rect: DOMRect, i: number, fit = 1): Pose {
 
 /**
  * `row`: the pieces dealt out in order, a few to each cover, as the pages
- * behind it — every course becomes a small stack, offset down and to the
+ * behind it — every course becomes a small stack, offset up and to the
  * right like a book seen from its corner. Read from the live row, so the
  * stacks travel sideways with the covers.
  *
@@ -262,10 +269,13 @@ function rowPose(row: HTMLElement, i: number): Pose {
   // The cover, not the whole card: the title underneath stays on the page.
   const cover = course?.firstElementChild?.firstElementChild?.getBoundingClientRect()
   if (!cover) return staticPose("stacked", i)
+  // Up and to the right: the pages peek out above the cover's top edge.
+  // Down and to the right they lay under the course title, which the
+  // contrast audit caught.
   const offset = 7 + layer * 7
   return poseForRect(
     cover.left + offset,
-    cover.top + offset,
+    cover.top - offset,
     cover.width,
     cover.height,
     -0.4 - layer * 0.02,

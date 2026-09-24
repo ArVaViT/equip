@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useReducedMotion } from "motion/react";
 
-import { SceneBand } from "./SceneBand";
+import { SceneBand } from "./SceneBand"
+import { MOBILE_VERTICAL } from "./mobileFrame";
 import { ScrollScale } from "./ScrollScale";
 
 /**
@@ -66,7 +67,7 @@ export function ProductTour() {
             alt=""
             width={1920}
             height={1080}
-            className="w-full rounded-xl border border-line"
+            className={`w-full rounded-xl border border-line ${MOBILE_VERTICAL}`}
           />
         </div>
       </SceneBand>
@@ -81,7 +82,7 @@ export function ProductTour() {
           <video
             data-backdrop-target
             ref={videoRef}
-            className="w-full rounded-xl border border-line bg-surface"
+            className={`w-full rounded-xl border border-line bg-surface ${MOBILE_VERTICAL}`}
             muted
             loop
             playsInline

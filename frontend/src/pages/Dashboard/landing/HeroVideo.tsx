@@ -33,7 +33,8 @@
 
 import { Section } from "@/components/layout/Section";
 
-import { SceneBand } from "./SceneBand";
+import { SceneBand } from "./SceneBand"
+import { MOBILE_VERTICAL } from "./mobileFrame";
 import { ScrollScale } from "./ScrollScale";
 
 type VideoSource = {
@@ -67,7 +68,7 @@ export function HeroVideo() {
           <ScrollScale>
             <video
               data-backdrop-target
-              className="w-full rounded-xl border border-line bg-surface"
+              className={`w-full rounded-xl border border-line bg-surface ${MOBILE_VERTICAL}`}
               controls
               playsInline
               preload="none"

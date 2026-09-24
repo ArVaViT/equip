@@ -12,6 +12,7 @@ import {
 import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
 
 import { scrollPageTo } from "./scrollControl"
+import { TEXT_VEIL } from "./textVeil"
 
 /**
  * Three claims told over one scene that never stops moving.
@@ -264,7 +265,7 @@ function PinnedClaims({ claims }: { claims: { title: string; body: string }[] })
 
 function Claim({ title, body }: { title: string; body: string }) {
   return (
-    <div className="max-w-2xl">
+    <div className={`max-w-2xl ${TEXT_VEIL}`}>
       <h3 className="font-serif text-3xl font-medium leading-tight tracking-[-0.025em] text-ink sm:text-5xl">
         {title}
       </h3>
