@@ -7,8 +7,11 @@ in-memory SQLite test DB, so we exercise:
   * Round 1-3 prompt sequencing (call count + system prompts)
   * Round 4a scripture validation against bundled KJV + Synodal
   * Round 4b doctrinal verdict handling (pass / reject / needs_framing)
-  * Round 4c bilingual rejection + RU translation persistence
-  * Round 6 DRAFT persistence + cv writes for both EN + RU
+  * Round 4c bilingual rejection
+  * Round 4d every quotation in an explanation is a verse the
+    translation pipeline recognises
+  * Round 6 DRAFT persistence + cv writes for EN only — every other
+    language is the translation pipeline's
   * Audit trail keyed on ``generation_run_id`` (pre- and post-persistence)
   * Empty-survivor short-circuits return cleanly with errors set
 """
@@ -148,7 +151,7 @@ def _happy_path_responses(
 
 def test_happy_path_persists_drafts_and_full_audit_trail(db: Session, author: User) -> None:
     """Two survivors clear every gate; both land as DRAFT rows with cv
-    EN + RU writes and the full audit trail."""
+    EN writes and the full audit trail."""
     client = _make_client(_happy_path_responses())
     request = GenerationRequest(
         book="John",
@@ -199,18 +202,19 @@ def test_happy_path_persists_drafts_and_full_audit_trail(db: Session, author: Us
     pre_persist = [e for e in events if e.question_id is None]
     assert any(e.event_type == "ai_generated" for e in pre_persist)
 
-    # RU translations were written as cv rows.
-    cv_rows = (
+    # The bilingual round proposed Russian for both, and none of it is
+    # stored: a Russian row written here would be a *human* row, which
+    # the translation pipeline never replaces — so the verse inside it
+    # would never be swapped for the edition's text.
+    ru_rows = (
         db.query(ContentVersion)
         .filter(
-            ContentVersion.entity_type == "daily_challenge_question",
             ContentVersion.entity_id.in_([str(qid) for qid in outcome.created_question_ids]),
-            ContentVersion.locale == "ru",
+            ContentVersion.locale != "en",
         )
-        .all()
+        .count()
     )
-    assert len(cv_rows) >= 2
-    assert any("на русском" in (row.text or "") for row in cv_rows)
+    assert ru_rows == 0
 
 
 # ── scripture rejection ──────────────────────────────────────────────
@@ -438,3 +442,89 @@ def test_canonical_text_missing_returns_outcome_with_error(db: Session, author: 
     assert outcome.rounds_executed == 0
     assert client.invoke.call_count == 0
     assert any("canonical text missing" in e for e in outcome.errors)
+
+
+# ── quotations ───────────────────────────────────────────────────────
+
+#: John 3:16 as the bundled English edition has it — the text the
+#: pipeline recognises offline, which is what CI has.
+_JOHN_3_16 = (
+    "For God so loved the world, that he gave his only begotten Son, that "
+    "whosoever believeth in him should not perish, but have everlasting life."
+)
+
+
+def _run_with_explanation(db: Session, author: User, explanation: str):
+    responses = _happy_path_responses(n_candidates=1, verse_starts=(16,))
+    responses[4] = {"survivors": [{**_candidate(qid=100, verse_start=16), "explanation": explanation}]}
+    request = GenerationRequest(
+        book="John",
+        chapter=3,
+        verse_from=16,
+        verse_to=16,
+        n_candidates_per_agent=1,
+        max_survivors=1,
+        created_by=author.id,
+    )
+    return run_generation(db, client=_make_client(responses), request=request)
+
+
+def test_a_whole_verse_quoted_word_for_word_is_kept(db: Session, author: User) -> None:
+    outcome = _run_with_explanation(db, author, f'John 3:16 says, "{_JOHN_3_16}"')
+    assert len(outcome.created_question_ids) == 1
+    assert outcome.rejected_at_scripture == 0
+
+
+def test_an_explanation_that_quotes_nothing_is_kept(db: Session, author: User) -> None:
+    outcome = _run_with_explanation(db, author, "John 3:16 names the gift as the Son.")
+    assert len(outcome.created_question_ids) == 1
+
+
+@pytest.mark.parametrize(
+    "explanation",
+    [
+        # Part of a verse: the pipeline compares a quotation with the whole
+        # verse, so a fragment is never recognised and goes to the model as
+        # prose. Production had 'and there was no more sea.' (Rev 21:1).
+        "John 3:16 says, 'whosoever believeth in him should not perish.'",
+        # From memory — reads as the verse, is not the verse. (A rendering
+        # close enough to the edition IS recognised, and then the reader
+        # is given the edition's text; that case is not a defect.)
+        'John 3:16 says, "God showed His love for the world by sending His Son, '
+        'so that those who trust in Him may live forever."',
+    ],
+    ids=["part-of-a-verse", "from-memory"],
+)
+def test_a_quotation_the_pipeline_cannot_recognise_rejects_the_question(
+    db: Session, author: User, explanation: str
+) -> None:
+    """Scripture the pipeline does not recognise is Scripture the
+    translator renders in its own words, in every language but this one."""
+    outcome = _run_with_explanation(db, author, explanation)
+    assert outcome.created_question_ids == []
+    assert outcome.rejected_at_scripture == 1
+    assert "no survivors after quotation check" in outcome.errors
+    events = (
+        db.query(DailyChallengeQuestionEvent)
+        .filter(
+            DailyChallengeQuestionEvent.generation_run_id == outcome.generation_run_id,
+            DailyChallengeQuestionEvent.event_type == "scripture_validated",
+        )
+        .all()
+    )
+    # Round 4a's summary passes; the quotation check's own event says why.
+    [rejection] = [e for e in events if e.details.get("passed") is False]
+    assert rejection.details["quotations"]
+
+
+@pytest.mark.parametrize(
+    "explanation",
+    [
+        "The river is described as 'clear as crystal' in John 3:16.",
+        "Paul's reading and Moses' law both bear on John 3:16.",
+    ],
+    ids=["a-word-named-not-a-verse-quoted", "apostrophes"],
+)
+def test_a_named_word_or_an_apostrophe_is_not_a_quotation(db: Session, author: User, explanation: str) -> None:
+    outcome = _run_with_explanation(db, author, explanation)
+    assert len(outcome.created_question_ids) == 1

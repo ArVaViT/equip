@@ -1999,7 +1999,9 @@ class TestTheGradingQueueSpeaksTheTeachersLanguage:
         response = client.get(f"/api/v1/quizzes/{quiz.id}/pending-answers", headers={"Accept-Language": "de"})
 
         # Without this a cache can hand one teacher another teacher's language.
-        assert response.headers.get("Vary") == "Accept-Language"
+        # Membership, not equality: starlette 1.7 adds ``Origin`` for CORS,
+        # which is correct and not this test's business.
+        assert "Accept-Language" in {v.strip() for v in response.headers.get("Vary", "").split(",")}
 
     def test_a_question_in_no_other_language_still_reaches_the_marker(self, client: TestClient, student, db: Session):
         _seed_course_with_enrollment(db)

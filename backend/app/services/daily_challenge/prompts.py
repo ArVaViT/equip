@@ -53,8 +53,14 @@ THE RUBRIC (a question must pass ALL TWELVE):
     numbers you cite.
 11. Citation says what you claim — the answer is directly supported
     by the literal text of the cited passage.
-12. Explanation present — 1-3 sentence justification quoting the
-    cited verse.
+12. Explanation present — 1-3 sentence justification. If it quotes
+    Scripture, it quotes one or more WHOLE verses, copied word for word
+    from the [EN] reference text below, in double quotes, with the
+    reference next to it. Never part of a verse, never from memory,
+    never from another translation. If a whole verse is too long, do
+    not quote — name the reference and say what it says in your own
+    words, without quotation marks. A quotation that is not a whole
+    verse of the reference text rejects the question.
 
 Output JSON ONLY — no prose, no markdown fence."""
 
@@ -62,10 +68,10 @@ Output JSON ONLY — no prose, no markdown fence."""
 ROUND_1_USER_TEMPLATE = """Passage scope: {book} chapter {chapter}{verse_range_clause}.
 
 Reference text (canonical):
-[EN/KJV]
+[EN]
 {kjv_text}
 
-[RU/Synodal]
+[RU]
 {synodal_text}
 
 Generate {n_candidates} multiple-choice questions about this passage.
@@ -123,8 +129,8 @@ Output JSON ONLY — no prose."""
 
 
 ROUND_2_USER_TEMPLATE = """Reference passage text (canonical):
-[EN/KJV] {kjv_text}
-[RU/Synodal] {synodal_text}
+[EN] {kjv_text}
+[RU] {synodal_text}
 
 Candidate questions from peer agent:
 {candidates_json}
@@ -173,8 +179,8 @@ Output JSON ONLY — no prose."""
 
 
 ROUND_3_USER_TEMPLATE = """Reference passage:
-[EN/KJV] {kjv_text}
-[RU/Synodal] {synodal_text}
+[EN] {kjv_text}
+[RU] {synodal_text}
 
 Round 1 candidates from Agent A:
 {candidates_a_json}
@@ -231,8 +237,8 @@ Output JSON ONLY — no prose."""
 
 
 ROUND_4_DOCTRINAL_USER_TEMPLATE = """Reference passage:
-[EN/KJV] {kjv_text}
-[RU/Synodal] {synodal_text}
+[EN] {kjv_text}
+[RU] {synodal_text}
 
 Candidates to review:
 {survivors_json}
