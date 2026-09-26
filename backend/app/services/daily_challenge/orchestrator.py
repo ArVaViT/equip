@@ -1,4 +1,4 @@
-# ruff: noqa: RUF002
+# ruff: noqa: RUF001, RUF002
 """6-round AI question generation orchestrator for the Daily Challenge.
 
 Vadym's original instruction: "Тут нужен очень большой совет и очень
@@ -30,8 +30,9 @@ Pipeline (per Agent C's design)
        'rejected_scripture'.
     b) Doctrinal review: LLM-driven against the contested-doctrine
        list. Output: pass | needs_framing | reject.
-    c) Bilingual review: LLM-driven. Output includes the RU rendering
-       of the surviving question so Round 6 can dual-write to cv.
+    c) Bilingual review: LLM-driven. Its verdict gates the question;
+       the Russian rendering it proposes is read by nobody and stored
+       nowhere — see Round 6.
 
   Round 5 — Pilot review
     Logged with status 'pilot_summary' but the actual pilot answering
@@ -62,6 +63,7 @@ on Gemini Flash Lite. Cost is not the bottleneck; quality is.
 from __future__ import annotations
 
 import logging
+import re
 import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -69,7 +71,7 @@ from typing import TYPE_CHECKING, Any
 from app.services.bible.books import find_book
 from app.services.bible.references import BibleRef
 from app.services.bible.store import is_locale_bundled, lookup
-from app.services.bible.substitution import canonical_for_display
+from app.services.bible.substitution import canonical_for_display, pre_substitute
 from app.services.daily_challenge.admin import OptionDraft, _log_event, create_question
 from app.services.daily_challenge.llm import GeminiPromptClient, LLMError
 from app.services.daily_challenge.prompts import (
@@ -175,6 +177,58 @@ def _validate_candidate_scripture(candidate: dict[str, Any], book: str, chapter:
     return True, None
 
 
+#: A quotation as the generator writes one: text between a pair of
+#: quotation marks, the opening mark at a word boundary and the closing
+#: one followed by punctuation, space or the end. The single-quote arm
+#: is lazy and demands a boundary after the closing mark, so the
+#: apostrophe in "Pharaoh's" does not end the quotation it sits in.
+_QUOTATION = re.compile(
+    r"(?<![^\s(\[:,—–])"
+    r"(?:\"(?P<straight>[^\"]+?)\"|“(?P<curly>[^”]+?)”|['‘](?P<single>.+?)['’])"
+    r"(?![^\s.,;:!?)\]…—–])"
+)
+
+#: Fewer words than this is a word being named — 'сотник', 'clear as
+#: crystal' — not a verse being quoted.
+_QUOTATION_MIN_WORDS = 4
+
+
+def _quotations_not_recognised(explanation: str) -> list[str]:
+    """Every quotation in ``explanation`` that the translation pipeline
+    would not recognise as Scripture — empty when there is none.
+
+    The pipeline keeps a quoted verse out of the model's hands only when
+    it recognises it: the whole verse, close enough to the edition, next
+    to its reference (``pre_substitute``). What it recognises reaches
+    every reader in their own edition's words. What it does not is
+    translated by the model like any other sentence, which is Scripture
+    in the model's words — the one thing Equip does not print.
+
+    Measured 2026-09-25 on the 274 live English explanations: 259 quote
+    something, and 71 of those quotations were not recognised — mostly
+    part of a verse ('and there was no more sea.'), some from memory of
+    another edition. Every one went out in German and Ukrainian as the
+    model's own rendering.
+
+    So the generator is held to what the pipeline can carry: quote a
+    whole verse word for word, or do not quote. Asking the same question
+    of the same function the translator will ask is the point — a
+    looser test here would let through exactly the quotations that fall
+    through later.
+    """
+    quoted: list[str] = []
+    for match in _QUOTATION.finditer(explanation):
+        body = match.group("straight") or match.group("curly") or match.group("single") or ""
+        if len(body.split()) >= _QUOTATION_MIN_WORDS:
+            quoted.append(body)
+    if not quoted:
+        return []
+    markered, _subs = pre_substitute(explanation, "en")
+    # A recognised quotation is replaced by its marker; one still standing
+    # in the text is one the translator would have been handed as prose.
+    return [body for body in quoted if body in markered]
+
+
 def _verse_range_clause(verse_from: int | None, verse_to: int | None) -> str:
     if verse_from is None:
         return ""
@@ -196,10 +250,9 @@ def run_generation(
         keyed by the same generation_run_id.
       * For each surviving question, creates a DRAFT
         ``daily_challenge_questions`` row via ``create_question``.
-        Translatable text lands in cv at the EN source locale; the RU
-        rendering produced by Round 4 bilingual review is recorded as
-        a second human-version cv row so the editor reviews both
-        translations before promoting.
+        Translatable text lands in cv at the EN source locale and
+        nowhere else; every other language, Russian included, is made
+        by the translation pipeline from that row.
 
     Errors mid-run do NOT roll back already-committed rounds (we want
     the audit trail of WHY a run failed). The outcome carries
@@ -426,15 +479,14 @@ def run_generation(
         agent_label="bilingual",
     )
     bilingual_reviews = bilingual.get("reviews", []) if isinstance(bilingual, dict) else []
-    survivors_final: list[tuple[dict[str, Any], dict[str, Any] | None]] = []
+    survivors_final: list[dict[str, Any]] = []
     for idx, s in enumerate(survivors_after_doctrinal):
         review = _find_review_for_index(bilingual_reviews, idx)
         verdict = review.get("verdict") if isinstance(review, dict) else "pass"
         if verdict == "reject":
             outcome.rejected_at_bilingual += 1
             continue
-        ru_translation = review.get("ru_translation") if isinstance(review, dict) else None
-        survivors_final.append((s, ru_translation))
+        survivors_final.append(s)
     _log_event(
         db,
         question_id=None,
@@ -448,6 +500,36 @@ def run_generation(
 
     if not survivors_final:
         outcome.errors.append("no survivors after bilingual review")
+        return outcome
+
+    # ── Round 4d — Every quotation is a verse the pipeline can find ───
+    # Last of the gates, because the doctrinal reframe above can rewrite
+    # the explanation and a quotation it introduces has to be read too.
+    quotable: list[dict[str, Any]] = []
+    for s in survivors_final:
+        unrecognised = _quotations_not_recognised(str(s.get("explanation") or ""))
+        if not unrecognised:
+            quotable.append(s)
+            continue
+        outcome.rejected_at_scripture += 1
+        _log_event(
+            db,
+            question_id=None,
+            event_type="scripture_validated",
+            actor_id=request.created_by,
+            generation_run_id=run_id,
+            details={
+                "survivor": s,
+                "passed": False,
+                "reason": "quotation is not a whole verse of the reference text",
+                "quotations": unrecognised,
+            },
+        )
+    survivors_final = quotable
+    db.commit()
+
+    if not survivors_final:
+        outcome.errors.append("no survivors after quotation check")
         return outcome
 
     # ── Round 5 — Pilot placeholder ───────────────────────────────────
@@ -466,7 +548,7 @@ def run_generation(
     db.commit()
 
     # ── Round 6 — Persist as DRAFT rows ───────────────────────────────
-    for survivor, ru in survivors_final:
+    for survivor in survivors_final:
         try:
             options = [
                 OptionDraft(text=o["text"], is_correct=bool(o.get("is_correct", False)))
@@ -495,45 +577,19 @@ def run_generation(
                 event_type="ai_synthesis",
                 actor_id=request.created_by,
                 generation_run_id=run_id,
-                details={"persisted": True, "ru_translation_present": ru is not None},
+                details={"persisted": True},
             )
-            # If the bilingual review produced a Russian rendering, drop
-            # it into cv as a second human-version row so the editor sees
-            # both translations during the bilingually_reviewed gate.
-            if isinstance(ru, dict) and ru.get("question_text"):
-                from app.services.content_versions.write import record_human_version
-
-                record_human_version(
-                    db,
-                    entity_type="daily_challenge_question",
-                    entity_id=str(question.id),
-                    field="question_text",
-                    locale="ru",
-                    text=str(ru["question_text"]),
-                    authored_by=request.created_by,
-                )
-                if ru.get("explanation"):
-                    record_human_version(
-                        db,
-                        entity_type="daily_challenge_question",
-                        entity_id=str(question.id),
-                        field="explanation",
-                        locale="ru",
-                        text=str(ru["explanation"]),
-                        authored_by=request.created_by,
-                    )
-                ru_options = ru.get("options") or []
-                for option_row, ru_opt in zip(question.options, ru_options, strict=False):
-                    if isinstance(ru_opt, dict) and ru_opt.get("text"):
-                        record_human_version(
-                            db,
-                            entity_type="daily_challenge_option",
-                            entity_id=str(option_row.id),
-                            field="option_text",
-                            locale="ru",
-                            text=str(ru_opt["text"]),
-                            authored_by=request.created_by,
-                        )
+            # English only. The Russian rendering Round 4c proposes used to
+            # be stored here as a second *human* row — and a human row is
+            # exactly what the translation pipeline never touches, so the
+            # verse inside it never met the layer that puts the canonical
+            # text in. It was the model quoting Scripture from memory,
+            # served as authored. Measured 2026-09-25: of 274 live Russian
+            # explanations, 8 quoted the edition word for word; the rest
+            # were the model's own wording, and on Acts 27:1 it named the
+            # centurion "Август" — in the explanation of a question whose
+            # answer is Julius. Russian now comes from the pipeline, like
+            # German and Ukrainian, and the verse in it from the edition.
             db.commit()
         except Exception as exc:
             logger.warning("orchestrator failed to persist survivor: %s", exc, exc_info=True)
