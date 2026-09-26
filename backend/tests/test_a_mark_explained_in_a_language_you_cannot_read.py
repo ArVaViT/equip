@@ -207,4 +207,6 @@ class TestTheRoute:
             headers={"Accept-Language": "de"},
         )
 
-        assert response.headers.get("Vary") == "Accept-Language"
+        # Membership, not equality: starlette 1.7 adds ``Origin`` for CORS,
+        # which is correct and not this test's business.
+        assert "Accept-Language" in {v.strip() for v in response.headers.get("Vary", "").split(",")}
