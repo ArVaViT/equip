@@ -764,6 +764,97 @@ def _requote(canonical: str, sub: Substitution, html: str, target_locale: Locale
     return canonical
 
 
+#: Punctuation that says a verse goes on into the next one. An edition
+#: prints Romans 1:1 ending in a comma because the sentence runs to
+#: verse 7 — the Berean Standard Bible ends it on a dash — and quoted
+#: on its own, that mark is the last thing before the closing one.
+_CONTINUES: Final[str] = ",;:—–"
+
+#: Punctuation that ends a sentence.
+_STOPS: Final[str] = ".!?…"
+
+#: What may stand between a closing mark and the next sentence.
+_SPACE_OR_TAGS: Final[re.Pattern[str]] = re.compile(r"^(?:\s|<[^>]+>)*")
+
+
+def _settle_the_end(html: str, sub: Substitution, verse: str, target_locale: LocaleCode) -> str:
+    """Put ``verse`` where ``sub.marker`` stands, and make the end of the
+    quotation read as the end of a quotation.
+
+    The edition's text is not a sentence the author wrote; it is a verse,
+    and a verse ends however the verse ends. Three defects followed from
+    pasting it in as it comes, all counted on live rows on 2026-09-26:
+
+    * **The verse runs on.** Romans 1:1 ends in a comma in every
+      edition, because the sentence runs on; quoted alone it read
+      «…Божьей Радостной Вести,». 47 German and 53 Ukrainian Daily
+      Challenge rows closed a quotation on a comma, colon or semicolon.
+      The mark is dropped; the words are the edition's.
+    * **The author's full stop went with the verse.** English writes
+      ``'…gospel of God.' This verse…`` — the stop inside the marks, so
+      inside the marker, so gone. Where the edition's verse has none,
+      the next sentence began straight after the closing mark:
+      „…Evangelium Gottes“ Dieser Vers. The stop is put back, after the
+      mark, only when the author had one and what follows is a new
+      sentence — nothing, or a capital. Never before a citation or a
+      lowercase continuation.
+    * **Two stops.** The edition's verse ends in a full stop and the
+      model, having been handed one, wrote another after the marker:
+      «…из императорского полка.». Russian and Ukrainian set the stop
+      after the guillemet; German and English keep the edition's.
+
+    Only when the verse is in quotation marks. A bare verse — a
+    blockquote the author set without marks — is left as the edition
+    prints it; its end is a paragraph's end, not a sentence's.
+    """
+    index = html.find(sub.marker)
+    if index == -1:
+        return html.replace(sub.marker, verse)
+    before, after = html[:index], html[index + len(sub.marker) :]
+
+    body, closing = verse, ""
+    if body[-1:] in _CLOSING_MARKS:
+        body, closing = body[:-1], body[-1:]
+    elif after[:1] in _CLOSING_MARKS:
+        # The author's own mark survived outside the marker.
+        closing, after = after[:1], after[1:]
+    if not closing:
+        return before + verse + after
+
+    # ``in`` on a string is a substring test, and "" is a substring of
+    # everything — so every character test below names its own emptiness.
+    body = body.rstrip()
+    if body and body[-1] in _CONTINUES:
+        body = body[:-1].rstrip()
+
+    authors = sub.original_inner.rstrip().rstrip("\"'»“”’").rstrip()
+    author_stopped = bool(authors) and authors[-1] in ".!?"
+    rest = after[_SPACE_OR_TAGS.match(after).end() :]  # type: ignore[union-attr]
+    new_sentence = rest == "" or rest[:1].isupper()
+    stop_outside = target_locale in ("ru", "uk")
+    body_stops = bool(body) and body[-1] in _STOPS
+    stop_follows = bool(after) and after[0] in _STOPS
+
+    if body.endswith(".") and not body.endswith("..") and after[:1] == ".":
+        # Two stops. One of them goes.
+        if stop_outside:
+            body = body[:-1]
+        else:
+            after = after[1:]
+    elif body.endswith(".") and not body.endswith("..") and stop_outside and new_sentence:
+        # «…полка.» Этот → «…полка». Этот
+        body, after = body[:-1], "." + after
+    elif not body_stops and not stop_follows and author_stopped and new_sentence:
+        if target_locale == "en":
+            body += "."  # English sets the stop inside the marks.
+        else:
+            after = "." + after
+
+    # A marker is unique to one substitution; a second copy would be the
+    # model's doing, and gets the verse as it is.
+    return (before + body + closing + after).replace(sub.marker, verse)
+
+
 def _localize_ref_tail(
     tail: str,
     target_locale: LocaleCode,
@@ -1371,10 +1462,10 @@ def post_substitute(
         # Re-wrapping applies only to the canonical text. The fallback
         # path restores the author's own span, which still carries
         # whatever marks the author put inside it.
-        replacement = (
-            _requote(canonical_target, sub, html, target_locale) if canonical_target is not None else sub.original_inner
-        )
-        html = html.replace(sub.marker, replacement)
+        if canonical_target is not None:
+            html = _settle_the_end(html, sub, _requote(canonical_target, sub, html, target_locale), target_locale)
+        else:
+            html = html.replace(sub.marker, sub.original_inner)
         if sub.ref_tail:
             # The numbers follow the text: they move only when the text
             # beside them came from an edition that numbers differently.
