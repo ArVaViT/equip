@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronUp } from "lucide-react";
+import { useLocation } from "react-router-dom";
+
+import { useGuestHome } from "@/hooks/usePageTitle";
 
 export default function ScrollToTop() {
   const { t } = useTranslation();
@@ -18,12 +21,21 @@ export default function ScrollToTop() {
     };
   }, []);
 
+  // Not on the landing page. None of the pages it is measured against has
+  // one, and on a phone it sat on top of the film's controls and the legal
+  // links in the footer. A landing page is read top to bottom once; the
+  // product's long lists are where a way back up earns its place.
+  const { pathname } = useLocation();
+  const guestHome = useGuestHome(pathname);
+
   const scrollToTop = () => {
     window.scrollTo({
       top: 0,
       behavior: "smooth",
     });
   };
+
+  if (guestHome) return null;
 
   return (
     <button

@@ -19,7 +19,19 @@ import { motion, useReducedMotion, useScroll, useTransform } from "motion/react"
  * reverses it — the same rule as `ScrollReveal`. Under
  * `prefers-reduced-motion` it is a plain `div`.
  */
-export function ScrollScale({ children, className }: { children: ReactNode; className?: string }) {
+export function ScrollScale({
+  children,
+  className,
+  fade = true,
+}: {
+  children: ReactNode
+  className?: string
+  /**
+   * Off for a frame that is already on the first screen: starting it at
+   * 35% opacity made the product under the hero look disabled.
+   */
+  fade?: boolean
+}) {
   const ref = useRef<HTMLDivElement>(null)
   const prefersReducedMotion = useReducedMotion()
 
@@ -28,7 +40,7 @@ export function ScrollScale({ children, className }: { children: ReactNode; clas
     offset: ["start end", "center center"],
   })
   const scale = useTransform(scrollYProgress, [0, 1], [0.92, 1])
-  const opacity = useTransform(scrollYProgress, [0, 0.6], [0.35, 1])
+  const opacity = useTransform(scrollYProgress, [0, 0.6], [fade ? 0.35 : 1, 1])
 
   if (prefersReducedMotion) {
     return (

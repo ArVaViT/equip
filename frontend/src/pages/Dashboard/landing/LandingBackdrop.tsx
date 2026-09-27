@@ -25,13 +25,19 @@ import {
  * through a sequence of poses as the document scrolls — one per scene:
  *
  *   scattered   loose pieces — the hero, «не отрывками»
+ *   frame       every piece squared into one rectangle around the tour
  *   stacked     squared up, one on another       (first claim)
  *   fanned      a row: the shape of a course     (second claim)
  *   single      one sheet forward, the rest back (third claim)
- *   frame       every piece squared into one rectangle around the tour
  *   row         laid out in order, one per course, riding the shelf
- *   gather      collected into one neat stack    (the close)
- *   frame       squared round the film, and held to the end
+ *   frame       squared round the film
+ *   gather      collected into one neat stack    (the close, held to the end)
+ *
+ * The order is the page's, not this file's: steps are read from the DOM and
+ * sorted by position. Since 2026-09-27 the tour comes straight after the
+ * hero — the product on the first screen, as every product page worth
+ * copying does it — and the close comes after the film, so the page ends
+ * on its one action rather than on a video.
  *
  * THE SCENE LEADS THE EYE. Until 2026-09-23 the leaves stopped having
  * anything to do with the page after the claims: the tour, the shelf and

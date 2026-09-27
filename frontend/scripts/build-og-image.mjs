@@ -3,9 +3,17 @@
 // Facebook, X) shows when somebody shares a link to the site.
 //
 // It is generated rather than drawn because the words on it are the landing
-// page's own: the headline comes straight out of ru.json, so the card cannot
+// page's own: the headline comes straight out of en.json, so the card cannot
 // quietly start promising something the site no longer says. Re-run after
 // editing `landing.hero.manifesto`.
+//
+// English since 2026-09-27. The card was Russian while the site had made
+// English its first language, so a link shared anywhere introduced a
+// different page from the one it opened. An unfurler reads one static card
+// for every reader; it has to be in the language the page opens in.
+// It also carries the page's colour now — the sage-and-gold light from the
+// close — and the headline at weight 500, like the page's (700 read as a
+// book blog there, and did here).
 //
 // The previous card was the cover image from a dev.to article — a blue book
 // glyph on a blue gradient, wordless, from two palettes ago.
@@ -40,12 +48,14 @@ const WIDTH = 1200
 const HEIGHT = 630
 
 function copy() {
-  const ru = JSON.parse(readFileSync(resolve(__dirname, "../src/i18n/locales/ru.json"), "utf8"))
+  const en = JSON.parse(readFileSync(resolve(__dirname, "../src/i18n/locales/en.json"), "utf8"))
   return {
     // Broken where the landing page breaks it, so the two read alike.
-    manifesto: ru.landing.hero.manifesto.replace(/,\s+/, ",<br>"),
+    manifesto: en.landing.hero.manifesto.replace(/,\s+/, ",<br>"),
     name: "Equip",
-    meta: ["Курсы", "Тесты", "Сертификаты"],
+    // What the page says first about the offer: free, in your language,
+    // with a certificate at the end.
+    meta: ["Free", "Four languages", "Certificates"],
     domain: "equipbible.com",
   }
 }
@@ -54,19 +64,26 @@ export function html() {
   const { manifesto, name, meta, domain } = copy()
   const [first, second, third] = meta
   return `<!doctype html>
-<html lang="ru"><head><meta charset="utf-8">
+<html lang="en"><head><meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Golos+Text:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500&family=Golos+Text:wght@400;500&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { width: ${WIDTH}px; height: ${HEIGHT}px; background: #F8F8F6; color: #1E1C1A;
-         font-family: "Golos Text", system-ui, sans-serif; }
+         font-family: "Golos Text", system-ui, sans-serif; position: relative; overflow: hidden; }
+  /* The close's light, off to the right where the headline does not run. */
+  .glow { position: absolute; right: -220px; top: -120px; width: 820px; height: 820px;
+          filter: blur(40px);
+          background:
+            radial-gradient(closest-side at 38% 62%, hsl(140 32% 48% / 0.42), transparent),
+            radial-gradient(closest-side at 66% 38%, hsl(38 72% 60% / 0.40), transparent); }
+  .page { position: relative; }
   .page { padding: 88px 96px; height: 100%; display: flex; flex-direction: column;
           justify-content: space-between; }
   .top { display: flex; align-items: center; gap: 22px; }
   .rule { width: 64px; height: 2px; background: #1E1C1A; }
   .name { font-size: 23px; letter-spacing: 0.26em; text-transform: uppercase; font-weight: 500; }
-  .manifesto { font-family: Literata, Georgia, serif; font-weight: 600; font-size: 66px;
+  .manifesto { font-family: Literata, Georgia, serif; font-weight: 500; font-size: 66px;
                line-height: 1.16; letter-spacing: -0.022em; max-width: 1010px; }
   .foot { display: flex; align-items: baseline; justify-content: space-between; }
   .meta { font-size: 21px; letter-spacing: 0.2em; text-transform: uppercase; color: #6D675F;
@@ -74,7 +91,7 @@ export function html() {
   .domain { font-family: Literata, Georgia, serif; font-size: 25px; }
   .sage { color: #4E6E55; }
 </style></head>
-<body><div class="page">
+<body><div class="glow"></div><div class="page">
   <div class="top"><div class="rule"></div><div class="name">${name}</div></div>
   <div class="manifesto">${manifesto}</div>
   <div class="foot">

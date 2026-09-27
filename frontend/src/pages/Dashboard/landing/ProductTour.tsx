@@ -73,7 +73,10 @@ export function ProductTour() {
           video.pause();
         }
       },
-      { threshold: 0.25 },
+      // 15%, not 25%: under the hero the first screen shows roughly a fifth
+      // of the frame, and at 25% the product sat there as a still until the
+      // first scroll — the one place a moving frame is worth the most.
+      { threshold: 0.15 },
     );
 
     observer.observe(video);
@@ -83,7 +86,7 @@ export function ProductTour() {
 
   if (prefersReducedMotion) {
     return (
-      <SceneBand pose="frame">
+      <SceneBand pose="frame" flush>
         <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
           <img
             src={cut.poster}
@@ -99,9 +102,9 @@ export function ProductTour() {
 
   // A scene of its own; the backdrop squares into a frame round it.
   return (
-    <SceneBand pose="frame">
+    <SceneBand pose="frame" flush>
       <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
-        <ScrollScale>
+        <ScrollScale fade={false}>
           <video
             key={cut.mp4}
             data-backdrop-target

@@ -67,7 +67,7 @@
     "hero": {
       "registerCta": "Create account",
       "manifesto": "Study Scripture in order, not in fragments",
-      "subline": "Courses with real assessment and a certificate anyone can check — for people who take Scripture seriously.",
+      "subline": "Free courses with real assessment and a certificate anyone can check — for people who take Scripture seriously.",
       "facts": "Free · Open source · RU EN DE UK · Verifiable certificate"
     },
     "value": {
@@ -90,13 +90,10 @@
         "sampleQuestion": "Summarize the main idea of this passage in your own words.",
         "gradedBadge": "Teacher graded"
       },
-      "certificates": {
-        "eyebrow": "Certification",
-        "title": "A certificate you can verify",
-        "body": "Every certificate carries its own number, and anyone can check it.",
-        "short": "Each one has its own number. Anyone can check it.",
-        "certTitle": "Certificate of Completion",
-        "verifyLabel": "Verify by number"
+      "languages": {
+        "title": "Every student reads in their own language",
+        "body": "A teacher writes the course once. Students read it in English, Russian, Ukrainian or German — every verse quoted from a real Bible translation.",
+        "short": "Written once — read in English, Russian, Ukrainian or German."
       },
       "bilingual": {
         "eyebrow": "Language",
@@ -2928,7 +2925,7 @@
   },
   "meta": {
     "documentTitle": "Equip — study the Bible online",
-    "description": "Equip is systematic Bible study for people who take Scripture seriously. Courses, progress, certificates. English, Russian, German, Ukrainian."
+    "description": "Equip is free, systematic Bible study for people who take Scripture seriously. Courses, progress, certificates. English, Russian, German, Ukrainian."
   },
   "courseTranslation": {
     "title": "Course languages",

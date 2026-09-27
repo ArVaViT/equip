@@ -70,9 +70,9 @@ export function StorySection() {
       short: t("landing.value.assessment.short"),
     },
     {
-      title: t("landing.value.certificates.title"),
-      body: t("landing.value.certificates.body"),
-      short: t("landing.value.certificates.short"),
+      title: t("landing.value.languages.title"),
+      body: t("landing.value.languages.body"),
+      short: t("landing.value.languages.short"),
     },
   ]
 
