@@ -532,3 +532,47 @@ def test_a_quotation_the_pipeline_cannot_recognise_rejects_the_question(
 def test_a_named_word_or_an_apostrophe_is_not_a_quotation(db: Session, author: User, explanation: str) -> None:
     outcome = _run_with_explanation(db, author, explanation)
     assert len(outcome.created_question_ids) == 1
+
+
+# ── verse numbers ────────────────────────────────────────────────────
+
+
+def _run_with(db: Session, author: User, **fields: Any):
+    responses = _happy_path_responses(n_candidates=1, verse_starts=(16,))
+    responses[4] = {"survivors": [{**_candidate(qid=100, verse_start=16), **fields}]}
+    request = GenerationRequest(
+        book="John",
+        chapter=3,
+        verse_from=14,
+        verse_to=17,
+        n_candidates_per_agent=1,
+        max_survivors=1,
+        created_by=author.id,
+    )
+    return run_generation(db, client=_make_client(responses), request=request)
+
+
+def test_the_verse_the_question_cites_wins_over_the_models_field(db: Session, author: User) -> None:
+    """Production, Romans 3: ``verse_start`` 3 (the chapter), ``verse_end``
+    2, question "According to Romans 3:1". The card printed the 3."""
+    outcome = _run_with(
+        db, author, question_text="According to John 3:16, whom did God give?", verse_start=3, verse_end=2
+    )
+    [qid] = outcome.created_question_ids
+    q = db.get(DailyChallengeQuestion, qid)
+    assert (q.bible_verse_from, q.bible_verse_to) == (16, None)
+
+
+def test_a_cited_range_is_kept_as_a_range(db: Session, author: User) -> None:
+    outcome = _run_with(
+        db, author, question_text="In John 3:14-15, Jesus compares his lifting up to what?", verse_start=3, verse_end=14
+    )
+    [qid] = outcome.created_question_ids
+    q = db.get(DailyChallengeQuestion, qid)
+    assert (q.bible_verse_from, q.bible_verse_to) == (14, 15)
+
+
+def test_with_no_citation_a_backwards_range_is_refused(db: Session, author: User) -> None:
+    outcome = _run_with(db, author, question_text="Whom did God give?", verse_start=16, verse_end=2)
+    assert outcome.created_question_ids == []
+    assert outcome.rejected_at_scripture == 1

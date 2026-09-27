@@ -693,6 +693,7 @@ def _issues_in(task: TranslationTask, result: TranslationResult) -> list[Validat
         source_locale=task.source_locale,
         target_locale=task.target_locale,
         content_kind=task.content_kind,
+        scripture=result.scripture,
     )
     if result.scripture_in_source_language:
         # ``_ask`` intercepts this before any answer reaches here and

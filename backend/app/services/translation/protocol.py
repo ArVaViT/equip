@@ -147,6 +147,16 @@ class TranslationResult:
     # does not cover, because altering the notice is the platform's own act
     # and not something a user uploaded.
     lost_attribution: bool = False
+    # Every verse the provider put in from the edition, as
+    # ``(what the author quoted, what the edition says)``. The second is
+    # not the model's text: nothing in it can have been substituted, and
+    # the checks that accuse the model of swapping a name must not read
+    # it. An author who quotes the opening of Matthew 2:1 is given the
+    # whole verse, which goes on to Jerusalem — and a name check that
+    # compares the author's fragment with the edition's verse finds
+    # "Judaea → Иерусалим" and parks a correct row (four live rows,
+    # 2026-09-26). Empty when nothing was substituted.
+    scripture: tuple[tuple[str, str], ...] = ()
     # Provider-specific model id actually used (so logs can pin a row to a
     # version of the upstream service).
     model: str | None = None
