@@ -193,6 +193,72 @@ def test_find_attributions_reads_without_rewriting() -> None:
     assert find_attributions(source) == ["Источник: Стотт, «Крест Христа»"]
 
 
+# A credit on its own line, in the four languages and the shapes it takes.
+DASH_CREDITS = [
+    "<blockquote><p>Слова.</p></blockquote><p>— Джон Стотт, «Крест Христа», 1986</p>",
+    "<p>— John Stott, “The Cross of Christ”, chapter 4.</p>",
+    "<p>– Dietrich Bonhoeffer, „Nachfolge“, 1937, S. 12</p>",
+    "<p>— Джон Стотт, «Хрест Христа», розділ 4</p>",
+    "<p>— К. С. Льюис, «Просто христианство», гл. 3</p>",
+    "Слова цитаты.<br>— Джон Стотт, «Крест Христа», 1986",
+    "Слова цитаты.\n— Джон Стотт «Крест Христа»",
+]
+
+
+@pytest.mark.parametrize("html", DASH_CREDITS)
+def test_a_credit_on_its_own_line_is_protected(html: str) -> None:
+    hidden, spans = pre_substitute(html)
+
+    assert len(spans) == 1, f"credit not recognised: {html}"
+    assert spans[0].text.lstrip().startswith(("—", "–"))
+    assert post_substitute(hidden, spans) == html
+
+
+# Production rows the first dash rule froze, 2026-09-26. Each came back into
+# en / de / uk in Russian, because the model was never shown it. Kept
+# verbatim so the rule cannot loosen back into them.
+DASH_PROSE = [
+    # A verse range is a dash, and the quotation near the end of the item
+    # finished the match: everything from "–50" on stayed Russian.
+    "<li>Соломон построил Храм (7:47), но Стефан напоминает: «Всевышний не в рукотворённых храмах живёт» (7:48),"
+    " и подтверждает это словами Исаии (7:49–50; Ис.&nbsp;66:1–2). Ср. молитву Соломона: «Небо и небо небес"
+    " не вмещают Тебя, тем менее сей храм, который я построил» (3&nbsp;Цар.&nbsp;8:27).</li>",
+    "<p>Иаков и старейшины предлагают Павлу принять участие в обряде очищения (21:20–24). Павел соглашается:"
+    " в вопросах второстепенных он готов становиться «как иудей для иудеев» (ср. 1&nbsp;Кор.&nbsp;9:20).</p>",
+    "<p>Гамалиил даёт мудрый совет (5:38–39). Апостолов бьют и отпускают. Их реакция парадоксальна:"
+    " они возвращаются «радуясь, что за имя Господа Иисуса удостоились принять бесчестие» (5:41).</p>",
+    # A gloss: the term in bold, a dash, the meaning in quotes.
+    "<p><strong>Апостол</strong> — «посланник» с поручением и полномочиями пославшего.</p>",
+    "<p><strong>Хесед</strong> — «верность».</p>",
+    "<li><strong>Стефан</strong> — финал речи Стефана: «жестоковыйные».</li>",
+    "<li><strong>Корнилий</strong> — сотник Италийского полка, «боящийся Бога».</li>",
+    # A dash that opens the block but starts a sentence, not a name.
+    "<p>— «Веруй в Господа Иисуса Христа, и спасёшься».</p>",
+    "<p>— Павел как «избранный сосуд» и его путь страданий.</p>",
+    "<p>— финал речи Стефана: «жестоковыйные».</p>",
+    "<p>— trust: leaning your weight on who God is, the way a child trusts a “parent”.</p>",
+]
+
+
+@pytest.mark.parametrize("html", DASH_PROSE)
+def test_a_dash_inside_prose_is_not_a_credit(html: str) -> None:
+    hidden, spans = pre_substitute(html)
+
+    assert spans == [], f"prose frozen as a credit: {[s.text for s in spans]}"
+    assert hidden == html
+
+
+def test_a_credit_needs_a_block_of_its_own() -> None:
+    """The same words are a credit on their own line and a gloss after a
+    bold term. Only the position tells them apart, so only the position is
+    trusted."""
+    credit = "<p>— Джон Стотт, «Крест Христа», 1986</p>"
+    gloss = "<p><strong>Стотт</strong> — Джон Стотт, «Крест Христа», 1986</p>"
+
+    assert find_attributions(credit) == ["— Джон Стотт, «Крест Христа», 1986"]
+    assert find_attributions(gloss) == []
+
+
 class TestTheMeasurementBehindTheThreshold:
     """The production corpus on 2026-09-17, as the rules see it.
 
@@ -291,6 +357,24 @@ class TestThroughTheProvider:
         )
 
         assert '"The Reason for God"' in result.text
+
+    def test_prose_after_a_verse_range_reaches_the_model(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The production failure end to end: with a model that translates
+        every Cyrillic word, not one Cyrillic letter may survive. Before the
+        fix the tail of this item was hidden under a marker and came back
+        in Russian."""
+        from app.services.translation.protocol import TranslationRequest
+
+        cyrillic_word = re.compile(r"[А-Яа-яЁё]+")
+        provider, seen = self._provider(monkeypatch, lambda text: cyrillic_word.sub("xx", text))
+        source = DASH_PROSE[0]
+
+        result = provider.translate_within(
+            TranslationRequest(text=source, source_locale="ru", target_locale="en", content_kind="html")
+        )
+
+        assert "EQA" not in seen[0]
+        assert not re.search(r"[А-Яа-яЁё]", result.text), result.text
 
     def test_a_model_that_drops_the_marker_is_reported(self, monkeypatch: pytest.MonkeyPatch) -> None:
         provider, _ = self._provider(monkeypatch, lambda text: _MARKER.sub("", text))

@@ -88,10 +88,45 @@ _SOURCE_LABEL: Final[str] = (
 #:    the whole difference between a citation and the words "from the book".
 _FROM_THE_BOOK: Final[str] = r"(?:Из книги|Из кн\.|З книги|З кн\.|From the book|Aus dem Buch)"
 
-#: 5. A credit after a dash at the end of a run: "— John Stott, «The Cross
-#:    of Christ», 1986." The quoted title is what makes it a credit rather
-#:    than a sentence that happens to start with a dash.
-_DASH_CREDIT: Final[str] = rf"[—–]\s*[^\n]{{0,160}}{_QUOTED_TITLE}[^\n]{{0,80}}"
+#: 5. A credit on a line of its own: "— John Stott, «The Cross of Christ»,
+#:    1986." Three things make it a credit rather than a sentence, and all
+#:    three are required:
+#:
+#:    * the dash opens a block — the start of the text, a new line, or right
+#:      after a block tag (see ``_BLOCK_TAG_RE``). A dash in the middle of a
+#:      paragraph is punctuation: a verse range "7:49–50", a gloss
+#:      "<strong>Апостол</strong> — «посланник»";
+#:    * a name comes before the quoted title — a few words, no clause
+#:      punctuation. "— финал речи Стефана: «жестоковыйные»" is a sentence;
+#:    * nothing but a year, a chapter or a page follows the title, up to
+#:      the end of the run.
+#:
+#:    The first version asked only for "a dash, a quoted title within 160
+#:    characters, the end of the run within 80". On 2026-09-26 that matched
+#:    286 fragments in 150 of 15,010 live rows, every one of them prose, and
+#:    each came back into en / de / uk in Russian: the model never saw it, so
+#:    no correcting pass could reach it. See
+#:    ``tests/test_the_name_on_the_extract_survives_translation.py``.
+_CREDIT_NAME_WORD: Final[str] = r"[^\s«»“”„\"—–,;:!?()\[\]]+"
+_CREDIT_TAIL: Final[str] = (
+    r"(?:[\s,.;:()\[\]–-]|\d|[IVXLC]+\b"
+    r"|глава|гл\.|разд\.|стр\.|с\.|изд\.|пер\."
+    r"|розділ|розд\.|вид\."
+    r"|chapter|ch\.|pp?\.|ed\.|trans\."
+    r"|Kapitel|Kap\.|S\.|Aufl\.|übers\.)*"
+)
+_DASH_CREDIT: Final[str] = (
+    rf"[—–][ \t\xa0]*(?:{_CREDIT_NAME_WORD}[ \t\xa0]+){{0,5}}{_CREDIT_NAME_WORD}"
+    rf",?[ \t\xa0]*{_QUOTED_TITLE}{_CREDIT_TAIL}"
+)
+
+#: The tags after which a run starts a new block. A credit may only open one
+#: of those: after ``<strong>`` or ``<em>`` a dash is still mid-sentence.
+_BLOCK_TAG_RE: Final[re.Pattern[str]] = re.compile(
+    r"<\s*/?\s*(?:p|li|div|br|blockquote|h[1-6]|ul|ol|dl|dt|dd|td|th|tr|table"
+    r"|section|article|header|footer|figure|figcaption|hr|pre)\b",
+    re.IGNORECASE,
+)
 
 #: Ordered widest-first so an overlapping notice wins over a bare ISBN.
 _PATTERNS: Final[tuple[re.Pattern[str], ...]] = (
@@ -102,8 +137,10 @@ _PATTERNS: Final[tuple[re.Pattern[str], ...]] = (
     re.compile(rf"{_BOL}{_SOURCE_LABEL}\s*[:—–-]{_EOL}"),
     re.compile(rf"{_BOL}{_FROM_THE_BOOK}\b(?=[^\n]*(?:{_QUOTED_TITLE}|{_YEAR})){_EOL}"),
     re.compile(_ISBN),
-    re.compile(rf"{_DASH_CREDIT}(?=\s*\Z)"),
 )
+
+#: Tried only on a run that opens a block, and it must take the whole line.
+_DASH_CREDIT_RE: Final[re.Pattern[str]] = re.compile(rf"{_BOL}{_DASH_CREDIT}(?=[ \t]*(?:\n|\Z))")
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,10 +162,20 @@ def _marker_token() -> str:
     return f"{ATTRIBUTION_MARKER_PREFIX}{secrets.token_hex(8)}"
 
 
-def _spans_in(run: str) -> list[tuple[int, int]]:
-    """Non-overlapping ``(start, end)`` of every attribution in one text run."""
+def _opens_block(tags: list[str], index: int) -> bool:
+    """Whether run ``index`` of a tag-split text starts a new block."""
+    return index == 0 or bool(_BLOCK_TAG_RE.match(tags[index - 1]))
+
+
+def _spans_in(run: str, *, opens_block: bool) -> list[tuple[int, int]]:
+    """Non-overlapping ``(start, end)`` of every attribution in one text run.
+
+    ``opens_block`` says whether the run follows a block boundary; the dash
+    credit is only looked for there.
+    """
     found: list[tuple[int, int]] = []
-    for pattern in _PATTERNS:
+    patterns = (*_PATTERNS, _DASH_CREDIT_RE) if opens_block else _PATTERNS
+    for pattern in patterns:
         for match in pattern.finditer(run):
             start, end = match.start(), match.end()
             fragment = run[start:end]
@@ -154,8 +201,10 @@ def find_attributions(text: str) -> list[str]:
     fragments: list[str] = []
     # ``re.split`` on a pattern with no capturing group yields only the text
     # between the matches, which is precisely the text this may look at.
-    for run in _TAG_RE.split(text):
-        fragments.extend(run[start:end] for start, end in _spans_in(run))
+    tags = _TAG_RE.findall(text)
+    for index, run in enumerate(_TAG_RE.split(text)):
+        spans = _spans_in(run, opens_block=_opens_block(tags, index))
+        fragments.extend(run[start:end] for start, end in spans)
     return fragments
 
 
@@ -174,7 +223,7 @@ def pre_substitute(text: str) -> tuple[str, list[AttributionSpan]]:
     for index, run in enumerate(pieces):
         rewritten: list[str] = []
         cursor = 0
-        for start, end in _spans_in(run):
+        for start, end in _spans_in(run, opens_block=_opens_block(tags, index)):
             span = AttributionSpan(marker=_marker_token(), text=run[start:end])
             spans.append(span)
             rewritten.append(run[cursor:start])
