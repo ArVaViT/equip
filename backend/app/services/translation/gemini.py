@@ -33,7 +33,7 @@ from app.schemas.locale import LOCALE_DISPLAY_NAMES
 from app.services.attribution import AttributionSpan
 from app.services.attribution import post_substitute as restore_attributions
 from app.services.attribution import pre_substitute as hide_attributions
-from app.services.bible.substitution import post_substitute, pre_substitute
+from app.services.bible.substitution import canonical_for_display, post_substitute, pre_substitute
 from app.services.translation.html_split import markup_correction_note, split_html_for_translation
 from app.services.translation.prompt import build_system_prompt, build_user_prompt
 from app.services.translation.protocol import (
@@ -161,6 +161,40 @@ def _failure_outcome(status_code: int, *, will_retry: bool) -> str:
 # finds a reference AND matches the text against the canon at ≥ 0.80; an
 # option that merely paraphrases is left exactly as it was.
 _KINDS_THAT_CAN_QUOTE_SCRIPTURE: frozenset[str] = frozenset({"html", "plain", "quiz_question", "quiz_option"})
+
+
+#: Trimmed off the end of an edition's verse before looking for it in the
+#: finished text: ``post_substitute`` may have dropped a run-on comma or
+#: moved a full stop across the closing mark.
+_VERSE_END_PUNCTUATION = " ,;:—–.!?…"  # noqa: RUF001
+
+
+def _editions_verses(
+    subs: list[Substitution],
+    text: str,
+    target_locale: LocaleCode,
+    lost: list[str],
+) -> tuple[tuple[str, str], ...]:
+    """``(what the author quoted, what the edition says)`` for every verse
+    that is in ``text`` as the edition prints it.
+
+    Only verses found word for word. A marker the model dropped put
+    nothing in, a verse the edition would not hand over put the author's
+    own words back, and a later pass may have re-pointed a mark inside
+    the verse — in each case the text is not the edition's, or not
+    recognisably so, and the checks read it as they always did.
+    """
+    found: list[tuple[str, str]] = []
+    for sub in subs:
+        if sub.marker in lost:
+            continue
+        verse = canonical_for_display(sub.ref, target_locale)
+        if not verse:
+            continue
+        needle = verse.strip().rstrip(_VERSE_END_PUNCTUATION)
+        if needle and needle in text:
+            found.append((sub.original_inner, needle))
+    return tuple(found)
 
 
 class GeminiTranslationProvider:
@@ -329,14 +363,16 @@ class GeminiTranslationProvider:
             # target-locale text. Falls back to source if the
             # target-locale lookup misses (see ``post_substitute``).
             withheld: list[BibleRef] = []
+            restored = post_substitute(result.text, bible_subs, request.target_locale, withheld=withheld)
             result = TranslationResult(
-                text=post_substitute(result.text, bible_subs, request.target_locale, withheld=withheld),
+                text=restored,
                 input_tokens=result.input_tokens,
                 output_tokens=result.output_tokens,
                 thinking_tokens=result.thinking_tokens,
                 model=result.model,
                 lost_scripture=bool(lost),
                 scripture_in_source_language=bool(withheld),
+                scripture=_editions_verses(bible_subs, restored, request.target_locale, lost),
             )
             if withheld:
                 logger.warning(

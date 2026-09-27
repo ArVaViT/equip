@@ -60,7 +60,7 @@ from dataclasses import dataclass
 from html import unescape
 from typing import TYPE_CHECKING, Final
 
-from app.core.sanitize import strip_tags
+from app.core.sanitize import html_to_plain_text, strip_tags
 from app.services.bible.psalm_numbering import renumber_between
 from app.services.bible.references import parse_references
 from app.services.language_detection import (
@@ -71,6 +71,8 @@ from app.services.language_detection import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from app.schemas.locale import LocaleCode
     from app.services.bible.references import BibleRef
     from app.services.translation.protocol import ContentKind
@@ -1605,6 +1607,31 @@ def _check_impossible_reference(
     )
 
 
+def _without_the_editions_verses(
+    source: str,
+    translated: str,
+    scripture: Sequence[tuple[str, str]],
+) -> tuple[str, str]:
+    """``source`` and ``translated`` with every substituted verse taken out
+    of both — the author's quotation from one, the edition's verse from
+    the other. Unchanged when there is nothing to take out, so a document
+    without Scripture is read exactly as it always was.
+
+    The author's quotation is stored without markup, so it is looked for
+    in the source's plain text. If it is not there, the source is left
+    whole: a name the author quoted then still counts against the
+    translation, which is the old behaviour, not a new blind spot.
+    """
+    if not scripture:
+        return source, translated
+    plain = html_to_plain_text(source) if "<" in source else source
+    for quoted, verse in scripture:
+        if quoted and quoted in plain:
+            plain = plain.replace(quoted, " ")
+        translated = translated.replace(verse, " ")
+    return plain, translated
+
+
 def validate_translation(
     *,
     source: str,
@@ -1612,12 +1639,21 @@ def validate_translation(
     source_locale: LocaleCode,
     target_locale: LocaleCode,
     content_kind: ContentKind = "plain",
+    scripture: Sequence[tuple[str, str]] = (),
 ) -> list[ValidationIssue]:
     """Return every structural defect in ``translated`` against ``source``.
 
     An empty list means the translation kept every promise this module
     knows how to check. It does not mean the translation is good — see
     the module docstring.
+
+    ``scripture`` is every verse the provider put in from the edition, as
+    ``(what the author quoted, what the edition says)`` — see
+    ``TranslationResult.scripture``. The name checks read both texts with
+    those spans taken out: a name inside the edition's verse is the
+    edition's, not a choice the model made, and the author's fragment of
+    the same verse may stop before the name does. Every other check reads
+    the texts whole, as before.
     """
     if not translated.strip():
         return [
@@ -1663,8 +1699,9 @@ def validate_translation(
     issues.append(_check_ukrainian_calques(translated, target_locale))
     issues.append(_check_glossary(source, translated, source_locale, target_locale))
     issues.append(_check_numerals(source, translated, source_locale, target_locale))
-    issues.append(_check_proper_names(source, translated, source_locale, target_locale))
-    issues.append(_check_person_names(source, translated, source_locale, target_locale))
+    names_source, names_translated = _without_the_editions_verses(source, translated, scripture)
+    issues.append(_check_proper_names(names_source, names_translated, source_locale, target_locale))
+    issues.append(_check_person_names(names_source, names_translated, source_locale, target_locale))
     issues.append(_check_book_names(source, translated, source_locale, target_locale))
     issues.append(_check_impossible_reference(source, translated, source_locale, target_locale))
     return [issue for issue in issues if issue is not None]

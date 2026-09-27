@@ -69,7 +69,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from app.services.bible.books import find_book
-from app.services.bible.references import BibleRef
+from app.services.bible.references import BibleRef, parse_references
 from app.services.bible.store import is_locale_bundled, lookup
 from app.services.bible.substitution import canonical_for_display, pre_substitute
 from app.services.daily_challenge.admin import OptionDraft, _log_event, create_question
@@ -156,6 +156,42 @@ def _fetch_canonical_texts(
     return en, ru
 
 
+def _verses_the_text_cites(candidate: dict[str, Any], book: str, chapter: int) -> dict[str, Any]:
+    """``candidate`` with ``verse_start``/``verse_end`` taken from the
+    references its own question and explanation cite in this chapter.
+
+    The model fills the two fields separately from the text, and fills
+    them wrong: asked about Romans 3 it wrote ``"verse_start": 3,
+    "verse_end": 2`` — the chapter number, then a range that runs
+    backwards — for a question reading "According to Romans 3:1". The
+    scripture check asks only whether verse 3 exists, which it does. On
+    2026-09-27 thirty of the 275 questions carried a verse equal to the
+    chapter, four of them from September, and the Daily Challenge card
+    printed that number to every student: "Luke 23:23" over a question
+    about Luke 23:1.
+
+    What the question cites is what the student reads beside the
+    number, so it decides; the explanation only when the question cites
+    nothing — it may reach further ("According to John 3:14-16" with an
+    explanation that goes on to 3:17). With no citation in this chapter
+    the model's numbers stand, and a range that runs backwards is left
+    for the scripture check to refuse.
+    """
+    slug = find_book(book)
+
+    def _in_this_chapter(text: str) -> list[BibleRef]:
+        return [p.ref for p in parse_references(text, "en") if p.ref.book == slug and p.ref.chapter == chapter]
+
+    cited = _in_this_chapter(str(candidate.get("question_text") or "")) or _in_this_chapter(
+        str(candidate.get("explanation") or "")
+    )
+    if not cited:
+        return candidate
+    first = min(ref.verse_start for ref in cited)
+    last = max(ref.verse_end or ref.verse_start for ref in cited)
+    return {**candidate, "verse_start": first, "verse_end": last if last != first else None}
+
+
 def _validate_candidate_scripture(candidate: dict[str, Any], book: str, chapter: int) -> tuple[bool, str | None]:
     """Stage 2 — scripture validation. The cited verse must exist in
     BOTH KJV and Synodal. Returns ``(passed, reason)``."""
@@ -165,6 +201,8 @@ def _validate_candidate_scripture(candidate: dict[str, Any], book: str, chapter:
         return False, "verse_start missing or invalid"
     if verse_end is not None and not isinstance(verse_end, int):
         return False, "verse_end invalid"
+    if isinstance(verse_end, int) and verse_end < verse_start:
+        return False, f"verse range runs backwards ({verse_start}-{verse_end})"
     slug = find_book(book)
     if slug is None:
         return False, f"unknown book {book!r}"
@@ -400,6 +438,7 @@ def run_generation(
     # ── Round 4a — Scripture validation (automated) ───────────────────
     survivors_after_scripture: list[dict[str, Any]] = []
     for s in survivors:
+        s = _verses_the_text_cites(s, request.book, request.chapter)
         passed, reason = _validate_candidate_scripture(s, request.book, request.chapter)
         if passed:
             survivors_after_scripture.append(s)
@@ -555,6 +594,9 @@ def run_generation(
 
     # ── Round 6 — Persist as DRAFT rows ───────────────────────────────
     for survivor in survivors_final:
+        # Again, because the doctrinal reframe may have rewritten the
+        # text the verses are read from.
+        survivor = _verses_the_text_cites(survivor, request.book, request.chapter)
         try:
             options = [
                 OptionDraft(text=o["text"], is_correct=bool(o.get("is_correct", False)))
