@@ -62,14 +62,17 @@ export function StorySection() {
     {
       title: t("landing.value.structure.title"),
       body: t("landing.value.structure.body"),
+      short: t("landing.value.structure.short"),
     },
     {
       title: t("landing.value.assessment.title"),
       body: t("landing.value.assessment.body"),
+      short: t("landing.value.assessment.short"),
     },
     {
       title: t("landing.value.certificates.title"),
       body: t("landing.value.certificates.body"),
+      short: t("landing.value.certificates.short"),
     },
   ]
 
@@ -77,7 +80,7 @@ export function StorySection() {
     return (
       <div className="mx-auto flex max-w-2xl flex-col gap-14 px-5 py-20 sm:gap-16">
         {claims.map((claim) => (
-          <Claim key={claim.title} title={claim.title} body={claim.body} />
+          <Claim key={claim.title} {...claim} />
         ))}
       </div>
     )
@@ -128,7 +131,7 @@ const CLAIM_POSES = ["stacked", "fanned", "single"] as const
  * Mounting the hook together with its target removes the case rather than
  * guarding against it.
  */
-function PinnedClaims({ claims }: { claims: { title: string; body: string }[] }) {
+function PinnedClaims({ claims }: { claims: ClaimText[] }) {
   const { t } = useTranslation()
   const trackRef = useRef<HTMLDivElement>(null)
   const stopRefs = useRef<(HTMLDivElement | null)[]>([])
@@ -217,7 +220,7 @@ function PinnedClaims({ claims }: { claims: { title: string; body: string }[] })
               exit="leave"
               transition={{ duration: MOTION_DURATION.panel, ease: EDITORIAL_EASE }}
             >
-              <Claim title={claims[active]?.title ?? ""} body={claims[active]?.body ?? ""} />
+              <Claim title={claims[active]?.title ?? ""} body={claims[active]?.body ?? ""} short={claims[active]?.short ?? ""} />
             </motion.div>
           </AnimatePresence>
         </div>
@@ -235,7 +238,7 @@ function PinnedClaims({ claims }: { claims: { title: string; body: string }[] })
         >
           <div className="relative hidden w-px bg-line lg:block">
             <motion.div
-              className="absolute inset-x-0 top-0 h-full origin-top bg-ink"
+              className="absolute inset-x-0 top-0 h-full origin-top bg-accent"
               style={{ scaleY: fill }}
             />
           </div>
@@ -249,7 +252,7 @@ function PinnedClaims({ claims }: { claims: { title: string; body: string }[] })
                   aria-label={claim.title}
                   className={
                     "font-mono text-xs tabular-nums tracking-wider transition-colors duration-base ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand " +
-                    (k === active ? "font-semibold text-ink" : "text-ink-muted hover:text-ink")
+                    (k === active ? "font-semibold text-accent" : "text-ink-muted hover:text-ink")
                   }
                 >
                   {String(k + 1).padStart(2, "0")}
@@ -263,13 +266,25 @@ function PinnedClaims({ claims }: { claims: { title: string; body: string }[] })
   )
 }
 
-function Claim({ title, body }: { title: string; body: string }) {
+type ClaimText = { title: string; body: string; short: string }
+
+/**
+ * A phone gets the claim in one sentence.
+ *
+ * The same paragraph that is two lines at 1440px is four or five at 390px,
+ * under a headline that is already three — «текста столько же, но места
+ * меньше, и выглядит, что текста очень много». The full sentence stays from
+ * `sm` up; below it, `short` says the one thing the claim is for. Only one
+ * of the two is displayed, so a screen reader reads one as well.
+ */
+function Claim({ title, body, short }: ClaimText) {
   return (
     <div className={`max-w-2xl ${TEXT_VEIL}`}>
       <h3 className="font-serif text-3xl font-medium leading-tight tracking-[-0.025em] text-ink sm:text-5xl">
         {title}
       </h3>
-      <p className="mt-4 max-w-xl text-base leading-relaxed text-ink-muted sm:text-lg">{body}</p>
+      <p className="mt-3 text-[0.9375rem] leading-relaxed text-ink-muted sm:hidden">{short}</p>
+      <p className="mt-4 hidden max-w-xl text-lg leading-relaxed text-ink-muted sm:block">{body}</p>
     </div>
   )
 }

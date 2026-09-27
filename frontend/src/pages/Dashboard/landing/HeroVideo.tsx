@@ -34,31 +34,32 @@
 import { Section } from "@/components/layout/Section";
 
 import { SceneBand } from "./SceneBand"
-import { MOBILE_VERTICAL } from "./mobileFrame";
+import { frameClass, usePhoneCut, type Cut } from "./phoneCut";
 import { ScrollScale } from "./ScrollScale";
 
-type VideoSource = {
-  /** Public path, e.g. `/video/equip-intro.mp4`. */
-  src: string;
-  /** Still frame shown before playback, e.g. `/video/equip-intro.jpg`. */
-  poster: string;
-  /** Optional WebM at the same duration, offered to browsers that take it. */
-  webm?: string;
-  /** Sizing only — keeps the layout from jumping while the file loads. */
-  width: number;
-  height: number;
-};
-
-/** The film, delivered 2026-09-20. `null` would render the section away. */
-const INTRO: VideoSource | null = {
-  src: "/video/intro.mp4",
-  poster: "/video/intro-poster.jpg",
-  width: 1920,
-  height: 1080,
+/**
+ * The film, delivered 2026-09-20; its phone cut, 2026-09-27. `null` would
+ * render the section away.
+ */
+const INTRO: { wide: Cut; phone: Cut } | null = {
+  wide: {
+    mp4: "/video/intro.mp4",
+    poster: "/video/intro-poster.jpg",
+    width: 1920,
+    height: 1080,
+  },
+  phone: {
+    mp4: "/video/intro-vertical.mp4",
+    poster: "/video/intro-poster-vertical.jpg",
+    width: 1080,
+    height: 1920,
+  },
 };
 
 export function HeroVideo() {
+  const phone = usePhoneCut();
   if (!INTRO) return null;
+  const cut = phone ? INTRO.phone : INTRO.wide;
 
   return (
     // A scene of its own; the backdrop squares into a frame round it.
@@ -67,19 +68,20 @@ export function HeroVideo() {
         <div>
           <ScrollScale>
             <video
+              // Keyed on the cut: a new `<source>` alone does not reload a
+              // mounted element (see `phoneCut.ts`).
+              key={cut.mp4}
               data-backdrop-target
-              className={`w-full rounded-xl border border-line bg-surface ${MOBILE_VERTICAL}`}
+              className={`block rounded-xl border border-line shadow-[0_40px_90px_-40px_hsl(var(--accent)/0.6)] bg-surface object-cover ${frameClass(phone)}`}
               controls
               playsInline
               preload="none"
-              poster={INTRO.poster}
-              width={INTRO.width}
-              height={INTRO.height}
+              poster={cut.poster}
+              width={cut.width}
+              height={cut.height}
             >
-              {INTRO.webm ? (
-                <source src={INTRO.webm} type="video/webm" />
-              ) : null}
-              <source src={INTRO.src} type="video/mp4" />
+              {cut.webm ? <source src={cut.webm} type="video/webm" /> : null}
+              <source src={cut.mp4} type="video/mp4" />
             </video>
           </ScrollScale>
         </div>

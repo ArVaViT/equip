@@ -112,7 +112,12 @@ export function PublicLanding() {
     // blocks and pushed a phone's document to 518px in a 390px screen
     // (caught by e2e/no-sideways-scroll). `hidden` would make this div a
     // scroll container and break every `sticky` inside it; `clip` does not.
-    <div className="relative w-full overflow-x-clip">
+    //
+    // Both axes since 2026-09-27. The footer is veiled too, and its veil
+    // reached 144px past the bottom of the page — with only `x` clipped,
+    // that was 144px of empty scrolling after the legal links, on every
+    // width: «после футера много пустого места».
+    <div className="relative w-full overflow-clip">
       {/* One scene behind the entire page rather than one per section.
           Pinned canvases were released at the end of their own tracks, so
           the shelf, the close and the film sat against a still page —
@@ -237,11 +242,32 @@ export function PublicLanding() {
           film around it. */}
       <section
         aria-label={t("landing.value.heading")}
-        className="flex min-h-[100svh] items-center justify-center px-5"
+        // Most of a screen on a phone rather than all of it: there is no
+        // rest stop there to fill it for, and a short question alone in a
+        // full screen read as the page having ended early.
+        className="relative isolate flex min-h-[72svh] items-center justify-center px-5 lg:min-h-[100svh]"
         data-scene-stop="center"
         // The pieces collect into one deck behind the question.
         data-backdrop-pose="gather"
       >
+        {/* The one place the page lets colour glow. Two soft lights — the
+            sage of the covers and a warm gold — behind the question, the way
+            Linear, GitHub and Framer light the moment they ask you to act.
+            Behind the text veil, so they read as a halo round the words and
+            never under them. Blurred CSS gradients, not WebGL: nothing to
+            load, nothing to run. Dimmer in the dark theme, where the gold at
+            full strength came through the veil under the line below the
+            question (2.59:1, measured). */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[44rem] w-[min(60rem,170vw)] -translate-x-1/2 -translate-y-1/2 blur-2xl dark:opacity-55"
+          style={{
+            background:
+              "radial-gradient(closest-side at 30% 62%, hsl(140 32% 48% / 0.55), transparent)," +
+              "radial-gradient(closest-side at 72% 36%, hsl(38 72% 60% / 0.5), transparent)," +
+              "radial-gradient(closest-side at 50% 50%, hsl(160 30% 55% / 0.25), transparent)",
+          }}
+        />
         <ScrollReveal className={`flex flex-col items-center text-center ${TEXT_VEIL}`}>
           <h2 className="max-w-3xl text-balance font-serif text-4xl font-medium leading-[1.05] tracking-[-0.03em] text-ink sm:text-6xl">
             {t("landing.finalCta.heading")}

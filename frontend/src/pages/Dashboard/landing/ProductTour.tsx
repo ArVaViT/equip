@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useReducedMotion } from "motion/react";
 
 import { SceneBand } from "./SceneBand"
-import { MOBILE_VERTICAL } from "./mobileFrame";
+import { frameClass, usePhoneCut, type Cut } from "./phoneCut";
 import { ScrollScale } from "./ScrollScale";
 
 /**
@@ -33,7 +33,29 @@ import { ScrollScale } from "./ScrollScale";
  * product does; a reader who has asked for less movement should not have to
  * choose between a seizure risk and the information.
  */
+const TOUR: { wide: Cut; phone: Cut } = {
+  wide: {
+    mp4: "/video/tour.mp4",
+    webm: "/video/tour.webm",
+    poster: "/video/tour-poster.jpg",
+    width: 1920,
+    height: 1080,
+  },
+  // Cut for the phone, 2026-09-27. Its poster is the closing wordmark
+  // rather than a lesson screen: the film's phone poster is already the
+  // lesson, and the rule above holds on a phone too — two different frames.
+  phone: {
+    mp4: "/video/tour-vertical.mp4",
+    webm: "/video/tour-vertical.webm",
+    poster: "/video/tour-poster-vertical.jpg",
+    width: 1080,
+    height: 1920,
+  },
+};
+
 export function ProductTour() {
+  const phone = usePhoneCut();
+  const cut = phone ? TOUR.phone : TOUR.wide;
   const videoRef = useRef<HTMLVideoElement>(null);
   const prefersReducedMotion = useReducedMotion();
 
@@ -56,18 +78,19 @@ export function ProductTour() {
 
     observer.observe(video);
     return () => observer.disconnect();
-  }, [prefersReducedMotion]);
+    // `cut`: a new cut is a new element, which needs observing afresh.
+  }, [prefersReducedMotion, cut]);
 
   if (prefersReducedMotion) {
     return (
       <SceneBand pose="frame">
         <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
           <img
-            src="/video/tour-poster.jpg"
+            src={cut.poster}
             alt=""
-            width={1920}
-            height={1080}
-            className={`w-full rounded-xl border border-line ${MOBILE_VERTICAL}`}
+            width={cut.width}
+            height={cut.height}
+            className={`block rounded-xl border border-line shadow-[0_40px_90px_-40px_hsl(var(--accent)/0.6)] object-cover ${frameClass(phone)}`}
           />
         </div>
       </SceneBand>
@@ -80,20 +103,21 @@ export function ProductTour() {
       <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
         <ScrollScale>
           <video
+            key={cut.mp4}
             data-backdrop-target
             ref={videoRef}
-            className={`w-full rounded-xl border border-line bg-surface ${MOBILE_VERTICAL}`}
+            className={`block rounded-xl border border-line shadow-[0_40px_90px_-40px_hsl(var(--accent)/0.6)] bg-surface object-cover ${frameClass(phone)}`}
             muted
             loop
             playsInline
             preload="metadata"
-            poster="/video/tour-poster.jpg"
-            width={1920}
-            height={1080}
+            poster={cut.poster}
+            width={cut.width}
+            height={cut.height}
             aria-hidden
           >
-            <source src="/video/tour.webm" type="video/webm" />
-            <source src="/video/tour.mp4" type="video/mp4" />
+            {cut.webm ? <source src={cut.webm} type="video/webm" /> : null}
+            <source src={cut.mp4} type="video/mp4" />
           </video>
         </ScrollScale>
       </div>

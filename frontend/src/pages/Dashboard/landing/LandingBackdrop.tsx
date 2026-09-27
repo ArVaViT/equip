@@ -136,7 +136,11 @@ function staticPose(kind: StaticKind, i: number, fit = 1): Pose {
     // phone-sized stack compound to nearly solid. Half as strong.
     // The scatter a little lighter too: on its way into the claims it
     // crosses the first caption, where the audit measured 4.39:1.
-    o: pose.o * (lowered ? 0.5 : kind === "scattered" ? 0.75 : 1),
+    //
+    // 0.5 → 0.35 on 2026-09-27: at half strength the lowered stack still
+    // read as a grey smudge under every claim on a phone — «анимация
+    // немного оф».
+    o: pose.o * (lowered ? 0.35 : kind === "scattered" ? 0.75 : 1),
   }
 }
 
@@ -273,8 +277,12 @@ function rowPose(row: HTMLElement, i: number): Pose {
   // Down and to the right they lay under the course title, which the
   // contrast audit caught.
   const offset = 7 + layer * 7
+  // In the phone list the title sits right beside the thumbnail, 16px
+  // away, and three layers stepping right ran 21px under it (1.85:1 in the
+  // dark theme). There the pages peek out to the left, into the margin.
+  const side = row.dataset.stack === "left" ? -1 : 1
   return poseForRect(
-    cover.left + offset,
+    cover.left + offset * side,
     cover.top - offset,
     cover.width,
     cover.height,
@@ -341,10 +349,34 @@ export default function LandingBackdrop({ className }: { className?: string }) {
       (0.022 + 0.1 * (i / LEAF_COUNT)) *
       (isDark() ? DARK_BOOST * (window.innerWidth < 1024 ? 1.4 : 1) : 1)
 
-    const readInk = () => {
-      const raw = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim()
-      return new Color(raw ? `hsl(${raw})` : "#131211")
+    // Tokens are stored as bare `H S% L%`. three's `Color` reads only the
+    // comma form of `hsl()`: given `hsl(30 8% 11%)` it warns and stays
+    // white. That is what happened from the first version to 2026-09-27 —
+    // the leaves were meant to be `--ink` and were always white, and every
+    // opacity on this page (and the contrast audit) was tuned on white. So
+    // white stays the base, deliberately now, and the commas go in.
+    const readToken = (name: string, fallback: string) => {
+      const raw = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+      const parts = raw.split(/\s+/)
+      return new Color(parts.length === 3 ? `hsl(${parts.join(", ")})` : fallback)
     }
+    // The colour runs through the stack: the back leaves white as they have
+    // always rendered, the front ones in `--accent` — the sage of the course
+    // covers and of the captions in both films. Until 2026-09-27 the page
+    // had no colour anywhere; «где-то нужно добавить акценты или акцентный
+    // цвет, градиент». Doing it here puts the colour on the thing that
+    // already moves, as a gradient through depth, instead of painting it on
+    // a block. `--accent` exists in both themes, so the dark scene follows.
+    //
+    // `--accent` is a quiet sage (17% saturation) chosen for text and rules;
+    // through a leaf at 10% opacity it read as grey. The leaves take it with
+    // more saturation — the same hue, the colour the covers' sage has when
+    // light comes through it.
+    const leafColour = (i: number) =>
+      new Color(0xffffff).lerp(
+        readToken("--accent", "#4f6b55").offsetHSL(0, 0.28, 0),
+        Math.pow(i / (LEAF_COUNT - 1), 0.7),
+      )
 
     const scene = new Scene()
     const camera = new PerspectiveCamera(CAMERA_FOV, 1, 0.1, 100)
@@ -361,7 +393,7 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     const geometry = new PlaneGeometry(LEAF_W, LEAF_H)
     const leaves = Array.from({ length: LEAF_COUNT }, (_, i) => {
       const material = new MeshStandardMaterial({
-        color: readInk(),
+        color: leafColour(i),
         transparent: true,
         // Faint, and fainter toward the back. Translucent planes accumulate:
         // what is subtle alone goes solid where six of them cross.
@@ -382,8 +414,7 @@ export default function LandingBackdrop({ className }: { className?: string }) {
 
     // Follows the theme without a second palette to keep in sync.
     const themeWatcher = new MutationObserver(() => {
-      const ink = readInk()
-      for (const leaf of leaves) leaf.material.color.copy(ink)
+      leaves.forEach((leaf, i) => leaf.material.color.copy(leafColour(i)))
       wake()
       // Opacity is re-applied every frame from `baseOpacity`, which reads
       // the theme itself.
@@ -411,10 +442,17 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     // How much of the landscape choreography fits this screen (see
     // `staticPose`). 1 on a desktop; about 0.45 on a portrait phone.
     let fit = 1
+    // How closely the scene follows the page, per frame. 0.07 is a slow,
+    // weighted glide, and on a desktop the page glides too (Lenis). A phone
+    // page moves exactly with the finger, so the same lag left the leaves a
+    // quarter-second behind whatever they wrap — pages hanging above the
+    // course list after a flick. A touch screen follows more tightly.
+    let follow = 0.07
 
     const resize = () => {
       const { innerWidth, innerHeight } = window
       fit = Math.min(1, Math.max(0.42, innerWidth / innerHeight / 1.6))
+      follow = innerWidth < 1024 ? 0.2 : 0.07
       // A phone's 3x screen is 9x the pixels of 1x for translucent planes
       // nobody inspects at that density.
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, innerWidth < 1024 ? 1.5 : 2))
@@ -495,6 +533,14 @@ export default function LandingBackdrop({ className }: { className?: string }) {
       const to = posesOf(toStep)
       anchored =
         (isStatic(fromStep.kind) ? 0 : 1 - t) + (isStatic(toStep.kind) ? 0 : t)
+      // The shelf is the one scene whose text has no veil — a row of titles
+      // under the covers — and every way in or out of it crosses them: on a
+      // phone the leaves ran up through the list as a column between the
+      // thumbnails and the titles (1.85:1, measured in the dark theme). So
+      // they fade on the way and arrive whole: full strength at both poses,
+      // a fifth of it halfway.
+      const dip =
+        fromStep.kind === "row" || toStep.kind === "row" ? 1 - 0.8 * Math.sin(Math.PI * t) : 1
 
       leaves.forEach((leaf, i) => {
         const a = from[i]
@@ -503,7 +549,7 @@ export default function LandingBackdrop({ className }: { className?: string }) {
         leaf.mesh.position.set(lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t))
         leaf.mesh.rotation.set(lerp(a.rx, b.rx, t), lerp(a.ry, b.ry, t), lerp(a.rz, b.rz, t))
         leaf.mesh.scale.set(lerp(a.sx, b.sx, t), lerp(a.sy, b.sy, t), 1)
-        leaf.material.opacity = baseOpacity(i) * lerp(a.o, b.o, t)
+        leaf.material.opacity = baseOpacity(i) * lerp(a.o, b.o, t) * dip
       })
     }
 
@@ -528,7 +574,7 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     const tick = () => {
       frame = requestAnimationFrame(tick)
       if (performance.now() > awakeUntil && Math.abs(target - progress) < 1e-4) return
-      progress += (target - progress) * 0.07
+      progress += (target - progress) * follow
       tiltX += (pointerY * 0.1 - tiltX) * 0.05
       tiltY += (pointerX * 0.2 - tiltY) * 0.05
       render()
