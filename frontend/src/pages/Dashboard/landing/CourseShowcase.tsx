@@ -210,7 +210,7 @@ export function CourseShowcase() {
     return (
       <SceneBand label={t("header.courses")} pose="row">
         <div className="mx-auto w-full max-w-5xl px-5">
-          <ul data-backdrop-target className="divide-y divide-line border-y border-line">
+          <ul data-backdrop-target data-stack="left" className="divide-y divide-line border-y border-line">
             {courses.map((course) => (
               <li key={course.id}>
                 <CourseRow course={course} />
@@ -222,7 +222,7 @@ export function CourseShowcase() {
             className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-ink underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             {t("dashboard.browseAllCta")}
-            <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            <ArrowRight className="h-4 w-4 text-accent" strokeWidth={1.75} aria-hidden />
           </Link>
         </div>
       </SceneBand>
@@ -371,7 +371,7 @@ function CourseRow({ course }: { course: Course }) {
           </p>
         ) : null}
       </div>
-      <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted transition-transform duration-base group-active:translate-x-0.5" strokeWidth={1.75} aria-hidden />
+      <ChevronRight className="h-4 w-4 shrink-0 text-accent transition-transform duration-base group-active:translate-x-0.5" strokeWidth={1.75} aria-hidden />
     </Link>
   )
 }

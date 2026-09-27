@@ -76,6 +76,7 @@
         "eyebrow": "Course structure",
         "title": "A course, not a pile of videos",
         "body": "Lessons in a fixed order — grouped into modules when a course grows big enough to need them. You always see what is done and what comes next.",
+        "short": "Lessons in a fixed order. You always see what comes next.",
         "module": "Module 1 · Genesis 1–11",
         "chapter1": "Lesson 1 — Creation",
         "chapter2": "Lesson 2 — The Fall",
@@ -85,6 +86,7 @@
         "eyebrow": "Assessment",
         "title": "Not just multiple choice",
         "body": "Four question types, essays among them — read by a teacher, not only by a machine.",
+        "short": "Essays too — read by a teacher, not only a machine.",
         "sampleQuestion": "Summarize the main idea of this passage in your own words.",
         "gradedBadge": "Teacher graded"
       },
@@ -92,6 +94,7 @@
         "eyebrow": "Certification",
         "title": "A certificate you can verify",
         "body": "Every certificate carries its own number, and anyone can check it.",
+        "short": "Each one has its own number. Anyone can check it.",
         "certTitle": "Certificate of Completion",
         "verifyLabel": "Verify by number"
       },

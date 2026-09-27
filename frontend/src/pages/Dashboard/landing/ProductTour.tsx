@@ -90,7 +90,7 @@ export function ProductTour() {
             alt=""
             width={cut.width}
             height={cut.height}
-            className={`block rounded-xl border border-line object-cover ${frameClass(phone)}`}
+            className={`block rounded-xl border border-line shadow-[0_40px_90px_-40px_hsl(var(--accent)/0.6)] object-cover ${frameClass(phone)}`}
           />
         </div>
       </SceneBand>
@@ -106,7 +106,7 @@ export function ProductTour() {
             key={cut.mp4}
             data-backdrop-target
             ref={videoRef}
-            className={`block rounded-xl border border-line bg-surface object-cover ${frameClass(phone)}`}
+            className={`block rounded-xl border border-line shadow-[0_40px_90px_-40px_hsl(var(--accent)/0.6)] bg-surface object-cover ${frameClass(phone)}`}
             muted
             loop
             playsInline

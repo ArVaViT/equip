@@ -72,7 +72,7 @@ export function HeroVideo() {
               // mounted element (see `phoneCut.ts`).
               key={cut.mp4}
               data-backdrop-target
-              className={`block rounded-xl border border-line bg-surface object-cover ${frameClass(phone)}`}
+              className={`block rounded-xl border border-line shadow-[0_40px_90px_-40px_hsl(var(--accent)/0.6)] bg-surface object-cover ${frameClass(phone)}`}
               controls
               playsInline
               preload="none"

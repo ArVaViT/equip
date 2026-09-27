@@ -76,6 +76,7 @@
         "eyebrow": "Kursaufbau",
         "title": "Ein Kurs, kein Haufen Videos",
         "body": "Lektionen in fester Reihenfolge — in Module gruppiert, wenn ein Kurs groß genug dafür wird. Sie sehen immer, was erledigt ist und was als Nächstes kommt.",
+        "short": "Lektionen in fester Reihenfolge. Sie sehen immer, was als Nächstes kommt.",
         "module": "Modul 1 · 1. Mose 1–11",
         "chapter1": "Lektion 1 — Die Schöpfung",
         "chapter2": "Lektion 2 — Der Sündenfall",
@@ -85,6 +86,7 @@
         "eyebrow": "Prüfung",
         "title": "Mehr als Multiple Choice",
         "body": "Vier Fragetypen, darunter Aufsätze — gelesen von einer Lehrkraft, nicht nur von der Maschine.",
+        "short": "Auch Aufsätze — gelesen von einer Lehrkraft, nicht nur von der Maschine.",
         "sampleQuestion": "Fassen Sie den Hauptgedanken dieses Abschnitts in eigenen Worten zusammen.",
         "gradedBadge": "Vom Dozenten bewertet"
       },
@@ -92,6 +94,7 @@
         "eyebrow": "Zertifizierung",
         "title": "Ein Zertifikat, das sich prüfen lässt",
         "body": "Jedes Zertifikat trägt seine eigene Nummer, und jeder kann sie prüfen.",
+        "short": "Jedes mit eigener Nummer — jeder kann es prüfen.",
         "certTitle": "Abschlusszertifikat",
         "verifyLabel": "Nach Nummer prüfen"
       },
