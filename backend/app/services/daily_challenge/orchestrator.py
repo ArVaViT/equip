@@ -170,14 +170,21 @@ def _verses_the_text_cites(candidate: dict[str, Any], book: str, chapter: int) -
     printed that number to every student: "Luke 23:23" over a question
     about Luke 23:1.
 
-    What the question itself cites is what the student reads, so it is
-    authoritative. With no citation in this chapter the model's numbers
-    stand, and a range that runs backwards is left for the scripture
-    check to refuse.
+    What the question cites is what the student reads beside the
+    number, so it decides; the explanation only when the question cites
+    nothing — it may reach further ("According to John 3:14-16" with an
+    explanation that goes on to 3:17). With no citation in this chapter
+    the model's numbers stand, and a range that runs backwards is left
+    for the scripture check to refuse.
     """
     slug = find_book(book)
-    text = f"{candidate.get('question_text') or ''} {candidate.get('explanation') or ''}"
-    cited = [p.ref for p in parse_references(text, "en") if p.ref.book == slug and p.ref.chapter == chapter]
+
+    def _in_this_chapter(text: str) -> list[BibleRef]:
+        return [p.ref for p in parse_references(text, "en") if p.ref.book == slug and p.ref.chapter == chapter]
+
+    cited = _in_this_chapter(str(candidate.get("question_text") or "")) or _in_this_chapter(
+        str(candidate.get("explanation") or "")
+    )
     if not cited:
         return candidate
     first = min(ref.verse_start for ref in cited)

@@ -576,3 +576,19 @@ def test_with_no_citation_a_backwards_range_is_refused(db: Session, author: User
     outcome = _run_with(db, author, question_text="Whom did God give?", verse_start=16, verse_end=2)
     assert outcome.created_question_ids == []
     assert outcome.rejected_at_scripture == 1
+
+
+def test_the_question_decides_over_the_explanation(db: Session, author: User) -> None:
+    """The card prints the number beside the question, so the question's
+    citation is the one that must match."""
+    outcome = _run_with(
+        db,
+        author,
+        question_text="According to John 3:14-16, why did God send his Son?",
+        explanation="John 3:17 adds that the Son came to save the world.",
+        verse_start=3,
+        verse_end=17,
+    )
+    [qid] = outcome.created_question_ids
+    q = db.get(DailyChallengeQuestion, qid)
+    assert (q.bible_verse_from, q.bible_verse_to) == (14, 16)
