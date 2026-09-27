@@ -182,9 +182,15 @@ def _validate_candidate_scripture(candidate: dict[str, Any], book: str, chapter:
 #: one followed by punctuation, space or the end. The single-quote arm
 #: is lazy and demands a boundary after the closing mark, so the
 #: apostrophe in "Pharaoh's" does not end the quotation it sits in.
+#:
+#: Straight and curly double marks pair with each other in any order.
+#: The model writes ``"…land.”`` as often as a matched pair, and the
+#: first version of this pattern, which demanded a matched pair, read
+#: such a quotation as no quotation at all — a fragment of Numbers 13:20
+#: passed the check that exists to stop fragments.
 _QUOTATION = re.compile(
     r"(?<![^\s(\[:,—–])"
-    r"(?:\"(?P<straight>[^\"]+?)\"|“(?P<curly>[^”]+?)”|['‘](?P<single>.+?)['’])"
+    r"(?:[\"“](?P<double>[^\"“”]+?)[\"”]|['‘](?P<single>.+?)['’])"
     r"(?![^\s.,;:!?)\]…—–])"
 )
 
@@ -218,7 +224,7 @@ def _quotations_not_recognised(explanation: str) -> list[str]:
     """
     quoted: list[str] = []
     for match in _QUOTATION.finditer(explanation):
-        body = match.group("straight") or match.group("curly") or match.group("single") or ""
+        body = match.group("double") or match.group("single") or ""
         if len(body.split()) >= _QUOTATION_MIN_WORDS:
             quoted.append(body)
     if not quoted:

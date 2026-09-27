@@ -418,7 +418,10 @@ def test_full_roundtrip_synodal_matt_28_19_to_kjv():
     markered, subs = pre_substitute(source_html, "ru")
     assert len(subs) == 1, "Матф. 28:19 must now be detected"
     final = post_substitute(markered, subs, "en")
-    assert canonical_en in final
+    # KJV ends this verse on a colon — the sentence runs into verse 20 —
+    # and a quotation does not close on one. The words are the edition's.
+    # See ``test_the_end_of_a_quoted_verse``.
+    assert canonical_en.rstrip(":") + '"' in final
     # The original Synodal verse must NOT survive into the EN output —
     # if it does, the substitution silently failed.
     assert canonical_ru not in final

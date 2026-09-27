@@ -492,8 +492,12 @@ def test_an_explanation_that_quotes_nothing_is_kept(db: Session, author: User) -
         # is given the edition's text; that case is not a defect.)
         'John 3:16 says, "God showed His love for the world by sending His Son, '
         'so that those who trust in Him may live forever."',
+        # A straight mark opening and a curly one closing. The model writes
+        # this as often as a matched pair; the first version of the check
+        # did not see it as a quotation at all (Numbers 13:20, 2026-09-26).
+        'John 3:16 says, "whosoever believeth in him should not perish.” That is the promise.',
     ],
-    ids=["part-of-a-verse", "from-memory"],
+    ids=["part-of-a-verse", "from-memory", "mismatched-marks"],
 )
 def test_a_quotation_the_pipeline_cannot_recognise_rejects_the_question(
     db: Session, author: User, explanation: str
