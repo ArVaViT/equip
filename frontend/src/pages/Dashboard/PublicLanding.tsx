@@ -237,7 +237,10 @@ export function PublicLanding() {
           film around it. */}
       <section
         aria-label={t("landing.value.heading")}
-        className="flex min-h-[100svh] items-center justify-center px-5"
+        // Most of a screen on a phone rather than all of it: there is no
+        // rest stop there to fill it for, and a short question alone in a
+        // full screen read as the page having ended early.
+        className="flex min-h-[72svh] items-center justify-center px-5 lg:min-h-[100svh]"
         data-scene-stop="center"
         // The pieces collect into one deck behind the question.
         data-backdrop-pose="gather"

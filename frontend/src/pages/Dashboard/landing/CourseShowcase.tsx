@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { useReducedMotion } from "motion/react"
+import { ArrowRight, ChevronRight } from "lucide-react"
 
 import { coursesService } from "@/services/courses"
 import { toProxyImage } from "@/lib/images"
 import type { Course } from "@/types"
 
 import { SceneBand } from "./SceneBand"
+import { usePhoneCut } from "./phoneCut"
 
 /**
  * The whole shelf, travelling sideways while the page goes down.
@@ -70,6 +72,7 @@ export function CourseShowcase() {
     query.addEventListener("change", sync)
     return () => query.removeEventListener("change", sync)
   }, [])
+  const phone = usePhoneCut()
   const [courses, setCourses] = useState<Course[]>([])
   const trackRef = useRef<HTMLDivElement>(null)
   const rowRef = useRef<HTMLUListElement>(null)
@@ -185,8 +188,49 @@ export function CourseShowcase() {
   // "Books". The page still has an accessible name for the region, which is
   // what the heading was carrying that the covers do not.
 
-  // Phones, tablets, and anybody who asked for less movement: a plain strip
-  // they can swipe, or a grid if even that is too much.
+  // Phones: the whole catalogue as one list, readable at once.
+  //
+  // It was a swipeable strip of 16:10 covers, and on a 390px screen that
+  // showed one course at a time: the cover's own lettering, drawn for
+  // 1600px, shrank to 8px and could not be read; the title underneath
+  // repeated it at 20px; and nothing said there were four more — the only
+  // hint was a sliver of the next card at the edge. «Не нравится как в
+  // телефонной версии курсы представлены».
+  //
+  // A list answers all three: every course on one screen, each title set
+  // where it can be read, the cover kept as a thumbnail that identifies it
+  // rather than one that has to be read. Rows, not cards — hairlines
+  // between them and no box round them, for the same reason the desktop
+  // cards lost theirs. The backdrop still deals its pages behind each
+  // cover (`rowPose` reads the thumbnail the same way it reads a cover).
+  //
+  // Tablets keep the strip: at 640–1023px two covers and a half fit, and
+  // they are large enough to read.
+  if (!prefersReducedMotion && phone) {
+    return (
+      <SceneBand label={t("header.courses")} pose="row">
+        <div className="mx-auto w-full max-w-5xl px-5">
+          <ul data-backdrop-target className="divide-y divide-line border-y border-line">
+            {courses.map((course) => (
+              <li key={course.id}>
+                <CourseRow course={course} />
+              </li>
+            ))}
+          </ul>
+          <Link
+            to="/courses"
+            className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-ink underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            {t("dashboard.browseAllCta")}
+            <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          </Link>
+        </div>
+      </SceneBand>
+    )
+  }
+
+  // Tablets, and anybody who asked for less movement: a plain strip they
+  // can swipe, or a grid if even that is too much.
   if (prefersReducedMotion || !pinned) {
     return (
       <SceneBand label={t("header.courses")} pose="row">
@@ -203,8 +247,10 @@ export function CourseShowcase() {
           // `-mx-5`/`px-5` lets the strip bleed to both screen edges while
           // the first card still lines up with the heading above it, so it
           // reads as a shelf continuing past the phone rather than a box
-          // that happens to scroll.
-          <ul data-backdrop-target className="-mx-5 mt-8 flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          // that happens to scroll. `scroll-px-5` is what makes the snap
+          // respect that padding: without it `snap-start` pulled the first
+          // cover flush against the screen edge on the first touch.
+          <ul data-backdrop-target className="-mx-5 mt-8 flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto px-5 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {courses.map((course) => (
               <li key={course.id} className="w-[78vw] max-w-[320px] shrink-0 snap-start">
                 <CourseCard course={course} />
@@ -276,6 +322,56 @@ function CourseCard({ course }: { course: Course }) {
       <h3 className="mt-5 text-pretty font-serif text-xl font-medium leading-snug text-ink transition-colors duration-base group-hover:text-ink-muted">
         {course.title}
       </h3>
+    </Link>
+  )
+}
+
+/**
+ * One course as a row of the phone list: the cover small, the title beside
+ * it at a size that can be read, and a chevron for the tap.
+ *
+ * The thumbnail is the link's first child on purpose — `rowPose` in
+ * `LandingBackdrop` finds a cover as `li > a > :first-child`, the same path
+ * as in `CourseCard`, and lays its pages behind it.
+ */
+function CourseRow({ course }: { course: Course }) {
+  const cover = toProxyImage(course.image_url)
+  // «Glossary in Your Pocket: Words That Appear Again and Again» at the row's
+  // size ran to four lines and was clamped mid-phrase. Most long titles in
+  // the catalogue are a name and a subtitle joined by a colon, in every
+  // language, so the row sets them that way: the name as the title, the
+  // rest beneath it in the page's secondary voice.
+  const colon = course.title.indexOf(": ")
+  // «Курс преподавания — I» left «— I» alone on a line; a volume number
+  // travels with the word before it.
+  const name = (colon > 0 ? course.title.slice(0, colon) : course.title).replace(
+    / ([—–-]) (\S+)$/,
+    "\u00a0$1\u00a0$2",
+  )
+  const subtitle = colon > 0 ? course.title.slice(colon + 2) : null
+
+  return (
+    <Link
+      to={`/courses/${course.id}`}
+      className="group flex items-center gap-4 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+    >
+      <div className="aspect-[16/10] w-28 shrink-0 overflow-hidden rounded-lg bg-surface shadow-[0_10px_24px_-14px_hsl(var(--ink)/0.45)] ring-1 ring-ink/5">
+        {cover ? (
+          <img src={cover} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+        ) : null}
+      </div>
+      <div className="min-w-0 flex-1">
+        {/* The full title stays the accessible name; the split is visual. */}
+        <h3 aria-label={course.title} className="text-pretty font-serif text-[1.0625rem] font-medium leading-snug text-ink">
+          {name}
+        </h3>
+        {subtitle ? (
+          <p aria-hidden className="mt-1 line-clamp-2 text-pretty text-[0.8125rem] leading-snug text-ink-muted">
+            {subtitle}
+          </p>
+        ) : null}
+      </div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted transition-transform duration-base group-active:translate-x-0.5" strokeWidth={1.75} aria-hidden />
     </Link>
   )
 }
