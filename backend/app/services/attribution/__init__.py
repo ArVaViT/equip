@@ -47,10 +47,17 @@ source language across four locales, which is its own defect and a visible one.
 So the patterns here are anchored rather than substring: a source label has
 to open a line and be followed by a colon or a dash; a «Из книги» citation has
 to open a line *and* carry a quoted title or a year; a dash-led credit has to
-carry a quoted title. Against the same 29,015 rows these match **zero** — no
-false positives, and nothing in the corpus today is CMI. This protection is
-for what gets pasted next week, and the numbers say what it costs in the
-meantime: nothing.
+open a block and read "— name, «title»", with nothing after it but a year, a
+chapter or a page.
+
+That last anchor came late. The dash rule first shipped asking only for a
+dash, a quoted title within 160 characters and the end of the run within 80.
+It matched nothing on 2026-09-17 and 286 fragments in 150 of 15,010 live rows
+on 2026-09-26 — verse ranges ("7:49\u201350") and glosses ("<strong>Апостол</strong>
+— «посланник»") written in between, all prose. The model never saw them, so
+each came back into en / de / uk in Russian and no correcting pass could reach
+it. Measured again with the anchor: zero. A protection like this costs
+nothing only while it is re-measured against what teachers actually write.
 """
 
 from app.services.attribution.substitution import (
