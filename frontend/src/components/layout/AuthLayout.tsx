@@ -3,10 +3,18 @@ import { BookOpen } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { useReducedMotion } from "motion/react"
-import { TEXT_VEIL } from "@/pages/Dashboard/landing/textVeil"
 import { useTheme } from "@/context/useTheme"
 import { Button } from "@/components/ui/button"
 import { Moon, Sun } from "lucide-react"
+
+// The landing's text veil (`landing/textVeil.ts`), held solid further out:
+// the form's quiet lines — the subheading, the divider, «Нет аккаунта?» —
+// sit near its edge, and the landing's stops let the drifting leaves take
+// them to 4.4:1 on a desktop (measured 2026-09-28, three moments each, both
+// themes). On a phone the veil is at 70%: the form fills the screen there,
+// and a full veil cleared the scene off it entirely.
+const FORM_VEIL =
+  "relative isolate before:pointer-events-none before:absolute before:-inset-x-32 before:-inset-y-36 before:-z-10 before:content-[''] before:bg-[radial-gradient(closest-side,hsl(var(--background))_62%,hsl(var(--background)/0.92)_74%,hsl(var(--background)/0.6)_85%,hsl(var(--background)/0.2)_94%,hsl(var(--background)/0))] max-lg:before:opacity-70"
 
 // The landing's scene, lazily: `three` reaches the sign-in screens only
 // after the form has rendered, and never where motion is unwelcome.
@@ -138,12 +146,8 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
           tabIndex={-1}
           className="relative z-10 flex flex-1 items-center justify-center px-4 py-8 focus:outline-none sm:px-8"
         >
-          {/* A clearing in the scene behind the form, as behind every block
-              of text on the landing (see `textVeil.ts`). Desktop only: on a
-              phone the form is the whole screen, and the veil cleared the
-              scene off it entirely. There the leaves spread to the margins
-              above and below instead (`LandingBackdrop`, `ambient`). */}
-          <div className={`w-full max-w-[420px] space-y-8 ${TEXT_VEIL} max-lg:before:hidden`}>
+          {/* A clearing in the scene behind the form (`FORM_VEIL` above). */}
+          <div className={`w-full max-w-[420px] space-y-8 ${FORM_VEIL}`}>
             <div className="space-y-2 text-center lg:text-left">
               <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">{heading}</h1>
               {subheading && <p className="font-sans text-sm text-ink-muted">{subheading}</p>}
