@@ -365,6 +365,25 @@
     }
   }
 
+  /* A page that is one screen on a desktop (the dashboard) marks itself
+   * `data-single-screen`: the shell becomes the window, `main` takes what
+   * the header and any banner leave, and the page fills `main`. */
+  @media (min-width: 1024px) {
+    .app-shell:has(> main > [data-single-screen]) {
+      height: 100dvh;
+    }
+    .app-shell:has(> main > [data-single-screen]) > main {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .app-shell > main > [data-single-screen] {
+      flex: 1 1 auto;
+      min-height: 0;
+      height: auto;
+    }
+  }
+
   /* Profile: a soft pool of sage drifting behind the header card's
    * content. Behind it, not over it: the header isolates, the pool sits at
    * -1. `transform` only, so the drift is composited, not repainted. */

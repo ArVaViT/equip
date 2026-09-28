@@ -316,10 +316,13 @@ export default function DashboardPage() {
   }
 
   return (
-    // Exactly the window below the header (`h-16` plus its 1px rule from
-    // `md`): the grid holds the page to one screen on a desktop. It was
-    // `100dvh - 6rem`, a header of 3rem counted twice.
-    <div className="container mx-auto h-full px-4 py-4 sm:py-6 lg:h-[calc(100dvh-4rem-1px)]">
+    // One screen on a desktop. `data-single-screen` makes the shell exactly
+    // the window and this page whatever the header and any banner leave
+    // (`.app-shell` in index.css), so an announcement above takes its
+    // height from the page instead of pushing the page off the bottom. The
+    // calc is the fallback without `:has()`: the window below the header
+    // (`h-16` and its rule). It was `100dvh - 6rem`, the header counted twice.
+    <div data-single-screen className="container mx-auto h-full px-4 py-4 sm:py-6 lg:h-[calc(100dvh-4rem-1px)]">
       <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-5">
         {/* Left column: an optional "recently viewed" strip (renders
             nothing when empty, so it costs no vertical space for new

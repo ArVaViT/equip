@@ -233,7 +233,7 @@ function AppRoutes() {
     // under every Radix portal on `body` — a toast raised from a dialog
     // landed behind the dialog's veil. A guest's `/` is the landing, which
     // has its own scene and was measured for contrast without these pools.
-    <div className={cn("min-h-screen flex flex-col text-ink", user ? "app-canvas" : "bg-surface")}>
+    <div className={cn("app-shell min-h-screen flex flex-col text-ink", user ? "app-canvas" : "bg-surface")}>
       {/* Skip link — hidden until focused via Tab. First focusable element on
           every authenticated page so keyboard / screen-reader users can jump
           past the persistent Header + banners straight to page content. */}
