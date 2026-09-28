@@ -188,9 +188,13 @@ export default function ProfilePage() {
     <div className="container mx-auto max-w-3xl px-4 py-8 md:px-6">
       <div data-tour="profile-form" className="stagger-fade-in space-y-6">
         <Card className="overflow-hidden transition-[border-color] duration-200 hover:border-brand/25">
-          <CardHeader className="border-b border-edge bg-gradient-accent-subtle">
+          {/* A little life on the one page that is about the person: a
+              pool of the landing's sage drifting behind the name, and a thin
+              ring turning slowly round the portrait. Both CSS, both still
+              under reduced motion (`profile-glow`, `avatar-halo`). */}
+          <CardHeader className="profile-glow border-b border-edge bg-gradient-accent-subtle">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-              <div className="relative shrink-0">
+              <div className="avatar-halo relative shrink-0 self-start">
                 {user.avatar_url ? (
                   <img
                     src={toProxyImage(user.avatar_url)}
@@ -208,7 +212,7 @@ export default function ProfilePage() {
                   onClick={() => fileRef.current?.click()}
                   disabled={uploading}
                   aria-label={t("profile.changeAvatar")}
-                  className="absolute -bottom-0.5 -right-0.5 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-card text-ink shadow-none transition-colors hover:bg-muted disabled:pointer-events-none"
+                  className="absolute -bottom-0.5 -right-0.5 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-card text-ink shadow-card transition-[background-color,transform] duration-200 hover:scale-110 hover:bg-muted disabled:pointer-events-none"
                 >
                   {uploading ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} aria-hidden />

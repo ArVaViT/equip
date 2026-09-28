@@ -361,6 +361,58 @@
     }
   }
 
+  /* Profile: a soft pool of sage drifting behind the header card's
+   * content. Behind it, not over it: the header isolates, the pool sits at
+   * -1. `transform` only, so the drift is composited, not repainted. */
+  .profile-glow {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+  .profile-glow::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: -90%;
+    right: -15%;
+    width: 70%;
+    aspect-ratio: 1;
+    pointer-events: none;
+    background: radial-gradient(closest-side, hsl(var(--accent) / 0.22), transparent);
+    animation: profile-drift 16s ease-in-out infinite alternate;
+  }
+  @keyframes profile-drift {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to { transform: translate3d(-35%, 30%, 0) scale(1.15); }
+  }
+
+  /* A 2px ring round the portrait, a band of sage turning once every ten
+   * seconds. The avatar and its camera button sit above it. */
+  .avatar-halo::before {
+    content: "";
+    position: absolute;
+    inset: -4px;
+    border-radius: 9999px;
+    background: conic-gradient(
+      from 0deg,
+      hsl(var(--accent) / 0),
+      hsl(var(--accent) / 0.75) 25%,
+      hsl(var(--accent) / 0) 55%
+    );
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+    animation: avatar-halo-turn 10s linear infinite;
+  }
+  @keyframes avatar-halo-turn {
+    to { transform: rotate(1turn); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .profile-glow::before,
+    .avatar-halo::before {
+      animation: none;
+    }
+  }
+
   /* The application's page: the landing's sage, as light rather than
    * paint — two soft pools at opposite corners, 7–10%, fixed to the window
    * so they do not scroll away. On a pseudo-element, because a fixed
