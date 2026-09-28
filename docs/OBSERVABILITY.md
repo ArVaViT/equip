@@ -187,14 +187,20 @@ All monitors notify `supportequip@gmail.com`. There is no SMS / PagerDuty
 routing today -- Equip is one-developer-on-call; email and the in-app
 Datadog inbox are the routes.
 
+Removed 2026-09-28: the rage-click (19728792) and p75-LCP (19728793)
+monitors. Both were dashboard-only, and at a few real sessions a day
+they measured nothing — two rage clicks in thirty days, and an LCP
+percentile taken over one or two page loads, most of them CI. The RUM
+dashboards still show both; bring a monitor back when traffic can
+support a percentile.
+
 | ID | Type | What it fires on | Severity |
 |---|---|---|---|
 | 19728703 | Synthetics alert | Backend `/health` fails (3 retries) | crit |
 | 19728704 | Synthetics alert | Frontend `/` fails or body doesn't contain "Bible School" | crit |
 | 19728705 | Synthetics alert | Backend `/api/v1/courses` non-200 or non-JSON | crit |
 | 19728791 | RUM alert | ≥ 10 frontend errors in 10 min (warn at 5) | `priority:2` |
-| 19728792 | RUM alert | ≥ 5 rage clicks in 30 min (warn at 3) | warn |
-| 19728793 | RUM alert | p75 LCP > 4 s over 1 h (warn 3.5 s) -- retuned in the UI 2026-06-13, robust to a single cold-start view. LCP is in **nanoseconds** in RUM events -- never use ms thresholds | warn |
+| 22747352 | RUM alert | No real-user session (`@session.type:user`) in 48 h — the telemetry broke, not the traffic. Watches the `/_e` intake proxy and the automation filter (see `frontend/src/lib/datadog.ts`) | `priority:2` |
 | 19730778 | Log alert | ≥ 10 ERROR / CRITICAL backend log lines in 10 min (warn at 6), scoped `source:python` | `priority:2` |
 | 19730779 | Log alert | ≥ 20 WARNING backend log lines in 15 min (warn at 10) -- usually IntegrityError noise. Scoped `source:python` | warn |
 | 20393855 | Log alert | ≥ 3 error logs from `service:send-email status:error` in 15 min | `priority:2` |
@@ -253,7 +259,11 @@ not affect the metrics.
    during that request.
 
 4. **Replay the session.** In RUM, search by user email or by error
-   message; the Session Replay timeline shows clicks, scrolls, network
+   message. A new user is findable from the session in which they filled
+   the sign-up form (the session is named at `signUp`, not at the first
+   sign-in). Automated browsers (`navigator.webdriver`) and crawlers are
+   never recorded, and batches go through `/_e` on our own origin so
+   content blockers do not drop them; the Session Replay timeline shows clicks, scrolls, network
    calls. Inputs are masked (`mask-user-input`) so quiz answers and
    passwords don't leak into the recording, but the surrounding UI is
    visible.
@@ -261,8 +271,9 @@ not affect the metrics.
 ### "I want to understand a slow page"
 
 1. RUM → Performance → filter by `@view.name:<route>`. Look at LCP, INP,
-   CLS percentiles. The monitor on LCP > 4 s fires at the dashboard
-   average; individual long-tail views can be much slower.
+   CLS percentiles. There is no LCP monitor (removed
+   2026-09-28 — too few real page loads for a percentile); the
+   dashboard average hides the long tail, so read individual views.
 2. Long-task events are tracked (`trackLongTasks: true`) -- the action
    stream in RUM marks any > 50 ms main-thread block.
 

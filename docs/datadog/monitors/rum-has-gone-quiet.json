@@ -1,0 +1,25 @@
+{
+  "name": "[Equip] RUM has gone quiet (no real sessions in 48h)",
+  "type": "rum alert",
+  "query": "rum(\"@type:session service:equip-frontend env:production @session.type:user\").rollup(\"count\").last(\"2d\") < 1",
+  "message": "Not one real visitor session reached Datadog in two days.\n\nThe site gets a few real sessions every day, so two silent days almost certainly means the telemetry broke, not that nobody came. Since 2026-09-28 the browser SDK sends through our own origin — `/_e/*`, rewritten in `frontend/vercel.json` to `browser-intake-us5-datadoghq.com` — and automation never starts RUM at all (`isAutomatedVisitor` in `frontend/src/lib/datadog.ts`). Either change can silence RUM with nothing else failing.\n\nCheck, in order:\n1. `curl -s -o /dev/null -w '%{http_code}' https://equipbible.com/_e/api/v2/rum` — expect a 4xx JSON from Datadog. A 200 with HTML means the rewrite is gone and every batch is landing on index.html.\n2. Open the site in a normal browser, DevTools → Network, filter `_e` — batches should answer 202.\n3. The Vercel env vars `VITE_DATADOG_APPLICATION_ID` / `VITE_DATADOG_CLIENT_TOKEN` on Production.\n\nWhy 48 hours: after automation stopped being recorded, a quiet day can genuinely have zero visitors; two cannot, at current traffic.\n\n@supportequip@gmail.com",
+  "tags": [
+    "env:production",
+    "project:equip",
+    "managed_by:claude"
+  ],
+  "priority": 2,
+  "options": {
+    "thresholds": {
+      "critical": 1.0
+    },
+    "evaluation_delay": 60,
+    "notify_audit": false,
+    "include_tags": false,
+    "renotify_interval": 1440,
+    "notify_no_data": false,
+    "new_host_delay": 300,
+    "groupby_simple_monitor": false,
+    "silenced": {}
+  }
+}
