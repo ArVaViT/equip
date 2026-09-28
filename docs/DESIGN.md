@@ -73,20 +73,35 @@ One scale, one serif, one sans.
 
 ## Spacing, radius, elevation
 
-- **Radius:** `rounded-md` (6px) default. `rounded-lg` only for dialogs.
-  No `rounded-2xl`, no `rounded-3xl`.
+- **Radius** (2026-09-28, `--radius` 0.625rem): `rounded-md` (8px) for
+  controls — buttons, fields, menus; `rounded-lg` (10px) for tiles inside a
+  card and for dialogs; `rounded-card` (14px, `--radius-card`) for cards and
+  panels. A course cover at thumbnail size (`CourseThumb`) is 5px. No
+  `rounded-2xl`, no `rounded-3xl`. Measured against Coursera, Vercel, Linear
+  and BibleProject: fields 6–8px and cards 12–16px everywhere; the app had
+  6px on everything and read as plain HTML beside the landing.
 - **Borders:** 1px `border-border` for controls + dividers. No double borders.
-  Card/panel SURFACES carry **no resting border** — they read as a white
-  outline on the warm page (Vadym rejected it repeatedly). A callsite that
-  genuinely needs a frame (selected, dnd-drop, hover handoff) opts back in
-  explicitly via `border border-edge`.
-- **Shadows:** overlays only (dialog, popover, dropdown). Cards/panels are
-  **flat** — separated by the `bg-card` / `bg-surface-elevated` fill and
-  spacing alone, no resting border and no shadow. No `shadow-lg` on static
-  content.
-- **Card/panel surface:** use the `.surface-card` utility (`src/index.css`:
-  `bg-card`, no border/shadow) — never hand-roll `border bg-card`. It is the
-  single source of truth so the white-outline regression can't return.
+  Cards carry a hairline `border-edge` in the light theme (without it a
+  near-white card floats on the warm page) and none in the dark theme (there
+  it outlines every card into a grid). That is what `Card` and
+  `.surface-card` already do; a call site states only a deliberate frame —
+  selected, drop target, hover tint.
+- **Shadows** (2026-09-28): cards and panels carry `shadow-card` — warm,
+  layered, 4–7% (`hsl(30 10% 12%)`, the page's ink, never black). In the
+  dark theme, where a shadow cannot be seen, the same token is a hairline of
+  light and a brighter top edge. `shadow-card-hover` is for `lift` only.
+  Overlays keep their own shadows. No `shadow-lg` / `shadow-xl` on content.
+- **Card/panel surface:** the `Card` primitive or the `.surface-card`
+  utility (`rounded-card`, hairline border in light / none in dark,
+  `shadow-card`). Hand-built panels use the same three classes.
+- **`lift`:** a clickable card rises 2px to `shadow-card-hover` in 200ms —
+  only on a real hover (not touch), never under reduced motion, and only on
+  things that go somewhere when clicked. A lifting card that does nothing
+  is a false promise. Put it on the element that owns the transition; a
+  `transition-colors` on the same element out-ranks it and the rise jumps.
+- **Page:** the app shell is `.app-canvas` — two faint pools of `--accent`
+  at opposite corners, fixed to the window, on a pseudo-element so a phone
+  does not repaint it on scroll.
 - **Spacing:** Tailwind scale, multiples of 4. Page padding `p-6` desktop,
   `p-4` mobile. Cards `p-5`.
 
@@ -118,8 +133,15 @@ Motion is part of the design language, not absent from it. Rules:
   parallax-on-everything, looping non-decorative animation, bouncy springs on
   navigation, anything blocking interaction during entrance.
 
+**The landing's scene off the landing.** `LandingBackdrop` also runs behind
+the sign-in screens (`AuthLayout`) with `ambient`: the leaves fall open from
+one stack and drift, at 30fps, weaker than on the landing, with the text veil
+behind the form on desktop. The profile header has a drifting sage glow and a
+turning ring round the portrait (`profile-glow`, `avatar-halo`). Those are
+the app's only looping decorations; both stop under reduced motion.
+
 The existing CSS animation system in `index.css` (`animate-fade-in`,
-`stagger-fade-in`, `motion-safe-hover-lift`, `skeleton-shimmer`, `ambient-mesh`,
+`stagger-fade-in`, `lift`, `skeleton-shimmer`, `ambient-mesh`,
 `hero-breathe`) stays in place for low-stakes / pre-React content and as a
 fallback in legacy callsites. Migration to motion primitives is gradual,
 page-by-page, not a big-bang rewrite.
