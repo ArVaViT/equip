@@ -308,27 +308,9 @@
     {
       "definition": {
         "type": "group",
-        "title": "Quality signals",
+        "title": "Locale split",
         "layout_type": "ordered",
         "widgets": [
-          {
-            "definition": {
-              "type": "query_value",
-              "title": "Average rating (out of 5)",
-              "requests": [
-                {
-                  "q": "avg:equip.reviews.rating_latest{course_id:$course_id.value}",
-                  "aggregator": "avg",
-                  "conditional_formats": [
-                    { "comparator": ">", "value": 4, "palette": "white_on_green" },
-                    { "comparator": ">", "value": 3, "palette": "white_on_yellow" },
-                    { "comparator": "<=", "value": 3, "palette": "white_on_red" }
-                  ]
-                }
-              ],
-              "precision": 2
-            }
-          },
           {
             "definition": {
               "type": "timeseries",
