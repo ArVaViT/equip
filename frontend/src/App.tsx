@@ -225,7 +225,7 @@ function AppRoutes() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-surface text-ink">
+    <div className="app-canvas isolate min-h-screen flex flex-col bg-surface text-ink">
       {/* Skip link — hidden until focused via Tab. First focusable element on
           every authenticated page so keyboard / screen-reader users can jump
           past the persistent Header + banners straight to page content. */}
@@ -242,20 +242,19 @@ function AppRoutes() {
         <LegalNoticeBanner />
       </Suspense>
       <AnnouncementBanner />
-      {/* ``min-h-[calc(100dvh-header)]`` keeps the footer permanently below
-          the initial viewport on every authenticated page — you only see it
-          after deliberately scrolling. ``100dvh`` (not ``100vh``) so the
-          mobile browser chrome's collapsing toolbar doesn't shift the
-          footer into view mid-scroll. Header height: ``h-11`` (2.75rem)
-          on mobile, ``md:h-12`` (3rem) from md up. Optional
-          banners (Announcement) take their own space
-          above main, which means with a banner active the visible
-          main is slightly shorter — acceptable: the footer-below-fold
-          contract still holds. */}
+      {/* ``flex-1`` alone: the shell is ``min-h-screen flex-col``, so main
+          already fills whatever the header leaves.
+
+          It also carried ``min-h-[calc(100dvh-header)]``, written for a
+          footer that had to stay below the fold — and for a header of
+          2.75/3rem. The footer left the application long ago and the header
+          grew to 3.5/4rem plus its rule, so the calc made every page 17px
+          taller than the window: a scrollbar on a dashboard that fits,
+          «ползунок скрола активен и можно буквально пару пикселей скролить». */}
       <main
         id="main-content"
         tabIndex={-1}
-        className="flex-1 focus:outline-none min-h-[calc(100dvh-2.75rem)] md:min-h-[calc(100dvh-3rem)]"
+        className="flex-1 focus:outline-none"
       >
         <ErrorBoundary>
           <Suspense fallback={<PageSpinner />}>

@@ -85,7 +85,7 @@ export function AnnouncementPager({ announcements, onEdit, onDelete }: Announcem
       aria-label={t("teacherEditor.modals.announcements.title")}
       onKeyDown={onKeyDown}
       tabIndex={-1}
-      className="surface-card flex overflow-hidden rounded-lg"
+      className="surface-card flex overflow-hidden"
     >
       <div className="flex min-w-0 flex-1 items-start gap-3 p-3 sm:p-4">
         <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-info" strokeWidth={1.75} aria-hidden />

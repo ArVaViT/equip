@@ -199,7 +199,12 @@ export default {
         base: "var(--motion-base)",
         panel: "var(--motion-panel)",
       },
+      boxShadow: {
+        card: "var(--shadow-card)",
+        "card-hover": "var(--shadow-card-hover)",
+      },
       borderRadius: {
+        card: "var(--radius-card)",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",

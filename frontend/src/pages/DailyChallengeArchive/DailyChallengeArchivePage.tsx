@@ -102,7 +102,7 @@ export default function DailyChallengeArchivePage() {
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
         <section
           aria-labelledby="dc-archive-grid-heading"
-          className="rounded-md border border-edge dark:border-transparent bg-card"
+          className="rounded-card border border-edge dark:border-transparent bg-card shadow-card"
         >
           <header className="flex items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
             <div className="flex items-center gap-2.5">
@@ -393,7 +393,7 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
 
   if (!challengeDate) {
     return (
-      <section className="rounded-md border border-edge dark:border-transparent bg-card p-6 text-center">
+      <section className="rounded-card border border-edge dark:border-transparent bg-card shadow-card p-6 text-center">
         <EmptyState
           variant="compact"
           title={t("dailyChallenge.archive.detail.pickDate")}
@@ -406,7 +406,7 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
   return (
     <section
       aria-labelledby="dc-archive-detail-heading"
-      className="rounded-md border border-edge dark:border-transparent bg-card"
+      className="rounded-card border border-edge dark:border-transparent bg-card shadow-card"
     >
       <header className="flex items-center gap-2.5 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
         <Button

@@ -1,12 +1,13 @@
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
-import { ArrowRight, GraduationCap, PenLine } from "lucide-react"
+import { ArrowRight, GraduationCap, Pencil } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import { useAuth } from "@/context/useAuth"
+import { CourseThumb } from "@/components/course/CourseThumb"
 import { coursesService } from "@/services/courses"
 import type { Course } from "@/types"
 import { canTeach } from "@/lib/roles"
@@ -70,62 +71,76 @@ export function TeacherCoursesCard() {
     <section
       data-testid="teacher-courses-card"
       aria-labelledby="teacher-courses-heading"
-      className="animate-fade-in rounded-md border border-edge bg-card dark:border-transparent"
+      className="animate-fade-in overflow-hidden rounded-card bg-card shadow-card"
     >
-      <div className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
-        <span
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand-ink"
-          aria-hidden
-        >
-          <GraduationCap className="h-4 w-4" strokeWidth={1.75} />
-        </span>
-        <div className="min-w-0 flex-1">
+      {/* The same header as every other card on this page — an icon, the
+          title, one quiet link on the right. It was a circled icon, a
+          two-line explanation and an outline button: the one card on the
+          page that talked, and the one link styled differently from
+          «Открыть каталог» beside it («кнопки разные, хотя по идее это
+          похожие кнопки»). */}
+      <header className="flex items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <GraduationCap className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
           <h2
             id="teacher-courses-heading"
-            className="font-serif text-sm font-semibold tracking-tight text-ink"
+            className="truncate font-serif text-sm font-semibold tracking-tight text-ink"
           >
             {t("dashboard.teaching.title")}
           </h2>
-          <p className="mt-0.5 text-xs text-ink-muted">{t("dashboard.teaching.description")}</p>
         </div>
-        <Link to="/teacher" className="shrink-0">
-          <Button size="sm" variant={empty ? "default" : "outline"}>
-            {empty ? t("dashboard.teaching.createFirst") : t("dashboard.teaching.openAll")}
-            <ArrowRight className="ml-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-          </Button>
+        <Link
+          to="/teacher"
+          className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand transition-opacity hover:opacity-80"
+        >
+          {t("dashboard.teaching.openAll")}
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
         </Link>
-      </div>
+      </header>
 
       {loading && (
-        <div className="space-y-2 border-t border-edge px-4 py-3 sm:px-5 dark:border-white/5" aria-busy>
+        <div className="space-y-2 px-4 py-3 sm:px-5" aria-busy>
           <Skeleton className="h-4 w-2/3" />
           <Skeleton className="h-4 w-1/2" />
         </div>
       )}
 
       {empty && (
-        <p className="border-t border-edge px-4 py-3 text-sm text-ink-muted sm:px-5 dark:border-white/5">
-          {t("dashboard.teaching.empty")}
-        </p>
+        <div className="flex flex-col items-start gap-3 px-4 py-3 sm:flex-row sm:items-center sm:px-5">
+          <p className="flex-1 text-sm text-ink-muted">{t("dashboard.teaching.empty")}</p>
+          <Link to="/teacher" className="shrink-0">
+            <Button size="sm">{t("dashboard.teaching.createFirst")}</Button>
+          </Link>
+        </div>
       )}
 
       {!loading && !failed && shown.length > 0 && (
-        <ul className="divide-y divide-edge border-t border-edge dark:divide-white/5 dark:border-white/5">
+        <ul className="divide-y divide-edge dark:divide-white/5">
           {shown.map((course) => (
             <li key={course.id}>
               <Link
                 to={`/teacher/courses/${course.id}`}
-                className="group flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/40 sm:px-5"
+                className="group flex items-center gap-3 px-4 py-2 transition-colors hover:bg-muted/40 sm:px-5"
               >
+                <CourseThumb course={course} />
                 <span className="min-w-0 flex-1 truncate font-serif text-sm font-medium text-ink transition-colors group-hover:text-brand">
                   {course.title || t("dashboard.course")}
                 </span>
-                <Badge variant={STATUS_VARIANT[course.status]} className="shrink-0">
+                {/* On a phone the badge left the title nine letters. Published
+                    is the ordinary state and goes quiet there; a draft or a
+                    course still publishing keeps its badge on every width. */}
+                <Badge
+                  variant={STATUS_VARIANT[course.status]}
+                  className={course.status === "published" ? "hidden shrink-0 sm:inline-flex" : "shrink-0"}
+                >
                   {t(STATUS_KEY[course.status])}
                 </Badge>
-                <span className="hidden shrink-0 items-center gap-1 text-xs text-ink-muted sm:inline-flex">
-                  <PenLine className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-                  {t("dashboard.teaching.edit")}
+                {/* The pencil of the teaching page's own edit button, not
+                    the words «Открыть в редакторе» on every row. The words
+                    stay for a screen reader. */}
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors group-hover:bg-muted group-hover:text-ink">
+                  <Pencil className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  <span className="sr-only">{t("dashboard.teaching.edit")}</span>
                 </span>
               </Link>
             </li>

@@ -81,7 +81,7 @@ export function CourseTranslationCard({
   if (loading) {
     return (
       <section
-        className="mb-6 overflow-hidden rounded-md border border-edge bg-card dark:border-transparent"
+        className="mb-6 overflow-hidden rounded-card border border-edge bg-card shadow-card dark:border-transparent"
         aria-busy="true"
       >
         <div className="flex items-center gap-4 px-5 py-4">
@@ -120,7 +120,7 @@ export function CourseTranslationCard({
   const idle = !done && !working && reason === "translating"
 
   return (
-    <section className="mb-6 overflow-hidden rounded-md border border-edge bg-card dark:border-transparent">
+    <section className="mb-6 overflow-hidden rounded-card border border-edge bg-card shadow-card dark:border-transparent">
       <div className="flex flex-wrap items-center gap-4 px-5 py-4">
         <span
           className={cn(

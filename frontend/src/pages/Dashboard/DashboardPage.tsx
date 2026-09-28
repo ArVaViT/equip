@@ -15,6 +15,7 @@ import { DailyChallengeCard } from "@/components/dashboard/DailyChallengeCard"
 import { TodayCard } from "@/components/dashboard/TodayCard"
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard"
 import { RecentlyViewedRow } from "@/components/dashboard/RecentlyViewedRow"
+import { CourseThumb } from "@/components/course/CourseThumb"
 import { TeacherCoursesCard } from "@/components/dashboard/TeacherCoursesCard"
 import { useUserTour } from "@/hooks/useUserTour"
 import { studentDashboardSteps } from "@/lib/tourSteps"
@@ -95,7 +96,7 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
   const shell = (body: React.ReactNode, centered = false) => (
     <section
       data-tour="my-courses"
-      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md border border-edge dark:border-transparent bg-card transition-[border-color] duration-300 hover:border-brand/25"
+      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-card border border-edge dark:border-transparent bg-card shadow-card transition-[border-color] duration-300 hover:border-brand/25"
     >
       <header className="flex items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-center gap-2.5">
@@ -210,6 +211,9 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
               className="group block rounded-md bg-muted/10 px-3 py-2.5 transition-colors hover:border-brand/30 hover:bg-muted/40"
             >
               <div className="flex items-center gap-3">
+                {/* The cover beside the title — «текст слабо смотрится».
+                    40px, inside the height the row already has. */}
+                <CourseThumb course={enrollment.course!} className="h-10" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start gap-2">
                     <h3 className="min-w-0 flex-1 truncate font-serif text-sm font-medium leading-tight text-ink transition-colors duration-200 group-hover:text-brand">
@@ -281,8 +285,8 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
 /**
  * Authenticated dashboard at ``/``.
  *
- * **Single-viewport contract.** Footer sits below the fold via
- * ``min-h-[calc(100dvh-headerH)]`` on the main element (App.tsx).
+ * **Single-viewport contract.** On lg+ the page is exactly the window
+ * below the header and nothing scrolls but the panels' own lists.
  *
  * **Layout (lg+).** Two columns:
  * - Left (wider): My Courses with internal scroll.
@@ -312,7 +316,10 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="container mx-auto h-full px-4 py-4 sm:py-6 lg:h-[calc(100dvh-3rem-3rem)]">
+    // Exactly the window below the header (`h-16` plus its 1px rule from
+    // `md`): the grid holds the page to one screen on a desktop. It was
+    // `100dvh - 6rem`, a header of 3rem counted twice.
+    <div className="container mx-auto h-full px-4 py-4 sm:py-6 lg:h-[calc(100dvh-4rem-1px)]">
       <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-5">
         {/* Left column: an optional "recently viewed" strip (renders
             nothing when empty, so it costs no vertical space for new

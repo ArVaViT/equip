@@ -67,18 +67,44 @@ describe("TodayCard", () => {
     expect(screen.getByText("Acts course")).toBeInTheDocument()
   })
 
-  it("renders empty-state copy when no events fall on today", async () => {
+  it("on an empty day, names what comes next instead of an empty state", async () => {
+    // Most days have nothing on them, and the card answered every one of
+    // them with an icon and "no events" — «Раздел сегодня будто не
+    // работает». Now the next events, soonest first, and never a past one.
     useAuthMock.mockReturnValue({ user: { id: "u-1" } })
-    // Event date one week from now -> not today
-    const future = new Date()
-    future.setDate(future.getDate() + 7)
-    getCalendarEventsMock.mockResolvedValueOnce([makeEvent({ event_date: future.toISOString() })])
+    const inDays = (n: number) => {
+      const d = new Date()
+      d.setDate(d.getDate() + n)
+      return d.toISOString()
+    }
+    getCalendarEventsMock.mockResolvedValueOnce([
+      makeEvent({ id: "late", title: "Final exam", event_date: inDays(9) }),
+      makeEvent({ id: "past", title: "Old deadline", event_date: inDays(-3) }),
+      makeEvent({ id: "soon", title: "Essay due", event_date: inDays(2) }),
+      makeEvent({ id: "later", title: "Quiz 3", event_date: inDays(20) }),
+    ])
+
+    render(<TodayCard />, { wrapper: Wrapper })
+
+    await waitFor(() => expect(screen.getByText("Essay due")).toBeInTheDocument())
+    expect(screen.getByText(/nothing scheduled today|сегодня ничего/i)).toBeInTheDocument()
+    const titles = screen.getAllByRole("listitem").map((li) => li.textContent ?? "")
+    expect(titles).toHaveLength(2)
+    expect(titles[0]).toContain("Essay due")
+    expect(titles[1]).toContain("Final exam")
+    expect(screen.queryByText("Old deadline")).not.toBeInTheDocument()
+  })
+
+  it("says plainly when nothing is coming up at all", async () => {
+    useAuthMock.mockReturnValue({ user: { id: "u-1" } })
+    getCalendarEventsMock.mockResolvedValueOnce([])
 
     render(<TodayCard />, { wrapper: Wrapper })
 
     await waitFor(() =>
-      expect(screen.getByText(/no events|нет событий/i)).toBeInTheDocument(),
+      expect(screen.getByText(/nothing coming up|ближайших событий нет/i)).toBeInTheDocument(),
     )
+    expect(screen.queryByRole("listitem")).not.toBeInTheDocument()
   })
 
   it("caps the visible list at MAX_EVENTS_SHOWN (3)", async () => {

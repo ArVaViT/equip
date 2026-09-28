@@ -154,16 +154,16 @@
       "title": "Verse of the Day"
     },
     "today": {
-      "eyebrow": "Today",
+      "eyebrow": "Calendar",
       "openFull": "Full calendar",
-      "empty": "No events scheduled for today.",
-      "emptyDescription": "Open the full calendar to see what's coming up this week."
+      "empty": "Nothing scheduled today. Coming up:",
+      "nothingAhead": "Nothing coming up.",
+      "ahead": "Coming up"
     },
     "readingProgress_one": "{{read}} of {{count}} lesson read",
     "readingProgress_other": "{{read}} of {{count}} lessons read",
     "teaching": {
       "title": "Courses you teach",
-      "description": "Editing, grading and publishing all live under “Teaching”.",
       "openAll": "All my courses",
       "empty": "You have no courses yet. The first one takes a minute — a title and a description, the rest later.",
       "createFirst": "Create your first course",

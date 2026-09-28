@@ -187,7 +187,7 @@ export function DailyChallengeCard() {
   return (
     <section
       aria-labelledby="dc-card-heading"
-      className="surface-card animate-fade-in flex h-full flex-col overflow-hidden rounded-md"
+      className="surface-card animate-fade-in flex h-full flex-col overflow-hidden"
     >
       <header className="flex items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-center gap-2.5">

@@ -154,16 +154,16 @@
       "title": "Vers des Tages"
     },
     "today": {
-      "eyebrow": "Heute",
+      "eyebrow": "Kalender",
       "openFull": "Ganzer Kalender",
-      "empty": "Für heute ist nichts geplant.",
-      "emptyDescription": "Öffnen Sie den Kalender, um zu sehen, was diese Woche ansteht."
+      "empty": "Heute ist nichts geplant. Als Nächstes:",
+      "nothingAhead": "Nichts Anstehendes.",
+      "ahead": "Als Nächstes"
     },
     "readingProgress_one": "{{read}} von {{count}} Lektion gelesen",
     "readingProgress_other": "{{read}} von {{count}} Lektionen gelesen",
     "teaching": {
       "title": "Kurse, die Sie unterrichten",
-      "description": "Bearbeiten, Bewerten und Veröffentlichen — alles unter „Lehre“.",
       "openAll": "Alle meine Kurse",
       "empty": "Sie haben noch keine Kurse. Der erste ist in einer Minute angelegt — Titel und Beschreibung, der Rest später.",
       "createFirst": "Ersten Kurs erstellen",
