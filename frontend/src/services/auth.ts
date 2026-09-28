@@ -1,5 +1,4 @@
 import { DEFAULT_LOCALE, type SupportedLocale } from "@/i18n/config"
-import { setDatadogUser } from "@/lib/datadog"
 import { supabase } from "@/lib/supabase"
 import type { Session } from "@supabase/supabase-js"
 
@@ -18,7 +17,7 @@ export const authService = {
      * which is 'en' — the answer for a signup that told us nothing.
      */
     preferredLocale: SupportedLocale = DEFAULT_LOCALE,
-  ): Promise<void> {
+  ): Promise<string | null> {
     // Self-service signup always lands as student. Teacher / admin
     // promotion is admin-only via the role-change endpoint.
     const { data, error } = await supabase.auth.signUp({
@@ -38,16 +37,9 @@ export const authService = {
       throw new Error("DUPLICATE_EMAIL")
     }
 
-    // Name the session now, not at the first sign-in. An email signup
-    // only signs in after the confirmation link — often on another device,
-    // sometimes days later — so the session in which somebody actually
-    // filled the form stayed anonymous, and searching RUM for a new user's
-    // address never found the day they registered. The account id exists
-    // from this moment (unconfirmed), and it is the same id the profile
-    // will carry, so both sessions line up under one user.
-    if (data.user) {
-      setDatadogUser({ id: data.user.id, email, name: fullName, role: "student" })
-    }
+    // The new account's id exists from this moment, unconfirmed — the
+    // caller uses it to name the RUM session (see AuthContext.register).
+    return data.user?.id ?? null
   },
 
   async login(email: string, password: string): Promise<{ user: Session["user"]; session: Session }> {
