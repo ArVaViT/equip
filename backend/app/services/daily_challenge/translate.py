@@ -217,6 +217,8 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
     every language. Nothing narrower is safe, because this is the only
     thing that selects work — there is no later pass to correct it.
     """
+    from sqlalchemy import case
+
     from app.models.content_version import ContentVersion, ContentVersionStatus
     from app.models.daily_challenge import DailyChallengeOption, DailyChallengeQuestion
     from app.services.translation.hash import compute_source_hash
@@ -238,7 +240,12 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
             ContentVersion.origin,
             ContentVersion.source_hash,
             ContentVersion.translator_version,
-            ContentVersion.text,
+            # Only the author's text is ever read below — to hash it. The
+            # machine rows' text came along too: three quarters of the rows
+            # and 516kB of the 632kB this query moved, every minute, for the
+            # most expensive statement in the database (560s of 2216s over
+            # eleven days, measured 2026-09-28 in pg_stat_statements).
+            case((ContentVersion.origin == "human", ContentVersion.text), else_=None),
         )
         .filter(
             ContentVersion.entity_type.in_(("daily_challenge_question", "daily_challenge_option")),
@@ -305,12 +312,18 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
         elif status in (ContentVersionStatus.NEEDS_REVIEW, ContentVersionStatus.FAILED_PERMANENT):
             settled_without_us.setdefault((entity_id, field), set()).add(locale)
 
+    # Each entity's fields, gathered once. ``_entity_has_work`` used to find
+    # them by scanning every key of both maps for every entity — about 1,400
+    # entities by 1,700 keys, two to three million comparisons a minute on
+    # an idle worker tick.
+    fields_of: dict[str, set[str]] = {}
+    for eid, field in (*servable, *settled_without_us):
+        fields_of.setdefault(eid, set()).add(field)
+
     def _entity_has_work(entity_id: str) -> bool:
         if entity_id in reopened:
             return True
-        fields = {field for (eid, field) in servable if eid == entity_id}
-        fields |= {field for (eid, field) in settled_without_us if eid == entity_id}
-        for field in fields:
+        for field in fields_of.get(entity_id, ()):
             have = servable.get((entity_id, field), set())
             not_ours = settled_without_us.get((entity_id, field), set())
             if wanted_locales - have - not_ours:
@@ -327,7 +340,7 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
         for option_id, question_id in db.query(DailyChallengeOption.id, DailyChallengeOption.question_id).all()
     }
 
-    entity_ids = {eid for (eid, _field) in servable} | {eid for (eid, _field) in settled_without_us}
+    entity_ids = set(fields_of)
     unsettled: set[str] = set()
     for entity_id in entity_ids:
         if not _entity_has_work(entity_id):
