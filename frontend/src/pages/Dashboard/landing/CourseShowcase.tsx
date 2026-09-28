@@ -217,13 +217,7 @@ export function CourseShowcase() {
               </li>
             ))}
           </ul>
-          <Link
-            to="/courses"
-            className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-ink underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-          >
-            {t("dashboard.browseAllCta")}
-            <ArrowRight className="h-4 w-4 text-accent" strokeWidth={1.75} aria-hidden />
-          </Link>
+          <CatalogueLink className="mt-6" />
         </div>
       </SceneBand>
     )
@@ -258,6 +252,7 @@ export function CourseShowcase() {
             ))}
           </ul>
         )}
+        <CatalogueLink className="mt-6" />
       </div>
       </SceneBand>
     )
@@ -278,8 +273,28 @@ export function CourseShowcase() {
             </li>
           ))}
         </ul>
+        {/* The shelf shows five courses and the page had no way from them to
+            the rest — the phone list got a link first (2026-09-27); the
+            travelling row gets the same one, under its first cover. */}
+        <div className="px-4 sm:px-6">
+          <CatalogueLink className="mt-10" />
+        </div>
       </SceneBand>
     </div>
+  )
+}
+
+/** The way from the shelf to the whole catalogue, in every layout. */
+function CatalogueLink({ className = "" }: { className?: string }) {
+  const { t } = useTranslation()
+  return (
+    <Link
+      to="/courses"
+      className={`inline-flex items-center gap-1.5 text-sm font-medium text-ink underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${className}`}
+    >
+      {t("dashboard.browseAllCta")}
+      <ArrowRight className="h-4 w-4 text-accent" strokeWidth={1.75} aria-hidden />
+    </Link>
   )
 }
 

@@ -61,13 +61,16 @@
     "support": "Support kontaktieren",
     "rightsReserved": "Alle Rechte vorbehalten.",
     "product": "Produkt",
-    "legal": "Rechtliches"
+    "legal": "Rechtliches",
+    "soon": "Bald",
+    "social": "Equip in sozialen Netzwerken — bald",
+    "apps": "Equip-Apps — bald"
   },
   "landing": {
     "hero": {
       "registerCta": "Konto erstellen",
       "manifesto": "Die Schrift der Reihe nach studieren, nicht in Bruchstücken",
-      "subline": "Kurse mit echter Prüfung und einem Zertifikat, das jeder nachprüfen kann — für alle, die die Schrift ernst nehmen.",
+      "subline": "Kostenlose Kurse mit echter Prüfung und einem Zertifikat, das jeder nachprüfen kann — für alle, die die Schrift ernst nehmen.",
       "facts": "Kostenlos · Open Source · RU EN DE UK · Überprüfbares Zertifikat"
     },
     "value": {
@@ -90,13 +93,10 @@
         "sampleQuestion": "Fassen Sie den Hauptgedanken dieses Abschnitts in eigenen Worten zusammen.",
         "gradedBadge": "Vom Dozenten bewertet"
       },
-      "certificates": {
-        "eyebrow": "Zertifizierung",
-        "title": "Ein Zertifikat, das sich prüfen lässt",
-        "body": "Jedes Zertifikat trägt seine eigene Nummer, und jeder kann sie prüfen.",
-        "short": "Jedes mit eigener Nummer — jeder kann es prüfen.",
-        "certTitle": "Abschlusszertifikat",
-        "verifyLabel": "Nach Nummer prüfen"
+      "languages": {
+        "title": "Jeder liest in seiner eigenen Sprache",
+        "body": "Eine Lehrkraft schreibt den Kurs einmal. Die Studierenden lesen ihn auf Deutsch, Englisch, Russisch oder Ukrainisch — jeder Vers aus einer echten Bibelübersetzung.",
+        "short": "Einmal geschrieben — gelesen auf Deutsch, Englisch, Russisch oder Ukrainisch."
       },
       "bilingual": {
         "eyebrow": "Sprache",
@@ -115,6 +115,29 @@
       "heading": "Bereit anzufangen?",
       "body": "Die Kurse sind kostenlos, der Fortschritt speichert sich von selbst.",
       "primary": "Konto erstellen"
+    },
+    "faq": {
+      "heading": "Fragen",
+      "free": {
+        "q": "Ist Equip wirklich kostenlos?",
+        "a": "Ja. Jeder Kurs im Katalog ist kostenlos — und das Zertifikat am Ende ebenfalls."
+      },
+      "account": {
+        "q": "Brauche ich ein Konto?",
+        "a": "Zum Umsehen nicht: Der Katalog und jede Kursseite sind für alle offen. Um sich einzuschreiben, Tests zu machen und Ihren Fortschritt zu speichern, legen Sie ein kostenloses Konto an oder melden Sie sich mit Google an."
+      },
+      "languages": {
+        "q": "In welchen Sprachen gibt es die Kurse?",
+        "a": "Auf Englisch, Russisch, Ukrainisch und Deutsch. Ein Kurs kommt erst in den Katalog, wenn er in allen vier Sprachen vorliegt und geprüft ist, und die Schrift wird in jeder Sprache nach einer veröffentlichten Bibelübersetzung zitiert. Weitere Sprachen kommen mit der Zeit hinzu."
+      },
+      "certificate": {
+        "q": "Was bestätigt das Zertifikat?",
+        "a": "Dass Sie den Kurs abgeschlossen haben. Jedes Zertifikat hat eine eigene Nummer, die jeder auf der <ref>Prüfseite</ref> kontrollieren kann. Zertifikate werden auf Englisch ausgestellt."
+      },
+      "teach": {
+        "q": "Kann ich auf Equip einen eigenen Kurs unterrichten?",
+        "a": "Ja — als Teil einer Organisation: einer Bibelschule, eines Gemeindeprogramms oder einer Mission. Organisationen richtet das Equip-Team ein — <ref>schreiben Sie uns</ref>, wir helfen beim Start."
+      }
     }
   },
   "dashboard": {
@@ -2928,7 +2951,7 @@
   },
   "meta": {
     "documentTitle": "Equip — Bibelstudium online",
-    "description": "Equip ist systematisches Bibelstudium für alle, die die Schrift ernst nehmen. Kurse, Fortschritt, Zertifikate. Deutsch, Englisch, Russisch, Ukrainisch."
+    "description": "Equip ist kostenloses, systematisches Bibelstudium für alle, die die Schrift ernst nehmen. Kurse, Fortschritt, Zertifikate. Deutsch, Englisch, Russisch, Ukrainisch."
   },
   "courseTranslation": {
     "title": "Sprachen des Kurses",

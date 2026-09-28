@@ -1,6 +1,8 @@
-import { useEffect } from "react"
+import { useContext, useEffect } from "react"
 import { useLocation } from "react-router-dom"
 import { useTranslation } from "react-i18next"
+
+import { AuthContext } from "@/context/auth-context"
 
 /**
  * The translation key naming this path, or ``null`` when no rule claims it.
@@ -69,14 +71,38 @@ export function matchTitleKey(pathname: string): string | null {
   return null
 }
 
+/**
+ * True for a visitor on the landing page: `/` with nobody signed in. The
+ * same address is the dashboard for everybody else. Read from the context
+ * directly rather than through `useAuth`, which throws outside a provider —
+ * a hook that names tabs has no business taking a page down.
+ */
+export function useGuestHome(pathname: string): boolean {
+  const auth = useContext(AuthContext)
+  return pathname === "/" && auth !== null && !auth.loading && !auth.user
+}
+
 export function usePageTitle() {
   const { pathname } = useLocation()
   const { t } = useTranslation()
+  const guestHome = useGuestHome(pathname)
 
   useEffect(() => {
+    // The landing page is the page a search result lands on, and it was
+    // titled «Home — Equip» — the name of a tab inside the product, which
+    // says nothing to somebody without an account. It keeps the title the
+    // first frame already shows (`meta.documentTitle`, set by
+    // `/locale-boot.js` before the bundle runs): the brand and what it is,
+    // in the visitor's language, with the word people search for — which the
+    // claim itself («in order, not in fragments») does not contain. The
+    // claim is on the share card instead.
+    if (guestHome) {
+      document.title = t("meta.documentTitle")
+      return
+    }
     // A 404 that said only "Equip" was indistinguishable from a working page
     // in the tab strip, and announced nothing to a screen reader.
     const key = matchTitleKey(pathname) ?? "notFound.title"
     document.title = `${t(key)} — ${t("common.appName")}`
-  }, [pathname, t])
+  }, [pathname, t, guestHome])
 }

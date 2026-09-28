@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { renderHook } from "@testing-library/react"
 import { I18nextProvider } from "react-i18next"
+
+import { AuthContext, type AuthContextValue } from "@/context/auth-context"
 import { MemoryRouter } from "react-router-dom"
 import { describe, expect, it } from "vitest"
 import i18n from "@/i18n/config"
@@ -60,6 +62,29 @@ describe("page titles", () => {
     })
 
     expect(document.title).toBe(`${i18n.t("notFound.title")} — ${i18n.t("common.appName")}`)
+  })
+
+  it("titles the landing page for a stranger, and the signed-in home plainly", () => {
+    // `/` is two pages. A visitor gets the landing page, and its tab is what
+    // a search result shows — «Home — Equip» said nothing to somebody
+    // without an account. It keeps the first frame's title. A signed-in user
+    // gets their dashboard.
+    const titleAt = (user: object | null) => {
+      const auth = { user, loading: false } as unknown as AuthContextValue
+      renderHook(() => usePageTitle(), {
+        wrapper: ({ children }) => (
+          <I18nextProvider i18n={i18n}>
+            <AuthContext.Provider value={auth}>
+              <MemoryRouter initialEntries={["/"]}>{children}</MemoryRouter>
+            </AuthContext.Provider>
+          </I18nextProvider>
+        ),
+      })
+      return document.title
+    }
+
+    expect(titleAt(null)).toBe(i18n.t("meta.documentTitle"))
+    expect(titleAt({ id: "u-1" })).toBe(`${i18n.t("pageTitle.home")} — ${i18n.t("common.appName")}`)
   })
 
   it("names a lesson the same whether or not a module is in its address", () => {

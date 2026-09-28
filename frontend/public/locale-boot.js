@@ -6,19 +6,19 @@
   var META = {
   "ru": {
     "title": "Equip — изучение Библии онлайн",
-    "description": "Equip — системное изучение Библии для тех, кто относится к Писанию серьёзно. Курсы, прогресс, сертификаты. Русский, английский, немецкий, украинский."
+    "description": "Equip — бесплатное системное изучение Библии для тех, кто относится к Писанию серьёзно. Курсы, прогресс, сертификаты. Русский, английский, немецкий, украинский."
   },
   "en": {
     "title": "Equip — study the Bible online",
-    "description": "Equip is systematic Bible study for people who take Scripture seriously. Courses, progress, certificates. English, Russian, German, Ukrainian."
+    "description": "Equip is free, systematic Bible study for people who take Scripture seriously. Courses, progress, certificates. English, Russian, German, Ukrainian."
   },
   "de": {
     "title": "Equip — Bibelstudium online",
-    "description": "Equip ist systematisches Bibelstudium für alle, die die Schrift ernst nehmen. Kurse, Fortschritt, Zertifikate. Deutsch, Englisch, Russisch, Ukrainisch."
+    "description": "Equip ist kostenloses, systematisches Bibelstudium für alle, die die Schrift ernst nehmen. Kurse, Fortschritt, Zertifikate. Deutsch, Englisch, Russisch, Ukrainisch."
   },
   "uk": {
     "title": "Equip — вивчення Біблії онлайн",
-    "description": "Equip — системне вивчення Біблії для тих, хто ставиться до Писання серйозно. Курси, поступ, сертифікати. Українська, англійська, німецька, російська."
+    "description": "Equip — безкоштовне системне вивчення Біблії для тих, хто ставиться до Писання серйозно. Курси, поступ, сертифікати. Українська, англійська, німецька, російська."
   }
 };
   var DEFAULT = "en";

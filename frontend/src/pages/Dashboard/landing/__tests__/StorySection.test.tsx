@@ -93,7 +93,7 @@ describe("StorySection", () => {
     for (const key of [
       "landing.value.structure.title",
       "landing.value.assessment.title",
-      "landing.value.certificates.title",
+      "landing.value.languages.title",
     ]) {
       expect(screen.getByText(i18n.t(key))).toBeInTheDocument()
     }

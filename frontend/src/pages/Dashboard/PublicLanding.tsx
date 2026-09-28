@@ -5,11 +5,12 @@ import { useReducedMotion } from "motion/react";
 import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import Footer from "@/components/layout/Footer";
 import { HeroVideo } from "./landing/HeroVideo";
 import { ScrollReveal } from "./landing/ScrollReveal";
 import { StorySection } from "./landing/StorySection";
 import { CourseShowcase } from "./landing/CourseShowcase";
+import { Faq } from "./landing/Faq";
+import { RevealFooter } from "./landing/RevealFooter";
 import { ProductTour } from "./landing/ProductTour";
 import { TEXT_VEIL } from "./landing/textVeil";
 
@@ -30,18 +31,19 @@ import { TEXT_VEIL } from "./landing/textVeil";
  * That made it worse, and the reason is worth keeping: it *added*. The brief
  * was less, and it was answered with more.
  *
- * So the shape now is three screens and nothing else:
+ * The shape now (2026-09-27), one scene per screen, over one moving
+ * backdrop (`LandingBackdrop`):
  *
- * 1. **The claim, over a moving scene.** One sentence, one action, and a
- *    WebGL group of leaves that squares up as the page scrolls and tilts
- *    toward the cursor — the slogan as an object rather than a second
- *    paragraph.
- * 2. **The video.** A minute explaining what this is and what problem it
- *    solves, which is Vadym's to produce. Until that file exists the section
- *    renders nothing: a placeholder frame advertising a video that is not
- *    there is worse than no section at all.
- * 3. **Three claims and the way in.** A few words each. Anything needing a
- *    paragraph belongs in the video, not here.
+ * 1. **The claim.** One sentence, the offer in one line, two actions — with
+ *    the product already showing beneath it.
+ * 2. **The tour.** Twenty silent seconds of the product working.
+ * 3. **Three claims.** Order, real assessment, every student in their own
+ *    language — a few words each; anything longer belongs in the film.
+ * 4. **The shelf.** The live catalogue.
+ * 5. **The film.** A minute on what this is, for somebody already deciding.
+ * 6. **Questions.** Five, closed by default, each a fact of the product.
+ * 7. **The close.** The same sentence asked back, and the one action. The
+ *    page ends on it; the footer comes up over it on one more push.
  *
  * SEO. The h1 still spends itself on the claim rather than the brand, and
  * /courses, /register and /login are all still reachable as real anchors —
@@ -141,7 +143,20 @@ export function PublicLanding() {
         // that space is where the scene lives, and on a phone there is no
         // scene, so it was just a hole. The content sets the height; the
         // screen holds it from `sm` up, where the backdrop returns.
-        className="relative flex min-h-[calc(100svh-2.75rem)] items-center justify-center py-16 sm:min-h-[88svh] sm:py-0"
+        //
+        // Short of a full screen on every width since 2026-09-27, so the tour
+        // shows under it on the first screen: Linear, Stripe, Brilliant,
+        // Raycast, Dwell — every product page worth copying has the product
+        // in view before the first scroll, and this one showed it on the
+        // fifth screen.
+        //
+        // The room left is a fixed height, not a share of the screen, so the
+        // same amount of tour shows on a short laptop as on a tall monitor:
+        // 15rem on a phone — past a quarter of the portrait frame, which is
+        // where the tour starts playing, so the first screen has the product
+        // moving in it rather than the blank top edge of a still — and 11rem
+        // from `sm`, where the frame's top carries its caption.
+        className="relative flex min-h-[calc(100svh-2.75rem-15rem)] items-center justify-center py-12 sm:min-h-[calc(100svh-3rem-11rem)] sm:py-10"
         aria-labelledby="landing-hero-heading"
         data-scene-stop="top"
       >
@@ -200,16 +215,18 @@ export function PublicLanding() {
         </div>
       </section>
 
-      {/* ── 2. Three claims, told over one moving scene ──────────── */}
-      <StorySection />
-
-      {/* ── 3. Twenty seconds of it working ──────────────────────── */}
+      {/* ── 2. Twenty seconds of it working ──────────────────────── */}
       {/* Silent, looping, and not the film. The film is a minute with a
-          voice and lives at the end, where Vadym wants it; this is the
-          product in motion — a lesson changing language — and it earns its
-          place here because the three claims above it have just been made
-          and this is what they look like. */}
+          voice and lives near the end, where Vadym wants it; this is the
+          product in motion — a lesson changing language.
+          Straight under the hero since 2026-09-27, and showing under it on
+          the first screen. It used to come after the three claims, which
+          put four screens of words between a visitor and the first look at
+          the thing the words are about. */}
       <ProductTour />
+
+      {/* ── 3. Three claims, told over one moving scene ──────────── */}
+      <StorySection />
 
       {/* ── 4. What is actually on the shelf ─────────────────────── */}
       {/* Everything above argues about how the platform teaches; this is
@@ -218,7 +235,19 @@ export function PublicLanding() {
           unpublished last month. */}
       <CourseShowcase />
 
-      {/* ── 5. The way in ────────────────────────────────────────── */}
+      {/* ── 5. The film ──────────────────────────────────────────── */}
+      {/* Near the end, not first. Vadym: «его надо явно ближе к концу, чтоб
+          он не было первым впечатлением» — a minute of explanation is what
+          you offer somebody already deciding, not what you open with. But
+          not after the close either: every page worth copying ends on its
+          one action, and this one used to end on a video. */}
+      <HeroVideo />
+
+      {/* ── 6. Questions ──────────────────────────────────────────── */}
+      {/* The doubts of somebody deciding, answered before the button. */}
+      <Faq />
+
+      {/* ── 7. The way in ────────────────────────────────────────── */}
       {/* `<Section>` rather than another bespoke `container mx-auto …`
           string: the geometry census in `Section.test.tsx` caps how many
           distinct page shells may exist, and a landing page is not special
@@ -242,10 +271,10 @@ export function PublicLanding() {
           film around it. */}
       <section
         aria-label={t("landing.value.heading")}
-        // Most of a screen on a phone rather than all of it: there is no
-        // rest stop there to fill it for, and a short question alone in a
-        // full screen read as the page having ended early.
-        className="relative isolate flex min-h-[72svh] items-center justify-center px-5 lg:min-h-[100svh]"
+        // The last screen, on every width: the page ends here and the footer
+        // comes up over it (`RevealFooter`), so the close fills what is below
+        // the header and the question sits in the middle of the final view.
+        className="relative isolate flex min-h-[calc(100svh-2.75rem)] items-center justify-center px-5 md:min-h-[calc(100svh-3rem)]"
         data-scene-stop="center"
         // The pieces collect into one deck behind the question.
         data-backdrop-pose="gather"
@@ -260,7 +289,10 @@ export function PublicLanding() {
             question (2.59:1, measured). */}
         <div
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[44rem] w-[min(60rem,170vw)] -translate-x-1/2 -translate-y-1/2 blur-2xl dark:opacity-55"
+          // The section's own height, not a fixed 44rem: taller than the
+          // close on a phone, the light reached up into the FAQ's last answer
+          // (2.68:1 in the dark theme, measured).
+          className="pointer-events-none absolute inset-y-6 left-1/2 -z-10 w-[min(60rem,170vw)] -translate-x-1/2 blur-2xl dark:opacity-55"
           style={{
             background:
               "radial-gradient(closest-side at 30% 62%, hsl(140 32% 48% / 0.55), transparent)," +
@@ -286,21 +318,12 @@ export function PublicLanding() {
         </ScrollReveal>
       </section>
 
-      {/* ── 6. The film ──────────────────────────────────────────── */}
-      {/* Deliberately last. Vadym: «его надо явно ближе к концу, чтоб он не
-          было первым впечатлением» — a minute of explanation is what you
-          offer somebody already deciding, not what you open with. */}
-      <HeroVideo />
-
-        {/* The last rest stop is the bottom of the page, so the wall that
-            holds the film does not stop a reader short of the legal links. */}
-        {/* Veiled like every other block of text on the scene: the film's
-            frame holds to the end of the page, and its outer edge reached
-            the legal links. */}
-        <div data-scene-stop="end" className={TEXT_VEIL}>
-          <Footer />
-        </div>
       </div>
+
+      {/* The page ends on the close. One more push brings the footer up
+          over its bottom edge instead of scrolling the question away — see
+          `RevealFooter`. */}
+      <RevealFooter />
     </div>
   );
 }

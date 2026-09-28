@@ -2,6 +2,8 @@ import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { SUPPORT_EMAIL } from "@/lib/brand"
 
+import { BRAND_PATHS, type Brand } from "./brandIcons"
+
 /**
  * The end of the public page — and only the public page.
  *
@@ -35,10 +37,19 @@ import { SUPPORT_EMAIL } from "@/lib/brand"
  * across a phone in any language, and a sideways scrolling footer is worse
  * than a two-line one.
  *
+ * SOCIAL AND APPS, NOT YET LIVE (2026-09-27). Above the legal line, at the
+ * same colour and smaller still: six social marks and the two stores, on
+ * Vadym's word — «пусть они будут неактивны, но будут … очень мелкими».
+ * They are not links, because there is nothing to link to; a link that goes
+ * nowhere is a broken link. They say so once, with «Soon», and to a screen
+ * reader through the group labels. The stores are plain pills in the
+ * footer's own type, not Apple's and Google's badges: both companies'
+ * guidelines allow those only as links to a published app.
+ *
  * It renders from `PublicLanding` and nowhere else. The application shell has
  * no footer at all — see the note in `App.tsx`.
  */
-export default function Footer() {
+export default function Footer({ className = "mt-6" }: { className?: string }) {
   const { t } = useTranslation()
   const year = new Date().getFullYear()
 
@@ -46,10 +57,33 @@ export default function Footer() {
     "whitespace-nowrap rounded-sm transition-colors duration-fast ease-out hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
 
   return (
-    <footer className="mt-6">
+    <footer className={className}>
+      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3 px-4 pt-6 text-ink-muted">
+        <ul aria-label={t("footer.social")} className="flex items-center gap-3.5">
+          {SOCIAL.map((brand) => (
+            <li key={brand} title={`${brand} · ${t("footer.soon")}`}>
+              <Glyph brand={brand} className="h-3 w-3" />
+            </li>
+          ))}
+        </ul>
+        <span aria-hidden className="h-3 w-px bg-line" />
+        <ul aria-label={t("footer.apps")} className="flex items-center gap-2">
+          {STORES.map(({ brand, name }) => (
+            <li
+              key={brand}
+              title={`${name} · ${t("footer.soon")}`}
+              className="flex items-center gap-1 rounded-md border border-line px-2 py-1 text-[0.625rem] leading-none"
+            >
+              <Glyph brand={brand} className="h-2.5 w-2.5" />
+              {name}
+            </li>
+          ))}
+          <li className="text-[0.625rem] uppercase tracking-wider">{t("footer.soon")}</li>
+        </ul>
+      </div>
       <nav
         aria-label={t("footer.legal")}
-        className="mx-auto flex flex-wrap items-baseline justify-center gap-x-2.5 gap-y-2 px-4 py-6 text-[0.6875rem] text-ink-muted lg:flex-nowrap xl:gap-x-4 xl:px-6"
+        className="mx-auto flex flex-wrap items-baseline justify-center gap-x-2.5 gap-y-2 px-4 pb-6 pt-4 text-[0.6875rem] text-ink-muted lg:flex-nowrap xl:gap-x-4 xl:px-6"
       >
         <span className="whitespace-nowrap">© {year}</span>
         <Link to="/privacy" className={linkClass}>
@@ -72,5 +106,19 @@ export default function Footer() {
         </a>
       </nav>
     </footer>
+  )
+}
+
+const SOCIAL: Brand[] = ["YouTube", "Instagram", "Telegram", "Facebook", "TikTok", "WhatsApp"]
+const STORES: { brand: Brand; name: string }[] = [
+  { brand: "Apple", name: "App Store" },
+  { brand: "GooglePlay", name: "Google Play" },
+]
+
+function Glyph({ brand, className }: { brand: Brand; className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} role="img" aria-label={brand}>
+      <path d={BRAND_PATHS[brand]} />
+    </svg>
   )
 }

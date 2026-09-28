@@ -61,13 +61,16 @@
     "support": "Contact support",
     "rightsReserved": "All rights reserved.",
     "product": "Product",
-    "legal": "Legal"
+    "legal": "Legal",
+    "soon": "Soon",
+    "social": "Equip on social media — coming soon",
+    "apps": "Equip apps — coming soon"
   },
   "landing": {
     "hero": {
       "registerCta": "Create account",
       "manifesto": "Study Scripture in order, not in fragments",
-      "subline": "Courses with real assessment and a certificate anyone can check — for people who take Scripture seriously.",
+      "subline": "Free courses with real assessment and a certificate anyone can check — for people who take Scripture seriously.",
       "facts": "Free · Open source · RU EN DE UK · Verifiable certificate"
     },
     "value": {
@@ -90,13 +93,10 @@
         "sampleQuestion": "Summarize the main idea of this passage in your own words.",
         "gradedBadge": "Teacher graded"
       },
-      "certificates": {
-        "eyebrow": "Certification",
-        "title": "A certificate you can verify",
-        "body": "Every certificate carries its own number, and anyone can check it.",
-        "short": "Each one has its own number. Anyone can check it.",
-        "certTitle": "Certificate of Completion",
-        "verifyLabel": "Verify by number"
+      "languages": {
+        "title": "Every student reads in their own language",
+        "body": "A teacher writes the course once. Students read it in English, Russian, Ukrainian or German — every verse quoted from a real Bible translation.",
+        "short": "Written once — read in English, Russian, Ukrainian or German."
       },
       "bilingual": {
         "eyebrow": "Language",
@@ -115,6 +115,29 @@
       "heading": "Ready to start?",
       "body": "The courses are free, and progress saves itself.",
       "primary": "Create account"
+    },
+    "faq": {
+      "heading": "Questions",
+      "free": {
+        "q": "Is Equip really free?",
+        "a": "Yes. Every course in the catalogue is free to take, and so is the certificate at the end of it."
+      },
+      "account": {
+        "q": "Do I need an account?",
+        "a": "Not to look around — the catalogue and every course page are open to anyone. To enrol, take the quizzes and keep your progress, create a free account or sign in with Google."
+      },
+      "languages": {
+        "q": "Which languages are the courses in?",
+        "a": "English, Russian, Ukrainian and German. A course reaches the catalogue only once it exists in all four and has been checked, and Scripture is quoted from a published Bible translation in each language. More languages will be added over time."
+      },
+      "certificate": {
+        "q": "What does the certificate prove?",
+        "a": "That you completed the course. Every certificate carries its own number, and anyone can check it on the <ref>verification page</ref>. Certificates are issued in English."
+      },
+      "teach": {
+        "q": "Can I teach a course on Equip?",
+        "a": "Yes — as part of an organisation: a Bible school, a church programme or a mission. Organisations are set up by the Equip team; <ref>write to us</ref> and we will help you start."
+      }
     }
   },
   "dashboard": {
@@ -2928,7 +2951,7 @@
   },
   "meta": {
     "documentTitle": "Equip — study the Bible online",
-    "description": "Equip is systematic Bible study for people who take Scripture seriously. Courses, progress, certificates. English, Russian, German, Ukrainian."
+    "description": "Equip is free, systematic Bible study for people who take Scripture seriously. Courses, progress, certificates. English, Russian, German, Ukrainian."
   },
   "courseTranslation": {
     "title": "Course languages",

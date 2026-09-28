@@ -13,8 +13,8 @@ import {
 import { useAuth } from "@/context/useAuth"
 import {
   DEFAULT_LOCALE,
+  LOCALE_MENU_ORDER,
   LOCALE_NATIVE_LABELS,
-  SUPPORTED_LOCALES,
   isSupportedLocale,
   type SupportedLocale,
 } from "@/i18n/config"
@@ -114,7 +114,7 @@ export default function LanguageSwitcher({ variant = "full" }: LanguageSwitcherP
             if (isSupportedLocale(value)) void switchTo(value)
           }}
         >
-          {SUPPORTED_LOCALES.map((locale) => (
+          {LOCALE_MENU_ORDER.map((locale) => (
             <DropdownMenuRadioItem key={locale} value={locale} disabled={busy}>
               <span className="flex-1">{LOCALE_NATIVE_LABELS[locale]}</span>
               <span className="text-xs uppercase text-ink-muted">{locale}</span>

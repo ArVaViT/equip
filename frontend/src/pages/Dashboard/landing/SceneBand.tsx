@@ -28,11 +28,18 @@ export function SceneBand({
   children,
   label,
   pose,
+  flush = false,
   className = "",
 }: {
   children: ReactNode
   label?: string
   pose?: "frame" | "row"
+  /**
+   * As tall as its content on every width, tight to what is above it. For
+   * the tour, which shows under the hero on the first screen: a full-screen
+   * band would centre it a screen further down, out of sight.
+   */
+  flush?: boolean
   className?: string
 }) {
   return (
@@ -41,7 +48,9 @@ export function SceneBand({
       data-scene-stop="center"
       data-backdrop-pose={pose}
       className={
-        "relative flex w-full flex-col justify-center py-14 lg:min-h-[100svh] lg:py-0 " +
+        "relative flex w-full flex-col justify-center " +
+        (flush ? "pb-14 pt-6 lg:pb-24" : "py-14 lg:min-h-[100svh] lg:py-0") +
+        " " +
         className
       }
     >
