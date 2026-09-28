@@ -99,6 +99,10 @@ One scale, one serif, one sans.
   things that go somewhere when clicked. A lifting card that does nothing
   is a false promise. Put it on the element that owns the transition; a
   `transition-colors` on the same element out-ranks it and the rise jumps.
+- **One-screen pages:** a page that must fit the window on a desktop (the
+  dashboard) puts `data-single-screen` on its root, a direct child of
+  `main`. The shell then becomes the window and banners above take their
+  height from the page. Do not hard-code the header's height in a calc.
 - **Page:** the app shell is `.app-canvas` — two faint pools of `--accent`
   at opposite corners, fixed to the window, on a pseudo-element so a phone
   does not repaint it on scroll.
