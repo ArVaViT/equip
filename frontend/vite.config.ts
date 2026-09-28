@@ -61,6 +61,14 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
+      // RUM batches go through our own origin in production (vercel.json,
+      // `intakeProxyUrl` in src/lib/datadog.ts); the same path here, so a
+      // dev build with Datadog configured behaves like the real one.
+      '/_e': {
+        target: 'https://browser-intake-us5-datadoghq.com',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/_e/, ''),
+      },
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,

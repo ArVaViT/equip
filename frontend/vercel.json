@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/_e/:path*",
+      "destination": "https://browser-intake-us5-datadoghq.com/:path*"
+    },
+    {
       "source": "/img/course-assets/:path*",
       "destination": "https://rrisqutxlkamwfhcashl.supabase.co/storage/v1/object/public/course-assets/:path*"
     },

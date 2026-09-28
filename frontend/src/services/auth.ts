@@ -17,7 +17,7 @@ export const authService = {
      * which is 'en' — the answer for a signup that told us nothing.
      */
     preferredLocale: SupportedLocale = DEFAULT_LOCALE,
-  ): Promise<void> {
+  ): Promise<string | null> {
     // Self-service signup always lands as student. Teacher / admin
     // promotion is admin-only via the role-change endpoint.
     const { data, error } = await supabase.auth.signUp({
@@ -36,6 +36,10 @@ export const authService = {
     if (data.user && data.user.identities?.length === 0) {
       throw new Error("DUPLICATE_EMAIL")
     }
+
+    // The new account's id exists from this moment, unconfirmed — the
+    // caller uses it to name the RUM session (see AuthContext.register).
+    return data.user?.id ?? null
   },
 
   async login(email: string, password: string): Promise<{ user: Session["user"]; session: Session }> {

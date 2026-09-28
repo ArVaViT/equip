@@ -230,7 +230,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fullName: string,
       preferredLocale: SupportedLocale,
     ) => {
-      await authService.register(email, password, fullName, preferredLocale)
+      const userId = await authService.register(email, password, fullName, preferredLocale)
+      // Name the session now, not at the first sign-in. An email signup
+      // only signs in after the confirmation link — often on another
+      // device, sometimes days later — so the session in which somebody
+      // actually filled the form stayed anonymous, and searching RUM for a
+      // new user's address never found the day they registered. The id is
+      // the one the profile will carry, so both sessions line up.
+      if (userId) setDatadogUser({ id: userId, email, name: fullName, role: "student" })
     },
     [],
   )

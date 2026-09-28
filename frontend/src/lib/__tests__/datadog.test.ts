@@ -9,8 +9,16 @@
  * see) so future edits don't silently drop real bugs.
  */
 
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import { describe, expect, it } from "vitest"
-import { isBenignCspViolation } from "../datadog"
+import {
+  beforeSendRum,
+  intakeProxyUrl,
+  isAutomatedVisitor,
+  isBenignCspViolation,
+  isBenignWebGlRefusal,
+} from "../datadog"
 import type { RumEvent } from "@datadog/browser-rum"
 
 function cspError(opts: { type?: string; message: string; stack: string }) {
@@ -114,5 +122,86 @@ describe("isBenignCspViolation", () => {
         }),
       ),
     ).toBe(false)
+  })
+})
+
+describe("isAutomatedVisitor", () => {
+  const CHROME =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.7922.34 Safari/537.36"
+
+  it("recognises any driven browser by navigator.webdriver, whatever its user agent", () => {
+    // The CI language check sent exactly this: a stock Windows Chrome UA
+    // from a Playwright run — only the webdriver flag gives it away.
+    expect(isAutomatedVisitor({ userAgent: CHROME, webdriver: true })).toBe(true)
+  })
+
+  it.each([
+    ["headless Chrome", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36"],
+    ["Googlebot", "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"],
+    ["bingbot", "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)"],
+    ["Meta's indexer", "meta-webindexer/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler)"],
+    ["ShapBot", "Mozilla/5.0 (compatible; ShapBot/0.1.0)"],
+    ["Lighthouse", "Mozilla/5.0 (Linux; Android 11) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0 Mobile Safari/537.36 Chrome-Lighthouse"],
+  ])("recognises %s by its user agent", (_name, userAgent) => {
+    expect(isAutomatedVisitor({ userAgent })).toBe(true)
+  })
+
+  it.each([
+    ["desktop Chrome", CHROME],
+    ["iPhone Safari", "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1"],
+    // «bot» inside a phone's model name is not a crawler: no version slash.
+    ["a CUBOT phone", "Mozilla/5.0 (Linux; Android 12; CUBOT X30 Build/SP1A) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0 Mobile Safari/537.36"],
+  ])("leaves %s alone", (_name, userAgent) => {
+    expect(isAutomatedVisitor({ userAgent, webdriver: false })).toBe(false)
+  })
+})
+
+describe("beforeSendRum noise", () => {
+  it("drops three.js reporting that the browser has no WebGL", () => {
+    const event = cspError({
+      message:
+        "THREE.WebGLRenderer: A WebGL context could not be created. Reason:  Failed to create a WebGL2 context.",
+      stack: "",
+    })
+    expect(isBenignWebGlRefusal(event)).toBe(true)
+    expect(beforeSendRum(event)).toBe(false)
+  })
+
+  it("keeps other three.js errors", () => {
+    const event = cspError({ message: "THREE.WebGLRenderer: Context Lost.", stack: "" })
+    expect(isBenignWebGlRefusal(event)).toBe(false)
+  })
+
+  it("drops CSP reports from Chrome's built-in page translator", () => {
+    expect(
+      isBenignCspViolation(
+        cspError({
+          message:
+            "csp_violation: 'https://translate.google.com/gen204?nca=te_li&client=te_lib' blocked by 'img-src' directive",
+          stack: "",
+        }),
+      ),
+    ).toBe(true)
+  })
+})
+
+describe("intakeProxyUrl", () => {
+  it("sends batches to our own origin under /_e, query string intact", () => {
+    expect(intakeProxyUrl({ path: "/api/v2/rum", parameters: "ddsource=browser&dd-api-key=pub123" })).toBe(
+      `${window.location.origin}/_e/api/v2/rum?ddsource=browser&dd-api-key=pub123`,
+    )
+  })
+
+  it("is served: vercel.json forwards /_e to the us5 intake before the SPA catch-all", () => {
+    // Without the rewrite every batch would land on index.html with a 200
+    // and RUM would go silent with nothing failing — so pin it here.
+    const config = JSON.parse(readFileSync(join(__dirname, "..", "..", "..", "vercel.json"), "utf8")) as {
+      rewrites: { source: string; destination: string }[]
+    }
+    const index = config.rewrites.findIndex((r) => r.source === "/_e/:path*")
+    const catchAll = config.rewrites.findIndex((r) => r.destination === "/index.html")
+    expect(index, "no /_e rewrite").toBeGreaterThanOrEqual(0)
+    expect(index).toBeLessThan(catchAll)
+    expect(config.rewrites[index]?.destination).toBe("https://browser-intake-us5-datadoghq.com/:path*")
   })
 })
