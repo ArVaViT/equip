@@ -38,7 +38,7 @@ import { BRAND_PATHS, type Brand } from "./brandIcons"
  * than a two-line one.
  *
  * SOCIAL AND APPS, NOT YET LIVE (2026-09-27). Above the legal line, at the
- * same colour and smaller still: four social marks and the two stores, on
+ * same colour and smaller still: ten social marks and the two stores, on
  * Vadym's word — «пусть они будут неактивны, но будут … очень мелкими».
  * They are not links, because there is nothing to link to; a link that goes
  * nowhere is a broken link. They say so once, with «Soon», and to a screen
@@ -49,7 +49,7 @@ import { BRAND_PATHS, type Brand } from "./brandIcons"
  * It renders from `PublicLanding` and nowhere else. The application shell has
  * no footer at all — see the note in `App.tsx`.
  */
-export default function Footer() {
+export default function Footer({ className = "mt-6" }: { className?: string }) {
   const { t } = useTranslation()
   const year = new Date().getFullYear()
 
@@ -57,7 +57,7 @@ export default function Footer() {
     "whitespace-nowrap rounded-sm transition-colors duration-fast ease-out hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
 
   return (
-    <footer className="mt-6">
+    <footer className={className}>
       <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3 px-4 pt-6 text-ink-muted">
         <ul aria-label={t("footer.social")} className="flex items-center gap-3.5">
           {SOCIAL.map((brand) => (
@@ -109,7 +109,18 @@ export default function Footer() {
   )
 }
 
-const SOCIAL: Brand[] = ["YouTube", "Instagram", "Telegram", "Facebook"]
+const SOCIAL: Brand[] = [
+  "YouTube",
+  "Instagram",
+  "Telegram",
+  "Facebook",
+  "X",
+  "TikTok",
+  "WhatsApp",
+  "Threads",
+  "Viber",
+  "Spotify",
+]
 const STORES: { brand: Brand; name: string }[] = [
   { brand: "Apple", name: "App Store" },
   { brand: "GooglePlay", name: "Google Play" },

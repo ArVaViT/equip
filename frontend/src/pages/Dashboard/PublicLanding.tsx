@@ -5,12 +5,12 @@ import { useReducedMotion } from "motion/react";
 import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import Footer from "@/components/layout/Footer";
 import { HeroVideo } from "./landing/HeroVideo";
 import { ScrollReveal } from "./landing/ScrollReveal";
 import { StorySection } from "./landing/StorySection";
 import { CourseShowcase } from "./landing/CourseShowcase";
 import { Faq } from "./landing/Faq";
+import { RevealFooter } from "./landing/RevealFooter";
 import { ProductTour } from "./landing/ProductTour";
 import { TEXT_VEIL } from "./landing/textVeil";
 
@@ -42,7 +42,8 @@ import { TEXT_VEIL } from "./landing/textVeil";
  * 4. **The shelf.** The live catalogue.
  * 5. **The film.** A minute on what this is, for somebody already deciding.
  * 6. **Questions.** Five, closed by default, each a fact of the product.
- * 7. **The close.** The same sentence asked back, and the one action.
+ * 7. **The close.** The same sentence asked back, and the one action. The
+ *    page ends on it; the footer comes up over it on one more push.
  *
  * SEO. The h1 still spends itself on the claim rather than the brand, and
  * /courses, /register and /login are all still reachable as real anchors —
@@ -270,10 +271,10 @@ export function PublicLanding() {
           film around it. */}
       <section
         aria-label={t("landing.value.heading")}
-        // Most of a screen on a phone rather than all of it: there is no
-        // rest stop there to fill it for, and a short question alone in a
-        // full screen read as the page having ended early.
-        className="relative isolate flex min-h-[72svh] items-center justify-center px-5 lg:min-h-[100svh]"
+        // The last screen, on every width: the page ends here and the footer
+        // comes up over it (`RevealFooter`), so the close fills what is below
+        // the header and the question sits in the middle of the final view.
+        className="relative isolate flex min-h-[calc(100svh-2.75rem)] items-center justify-center px-5 md:min-h-[calc(100svh-3rem)]"
         data-scene-stop="center"
         // The pieces collect into one deck behind the question.
         data-backdrop-pose="gather"
@@ -317,14 +318,12 @@ export function PublicLanding() {
         </ScrollReveal>
       </section>
 
-        {/* The last rest stop is the bottom of the page, so the wall that
-            holds the close does not stop a reader short of the legal links. */}
-        {/* Veiled like every other block of text on the scene: the gathered
-            deck behind the close holds to the end of the page. */}
-        <div data-scene-stop="end" className={TEXT_VEIL}>
-          <Footer />
-        </div>
       </div>
+
+      {/* The page ends on the close. One more push brings the footer up
+          over its bottom edge instead of scrolling the question away — see
+          `RevealFooter`. */}
+      <RevealFooter />
     </div>
   );
 }
