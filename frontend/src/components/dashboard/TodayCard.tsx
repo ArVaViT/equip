@@ -150,7 +150,7 @@ export function TodayCard() {
               <ul className="space-y-2" aria-label={t("dashboard.today.ahead")}>
                 {aheadEvents.map((e) => (
                   <li key={e.id} className="flex items-baseline gap-2.5">
-                    <span className="w-16 shrink-0 tabular-nums text-ink-muted first-letter:uppercase">
+                    <span className="min-w-[5.5rem] shrink-0 whitespace-nowrap tabular-nums text-ink-muted first-letter:uppercase">
                       {shortDate(e.event_date)}
                     </span>
                     <div className="min-w-0">
