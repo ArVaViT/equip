@@ -61,7 +61,10 @@
     "support": "Contact support",
     "rightsReserved": "All rights reserved.",
     "product": "Product",
-    "legal": "Legal"
+    "legal": "Legal",
+    "soon": "Soon",
+    "social": "Equip on social media — coming soon",
+    "apps": "Equip apps — coming soon"
   },
   "landing": {
     "hero": {
@@ -112,6 +115,29 @@
       "heading": "Ready to start?",
       "body": "The courses are free, and progress saves itself.",
       "primary": "Create account"
+    },
+    "faq": {
+      "heading": "Questions",
+      "free": {
+        "q": "Is Equip really free?",
+        "a": "Yes. Every course in the catalogue is free to take, and so is the certificate at the end of it."
+      },
+      "account": {
+        "q": "Do I need an account?",
+        "a": "Not to look around — the catalogue and every course page are open to anyone. To enrol, take the quizzes and keep your progress, create a free account or sign in with Google."
+      },
+      "languages": {
+        "q": "Which languages are the courses in?",
+        "a": "English, Russian, Ukrainian and German. A course reaches the catalogue only once it exists in all four and has been checked, and Scripture is quoted from a published Bible translation in each language."
+      },
+      "certificate": {
+        "q": "What does the certificate prove?",
+        "a": "That you completed the course. Every certificate carries its own number, and anyone can check it on the <ref>verification page</ref>. Certificates are issued in English."
+      },
+      "teach": {
+        "q": "Can I teach a course on Equip?",
+        "a": "Yes — as part of an organisation: a Bible school, a church programme or a mission. Organisations are set up by the Equip team; <ref>write to us</ref> and we will help you start."
+      }
     }
   },
   "dashboard": {

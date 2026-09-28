@@ -10,6 +10,7 @@ import { HeroVideo } from "./landing/HeroVideo";
 import { ScrollReveal } from "./landing/ScrollReveal";
 import { StorySection } from "./landing/StorySection";
 import { CourseShowcase } from "./landing/CourseShowcase";
+import { Faq } from "./landing/Faq";
 import { ProductTour } from "./landing/ProductTour";
 import { TEXT_VEIL } from "./landing/textVeil";
 
@@ -40,7 +41,8 @@ import { TEXT_VEIL } from "./landing/textVeil";
  *    language — a few words each; anything longer belongs in the film.
  * 4. **The shelf.** The live catalogue.
  * 5. **The film.** A minute on what this is, for somebody already deciding.
- * 6. **The close.** The same sentence asked back, and the one action.
+ * 6. **Questions.** Five, closed by default, each a fact of the product.
+ * 7. **The close.** The same sentence asked back, and the one action.
  *
  * SEO. The h1 still spends itself on the claim rather than the brand, and
  * /courses, /register and /login are all still reachable as real anchors —
@@ -240,7 +242,11 @@ export function PublicLanding() {
           one action, and this one used to end on a video. */}
       <HeroVideo />
 
-      {/* ── 6. The way in ────────────────────────────────────────── */}
+      {/* ── 6. Questions ──────────────────────────────────────────── */}
+      {/* The doubts of somebody deciding, answered before the button. */}
+      <Faq />
+
+      {/* ── 7. The way in ────────────────────────────────────────── */}
       {/* `<Section>` rather than another bespoke `container mx-auto …`
           string: the geometry census in `Section.test.tsx` caps how many
           distinct page shells may exist, and a landing page is not special
@@ -282,7 +288,10 @@ export function PublicLanding() {
             question (2.59:1, measured). */}
         <div
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[44rem] w-[min(60rem,170vw)] -translate-x-1/2 -translate-y-1/2 blur-2xl dark:opacity-55"
+          // The section's own height, not a fixed 44rem: taller than the
+          // close on a phone, the light reached up into the FAQ's last answer
+          // (2.68:1 in the dark theme, measured).
+          className="pointer-events-none absolute inset-y-6 left-1/2 -z-10 w-[min(60rem,170vw)] -translate-x-1/2 blur-2xl dark:opacity-55"
           style={{
             background:
               "radial-gradient(closest-side at 30% 62%, hsl(140 32% 48% / 0.55), transparent)," +

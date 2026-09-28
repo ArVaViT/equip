@@ -61,7 +61,10 @@
     "support": "Support kontaktieren",
     "rightsReserved": "Alle Rechte vorbehalten.",
     "product": "Produkt",
-    "legal": "Rechtliches"
+    "legal": "Rechtliches",
+    "soon": "Bald",
+    "social": "Equip in sozialen Netzwerken — bald",
+    "apps": "Equip-Apps — bald"
   },
   "landing": {
     "hero": {
@@ -112,6 +115,29 @@
       "heading": "Bereit anzufangen?",
       "body": "Die Kurse sind kostenlos, der Fortschritt speichert sich von selbst.",
       "primary": "Konto erstellen"
+    },
+    "faq": {
+      "heading": "Fragen",
+      "free": {
+        "q": "Ist Equip wirklich kostenlos?",
+        "a": "Ja. Jeder Kurs im Katalog ist kostenlos — und das Zertifikat am Ende ebenfalls."
+      },
+      "account": {
+        "q": "Brauche ich ein Konto?",
+        "a": "Zum Umsehen nicht: Der Katalog und jede Kursseite sind für alle offen. Um sich einzuschreiben, Tests zu machen und Ihren Fortschritt zu speichern, legen Sie ein kostenloses Konto an oder melden Sie sich mit Google an."
+      },
+      "languages": {
+        "q": "In welchen Sprachen gibt es die Kurse?",
+        "a": "Auf Englisch, Russisch, Ukrainisch und Deutsch. Ein Kurs kommt erst in den Katalog, wenn er in allen vier Sprachen vorliegt und geprüft ist, und die Schrift wird in jeder Sprache nach einer veröffentlichten Bibelübersetzung zitiert."
+      },
+      "certificate": {
+        "q": "Was bestätigt das Zertifikat?",
+        "a": "Dass Sie den Kurs abgeschlossen haben. Jedes Zertifikat hat eine eigene Nummer, die jeder auf der <ref>Prüfseite</ref> kontrollieren kann. Zertifikate werden auf Englisch ausgestellt."
+      },
+      "teach": {
+        "q": "Kann ich auf Equip einen eigenen Kurs unterrichten?",
+        "a": "Ja — als Teil einer Organisation: einer Bibelschule, eines Gemeindeprogramms oder einer Mission. Organisationen richtet das Equip-Team ein — <ref>schreiben Sie uns</ref>, wir helfen beim Start."
+      }
     }
   },
   "dashboard": {

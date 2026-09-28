@@ -24,6 +24,14 @@ import LanguageDetector from "i18next-browser-languagedetector"
 export const SUPPORTED_LOCALES = ["ru", "en", "de", "uk"] as const
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 /**
+ * The order the language menu lists them in — Vadym's (2026-09-27):
+ * English first, the site's first language, then Russian, Ukrainian,
+ * German. `SUPPORTED_LOCALES` keeps its own order because other code reads
+ * it; this is only how a person is shown the choice. Typed and tested to
+ * hold every served language exactly once.
+ */
+export const LOCALE_MENU_ORDER: readonly SupportedLocale[] = ["en", "ru", "uk", "de"]
+/**
  * The last resort: what a visitor is shown when nothing tells us who they
  * are — no stored choice, no profile, and a browser asking for a language
  * this platform does not serve.

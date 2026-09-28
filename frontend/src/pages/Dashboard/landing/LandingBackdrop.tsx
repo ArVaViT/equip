@@ -545,8 +545,13 @@ export default function LandingBackdrop({ className }: { className?: string }) {
       // thumbnails and the titles (1.85:1, measured in the dark theme). So
       // they fade on the way and arrive whole: full strength at both poses,
       // a fifth of it halfway.
-      const dip =
-        fromStep.kind === "row" || toStep.kind === "row" ? 1 - 0.8 * Math.sin(Math.PI * t) : 1
+      //
+      // The same on the way into the close (2026-09-27): between the film and
+      // the question sit the FAQ's answers, also without a veil strong
+      // enough for a moving deck — 2.12:1 measured in the dark theme.
+      const crossesText =
+        fromStep.kind === "row" || toStep.kind === "row" || toStep.kind === "gather"
+      const dip = crossesText ? 1 - 0.8 * Math.sin(Math.PI * t) : 1
 
       leaves.forEach((leaf, i) => {
         const a = from[i]
