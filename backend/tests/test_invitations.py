@@ -224,21 +224,19 @@ def test_preview_invitation_unknown_token_404(anon_client: TestClient):
     assert resp.json()["detail"]["code"] == "invitation.not_found"
 
 
-def test_the_path_preview_still_answers_a_stale_bundle(admin_client: TestClient, anon_client: TestClient, db: Session):
-    """The old ``GET /token/{token}`` stays until no browser still calls it.
+def test_a_token_is_no_longer_read_from_the_path(admin_client: TestClient, anon_client: TestClient, db: Session):
+    """The old ``GET /token/{token}`` is gone (2026-09-28).
 
-    A tab left open on the accept page across the deploy runs the previous
-    bundle, and that bundle knows only this shape. Same answer as the body
-    route, byte for byte.
+    It stayed while a browser might still run the bundle from before the
+    preview moved into a POST body. The platform log showed its last real
+    caller on 2026-09-15; after that only scanners reached it. Kept, it
+    would keep writing live tokens into a log nothing here can redact.
     """
     admin_client.post(INVITATIONS_PREFIX, json={"email": "stale@example.com", "role": "student", "age_attested": True})
     token = db.query(Invitation).filter(Invitation.email == "stale@example.com").one().token
 
-    by_path = anon_client.get(f"{INVITATIONS_PREFIX}/token/{token}")
-    by_body = anon_client.post(f"{INVITATIONS_PREFIX}/preview", json={"token": token})
-
-    assert by_path.status_code == 200, by_path.text
-    assert by_path.json() == by_body.json()
+    assert anon_client.get(f"{INVITATIONS_PREFIX}/token/{token}").status_code == 404
+    assert anon_client.post(f"{INVITATIONS_PREFIX}/preview", json={"token": token}).status_code == 200
 
 
 # ---------------------------------------------------------------------------
