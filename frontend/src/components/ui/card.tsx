@@ -26,7 +26,7 @@ const Card = React.forwardRef<
       // bg-surface-elevated text-ink`), bridged to --border/--card today.
       // 2026-09-28: `rounded-card` and `shadow-card` — see `--radius-card`
       // and `--shadow-card` in index.css. Add `lift` where the card is a link.
-      "rounded-card border border-edge bg-surface-elevated text-ink shadow-card transition-[border-color,background-color,box-shadow] duration-200 ease-editorial dark:border-transparent",
+      "rounded-card border border-edge bg-surface-elevated text-ink shadow-card transition-[border-color,background-color,box-shadow,transform] duration-200 ease-editorial dark:border-transparent",
       className
     )}
     {...props}

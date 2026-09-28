@@ -342,7 +342,9 @@
     transition:
       transform 200ms cubic-bezier(0.32, 0.72, 0, 1),
       box-shadow 200ms cubic-bezier(0.32, 0.72, 0, 1),
-      border-color 200ms ease;
+      border-color 200ms ease,
+      background-color 200ms ease,
+      color 200ms ease;
   }
   @media (hover: hover) {
     .lift:hover {
