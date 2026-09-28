@@ -38,7 +38,7 @@ import { BRAND_PATHS, type Brand } from "./brandIcons"
  * than a two-line one.
  *
  * SOCIAL AND APPS, NOT YET LIVE (2026-09-27). Above the legal line, at the
- * same colour and smaller still: ten social marks and the two stores, on
+ * same colour and smaller still: six social marks and the two stores, on
  * Vadym's word — «пусть они будут неактивны, но будут … очень мелкими».
  * They are not links, because there is nothing to link to; a link that goes
  * nowhere is a broken link. They say so once, with «Soon», and to a screen
@@ -109,18 +109,7 @@ export default function Footer({ className = "mt-6" }: { className?: string }) {
   )
 }
 
-const SOCIAL: Brand[] = [
-  "YouTube",
-  "Instagram",
-  "Telegram",
-  "Facebook",
-  "X",
-  "TikTok",
-  "WhatsApp",
-  "Threads",
-  "Viber",
-  "Spotify",
-]
+const SOCIAL: Brand[] = ["YouTube", "Instagram", "Telegram", "Facebook", "TikTok", "WhatsApp"]
 const STORES: { brand: Brand; name: string }[] = [
   { brand: "Apple", name: "App Store" },
   { brand: "GooglePlay", name: "Google Play" },

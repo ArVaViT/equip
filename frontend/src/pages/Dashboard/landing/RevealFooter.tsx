@@ -2,10 +2,6 @@ import { useEffect, useState } from "react"
 
 import Footer from "@/components/layout/Footer"
 
-/** A new wheel gesture starts after this long without wheel events. */
-const GESTURE_GAP_MS = 200
-/** How long the page must have rested at the bottom before a push counts. */
-const SETTLED_MS = 250
 /** A swipe this long, in px, is an intent rather than a wobble. */
 const SWIPE_PX = 24
 
@@ -25,13 +21,11 @@ const SWIPE_PX = 24
  * the close, which stays exactly where it is. Any way back up — the wheel,
  * a swipe down, PageUp, Escape, or the page scrolling away — puts it back.
  *
- * NOT ON THE WAY IN. The gesture that carries a reader to the close keeps
- * firing wheel events after the page has stopped (a trackpad's momentum
- * runs for a second or more). Counting those would open the footer the
- * moment the close arrives, which is the very jump this replaces. A push
- * counts only when the page has been at the bottom for `SETTLED_MS` and the
- * wheel event starts a new gesture; a swipe counts only if it started at
- * the bottom.
+ * AT ONCE. The first version waited for the page to rest at the bottom
+ * and for a new gesture, so the momentum that carried a reader to the
+ * close could not open it. It read as lag — «не сразу появляется». The
+ * footer no longer moves the page, so opening on that momentum costs
+ * nothing: any push down at the end brings it up.
  *
  * STILL A FOOTER FOR EVERYONE. It is in the DOM the whole time, so a
  * screen reader and a crawler read it where it always was. Tabbing into
@@ -42,34 +36,25 @@ export function RevealFooter() {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
+    // 8px, not 0: the smooth scroller eases into the bottom and spends its
+    // last frames a pixel or two short of it.
     const atBottom = () =>
-      window.scrollY >= document.documentElement.scrollHeight - window.innerHeight - 2
-    let bottomSince = atBottom() ? performance.now() : Number.POSITIVE_INFINITY
-    const settled = () => atBottom() && performance.now() - bottomSince > SETTLED_MS
+      window.scrollY >= document.documentElement.scrollHeight - window.innerHeight - 8
 
     const onScroll = () => {
-      if (atBottom()) {
-        if (bottomSince === Number.POSITIVE_INFINITY) bottomSince = performance.now()
-        return
-      }
-      bottomSince = Number.POSITIVE_INFINITY
-      setOpen(false)
+      if (!atBottom()) setOpen(false)
     }
 
-    let lastWheelAt = 0
     const onWheel = (event: WheelEvent) => {
-      const now = performance.now()
-      const newGesture = now - lastWheelAt > GESTURE_GAP_MS
-      lastWheelAt = now
       if (event.deltaY < 0) setOpen(false)
-      else if (event.deltaY > 0 && newGesture && settled()) setOpen(true)
+      else if (event.deltaY > 0 && atBottom()) setOpen(true)
     }
 
     let touchStartY: number | null = null
     let touchFromBottom = false
     const onTouchStart = (event: TouchEvent) => {
       touchStartY = event.touches[0]?.clientY ?? null
-      touchFromBottom = settled()
+      touchFromBottom = atBottom()
     }
     const onTouchMove = (event: TouchEvent) => {
       const y = event.touches[0]?.clientY
@@ -83,7 +68,7 @@ export function RevealFooter() {
       const target = event.target as HTMLElement | null
       if (target?.closest("input, textarea, select, [contenteditable='true']")) return
       if (["PageDown", " ", "ArrowDown", "End"].includes(event.key)) {
-        if (settled()) setOpen(true)
+        if (atBottom()) setOpen(true)
       } else if (["PageUp", "ArrowUp", "Home", "Escape"].includes(event.key)) {
         setOpen(false)
       }
@@ -112,11 +97,10 @@ export function RevealFooter() {
         (open ? "translate-y-0" : "translate-y-full")
       }
     >
-      {/* A sheet, not a band: rounded at the top, a handle, a shadow cast
-          upward — the shape a phone already knows means «pulled up from
-          below». Opaque, because it lies over the close and the scene. */}
-      <div className="mx-auto max-w-6xl rounded-t-2xl border border-b-0 border-line bg-surface shadow-[0_-18px_48px_-24px_hsl(var(--ink)/0.35)]">
-        <span aria-hidden className="mx-auto mt-2 block h-1 w-8 rounded-full bg-line" />
+      {/* A plain band the width of the screen, in the page's own colour — no
+          frame, no rounded card («зачем рамка вокруг?»). Only a soft shadow
+          upward, so it reads as lying over the close. */}
+      <div className="bg-surface shadow-[0_-16px_40px_-28px_hsl(var(--ink)/0.4)]">
         <Footer className="" />
       </div>
     </div>
