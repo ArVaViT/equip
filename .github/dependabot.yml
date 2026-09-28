@@ -121,8 +121,12 @@ updates:
           - "types-*"
           - "pip-audit"
     ignore:
+      # 2.1 is a minor by semver and a migration in practice: it makes
+      # `postgresql://` mean psycopg 3 (this project ships psycopg2, so the
+      # app cannot connect) and retypes rows (nine mypy errors). #1334 went
+      # red on exactly that. Take it on purpose, in its own PR.
       - dependency-name: "sqlalchemy"
-        update-types: ["version-update:semver-major"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "pydantic"
         update-types: ["version-update:semver-major"]
       - dependency-name: "fastapi"

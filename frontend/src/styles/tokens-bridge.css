@@ -37,7 +37,6 @@
   --color-accent-strong: var(--ring);
 
   --color-heritage: var(--accent);
-  --color-heritage-quiet: var(--sidebar-accent);
 
   /* Edges. */
   --color-edge: var(--border);
@@ -70,7 +69,6 @@
   --color-accent-strong: var(--ring);
 
   --color-heritage: var(--accent);
-  --color-heritage-quiet: var(--sidebar-accent);
 
   --color-edge: var(--border);
   --color-edge-strong: var(--input);

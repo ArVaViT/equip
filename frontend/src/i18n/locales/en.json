@@ -4,13 +4,11 @@
     "cancel": "Cancel",
     "confirm": "Confirm",
     "ok": "OK",
-    "continue": "Continue",
     "tryAgain": "Try again",
     "loading": "Loading...",
     "loadingAccessible": "Loading",
     "somethingWentWrong": "Something went wrong",
     "notTranslatedYet": "Not in your language yet",
-    "view": "View",
     "signIn": "Sign In",
     "signOut": "Sign Out",
     "register": "Register",
@@ -57,10 +55,7 @@
     "notifications": "Notifications"
   },
   "footer": {
-    "tagline": "Structured biblical teaching for learners who take Scripture seriously.",
     "support": "Contact support",
-    "rightsReserved": "All rights reserved.",
-    "product": "Product",
     "legal": "Legal",
     "soon": "Soon",
     "social": "Equip on social media — coming soon",
@@ -68,7 +63,6 @@
   },
   "landing": {
     "hero": {
-      "registerCta": "Create account",
       "manifesto": "Study Scripture in order, not in fragments",
       "subline": "Free courses with real assessment and a certificate anyone can check — for people who take Scripture seriously.",
       "facts": "Free · Open source · RU EN DE UK · Verifiable certificate"
@@ -76,40 +70,20 @@
     "value": {
       "heading": "What's in Equip",
       "structure": {
-        "eyebrow": "Course structure",
         "title": "A course, not a pile of videos",
         "body": "Lessons in a fixed order — grouped into modules when a course grows big enough to need them. You always see what is done and what comes next.",
-        "short": "Lessons in a fixed order. You always see what comes next.",
-        "module": "Module 1 · Genesis 1–11",
-        "chapter1": "Lesson 1 — Creation",
-        "chapter2": "Lesson 2 — The Fall",
-        "chapter3": "Lesson 3 — Cain and Abel"
+        "short": "Lessons in a fixed order. You always see what comes next."
       },
       "assessment": {
-        "eyebrow": "Assessment",
         "title": "Not just multiple choice",
         "body": "Four question types, essays among them — read by a teacher, not only by a machine.",
-        "short": "Essays too — read by a teacher, not only a machine.",
-        "sampleQuestion": "Summarize the main idea of this passage in your own words.",
-        "gradedBadge": "Teacher graded"
+        "short": "Essays too — read by a teacher, not only a machine."
       },
       "languages": {
         "title": "Every student reads in their own language",
         "body": "A teacher writes the course once. Students read it in English, Russian, Ukrainian or German — every verse quoted from a real Bible translation.",
         "short": "Written once — read in English, Russian, Ukrainian or German."
-      },
-      "bilingual": {
-        "eyebrow": "Language",
-        "title": "Multilingual from day one",
-        "body": "A course written in Russian is available in English, German and Ukrainian straight away.",
-        "caption": "Course materials translated automatically"
       }
-    },
-    "how": {
-      "heading": "How it works",
-      "step1": "Sign up — takes a minute, email or Google is enough.",
-      "step2": "Open the catalog and enroll in the course you want.",
-      "step3": "Work through the lessons, take quizzes, claim your certificate at the end."
     },
     "finalCta": {
       "heading": "Ready to start?",
@@ -142,11 +116,8 @@
   },
   "dashboard": {
     "myCourses": "My Courses",
-    "myCoursesEmptyTitle": "No enrollments yet",
     "loadCoursesError": "Could not load your courses. Please try refreshing the page.",
-    "noEnrollments": "You haven't enrolled in any courses yet. Browse the catalog to get started.",
     "course": "Course",
-    "grade": "Grade: {{grade}}",
     "browseAllCta": "Browse all courses",
     "recentlyViewed": "Recently viewed",
     "votd": {
@@ -251,18 +222,6 @@
     "welcome": {
       "title": "Welcome to Equip — let's take a quick look",
       "body": "We'll walk through the main parts of the app together. Each click on 'Next' moves to the next stop; you can leave the tour at any time."
-    },
-    "headerNav": {
-      "title": "Your main sections",
-      "body": "Home, Courses, Calendar, Certificates — switch between them from this top bar at any time. Whatever you have open, the bar stays."
-    },
-    "headerProfile": {
-      "title": "Your account",
-      "body": "Picture, name, language, theme, sign out — all of it lives behind this button. We'll pass by it again at the end of the tour."
-    },
-    "calendar": {
-      "title": "Your calendar",
-      "body": "Anything due or scheduled across all your enrolled courses — assignments, classes, events — appears here. If you don't have any courses yet, it'll be empty."
     },
     "finale": {
       "title": "That's Equip",
@@ -491,10 +450,6 @@
     "loadMoreFailed": "Couldn't load more — try again."
   },
   "streak": {
-    "eyebrow": "Daily",
-    "title": "Today's Practice",
-    "weekAriaLabel": "Days of the current week",
-    "comingSoon": "Daily tasks land soon — this is the placeholder.",
     "days": {
       "mon": "Mon",
       "tue": "Tue",
@@ -503,11 +458,6 @@
       "fri": "Fri",
       "sat": "Sat",
       "sun": "Sun"
-    },
-    "tasksPreview": {
-      "questionOfDay": "Answer the question of the day",
-      "readChapter": "Read today's chapter",
-      "memoryVerse": "Recite the memory verse"
     }
   },
   "dailyChallenge": {
@@ -596,8 +546,7 @@
     "russian": "Russian",
     "english": "English",
     "german": "German",
-    "ukrainian": "Ukrainian",
-    "switchTo": "Switch to {{language}}"
+    "ukrainian": "Ukrainian"
   },
   "auth": {
     "welcomeBack": "Welcome back",
@@ -910,10 +859,7 @@
     "exportGradesFailed": "Failed to export grades",
     "certificatesLoadFailed": "Failed to load certificates",
     "openFileFailed": "Could not open file. Please try again.",
-    "assignmentSubmitFailed": "Failed to submit assignment",
-    "gradeFailed": "Failed to grade",
-    "quizSaved": "Quiz saved",
-    "quizSaveFailed": "Failed to save quiz"
+    "assignmentSubmitFailed": "Failed to submit assignment"
   },
   "module": {
     "overdue": "Overdue",
@@ -935,7 +881,6 @@
     "attachmentEyebrow": "Attachment",
     "blocksLoadFailed": "Couldn't load this lesson",
     "blocksLoadFailedDescription": "We couldn't load the lesson content. This is usually a temporary network issue — try again.",
-    "chapterOf": "Lesson {{current}} of {{total}}",
     "completed": "Completed",
     "downloadFile": "Download file",
     "downloadFileAria": "Download attachment: {{name}}",
@@ -1285,7 +1230,6 @@
     "overdue": "Overdue",
     "submit": "Submit Assignment",
     "resubmit": "Resubmit",
-    "points": "points",
     "gradeEyebrow": "Grade",
     "instructorFeedback": "Instructor Feedback",
     "yourSubmission": "Your Submission",
@@ -1591,7 +1535,6 @@
     "stats": {
       "totalCourses": "Courses",
       "published": "Published",
-      "modules": "Modules",
       "pendingActions": "Needs attention",
       "pendingGrading": "Waiting to be marked"
     },
@@ -2040,7 +1983,6 @@
       "thStudent": "Student",
       "thQuiz": "Quiz",
       "thAssignment": "Assign.",
-      "thParticipation": "Particip.",
       "thFinal": "Final",
       "thGrade": "Grade",
       "thManual": "Manual",
@@ -2064,7 +2006,6 @@
       "quizzesUntaken": "This course has quizzes, but nobody has completed one yet, so the grade is computed from assignments alone (assignments: 100%). Once a quiz is taken your configured split takes effect — and students who have not taken it will see their percentage fall, because an untaken quiz counts as zero.",
       "noAssignmentsCourse": "This course contains no assignments, so the grade is computed from quizzes alone (quizzes: 100%). Your configured split applies once you add an assignment and mark the first submission.",
       "noQuizzesCourse": "This course contains no quizzes, so the grade is computed from assignments alone (assignments: 100%). Your configured split applies once you add a quiz and someone completes it.",
-      "breakdownParticipation": "Participation:",
       "manualDiffers": "Manual grade <strong>{{manual}}</strong> differs from calculated <strong>{{calc}}</strong> ({{pct}}%)",
       "overrideGrade": "Override Grade",
       "overridePlaceholder": "A, B, C, D, F",
@@ -2117,7 +2058,6 @@
   "admin": {
     "title": "Admin Dashboard",
     "eyebrow": "Administration",
-    "subtitle": "Manage users, roles, and monitor platform activity",
     "dailyChallenge": {
       "review": {
         "approve": "Approve & promote",
@@ -2314,7 +2254,6 @@
       "title": "Certificate Approvals",
       "studentFallback": "Student",
       "courseFallback": "Course",
-      "approvedBy": "Approved by {{name}}",
       "teacherSignOff": "Teacher {{name}} signed off {{relative}}",
       "requestedRelative": "Requested {{relative}}",
       "requestedAtPrefix": "Requested at {{ts}}",
@@ -2339,7 +2278,6 @@
       "toast": {
         "roleUpdated": "Role updated",
         "roleUpdateFailed": "Failed to update role",
-        "userDeleted": "User deleted",
         "deleteUserFailed": "Failed to delete user",
         "cannotDeleteSelf": "You can't delete your own account from here.",
         "bulkUpdated": "Updated {{count}} user(s) to {{role}}",
@@ -2856,7 +2794,6 @@
     "loadFailed": "Could not load the rubric",
     "loadFailedBody": "Marking waits until it is here — a bare number would not match the rubric.",
     "saveFailed": "Could not save the marks",
-    "title": "Rubric",
     "yourGrid": "How your work was marked"
   },
   "grading": {

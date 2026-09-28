@@ -105,10 +105,6 @@ const PAIRS = [
   ["info-foreground", "info", "label on info", "normal"],
   ["foreground", "muted", "body text on muted", "normal"],
   ["primary", "background", "primary text on page (links, accents)", "normal"],
-  ["sidebar-foreground", "sidebar", "sidebar body text", "normal"],
-  ["sidebar-accent-foreground", "sidebar-accent", "sidebar active item", "normal"],
-  ["auth-panel-text", "auth-panel-bg", "auth panel body text", "normal"],
-  ["auth-panel-text-muted", "auth-panel-bg", "auth panel caption", "normal"],
   // ----- Translucent overlay surfaces -----
   // Repeated in the codebase: `bg-muted/30`, `bg-muted/40`, `bg-muted/60`,
   // `bg-muted/15`, `bg-warning/10`, `bg-destructive/10`, `bg-primary/5`.

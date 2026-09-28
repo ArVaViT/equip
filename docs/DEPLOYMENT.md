@@ -321,7 +321,7 @@ Optional but production-set:
   the async queue (drained by the cron) instead of running inline.
 - `CRON_SECRET` -- **must equal `TRANSLATION_WORKER_SECRET`** (see below).
 - `RESEND_API_KEY` -- lets the backend send invitation emails
-  (`app/services/email_service.py`). Missing → the invitation row is
+  (`app/services/email/send.py`). Missing → the invitation row is
   still created and a WARNING is logged; the director has to share the
   accept link by hand. Auth emails do not use this key -- they go through
   the `send-email` edge function, which has its own copy.

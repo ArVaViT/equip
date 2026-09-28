@@ -18,7 +18,6 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
-from app.core.config import settings
 from app.core.i18n import t
 from app.models.course import Chapter, Course
 from app.models.course_event import CourseEvent
@@ -35,19 +34,6 @@ if TYPE_CHECKING:
     from app.schemas.locale import LocaleCode
 
 _BRAND = "Equip"
-
-
-def _absolute(url: str | None) -> str | None:
-    """A cover path as mail can fetch it.
-
-    Course images are stored as ``/img/<bucket>/<key>`` — a path the app
-    proxies. A mail client has no origin to resolve that against.
-    """
-    if not url:
-        return None
-    if url.startswith("http://") or url.startswith("https://"):
-        return url
-    return f"{settings.FRONTEND_URL.rstrip('/')}{url}"
 
 
 #: How each language writes a bare date. Not month names: that would be

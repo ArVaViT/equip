@@ -3,13 +3,6 @@ import api from "./api"
 /** Mirrors ``chk_dmca_complaints_status`` and the Python ``DmcaComplaintStatus``. */
 export type DmcaStatus = "received" | "upheld" | "rejected" | "withdrawn"
 
-export const DMCA_STATUSES = {
-  RECEIVED: "received",
-  UPHELD: "upheld",
-  REJECTED: "rejected",
-  WITHDRAWN: "withdrawn",
-} as const satisfies Record<string, DmcaStatus>
-
 /** The three a person may choose. `received` is where a row starts and is
  *  not somewhere it can be put back: un-deciding a complaint would erase a
  *  strike an account closure may already rest on. */

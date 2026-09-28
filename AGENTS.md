@@ -39,7 +39,7 @@ written in English.
 
 These are load-bearing for the project.
 
-- **No raw Tailwind palette classes.** No `bg-blue-500`, `text-gray-700`, `border-red-300`. Use the semantic tokens from `docs/DESIGN.md` (`bg-primary`, `text-muted-foreground`, `border-input`, etc.).
+- **No raw Tailwind palette classes.** No `bg-blue-500`, `text-gray-700`, `border-red-300`. Use the semantic tokens from `docs/DESIGN.md` (`bg-surface`, `text-ink`, `text-ink-muted`, `border-edge`, `bg-primary`, etc.).
 - **No `window.alert / prompt / confirm`.** Confirmations go through `useConfirm()` + Radix `AlertDialog`. Toasts go through `sonner`.
 - **Icons:** `lucide-react` only. Sizes are `16`, `20`, or `24`. `strokeWidth={1.75}` on every icon.
 - **All user-facing strings go through `t(...)`.** Locale bundles live in `frontend/src/i18n/locales/{ru,en,de,uk}.json` and must stay in parity. CI fails on drift.

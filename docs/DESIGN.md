@@ -20,11 +20,11 @@ views). Expressive surfaces have their own rules in "Motion" below.
 ## Tokens
 
 All colours live in `frontend/src/index.css` as CSS variables in **HSL**
-(`--background: 38 32% 97%`, consumed as `hsl(var(--token))`). An OKLCH layer
-sits in `frontend/src/styles/tokens-v2.css` but is **dormant**: ADR-0011
-declined the OKLCH migration (superseded 2026-08-24), `index.css` does not
-import the file, and `styles/__tests__/tokens-v2.test.ts` asserts that it
-doesn't. The live palette is HSL. No
+(`--background: 40 12% 97%`, consumed as `hsl(var(--token))`). ADR-0011
+declined the OKLCH migration (superseded 2026-08-24) and the dormant
+`tokens-v2.css` that carried it has been deleted; the v2 names
+(`bg-surface`, `text-ink`, `border-edge`, …) are aliases onto the HSL
+tokens in `styles/tokens-bridge.css`. No
 component ever uses a raw Tailwind palette class (`bg-blue-500`, `text-rose-600`).
 If you need a colour, use a semantic token or add one.
 
