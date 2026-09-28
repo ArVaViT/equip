@@ -617,7 +617,6 @@
     "googleLoginFailed": "Anmeldung mit Google fehlgeschlagen.",
     "marketingQuote": "Befleißige dich, Gott zu erzeigen einen rechtschaffenen, unsträflichen Arbeiter, der da recht teile das Wort der Wahrheit.",
     "marketingReference": "2. Timotheus 2,15",
-    "marketingPanelFooter": "© {{year}} {{appName}}",
     "toggleColorTheme": "Darstellung umschalten",
     "errors": {
       "registrationFailed": "Registrierung fehlgeschlagen. Bitte erneut versuchen.",

@@ -1,9 +1,16 @@
+import { lazy, Suspense, useEffect, useState } from "react"
 import { BookOpen } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
+import { useReducedMotion } from "motion/react"
+import { TEXT_VEIL } from "@/pages/Dashboard/landing/textVeil"
 import { useTheme } from "@/context/useTheme"
 import { Button } from "@/components/ui/button"
 import { Moon, Sun } from "lucide-react"
+
+// The landing's scene, lazily: `three` reaches the sign-in screens only
+// after the form has rendered, and never where motion is unwelcome.
+const LandingBackdrop = lazy(() => import("@/pages/Dashboard/landing/LandingBackdrop"))
 
 interface AuthLayoutProps {
   children: React.ReactNode
@@ -14,10 +21,29 @@ interface AuthLayoutProps {
 export default function AuthLayout({ children, heading, subheading }: AuthLayoutProps) {
   const { theme, toggleTheme } = useTheme()
   const { t } = useTranslation()
-  const year = new Date().getFullYear()
+  const prefersReducedMotion = useReducedMotion()
+  // `matchMedia` doubles as "is this a real browser": jsdom has neither it
+  // nor WebGL. Same fence as the landing.
+  const [canAnimate, setCanAnimate] = useState(false)
+  useEffect(() => {
+    if (typeof window.matchMedia === "function") setCanAnimate(true)
+  }, [])
 
   return (
-    <div className="flex min-h-screen">
+    // `overflow-clip`: the veil behind the form reaches 128px past it and
+    // widened a phone's document to 502px (as on the landing, where the
+    // same cure is explained).
+    <div className="relative flex min-h-screen overflow-clip">
+      {/* The landing's leaves, continued onto the door into the product —
+          «фоновую анимацию похожую на ту что у нас в лендинге». One fixed
+          canvas behind both panels, above their paper and below their
+          words: the panels' own text sits on `z-10`. `ambient`, because
+          nothing scrolls here — see `LandingBackdrop`. */}
+      {canAnimate && !prefersReducedMotion && (
+        <Suspense fallback={null}>
+          <LandingBackdrop ambient className="pointer-events-none fixed inset-0 z-[5]" />
+        </Suspense>
+      )}
       {/* The title page.
        *
        * This was a violet panel with two blurred glow circles — a second
@@ -31,7 +57,7 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
        * What it needed was paper and ink instead of glow — set as the title
        * page of a book, with the rule doing the work the gradient was doing. */}
       <aside className="relative hidden bg-card lg:flex lg:w-[480px] xl:w-[560px]">
-        <div className="relative z-10 flex flex-col justify-between p-12 text-ink">
+        <div className="relative z-10 flex flex-col p-12 text-ink">
           <Link
             to="/"
             className="font-serif text-xl font-semibold tracking-[-0.01em] decoration-transparent underline-offset-4 transition-[text-decoration-color] duration-base hover:underline hover:decoration-ink/30"
@@ -39,7 +65,9 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
             {t("common.appName")}
           </Link>
 
-          <div>
+          {/* No colophon under the verse since 2026-09-28: «футер тут не
+              нужен». The verse holds the middle of the page on its own. */}
+          <div className="my-auto">
             <div className="h-px w-12 bg-border" />
             <blockquote className="mt-8 font-serif text-2xl font-normal italic leading-snug">
               {t("auth.marketingQuote")}
@@ -48,10 +76,6 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
               {t("auth.marketingReference")}
             </p>
           </div>
-
-          <p className="text-xs text-ink-muted">
-            {t("auth.marketingPanelFooter", { year, appName: t("common.appName") })}
-          </p>
         </div>
       </aside>
 
@@ -59,7 +83,7 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
       <div className="flex flex-1 flex-col">
         {/* One <header> around both bars: they are the same landmark shown at
             two breakpoints, and two <header> elements would be two banners. */}
-        <header>
+        <header className="relative z-10">
           {/* Solid, not blurred: `backdrop-filter` is the most expensive property
               on the phones this product is actually read on. */}
           <div className="flex items-center justify-between bg-card px-4 py-2 lg:hidden">
@@ -112,9 +136,14 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
         <main
           id="main-content"
           tabIndex={-1}
-          className="flex flex-1 items-center justify-center px-4 py-8 focus:outline-none sm:px-8"
+          className="relative z-10 flex flex-1 items-center justify-center px-4 py-8 focus:outline-none sm:px-8"
         >
-          <div className="w-full max-w-[420px] space-y-8">
+          {/* A clearing in the scene behind the form, as behind every block
+              of text on the landing (see `textVeil.ts`). Desktop only: on a
+              phone the form is the whole screen, and the veil cleared the
+              scene off it entirely. There the leaves spread to the margins
+              above and below instead (`LandingBackdrop`, `ambient`). */}
+          <div className={`w-full max-w-[420px] space-y-8 ${TEXT_VEIL} max-lg:before:hidden`}>
             <div className="space-y-2 text-center lg:text-left">
               <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">{heading}</h1>
               {subheading && <p className="font-sans text-sm text-ink-muted">{subheading}</p>}
