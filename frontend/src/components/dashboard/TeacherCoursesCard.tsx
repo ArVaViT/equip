@@ -108,9 +108,11 @@ export function TeacherCoursesCard() {
       {empty && (
         <div className="flex flex-col items-start gap-3 px-4 py-3 sm:flex-row sm:items-center sm:px-5">
           <p className="flex-1 text-sm text-ink-muted">{t("dashboard.teaching.empty")}</p>
-          <Link to="/teacher" className="shrink-0">
-            <Button size="sm">{t("dashboard.teaching.createFirst")}</Button>
-          </Link>
+          {/* The link is the button — not a <button> inside an <a>, which is
+              two tab stops and two roles for one action. */}
+          <Button asChild size="sm" className="shrink-0">
+            <Link to="/teacher">{t("dashboard.teaching.createFirst")}</Link>
+          </Button>
         </div>
       )}
 

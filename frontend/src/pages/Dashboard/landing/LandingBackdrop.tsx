@@ -327,6 +327,13 @@ function drift(i: number, s: number, fit: number): Pose {
 /** How long the leaves take to fall from one stack into the scatter. */
 const INTRO_MS = 1800
 
+/**
+ * The intro plays once per visit. Every sign-in screen mounts its own
+ * layout, so going from «Войти» to «Создать» would otherwise fold the
+ * leaves back into a stack and drop them again on every click.
+ */
+let introPlayed = false
+
 type BackdropProps = {
   className?: string
   /**
@@ -564,7 +571,9 @@ export default function LandingBackdrop({ className, ambient = false }: Backdrop
     // no longer sit square around the thing it frames.
     let anchored = 0
 
-    const startedAt = performance.now()
+    // Already played this visit: start at the end of the intro.
+    const startedAt = performance.now() - (ambient && introPlayed ? INTRO_MS : 0)
+    if (ambient) introPlayed = true
 
     const applyPose = () => {
       const last = steps.length - 1
@@ -656,7 +665,10 @@ export default function LandingBackdrop({ className, ambient = false }: Backdrop
       frame = requestAnimationFrame(tick)
       const now = performance.now()
       if (ambient) {
-        if (now - drawnAt < 33) return
+        // 30 rather than the 33.3 of an exact half: on a 60Hz screen two
+        // frames are 33.2 or 33.4ms apart with vsync jitter, and a 33ms
+        // threshold skipped every third one, stuttering down to 20fps.
+        if (now - drawnAt < 30) return
         drawnAt = now
       } else if (now > awakeUntil && Math.abs(target - progress) < 1e-4) return
       progress += (target - progress) * follow
@@ -713,6 +725,10 @@ export default function LandingBackdrop({ className, ambient = false }: Backdrop
       geometry.dispose()
       for (const leaf of leaves) leaf.material.dispose()
       renderer.dispose()
+      // `dispose` frees three's resources, not the context itself, which
+      // lingers until collected. Each sign-in screen mounts its own scene,
+      // and Chrome drops the oldest context past sixteen with a warning.
+      renderer.forceContextLoss()
       renderer.domElement.remove()
     }
   }, [ambient])

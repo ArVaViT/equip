@@ -421,8 +421,9 @@
    * paint — two soft pools at opposite corners, 7–10%, fixed to the window
    * so they do not scroll away. On a pseudo-element, because a fixed
    * background image repaints on every scroll on the phones this is read
-   * on. The shell sets `isolate`, so the layer sits above the page colour
-   * and below everything else. */
+   * on. At `z-index: -1` in the root stacking context: above the body's
+   * colour, below everything else. The shell must not be a stacking
+   * context or paint a background of its own (see App.tsx). */
   .app-canvas::before {
     content: "";
     position: fixed;

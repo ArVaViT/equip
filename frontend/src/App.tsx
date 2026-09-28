@@ -10,6 +10,7 @@ import { usePageTitle } from "./hooks/usePageTitle"
 import { useLocaleSync } from "./i18n/useLocaleSync"
 import ErrorBoundary from "./components/ErrorBoundary"
 import { Toaster } from "./components/ui/sonner"
+import { cn } from "@/lib/utils"
 import { ConfirmProvider } from "./components/ui/alert-dialog"
 import Header from "./components/layout/Header"
 import AnnouncementBanner from "./components/announcements/AnnouncementBanner"
@@ -183,7 +184,7 @@ function useResumePendingInvite() {
 }
 
 function AppRoutes() {
-  const { loading } = useAuth()
+  const { loading, user } = useAuth()
   const location = useLocation()
   const { t } = useTranslation()
   const isAuthPage = AUTH_PATHS.some((p) => location.pathname.startsWith(p))
@@ -225,7 +226,14 @@ function AppRoutes() {
   }
 
   return (
-    <div className="app-canvas isolate min-h-screen flex flex-col bg-surface text-ink">
+    // Signed in, the shell is transparent over the body's own page colour
+    // and carries `.app-canvas`, the sage light behind the application. Not
+    // `isolate` with a solid fill: that made the shell a stacking context
+    // and shut the toaster and the first-run gates, which render inside it,
+    // under every Radix portal on `body` — a toast raised from a dialog
+    // landed behind the dialog's veil. A guest's `/` is the landing, which
+    // has its own scene and was measured for contrast without these pools.
+    <div className={cn("min-h-screen flex flex-col text-ink", user ? "app-canvas" : "bg-surface")}>
       {/* Skip link — hidden until focused via Tab. First focusable element on
           every authenticated page so keyboard / screen-reader users can jump
           past the persistent Header + banners straight to page content. */}
