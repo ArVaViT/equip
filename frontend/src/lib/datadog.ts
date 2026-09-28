@@ -45,7 +45,16 @@ import { reactPlugin } from "@datadog/browser-rum-react"
  * origin" rule: a script pulled from an unexpected host is exactly the
  * signal this panel exists to surface, and a catch-all would bury it.
  */
-const EXTENSION_INJECTED_HOSTS = ["fonts.gstatic.com", "fonts.googleapis.com"]
+const EXTENSION_INJECTED_HOSTS = [
+  "fonts.gstatic.com",
+  "fonts.googleapis.com",
+  // Chrome's built-in page translator («Translate this page») loads its
+  // bar from these. Our markup never requests them; a reader who asked
+  // the browser to translate the page is not an application error.
+  "translate.google.com",
+  "translate.googleapis.com",
+  "www.gstatic.com/_/translate_http",
+]
 export function isBenignCspViolation(event: RumEvent): boolean {
   if (event.type !== "error") return false
   const err = (event as RumEvent & { error?: { message?: string; stack?: string } }).error
@@ -61,6 +70,63 @@ export function isBenignCspViolation(event: RumEvent): boolean {
   // carried in the message, so match there rather than on the stack.
   if (EXTENSION_INJECTED_HOSTS.some((host) => message.includes(host))) return true
   return false
+}
+
+/**
+ * three.js reporting that the browser has no WebGL to give it.
+ *
+ * The landing page's backdrop asks for a context on a throwaway canvas
+ * first and renders nothing when there is none (`LandingBackdrop`), so the
+ * page works — but three still writes the refusal to `console.error`, and
+ * RUM records every console error as an application error. A machine
+ * without a GPU (or with hardware acceleration switched off) is not a bug
+ * in this app.
+ */
+export function isBenignWebGlRefusal(event: RumEvent): boolean {
+  if (event.type !== "error") return false
+  const message = (event as RumEvent & { error?: { message?: string } }).error?.message ?? ""
+  return message.includes("THREE.WebGLRenderer") && message.includes("WebGL context could not be created")
+}
+
+/**
+ * Browsers driven by a program, and crawlers — never recorded.
+ *
+ * Measured 2026-09-28 over the 30 days RUM keeps: 825 sessions, of which
+ * roughly 360 were the CI job «Production language check» (Playwright on
+ * GitHub's Azure runners, sweeping pl/uk/ru locales at 1280×720, ~10 a
+ * day), about 100 were local Playwright runs against production, and ~25
+ * were search and link-preview crawlers. Every one counted as a user
+ * session, sat in the session list next to real students, and fed the LCP
+ * and error monitors numbers that were not anybody's experience.
+ *
+ * `navigator.webdriver` is the standard flag every automation driver sets
+ * (Playwright, Puppeteer, Selenium), headless or not. The user-agent test
+ * catches crawlers, which do not set it. The pattern needs a `/` after the
+ * word — every crawler names a version (`Googlebot/2.1`, `ShapBot/0.1`) —
+ * so a phone called «CUBOT X30» is not mistaken for one.
+ */
+const CRAWLER_UA = /[a-z-]*(?:bot|crawler|spider|webindexer)\/|headlesschrome|lighthouse/i
+
+export function isAutomatedVisitor(nav: Pick<Navigator, "userAgent"> & { webdriver?: boolean }): boolean {
+  return nav.webdriver === true || CRAWLER_UA.test(nav.userAgent)
+}
+
+/**
+ * Where the SDK sends its batches: through our own domain.
+ *
+ * Content blockers (uBlock Origin's default lists, Brave, Firefox strict
+ * mode) block `browser-intake-*-datadoghq.com` outright, so for those
+ * visitors RUM loads, records, and never delivers — no session, no replay,
+ * no error. On 2026-09-28 a user who signed up with Google at 22:33 UTC on
+ * 22.09 left no session at all in that hour.
+ *
+ * `vercel.json` rewrites `/_e/*` to the us5 intake; the path is neutral on
+ * purpose, because blockers also match words like `rum` and `datadog` in
+ * first-party paths. The query string (client token, source, batch id)
+ * rides along unchanged.
+ */
+export function intakeProxyUrl({ path, parameters }: { path: string; parameters: string }): string {
+  return `${window.location.origin}/_e${path}?${parameters}`
 }
 
 /**
@@ -143,6 +209,7 @@ export function scrubRumEvent(event: RumEvent): void {
 /** The `beforeSend` hook: drop benign noise, scrub everything else. */
 export function beforeSendRum(event: RumEvent): boolean {
   if (isBenignCspViolation(event)) return false
+  if (isBenignWebGlRefusal(event)) return false
   scrubRumEvent(event)
   return true
 }
@@ -172,6 +239,9 @@ export function initDatadogRum() {
   const applicationId = import.meta.env.VITE_DATADOG_APPLICATION_ID
   const clientToken = import.meta.env.VITE_DATADOG_CLIENT_TOKEN
   if (!applicationId || !clientToken) return
+  // Not started at all, rather than started and filtered: an automated
+  // run should cost nothing and leave nothing (see `isAutomatedVisitor`).
+  if (isAutomatedVisitor(navigator)) return
 
   const env = import.meta.env.VITE_DATADOG_ENV ?? import.meta.env.MODE
   const site = import.meta.env.VITE_DATADOG_SITE ?? "us5.datadoghq.com"
@@ -182,6 +252,7 @@ export function initDatadogRum() {
     applicationId,
     clientToken,
     site,
+    proxy: intakeProxyUrl,
     service,
     env,
     version,
