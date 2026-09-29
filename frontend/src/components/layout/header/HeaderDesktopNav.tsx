@@ -41,9 +41,9 @@ export function HeaderDesktopNav({ isTeacher, role }: Props) {
       <HeaderNavLink to="/calendar" active={isActive("/calendar")}>
         {t("header.calendar")}
       </HeaderNavLink>
-      <HeaderNavLink to="/certificates" active={isActive("/certificates")}>
-        {t("header.certificates")}
-      </HeaderNavLink>
+      {/* Certificates live in the profile since 2026-09-28: a page opened
+          a few times a year does not earn a place in the bar every page
+          carries. */}
       {isTeacher && (
         <HeaderNavLink to="/teacher" active={isActive("/teacher")}>
           {t("header.manage")}

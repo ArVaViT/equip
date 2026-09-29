@@ -81,7 +81,6 @@ export default function ProfilePage() {
   // Kept apart from the count above so the link to the full list still shows
   // for somebody whose requests were all refused — those rows are theirs to
   // see, and the page should not pretend they do not exist.
-  const [certificateRequestCount, setCertificateRequestCount] = useState<number | null>(null)
   const [completedCount, setCompletedCount] = useState<number | null>(null)
   const animatedCompleted = useCountUp(completedCount ?? 0)
   const animatedCertificates = useCountUp(certificateCount ?? 0)
@@ -110,7 +109,6 @@ export default function ProfilePage() {
         // Counting them as earned is what told this student they had
         // fourteen certificates when every one had been rejected.
         setCertificateCount(certs === null ? null : countAwarded(certs))
-        setCertificateRequestCount(certs === null ? null : certs.length)
         setCompletedCount(
           enrollments === null ? null : enrollments.filter((e) => e.progress >= 100).length,
         )
@@ -188,9 +186,13 @@ export default function ProfilePage() {
     <div className="container mx-auto max-w-3xl px-4 py-8 md:px-6">
       <div data-tour="profile-form" className="stagger-fade-in space-y-6">
         <Card className="overflow-hidden transition-[border-color] duration-200 hover:border-brand/25">
-          <CardHeader className="border-b border-edge bg-gradient-accent-subtle">
+          {/* A little life on the one page that is about the person: a
+              pool of the landing's sage drifting behind the name, and a thin
+              ring turning slowly round the portrait. Both CSS, both still
+              under reduced motion (`profile-glow`, `avatar-halo`). */}
+          <CardHeader className="profile-glow border-b border-edge bg-gradient-accent-subtle">
             <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-              <div className="relative shrink-0">
+              <div className="avatar-halo relative shrink-0 self-start">
                 {user.avatar_url ? (
                   <img
                     src={toProxyImage(user.avatar_url)}
@@ -208,7 +210,7 @@ export default function ProfilePage() {
                   onClick={() => fileRef.current?.click()}
                   disabled={uploading}
                   aria-label={t("profile.changeAvatar")}
-                  className="absolute -bottom-0.5 -right-0.5 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-card text-ink shadow-none transition-colors hover:bg-muted disabled:pointer-events-none"
+                  className="absolute -bottom-0.5 -right-0.5 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-card text-ink shadow-card transition-[background-color,transform] duration-200 hover:scale-110 hover:bg-muted disabled:pointer-events-none"
                 >
                   {uploading ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} aria-hidden />
@@ -269,27 +271,29 @@ export default function ProfilePage() {
                   <p className="mt-1 text-xs text-ink-muted">{t("profile.coursesCompleted")}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3 rounded-md bg-muted/15 p-4">
+              {/* The way to the certificates page since it left the header
+                  (2026-09-28): the tile that counts them opens them. */}
+              <Link
+                to="/certificates"
+                data-testid="profile-certificates-link"
+                className="lift group flex items-center gap-3 rounded-lg bg-muted/15 p-4 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
                 <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
                   <Award className="h-5 w-5 text-ink-muted" strokeWidth={1.75} aria-hidden />
                 </div>
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-2xl font-semibold leading-none tabular-nums">
                     {certificateCount === null ? "—" : animatedCertificates}
                   </p>
                   <p className="mt-1 text-xs text-ink-muted">{t("profile.certificatesEarned")}</p>
                 </div>
-              </div>
-            </div>
-            {certificateRequestCount !== null && certificateRequestCount > 0 && (
-              <Link
-                to="/certificates"
-                className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-brand underline-offset-4 hover:underline"
-              >
-                {t("profile.viewAllCertificates")}
-                <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                <ArrowRight
+                  className="h-4 w-4 shrink-0 text-ink-muted transition-transform duration-base group-hover:translate-x-0.5 group-hover:text-ink"
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
               </Link>
-            )}
+            </div>
           </CardContent>
         </Card>
 

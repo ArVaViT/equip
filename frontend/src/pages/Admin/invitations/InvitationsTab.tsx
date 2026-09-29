@@ -265,7 +265,7 @@ function InvitationsTable({
           return (
             <div
               key={inv.id}
-              className="rounded-md border border-edge dark:border-transparent bg-card p-3"
+              className="rounded-lg border border-edge dark:border-transparent bg-card shadow-card p-3"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">

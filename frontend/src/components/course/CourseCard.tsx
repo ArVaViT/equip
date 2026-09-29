@@ -73,7 +73,7 @@ function CourseCard({ course, style, progress }: CourseCardProps) {
   const isComplete = isEnrolled && progressPct >= 100
 
   const cardInner = (
-    <Card className="flex h-full flex-col overflow-hidden border-edge/60 transition-colors hover:border-brand/40">
+    <Card className="lift flex h-full flex-col overflow-hidden border-edge/60 hover:border-brand/40">
       <div className="relative">
         {course.access_mode === "institute" ? (
           <Badge variant="muted" className="absolute right-3 top-3 z-10">

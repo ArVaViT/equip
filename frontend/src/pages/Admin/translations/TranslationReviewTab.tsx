@@ -146,7 +146,7 @@ export function TranslationReviewTab() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
-    <section className="rounded-md border border-edge bg-card dark:border-transparent">
+    <section className="rounded-card border border-edge bg-card shadow-card dark:border-transparent">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-edge px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex flex-wrap items-center gap-2">
           <Languages className="h-4 w-4 text-ink-muted" strokeWidth={1.75} aria-hidden />

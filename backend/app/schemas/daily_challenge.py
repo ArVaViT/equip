@@ -55,6 +55,13 @@ class DailyChallengeAttemptSummary(BaseModel):
     is_correct: bool
     streak_after: int | None
     submitted_at: datetime
+    # The reveal, again, for a reader who has already answered: without
+    # these a reload showed the chosen option and nothing else — no right
+    # answer after a wrong one, no explanation after either. The answer
+    # key is safe to send once the attempt is recorded; it is exactly what
+    # the submit response already sent this reader.
+    correct_option_id: UUID | None = None
+    explanation: str | None = None
 
 
 class DailyChallengeTodayResponse(BaseModel):

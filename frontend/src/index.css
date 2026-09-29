@@ -141,7 +141,17 @@
     --border: 40 10% 89%;
     --input: 40 10% 89%;
     --ring: 30 8% 11%;
-    --radius: 0.5rem;
+    /* 0.5rem → 0.625rem on 2026-09-28: buttons and fields 6 → 8px, and a
+     * card radius of its own below. The app read as plain HTML next to the
+     * landing — «форма не прямоугольная а скруглённая, тени и эффекты».
+     * Measured against Coursera, Vercel, Linear, BibleProject: fields and
+     * buttons 6–8px, cards 12–16px, everywhere. */
+    --radius: 0.625rem;
+    --radius-card: 0.875rem;
+    /* Warm, layered and faint (4–7%), in the page's own ink rather than
+     * black — a grey halo is what makes a shadow look cheap. */
+    --shadow-card: 0 1px 2px hsl(30 10% 12% / 0.04), 0 4px 14px -6px hsl(30 10% 12% / 0.07);
+    --shadow-card-hover: 0 2px 4px -1px hsl(30 10% 12% / 0.06), 0 14px 30px -12px hsl(30 10% 12% / 0.16);
 
     --chart-1: 30 8% 25%;
     --chart-2: 133 17% 37%;
@@ -157,6 +167,10 @@
      * temperature and drop the colour. */
     --background: 30 6% 7%;
     --foreground: 40 12% 93%;
+    /* A shadow cannot be seen on a near-black page. The dark theme lifts a
+     * card with a hairline of light round it and a brighter top edge. */
+    --shadow-card: inset 0 1px 0 hsl(0 0% 100% / 0.045), 0 0 0 1px hsl(0 0% 100% / 0.05);
+    --shadow-card-hover: inset 0 1px 0 hsl(0 0% 100% / 0.07), 0 0 0 1px hsl(0 0% 100% / 0.1), 0 14px 32px -12px hsl(0 0% 0% / 0.6);
     --card: 30 5% 11%;
     --card-foreground: 40 12% 93%;
     --popover: 30 5% 13%;
@@ -291,7 +305,127 @@
    *           border is transparent there.
    * Keep ``rounded-*`` / padding on the element. */
   .surface-card {
-    @apply rounded-md border border-border bg-card dark:border-transparent;
+    @apply rounded-card border border-border bg-card shadow-card dark:border-transparent;
+  }
+
+  /* A card you can click rises to meet the pointer: two pixels and a
+   * deeper shadow, 200ms. Only on a real hover (a touch screen would leave
+   * the card raised after the tap) and only for what is clickable — a
+   * lifting card that does nothing is a false promise. */
+  /* Replaces `motion-safe-hover-lift`, which nothing used, lifted without a
+   * shadow, and ran 280ms, off the three-duration scale. */
+  .lift {
+    transition:
+      transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 200ms ease,
+      background-color 200ms ease,
+      color 200ms ease;
+  }
+  @media (hover: hover) {
+    .lift:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-card-hover);
+    }
+  }
+  .lift:active {
+    transform: translateY(0);
+    transition-duration: 120ms;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .lift,
+    .lift:hover {
+      transform: none;
+    }
+  }
+
+  /* A page that is one screen on a desktop (the dashboard) marks itself
+   * `data-single-screen`: the shell becomes the window, `main` takes what
+   * the header and any banner leave, and the page fills `main`. */
+  @media (min-width: 1024px) {
+    .app-shell:has(> main > [data-single-screen]) {
+      height: 100dvh;
+    }
+    .app-shell:has(> main > [data-single-screen]) > main {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .app-shell > main > [data-single-screen] {
+      flex: 1 1 auto;
+      min-height: 0;
+      height: auto;
+    }
+  }
+
+  /* Profile: a soft pool of sage drifting behind the header card's
+   * content. Behind it, not over it: the header isolates, the pool sits at
+   * -1. `transform` only, so the drift is composited, not repainted. */
+  .profile-glow {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+  .profile-glow::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: -90%;
+    right: -15%;
+    width: 70%;
+    aspect-ratio: 1;
+    pointer-events: none;
+    background: radial-gradient(closest-side, hsl(var(--accent) / 0.22), transparent);
+    animation: profile-drift 16s ease-in-out infinite alternate;
+  }
+  @keyframes profile-drift {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to { transform: translate3d(-35%, 30%, 0) scale(1.15); }
+  }
+
+  /* A 2px ring round the portrait, a band of sage turning once every ten
+   * seconds. The avatar and its camera button sit above it. */
+  .avatar-halo::before {
+    content: "";
+    position: absolute;
+    inset: -4px;
+    border-radius: 9999px;
+    background: conic-gradient(
+      from 0deg,
+      hsl(var(--accent) / 0),
+      hsl(var(--accent) / 0.75) 25%,
+      hsl(var(--accent) / 0) 55%
+    );
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+    animation: avatar-halo-turn 10s linear infinite;
+  }
+  @keyframes avatar-halo-turn {
+    to { transform: rotate(1turn); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .profile-glow::before,
+    .avatar-halo::before {
+      animation: none;
+    }
+  }
+
+  /* The application's page: the landing's sage, as light rather than
+   * paint — two soft pools at opposite corners, 7–10%, fixed to the window
+   * so they do not scroll away. On a pseudo-element, because a fixed
+   * background image repaints on every scroll on the phones this is read
+   * on. At `z-index: -1` in the root stacking context: above the body's
+   * colour, below everything else. The shell must not be a stacking
+   * context or paint a background of its own (see App.tsx). */
+  .app-canvas::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(900px 520px at 90% -10%, hsl(var(--accent) / 0.1), transparent 62%),
+      radial-gradient(760px 480px at -10% 110%, hsl(var(--accent) / 0.07), transparent 60%);
   }
 }
 
@@ -366,17 +500,6 @@
   }
   .stagger-fade-in > *:not([style*="--stagger-index"]):nth-child(8) {
     animation-delay: 315ms;
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    .motion-safe-hover-lift {
-      transition:
-        transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-        border-color 0.2s ease,
-        background-color 0.2s ease;
-    }
-    .motion-safe-hover-lift:hover {
-      transform: translateY(-2px);
-    }
   }
   @keyframes grow {
     from {

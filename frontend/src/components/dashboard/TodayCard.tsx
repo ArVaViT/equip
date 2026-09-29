@@ -4,13 +4,15 @@ import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { ArrowRight, CalendarDays } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { EmptyState, Eyebrow } from "@/components/patterns"
+import { Eyebrow } from "@/components/patterns"
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
 import { coursesService } from "@/services/courses"
 import { useAuth } from "@/context/useAuth"
 import type { CalendarEvent } from "@/types"
 
 const MAX_EVENTS_SHOWN = 3
+/** Events further out, shown when today itself is empty. */
+const MAX_AHEAD_SHOWN = 2
 
 function ymdKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
@@ -72,6 +74,30 @@ export function TodayCard() {
     [events, todayKey],
   )
 
+  // What comes next, for the day that has nothing. The card used to answer
+  // an empty day with a large empty state — an icon, «На сегодня нет
+  // событий» and advice to open the calendar — and most days are empty, so
+  // to the people using it the card looked broken: «Раздел сегодня будто не
+  // работает». The calendar already knows the answer to the next question.
+  const aheadEvents = useMemo(() => {
+    if (todayEvents.length > 0) return []
+    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+    return events
+      .filter((e) => {
+        const d = new Date(e.event_date)
+        return !Number.isNaN(d.getTime()) && d >= tomorrow
+      })
+      .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
+      .slice(0, MAX_AHEAD_SHOWN)
+  }, [events, today, todayEvents.length])
+
+  const shortDate = (iso: string) =>
+    new Date(iso).toLocaleDateString(i18n.language, {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    })
+
   // Rendered with `first-letter:uppercase`, never CSS `capitalize`: the
   // latter raises every word, and Russian read "Понедельник, 31 Августа".
   const dateLabel = today.toLocaleDateString(i18n.language, {
@@ -83,7 +109,7 @@ export function TodayCard() {
   return (
     <section
       aria-labelledby="today-card-heading"
-      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-md border border-edge dark:border-transparent bg-card transition-[border-color] duration-300 hover:border-brand/25"
+      className="animate-fade-in flex h-full flex-col overflow-hidden rounded-card border border-edge dark:border-transparent bg-card shadow-card transition-[border-color] duration-300 hover:border-brand/25"
     >
       <header className="flex items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-center gap-2.5">
@@ -102,24 +128,42 @@ export function TodayCard() {
           to="/calendar"
           className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand transition-opacity hover:opacity-80"
         >
-          {t("dashboard.today.openFull")}
+          {/* Words from `sm`, the arrow alone on a phone — the label cut
+              the date to «28 сентя…». The words stay the link's name. */}
+          <span className="max-sm:sr-only">{t("dashboard.today.openFull")}</span>
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
         </Link>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
+      <div className="flex min-h-0 flex-1 flex-col [justify-content:safe_center] overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
         {loading ? (
           <div className="space-y-2">
             <Skeleton className="h-3.5 w-full" />
             <Skeleton className="h-3.5 w-3/4" />
           </div>
         ) : todayEvents.length === 0 ? (
-          <EmptyState
-            variant="compact"
-            icon={<CalendarDays strokeWidth={1.75} aria-hidden />}
-            title={t("dashboard.today.empty")}
-            description={t("dashboard.today.emptyDescription")}
-          />
+          <div className="space-y-2.5 text-xs">
+            <p className="text-ink-muted">
+              {aheadEvents.length > 0 ? t("dashboard.today.empty") : t("dashboard.today.nothingAhead")}
+            </p>
+            {aheadEvents.length > 0 && (
+              <ul className="space-y-2" aria-label={t("dashboard.today.ahead")}>
+                {aheadEvents.map((e) => (
+                  <li key={e.id} className="flex items-baseline gap-2.5">
+                    <span className="min-w-[5.5rem] shrink-0 whitespace-nowrap tabular-nums text-ink-muted first-letter:uppercase">
+                      {shortDate(e.event_date)}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-ink">{e.title}</p>
+                      {e.course_title && (
+                        <p className="truncate text-ink-muted">{e.course_title}</p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         ) : (
           <ul className="space-y-2">
             {todayEvents.map((e) => (

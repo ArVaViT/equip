@@ -211,7 +211,7 @@ export function NotEnrolledView({
       <div>
         {isOwnerPreview ? (
           <div className="space-y-6" data-testid="owner-preview">
-            <div className="rounded-md border border-edge bg-card px-4 py-3 dark:border-transparent">
+            <div className="rounded-lg border border-edge bg-card shadow-card px-4 py-3 dark:border-transparent">
               <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent">
                 {t("courseDetail.preview.eyebrow")}
               </p>

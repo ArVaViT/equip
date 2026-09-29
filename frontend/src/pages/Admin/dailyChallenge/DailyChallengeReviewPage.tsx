@@ -98,7 +98,7 @@ export default function DailyChallengeReviewPage() {
         }
       />
 
-      <section className="mt-6 rounded-md border border-edge dark:border-transparent bg-card">
+      <section className="mt-6 rounded-card border border-edge dark:border-transparent bg-card shadow-card">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">

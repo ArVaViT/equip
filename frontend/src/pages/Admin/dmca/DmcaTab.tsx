@@ -104,7 +104,7 @@ export function DmcaTab() {
   }
 
   return (
-    <section className="rounded-md border border-edge bg-card dark:border-transparent">
+    <section className="rounded-card border border-edge bg-card shadow-card dark:border-transparent">
       <header className="flex items-start justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3">
         <div>
           <h2 className="flex items-center gap-2 text-sm font-medium">

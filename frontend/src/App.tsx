@@ -10,11 +10,13 @@ import { usePageTitle } from "./hooks/usePageTitle"
 import { useLocaleSync } from "./i18n/useLocaleSync"
 import ErrorBoundary from "./components/ErrorBoundary"
 import { Toaster } from "./components/ui/sonner"
+import { cn } from "@/lib/utils"
 import { ConfirmProvider } from "./components/ui/alert-dialog"
 import Header from "./components/layout/Header"
 import AnnouncementBanner from "./components/announcements/AnnouncementBanner"
 import PageSpinner from "./components/ui/PageSpinner"
 import ScrollToTop from "./components/layout/ScrollToTop";
+import { MobileTabBar } from "./components/layout/MobileTabBar";
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useGrandTour } from "@/hooks/useGrandTour"
 import { takePendingInviteToken } from "@/lib/pendingInvite"
@@ -183,7 +185,7 @@ function useResumePendingInvite() {
 }
 
 function AppRoutes() {
-  const { loading } = useAuth()
+  const { loading, user } = useAuth()
   const location = useLocation()
   const { t } = useTranslation()
   const isAuthPage = AUTH_PATHS.some((p) => location.pathname.startsWith(p))
@@ -225,7 +227,14 @@ function AppRoutes() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-surface text-ink">
+    // Signed in, the shell is transparent over the body's own page colour
+    // and carries `.app-canvas`, the sage light behind the application. Not
+    // `isolate` with a solid fill: that made the shell a stacking context
+    // and shut the toaster and the first-run gates, which render inside it,
+    // under every Radix portal on `body` — a toast raised from a dialog
+    // landed behind the dialog's veil. A guest's `/` is the landing, which
+    // has its own scene and was measured for contrast without these pools.
+    <div className={cn("app-shell min-h-screen flex flex-col text-ink", user ? "app-canvas" : "bg-surface")}>
       {/* Skip link — hidden until focused via Tab. First focusable element on
           every authenticated page so keyboard / screen-reader users can jump
           past the persistent Header + banners straight to page content. */}
@@ -242,20 +251,20 @@ function AppRoutes() {
         <LegalNoticeBanner />
       </Suspense>
       <AnnouncementBanner />
-      {/* ``min-h-[calc(100dvh-header)]`` keeps the footer permanently below
-          the initial viewport on every authenticated page — you only see it
-          after deliberately scrolling. ``100dvh`` (not ``100vh``) so the
-          mobile browser chrome's collapsing toolbar doesn't shift the
-          footer into view mid-scroll. Header height: ``h-11`` (2.75rem)
-          on mobile, ``md:h-12`` (3rem) from md up. Optional
-          banners (Announcement) take their own space
-          above main, which means with a banner active the visible
-          main is slightly shorter — acceptable: the footer-below-fold
-          contract still holds. */}
+      {/* ``flex-1`` alone: the shell is ``min-h-screen flex-col``, so main
+          already fills whatever the header leaves.
+
+          It also carried ``min-h-[calc(100dvh-header)]``, written for a
+          footer that had to stay below the fold — and for a header of
+          2.75/3rem. The footer left the application long ago and the header
+          grew to 3.5/4rem plus its rule, so the calc made every page 17px
+          taller than the window: a scrollbar on a dashboard that fits,
+          «ползунок скрола активен и можно буквально пару пикселей скролить». */}
+      {/* On a phone a signed-in page ends above the tab bar, not under it. */}
       <main
         id="main-content"
         tabIndex={-1}
-        className="flex-1 focus:outline-none min-h-[calc(100dvh-2.75rem)] md:min-h-[calc(100dvh-3rem)]"
+        className={cn("flex-1 focus:outline-none", user && "pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0")}
       >
         <ErrorBoundary>
           <Suspense fallback={<PageSpinner />}>
@@ -333,7 +342,8 @@ function AppRoutes() {
        * page it was written for. The two legal documents it used to carry are
        * now in the account menu, where a signed-in person would look for them
        * anyway. */}
-      <ScrollToTop />
+      {user && <MobileTabBar user={user} isTeacher={canTeach(user.role)} />}
+      <ScrollToTop aboveTabBar={Boolean(user)} />
       <Toaster />
       {/* First-run gate: Privacy Policy + Quick Setup, blocking until
           the user accepts and finishes (or skips setup). Mounted

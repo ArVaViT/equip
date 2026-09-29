@@ -305,7 +305,51 @@ const ease = (t: number) => {
   return c * c * (3 - 2 * c)
 }
 
-export default function LandingBackdrop({ className }: { className?: string }) {
+/**
+ * Idle movement of leaf `i` at time `s` (seconds): a slow drift, each leaf
+ * on its own phase so the scatter breathes rather than bobs in step.
+ * Periods of 30–60 seconds — slow enough to be felt, not watched.
+ */
+function drift(i: number, s: number, fit: number): Pose {
+  return {
+    x: Math.sin(s * 0.19 + i * 1.3) * 0.28 * fit,
+    y: Math.cos(s * 0.15 + i * 0.9) * 0.32,
+    z: 0,
+    rx: 0,
+    ry: Math.sin(s * 0.11 + i * 0.7) * 0.06,
+    rz: Math.sin(s * 0.13 + i * 2.1) * 0.05,
+    sx: 0,
+    sy: 0,
+    o: 0,
+  }
+}
+
+/** How long the leaves take to fall from one stack into the scatter. */
+const INTRO_MS = 1800
+
+/**
+ * The intro plays once per visit. Every sign-in screen mounts its own
+ * layout, so going from «Войти» to «Создать» would otherwise fold the
+ * leaves back into a stack and drop them again on every click.
+ */
+let introPlayed = false
+
+type BackdropProps = {
+  className?: string
+  /**
+   * For a page with nothing to scroll through — the sign-in screens. The
+   * landing's scene moves because the reader scrolls; on a page that does
+   * not scroll it would be a still picture, and on a phone (no pointer to
+   * tilt it) a completely still one. `ambient` gives it its own motion:
+   * the leaves arrive as one stack and fall open into the scatter, then
+   * drift slowly for as long as the page is visible. Drawn at 30 frames a
+   * second — sixteen translucent planes do not need 120 — and never while
+   * the tab is hidden.
+   */
+  ambient?: boolean
+}
+
+export default function LandingBackdrop({ className, ambient = false }: BackdropProps) {
   const hostRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -527,16 +571,46 @@ export default function LandingBackdrop({ className }: { className?: string }) {
     // no longer sit square around the thing it frames.
     let anchored = 0
 
+    // Already played this visit: start at the end of the intro.
+    const startedAt = performance.now() - (ambient && introPlayed ? INTRO_MS : 0)
+    if (ambient) introPlayed = true
+
     const applyPose = () => {
       const last = steps.length - 1
-      if (last < 1) return
-      const index = Math.min(last - 1, Math.floor(progress))
-      const t = ease(progress - index)
+      // A page with no scenes of its own (the sign-in screens) holds the
+      // first pose. Until 2026-09-28 this returned early, which left every
+      // leaf at the origin, unposed — nothing used the scene off the landing.
+      const index = Math.max(0, Math.min(last - 1, Math.floor(progress)))
+      const t = last < 1 ? 0 : ease(progress - index)
       const fromStep = steps[index]
-      const toStep = steps[index + 1]
+      const toStep = steps[Math.min(last, index + 1)]
       if (!fromStep || !toStep) return
-      const from = posesOf(fromStep)
+      let from = posesOf(fromStep)
       const to = posesOf(toStep)
+      if (ambient) {
+        const now = performance.now()
+        const k = ease((now - startedAt) / INTRO_MS)
+        const s = now / 1000
+        from = from.map((pose, i) => {
+          const stack = staticPose("gather", i, fit)
+          const d = drift(i, s, fit)
+          // On a portrait screen the form spans the width, so the leaves
+          // spread taller than the landing's scatter, into the free space
+          // above and below it.
+          const tall = fit < 1 ? 1.7 : 1
+          return {
+            x: lerp(stack.x, pose.x, k) + d.x,
+            y: lerp(stack.y, pose.y * tall, k) + d.y,
+            z: lerp(stack.z, pose.z, k),
+            rx: lerp(stack.rx, pose.rx, k),
+            ry: lerp(stack.ry, pose.ry, k) + d.ry,
+            rz: lerp(stack.rz, pose.rz, k) + d.rz,
+            sx: lerp(stack.sx, pose.sx, k),
+            sy: lerp(stack.sy, pose.sy, k),
+            o: lerp(stack.o, pose.o, k),
+          }
+        })
+      }
       anchored =
         (isStatic(fromStep.kind) ? 0 : 1 - t) + (isStatic(toStep.kind) ? 0 : t)
       // The shelf is the one scene whose text has no veil — a row of titles
@@ -553,6 +627,10 @@ export default function LandingBackdrop({ className }: { className?: string }) {
         fromStep.kind === "row" || toStep.kind === "row" || toStep.kind === "gather"
       const dip = crossesText ? 1 - 0.8 * Math.sin(Math.PI * t) : 1
 
+      // The sign-in screens are a form, not a page to look at: the same
+      // scatter at under two-thirds of the landing's strength.
+      const strength = ambient ? (isDark() ? 0.6 : 0.9) : 1
+
       leaves.forEach((leaf, i) => {
         const a = from[i]
         const b = to[i]
@@ -560,7 +638,7 @@ export default function LandingBackdrop({ className }: { className?: string }) {
         leaf.mesh.position.set(lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t))
         leaf.mesh.rotation.set(lerp(a.rx, b.rx, t), lerp(a.ry, b.ry, t), lerp(a.rz, b.rz, t))
         leaf.mesh.scale.set(lerp(a.sx, b.sx, t), lerp(a.sy, b.sy, t), 1)
-        leaf.material.opacity = baseOpacity(i) * lerp(a.o, b.o, t) * dip
+        leaf.material.opacity = baseOpacity(i) * lerp(a.o, b.o, t) * dip * strength
       })
     }
 
@@ -582,9 +660,17 @@ export default function LandingBackdrop({ className }: { className?: string }) {
       awakeUntil = performance.now() + 1000
     }
 
+    let drawnAt = 0
     const tick = () => {
       frame = requestAnimationFrame(tick)
-      if (performance.now() > awakeUntil && Math.abs(target - progress) < 1e-4) return
+      const now = performance.now()
+      if (ambient) {
+        // 30 rather than the 33.3 of an exact half: on a 60Hz screen two
+        // frames are 33.2 or 33.4ms apart with vsync jitter, and a 33ms
+        // threshold skipped every third one, stuttering down to 20fps.
+        if (now - drawnAt < 30) return
+        drawnAt = now
+      } else if (now > awakeUntil && Math.abs(target - progress) < 1e-4) return
       progress += (target - progress) * follow
       tiltX += (pointerY * 0.1 - tiltX) * 0.05
       tiltY += (pointerX * 0.2 - tiltY) * 0.05
@@ -639,9 +725,13 @@ export default function LandingBackdrop({ className }: { className?: string }) {
       geometry.dispose()
       for (const leaf of leaves) leaf.material.dispose()
       renderer.dispose()
+      // `dispose` frees three's resources, not the context itself, which
+      // lingers until collected. Each sign-in screen mounts its own scene,
+      // and Chrome drops the oldest context past sixteen with a warning.
+      renderer.forceContextLoss()
       renderer.domElement.remove()
     }
-  }, [])
+  }, [ambient])
 
   return <div ref={hostRef} className={className} aria-hidden />
 }

@@ -31,6 +31,16 @@ export function HeaderUserMenu({ user }: Props) {
   const isProfileActive = location.pathname.startsWith("/profile")
 
   return (
+    <>
+    {/* A phone keeps the bell in the bar — its sections moved to the tab
+        bar at the bottom, and the bell was reachable only through the menu. */}
+    {user && (
+      <div className="flex items-center md:hidden">
+        <Suspense fallback={<div className="h-7 w-7 shrink-0" aria-hidden />}>
+          <NotificationBell />
+        </Suspense>
+      </div>
+    )}
     <div className="hidden items-center gap-1 md:flex">
       {user ? (
         <>
@@ -87,5 +97,6 @@ export function HeaderUserMenu({ user }: Props) {
         </>
       )}
     </div>
+    </>
   )
 }

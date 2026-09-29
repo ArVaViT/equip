@@ -4,6 +4,7 @@ import { Link } from "react-router-dom"
 import { ArrowRight, Flame, Sparkles } from "lucide-react"
 import { toast } from "sonner"
 import { getErrorCode } from "@/lib/errorCode"
+import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState, Eyebrow } from "@/components/patterns"
 import { OptionButton, RevealPanel } from "@/components/dailyChallenge"
@@ -35,17 +36,36 @@ function revealFromAttempt(
 
 interface CandleStreakProps {
   count: number
+  /** Answered today: the flame is lit. */
+  lit: boolean
   label: string
 }
 
-function CandleStreak({ count, label }: CandleStreakProps) {
+/**
+ * The streak, always on the card — «огонёк должен всегда быть показан».
+ * An outline flame until today's question is answered, orange once it is;
+ * the number is the run as of today, so a missed day shows 0 (the server
+ * reads it that way, see `GET /daily-challenge/streak`). It used to appear
+ * only after answering, so the one thing meant to bring a reader back was
+ * invisible exactly when it could.
+ */
+function CandleStreak({ count, lit, label }: CandleStreakProps) {
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full bg-surface/80 px-2 py-0.5 text-xs font-medium text-ink"
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums transition-colors duration-base",
+        lit ? "bg-warning/10 text-warning-ink" : "bg-surface/80 text-ink-muted",
+      )}
+      role="img"
       aria-label={label}
+      title={label}
     >
-      <Flame className="h-3 w-3 text-brand" strokeWidth={1.75} aria-hidden />
-      <span className="tabular-nums">{count}</span>
+      <Flame
+        className={cn("h-3.5 w-3.5 transition-colors duration-base", lit ? "fill-warning text-warning" : "text-ink-muted")}
+        strokeWidth={1.75}
+        aria-hidden
+      />
+      <span>{count}</span>
     </span>
   )
 }
@@ -85,39 +105,37 @@ export function DailyChallengeCard() {
   const [notTranslated, setNotTranslated] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [streakAfter, setStreakAfter] = useState<number | null>(null)
+  const answeredToday = reveal !== null
 
   useEffect(() => {
     let cancelled = false
     const load = async () => {
       setLoading(true)
       try {
-        const today = await dailyChallengeService.getToday()
+        // The streak alongside the question, answered or not: the chip is
+        // on the card in every state now. Its failure costs the chip, not
+        // the card.
+        const [today, streak] = await Promise.all([
+          dailyChallengeService.getToday(),
+          dailyChallengeService.getStreak().catch(() => null),
+        ])
         if (cancelled) return
         setData(today)
+        setStreakAfter(streak?.current_streak ?? today.user_attempt?.streak_after ?? 0)
         if (today.user_attempt) {
-          // Reload the streak number so the chip reflects what the
-          // backend currently shows — the attempt's stored streak is
-          // the value *at submit time*, which may be stale once another
-          // engagement happened in the same day.
-          try {
-            const streak = await dailyChallengeService.getStreak()
-            if (!cancelled) setStreakAfter(streak.current_streak)
-          } catch {
-            if (!cancelled) setStreakAfter(today.user_attempt.streak_after)
-          }
-          // Already attempted → switch to reveal mode using the stored
-          // selection. We don't have the canonical correct option id
-          // until the user submits; for already-attempted days we
-          // render the user's selected option as either correct (green)
-          // or simply highlighted (neutral) based on ``is_correct``.
+          // Already answered → the same reveal the submit showed. The
+          // server sends the correct option and the explanation for a
+          // recorded attempt; before it did, a reload kept the chosen
+          // option and lost the rest — no right answer after a wrong one,
+          // no explanation after either.
+          const attempt = today.user_attempt
           setReveal({
-            correct_option_id: today.user_attempt.is_correct
-              ? today.user_attempt.selected_option_id
-              : "", // empty so no option renders as green
-            explanation: null,
-            is_correct: today.user_attempt.is_correct,
-            streak_after: today.user_attempt.streak_after,
-            selected_option_id: today.user_attempt.selected_option_id,
+            correct_option_id:
+              attempt.correct_option_id ?? (attempt.is_correct ? attempt.selected_option_id : ""),
+            explanation: attempt.explanation ?? null,
+            is_correct: attempt.is_correct,
+            streak_after: attempt.streak_after,
+            selected_option_id: attempt.selected_option_id,
           })
         }
       } catch (err) {
@@ -187,7 +205,7 @@ export function DailyChallengeCard() {
   return (
     <section
       aria-labelledby="dc-card-heading"
-      className="surface-card animate-fade-in flex h-full flex-col overflow-hidden rounded-md"
+      className="surface-card animate-fade-in flex h-full flex-col overflow-hidden"
     >
       <header className="flex items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-center gap-2.5">
@@ -213,19 +231,31 @@ export function DailyChallengeCard() {
         </div>
         <div className="flex items-center gap-2">
           {streakAfter != null && (
-            <CandleStreak count={streakAfter} label={t("dailyChallenge.streakAriaLabel", { count: streakAfter })} />
+            <CandleStreak
+              count={streakAfter}
+              lit={answeredToday}
+              label={
+                answeredToday
+                  ? t("dailyChallenge.streakAriaLabel", { count: streakAfter })
+                  : t("dailyChallenge.streakPending", { count: streakAfter })
+              }
+            />
           )}
           <Link
             to="/daily-challenge/archive"
             className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand transition-opacity hover:opacity-80"
           >
-            {t("dailyChallenge.openArchive")}
-            <ArrowRight className="h-3 w-3" strokeWidth={1.75} aria-hidden />
+            {/* The arrow alone on a phone; the word stays the link's name. */}
+            <span className="max-sm:sr-only">{t("dailyChallenge.openArchive")}</span>
+            <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
           </Link>
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
+      {/* Centred in the height the dashboard rail gives it: the rail shares
+          its room between three cards, and this one may get more than it
+          needs. */}
+      <div className="flex min-h-0 flex-1 flex-col [justify-content:safe_center] gap-2.5 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
         {loading ? (
           <div className="space-y-2">
             <Skeleton className="h-4 w-3/4" />

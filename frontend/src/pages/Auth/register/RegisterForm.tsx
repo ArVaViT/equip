@@ -82,15 +82,13 @@ export function RegisterForm({
           )}
         </Button>
 
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-surface px-3 text-ink-muted">
-              {t("authRegister.orRegisterEmail")}
-            </span>
-          </div>
+        {/* Two rules either side of the words, not one rule under a patch of
+            page colour: the patch showed as a box once the sign-in screens got
+            the landing's scene behind them. */}
+        <div className="flex items-center gap-3 text-xs uppercase text-ink-muted">
+          <div className="h-px flex-1 bg-border" />
+          <span>{t("authRegister.orRegisterEmail")}</span>
+          <div className="h-px flex-1 bg-border" />
         </div>
 
         <form

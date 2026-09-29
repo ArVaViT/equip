@@ -14,6 +14,9 @@ interface DailyChallengeAttemptSummary {
   is_correct: boolean
   streak_after: number
   submitted_at: string
+  /** The reveal again, for a reader who has already answered today. */
+  correct_option_id?: string | null
+  explanation?: string | null
 }
 
 export interface DailyChallengeTodayResponse {

@@ -10,6 +10,7 @@ today's question, submit an attempt, and check their streak.
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import cast
 
 from fastapi import APIRouter, Depends, Header, Response, status
@@ -63,7 +64,9 @@ def get_today(
     """Return today's question + the user's existing attempt (if any).
 
     Answer key (``is_correct`` on options, the correct option id, the
-    explanation) is NOT included. Those reveal on the submit response.
+    explanation) is NOT included for a reader who has not answered. Once
+    they have, ``user_attempt`` carries the correct option and the
+    explanation, so a reload shows the same reveal the submit did.
     """
     response.headers["Vary"] = "Accept-Language"
     today = utc_today()
@@ -115,12 +118,15 @@ def get_today(
     )
     user_attempt_view: DailyChallengeAttemptSummary | None = None
     if existing is not None:
+        correct = next((o.id for o in question.options if o.is_correct), None)
         user_attempt_view = DailyChallengeAttemptSummary(
             id=existing.id,
             selected_option_id=existing.selected_option_id,
             is_correct=existing.is_correct,
             streak_after=existing.streak_after,
             submitted_at=existing.submitted_at,
+            correct_option_id=correct,
+            explanation=bundle.explanation,
         )
 
     # Localize the book name server-side so the client doesn't need
@@ -262,7 +268,13 @@ def get_streak(
 ) -> DailyChallengeStreakResponse:
     """Return the caller's streak counters. Users with no engagement
     history get zeros — the route does NOT 404 for the empty case so
-    the client doesn't have to special-case it."""
+    the client doesn't have to special-case it.
+
+    ``current_streak`` is the streak as of today. The stored counter only
+    moves when the reader next answers, so after a missed day it still
+    held the old run — the card showed a streak that was already over.
+    Alive means answered today or yesterday; anything older reads as 0.
+    """
     streak = get_user_streak(db, user_id=current_user.id)
     if streak is None:
         return DailyChallengeStreakResponse(
@@ -270,8 +282,10 @@ def get_streak(
             longest_streak=0,
             last_engaged_date=None,
         )
+    last = streak.last_engaged_date
+    alive = last is not None and last >= utc_today() - timedelta(days=1)
     return DailyChallengeStreakResponse(
-        current_streak=streak.current_streak,
+        current_streak=streak.current_streak if alive else 0,
         longest_streak=streak.longest_streak,
         last_engaged_date=streak.last_engaged_date,
     )

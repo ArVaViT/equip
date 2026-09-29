@@ -62,7 +62,7 @@ export function CourseReadinessCard({ report, loading, onFix }: Props) {
   if (loading) {
     return (
       <section
-        className="mb-6 overflow-hidden rounded-md border border-edge dark:border-transparent bg-card"
+        className="mb-6 overflow-hidden rounded-card border border-edge dark:border-transparent bg-card shadow-card"
         aria-busy="true"
       >
         <div className="flex items-center gap-4 px-5 py-4">
