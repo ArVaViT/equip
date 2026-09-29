@@ -54,7 +54,8 @@
     "navAriaLabel": "Основна навігація",
     "mobileMenuTitle": "Навігація",
     "mobileMenuDescription": "Розділи сайту, сповіщення та обліковий запис.",
-    "notifications": "Сповіщення"
+    "notifications": "Сповіщення",
+    "mobileTabs": "Розділи"
   },
   "footer": {
     "tagline": "Системне вивчення Біблії для тих, хто ставиться до Писання серйозно.",

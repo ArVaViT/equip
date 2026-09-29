@@ -245,8 +245,9 @@ export function DailyChallengeCard() {
             to="/daily-challenge/archive"
             className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand transition-opacity hover:opacity-80"
           >
-            {t("dailyChallenge.openArchive")}
-            <ArrowRight className="h-3 w-3" strokeWidth={1.75} aria-hidden />
+            {/* The arrow alone on a phone; the word stays the link's name. */}
+            <span className="max-sm:sr-only">{t("dailyChallenge.openArchive")}</span>
+            <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
           </Link>
         </div>
       </header>

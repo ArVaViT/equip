@@ -5,7 +5,7 @@ import { useLocation } from "react-router-dom";
 
 import { useGuestHome } from "@/hooks/usePageTitle";
 
-export default function ScrollToTop() {
+export default function ScrollToTop({ aboveTabBar = false }: { aboveTabBar?: boolean }) {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
 
@@ -48,7 +48,7 @@ export default function ScrollToTop() {
       aria-hidden={!visible}
       tabIndex={visible ? 0 : -1}
       className={`
-        fixed bottom-6 right-6 z-50
+        fixed ${aboveTabBar ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-6" : "bottom-6"} right-6 z-50
         flex items-center justify-center
         w-12 h-12 rounded-full
         bg-brand text-brand-foreground

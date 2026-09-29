@@ -54,7 +54,8 @@
     "navAriaLabel": "Основная навигация",
     "mobileMenuTitle": "Навигация",
     "mobileMenuDescription": "Разделы сайта, уведомления и аккаунт.",
-    "notifications": "Уведомления"
+    "notifications": "Уведомления",
+    "mobileTabs": "Разделы"
   },
   "footer": {
     "tagline": "Системное изучение Библии для тех, кто относится к Писанию серьёзно.",

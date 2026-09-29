@@ -110,7 +110,8 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
           to="/courses"
           className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand transition-opacity hover:opacity-80"
         >
-          {t("dashboard.browseAllCta")}
+          {/* The arrow alone on a phone; the words stay the link's name. */}
+          <span className="max-sm:sr-only">{t("dashboard.browseAllCta")}</span>
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
         </Link>
       </header>
@@ -263,11 +264,19 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
                     // the reading, stated separately rather than folded in:
                     // a lesson read is not a quiz passed, and one number for
                     // both would say neither thing honestly.
+                    // On a phone a book and "2/11" say it; the sentence stays
+                    // for a screen reader and for wider screens.
                     <p className="mt-1 text-xs text-ink-muted">
-                      {t("dashboard.readingProgress", {
-                        read: enrollment.chapters_read,
-                        count: enrollment.chapters_to_read,
-                      })}
+                      <span className="inline-flex items-center gap-1 tabular-nums sm:hidden" aria-hidden>
+                        <BookOpen className="h-3.5 w-3.5" strokeWidth={1.75} />
+                        {enrollment.chapters_read}/{enrollment.chapters_to_read}
+                      </span>
+                      <span className="max-sm:sr-only">
+                        {t("dashboard.readingProgress", {
+                          read: enrollment.chapters_read,
+                          count: enrollment.chapters_to_read,
+                        })}
+                      </span>
                     </p>
                   )}
                 </div>

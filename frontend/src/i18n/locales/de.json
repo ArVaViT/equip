@@ -54,7 +54,8 @@
     "navAriaLabel": "Hauptnavigation",
     "mobileMenuTitle": "Navigation",
     "mobileMenuDescription": "Bereiche, Benachrichtigungen und Konto.",
-    "notifications": "Benachrichtigungen"
+    "notifications": "Benachrichtigungen",
+    "mobileTabs": "Bereiche"
   },
   "footer": {
     "tagline": "Systematische Bibellehre für alle, die es mit der Schrift ernst meinen.",

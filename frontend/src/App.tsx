@@ -16,6 +16,7 @@ import Header from "./components/layout/Header"
 import AnnouncementBanner from "./components/announcements/AnnouncementBanner"
 import PageSpinner from "./components/ui/PageSpinner"
 import ScrollToTop from "./components/layout/ScrollToTop";
+import { MobileTabBar } from "./components/layout/MobileTabBar";
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useGrandTour } from "@/hooks/useGrandTour"
 import { takePendingInviteToken } from "@/lib/pendingInvite"
@@ -259,10 +260,11 @@ function AppRoutes() {
           grew to 3.5/4rem plus its rule, so the calc made every page 17px
           taller than the window: a scrollbar on a dashboard that fits,
           «ползунок скрола активен и можно буквально пару пикселей скролить». */}
+      {/* On a phone a signed-in page ends above the tab bar, not under it. */}
       <main
         id="main-content"
         tabIndex={-1}
-        className="flex-1 focus:outline-none"
+        className={cn("flex-1 focus:outline-none", user && "pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0")}
       >
         <ErrorBoundary>
           <Suspense fallback={<PageSpinner />}>
@@ -340,7 +342,8 @@ function AppRoutes() {
        * page it was written for. The two legal documents it used to carry are
        * now in the account menu, where a signed-in person would look for them
        * anyway. */}
-      <ScrollToTop />
+      {user && <MobileTabBar user={user} isTeacher={canTeach(user.role)} />}
+      <ScrollToTop aboveTabBar={Boolean(user)} />
       <Toaster />
       {/* First-run gate: Privacy Policy + Quick Setup, blocking until
           the user accepts and finishes (or skips setup). Mounted
