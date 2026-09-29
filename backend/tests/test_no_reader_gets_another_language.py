@@ -40,6 +40,10 @@ EDITOR_SURFACES = {
     # only the last resort. (Before this it was pinned to English at the
     # call site, which is neither.)
     "app/api/v1/quizzes/grading.py",
+    # The grading queue's lesson names, for the same reason: the teacher's
+    # language first, the author's words rather than a blank group heading
+    # when there is no translation — they have to know what they are marking.
+    "app/services/grading_queue.py",
     # Not a surface at all: this reads a quiz question so the translator
     # can be told what an answer option is answering. An option is a
     # fragment, and a fragment has to agree with the sentence that

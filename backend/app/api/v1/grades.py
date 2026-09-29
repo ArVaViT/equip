@@ -1115,6 +1115,7 @@ def get_grade_history(
 def get_grading_queue(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
 ):
     """What is waiting on this teacher, gathered by the item it answers.
 
@@ -1124,7 +1125,7 @@ def get_grading_queue(
     so the weekly task sat seven levels inside the occasional one, and the
     count had nowhere good to lead.
     """
-    return waiting_groups(db, teacher.id)
+    return waiting_groups(db, teacher.id, display_locale=normalize_locale(accept_language) if accept_language else None)
 
 
 @router.get("/queue/assignment/{assignment_id}", response_model=list[WaitingSubmission])

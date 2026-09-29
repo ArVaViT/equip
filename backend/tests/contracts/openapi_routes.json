@@ -2413,9 +2413,15 @@
   {
     "method": "GET",
     "path": "/api/v1/grades/queue",
-    "params": [],
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ]
+    ],
     "responses": [
-      "200"
+      "200",
+      "422"
     ],
     "body": false
   },
