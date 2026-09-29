@@ -55,3 +55,53 @@ def test_with_translation_on_a_missing_translation_keeps_the_name(client: TestCl
     assert client.get("/api/v1/progress/course/c-prog-on/students", headers=de).json()["course_title"] == "Глоссарий"
     assert client.get("/api/v1/progress/course/c-prog-on/gradebook", headers=de).json()["course_title"] == "Глоссарий"
     assert client.get("/api/v1/analytics/course/c-prog-on", headers=de).json()["course_title"] == "Глоссарий"
+
+
+def test_the_gradebook_headings_follow_the_teacher_too(client: TestClient, db: Session, monkeypatch, student) -> None:
+    # The course name above the matrix followed the teacher; its module and
+    # lesson headings stayed in the author's language (2026-09-29).
+    from app.models.course import Chapter, Module
+    from app.models.enrollment import Enrollment
+    from tests.conftest import STUDENT_ID
+
+    monkeypatch.setattr("app.services.content_versions.read.is_translation_enabled", lambda: True)
+    _course(db, "c-prog-heads")
+    db.add(Module(id="c-prog-heads-m", course_id="c-prog-heads", order_index=0))
+    db.add(
+        Chapter(
+            id="c-prog-heads-ch",
+            course_id="c-prog-heads",
+            module_id="c-prog-heads-m",
+            order_index=0,
+            chapter_type="reading",
+            title="Урок первый",
+        )
+    )
+    db.add(Enrollment(id="c-prog-heads-e", user_id=STUDENT_ID, course_id="c-prog-heads", progress=0))
+    db.flush()
+    for entity_type, entity_id, ru, en in (
+        ("module", "c-prog-heads-m", "Модуль", "Module"),
+        ("chapter", "c-prog-heads-ch", "Урок первый", "Lesson one"),
+    ):
+        record_human_version(db, entity_type=entity_type, entity_id=entity_id, field="title", locale="ru", text=ru)
+        record_mt_version(
+            db,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            field="title",
+            locale="en",
+            text=en,
+            source_locale="ru",
+            source_hash=compute_source_hash(ru, locale="ru"),
+        )
+    db.commit()
+
+    body = client.get("/api/v1/progress/course/c-prog-heads/gradebook", headers={"Accept-Language": "en"}).json()
+    assert [m["title"] for m in body["modules"]] == ["Module"]
+    assert [c["title"] for c in body["students"][0]["chapters"]] == ["Lesson one"]
+    # The source column is untouched: the translation was not written back.
+    db.expire_all()
+    assert db.get(Chapter, "c-prog-heads-ch").title == "Урок первый"
+    # And German, with no translation, gets the author's words, not blanks.
+    de = client.get("/api/v1/progress/course/c-prog-heads/gradebook", headers={"Accept-Language": "de"}).json()
+    assert [m["title"] for m in de["modules"]] == ["Модуль"]

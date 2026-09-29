@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 
 def _load_course_structure(
-    db: Session, course_id: str
+    db: Session, course_id: str, display_locale: str | None = None
 ) -> tuple[list[Chapter], dict[str, dict[str, Any]], dict[str, str], dict[str, str]]:
     """Return (chapters, group_summary_map, chapter_title_map, group_of).
 
@@ -57,11 +57,48 @@ def _load_course_structure(
         .order_by(Module.order_index)
         .all()
     )
+    src = normalize_locale(db.query(Course.source_locale).filter(Course.id == course_id).scalar() or "en")
     if modules:
-        src = db.query(Course.source_locale).filter(Course.id == course_id).scalar() or "en"
-        populate_module_texts(db, modules, source_locale=normalize_locale(src))
+        populate_module_texts(db, modules, source_locale=src)
 
     all_chapters = db.query(Chapter).filter(Chapter.course_id == course_id, Chapter.deleted_at.is_(None)).all()
+
+    # In the teacher's language when they sent one — the course name above
+    # the matrix already was, and its headings stayed in the author's
+    # (2026-09-29). The author's words where there is no translation.
+    # ``Chapter.title`` is a real column, so lesson names go into the map
+    # below rather than onto the ORM object, where a flush would write the
+    # translation over the source.
+    localized_chapter_titles: dict[str, str] = {}
+    if display_locale:
+        from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
+        if modules:
+            module_texts = fetch_cv_entity_texts_with_fallback(
+                db,
+                entity_type="module",
+                entity_ids=[m.id for m in modules],
+                fields=["title"],
+                display_locale=display_locale,
+                source_locale=src,
+                fallback="source_then_any",
+            )
+            for m in modules:
+                if module_texts.get((m.id, "title")):
+                    m.title = module_texts[(m.id, "title")]
+        if all_chapters:
+            chapter_texts = fetch_cv_entity_texts_with_fallback(
+                db,
+                entity_type="chapter",
+                entity_ids=[c.id for c in all_chapters],
+                fields=["title"],
+                display_locale=display_locale,
+                source_locale=src,
+                fallback="source_then_any",
+            )
+            localized_chapter_titles = {
+                c.id: text for c in all_chapters if (text := chapter_texts.get((c.id, "title")))
+            }
     # The one rule, shared with the readiness checklist and the PDF
     # export, in ``course_structure``.
     spine = build_spine(modules, all_chapters)
@@ -90,7 +127,7 @@ def _load_course_structure(
             "is_ungrouped": True,
         }
 
-    chapter_title_map = {c.id: c.title for c in chapters}
+    chapter_title_map = {c.id: localized_chapter_titles.get(c.id, c.title) for c in chapters}
     return chapters, module_map, chapter_title_map, spine.group_of
 
 
@@ -473,6 +510,7 @@ def _build_chapter_infos(
     quiz_map: dict[str, list[Quiz]] | None = None,
     assignment_map: dict[str, list[Assignment]] | None = None,
     group_of: dict[str, str] | None = None,
+    title_of: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     """Per-chapter completion + embedded quiz/assignment result for one student.
 
@@ -523,7 +561,7 @@ def _build_chapter_infos(
         chapter_infos.append(
             {
                 "id": str(ch.id),
-                "title": ch.title,
+                "title": (title_of or {}).get(ch.id, ch.title),
                 "module_id": (group_of or {}).get(ch.id) or (ch.module_id or UNGROUPED_GROUP_ID),
                 "chapter_type": ch.chapter_type or "reading",
                 "requires_completion": bool(ch.requires_completion),
@@ -596,7 +634,7 @@ def build_course_student_progress(
     # again below at the source (``_load_course_structure``), so only the
     # course's name is localized here.
     populate_spine_texts(db, [course], display_locale=display_locale, hydrate_modules=False, fallback="source_then_any")
-    chapters, module_map, _chapter_titles, _group_of = _load_course_structure(db, course_id)
+    chapters, module_map, _chapter_titles, _group_of = _load_course_structure(db, course_id, display_locale)
     gradable_chapter_ids = [c.id for c in chapters if c.chapter_type in GRADABLE_CHAPTER_TYPES]
 
     # Only two timestamps are needed from the result tables now — "last seen".
@@ -671,7 +709,7 @@ def build_student_chapter_detail(
     # again below at the source (``_load_course_structure``), so only the
     # course's name is localized here.
     populate_spine_texts(db, [course], display_locale=display_locale, hydrate_modules=False, fallback="source_then_any")
-    chapters, _module_map, chapter_title_map, group_of = _load_course_structure(db, course_id)
+    chapters, _module_map, chapter_title_map, group_of = _load_course_structure(db, course_id, display_locale)
     chapter_ids = [c.id for c in chapters]
 
     quiz_map, assignment_map = _load_chapter_quizzes_and_assignments(db, chapter_ids)
@@ -702,6 +740,7 @@ def build_student_chapter_detail(
         quiz_map,
         assignment_map,
         group_of,
+        chapter_title_map,
     )
 
     return {
@@ -732,7 +771,7 @@ def build_course_gradebook_matrix(
     # again below at the source (``_load_course_structure``), so only the
     # course's name is localized here.
     populate_spine_texts(db, [course], display_locale=display_locale, hydrate_modules=False, fallback="source_then_any")
-    chapters, module_map, _chapter_title_map, group_of = _load_course_structure(db, course_id)
+    chapters, module_map, chapter_titles, group_of = _load_course_structure(db, course_id, display_locale)
     chapter_ids = [c.id for c in chapters]
     gradable_chapter_ids = [c.id for c in chapters if c.chapter_type in GRADABLE_CHAPTER_TYPES]
 
@@ -776,6 +815,7 @@ def build_course_gradebook_matrix(
                     quiz_map,
                     assignment_map,
                     group_of,
+                    chapter_titles,
                 ),
             }
         )
