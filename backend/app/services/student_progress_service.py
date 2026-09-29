@@ -345,7 +345,9 @@ def _load_completed_progress(
     return out
 
 
-def _load_assignment_titles(db: Session, course: Course, assignment_by_id_str: dict[str, Assignment]) -> dict[str, str]:
+def _load_assignment_titles(
+    db: Session, course: Course, assignment_by_id_str: dict[str, Assignment], display_locale: str | None = None
+) -> dict[str, str]:
     """``assignments.title`` column dropped — bulk-fetch the
     source-language title from cv. Any-locale fallback keeps the lookup
     defensive against missing rows (prefer showing *something* over crashing).
@@ -360,8 +362,11 @@ def _load_assignment_titles(db: Session, course: Course, assignment_by_id_str: d
         entity_type="assignment",
         entity_ids=list(assignment_by_id_str.keys()),
         fields=["title"],
-        display_locale=source_locale,
+        # The teacher's language when asked, like the lesson names beside it;
+        # the author's words where there is no translation.
+        display_locale=display_locale or source_locale,
         source_locale=source_locale,
+        fallback="source_then_any",
     )
     return {aid: (cv_titles.get((aid, "title")) or "") for aid in assignment_by_id_str}
 
@@ -719,7 +724,7 @@ def build_student_chapter_detail(
     subs_by_user_chapter, assignment_by_id_str, _latest_sub = _aggregate_assignment_submissions(
         db, assignment_map, user_ids=[student_id]
     )
-    assignment_title_by_id = _load_assignment_titles(db, course, assignment_by_id_str)
+    assignment_title_by_id = _load_assignment_titles(db, course, assignment_by_id_str, display_locale)
     progress_by_user = _load_completed_progress(db, chapter_ids, user_ids=[student_id])
     user_progress = progress_by_user.get(student_id, {})
 
