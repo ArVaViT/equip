@@ -1034,7 +1034,8 @@
       "saveQuiz": "Save Quiz",
       "saveExam": "Save Exam",
       "deleteQuiz": "Delete Quiz",
-      "deleteExam": "Delete Exam"
+      "deleteExam": "Delete Exam",
+      "unsaved": "Unsaved changes"
     },
     "modeToggle": {
       "edit": "Edit",

@@ -1034,7 +1034,8 @@
       "saveQuiz": "Test speichern",
       "saveExam": "Prüfung speichern",
       "deleteQuiz": "Test löschen",
-      "deleteExam": "Prüfung löschen"
+      "deleteExam": "Prüfung löschen",
+      "unsaved": "Ungespeicherte Änderungen"
     },
     "modeToggle": {
       "edit": "Bearbeiten",

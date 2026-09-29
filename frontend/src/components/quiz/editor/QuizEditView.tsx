@@ -31,6 +31,8 @@ interface Props {
   /** Questions students have already answered — their type is fixed. */
   answeredQuestionIds?: ReadonlySet<string>
   deleting: boolean
+  /** The draft differs from what is saved: said in the action bar. */
+  dirty?: boolean
   onDelete: () => void
 }
 
@@ -59,6 +61,7 @@ export function QuizEditView({
   existingQuiz,
   answeredQuestionIds = NONE,
   deleting,
+  dirty = false,
   onDelete,
 }: Props) {
   const { t } = useTranslation()
@@ -119,7 +122,10 @@ export function QuizEditView({
         )}
       </div>
 
-      <div className="flex items-center gap-2 pt-2">
+      {/* Held at the bottom of the screen while the quiz scrolls: on a quiz
+          of ten questions «Save» was 3,000px below the first one. Above the
+          phone's tab bar (57px + safe area), flush to the edge from md. */}
+      <div className="sticky bottom-[calc(57px+env(safe-area-inset-bottom))] z-10 -mx-4 flex flex-wrap items-center gap-2 border-t border-edge bg-surface px-4 py-3 md:bottom-0 sm:-mx-6 sm:px-6">
         <Button size="sm" onClick={onSave} disabled={saving}>
           {saving ? (
             <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} />
@@ -132,16 +138,32 @@ export function QuizEditView({
               ? t("quizEditor.save.saveExam")
               : t("quizEditor.save.saveQuiz")}
         </Button>
+        {dirty && !saving && (
+          <span className="text-xs text-ink-muted">{t("quizEditor.save.unsaved")}</span>
+        )}
+        {/* Quiet, and at the far end: a filled red button beside «Save»
+            was one slip away from the class's attempts. */}
         {existingQuiz && (
-          <Button size="sm" variant="destructive" onClick={onDelete} disabled={deleting}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive hover:text-destructive sm:ml-auto"
+            onClick={onDelete}
+            disabled={deleting}
+            aria-label={chapterType === "exam" ? t("quizEditor.save.deleteExam") : t("quizEditor.save.deleteQuiz")}
+          >
             {deleting ? (
               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} />
             ) : (
-              <Trash2 className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
+              <Trash2 className="h-3.5 w-3.5 sm:mr-1.5" strokeWidth={1.75} />
             )}
-            {chapterType === "exam"
-              ? t("quizEditor.save.deleteExam")
-              : t("quizEditor.save.deleteQuiz")}
+            {/* Icon only on a phone, where the words wrapped under the
+                scroll-to-top button. */}
+            <span className="hidden sm:inline">
+              {chapterType === "exam"
+                ? t("quizEditor.save.deleteExam")
+                : t("quizEditor.save.deleteQuiz")}
+            </span>
           </Button>
         )}
       </div>

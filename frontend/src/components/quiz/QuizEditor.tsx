@@ -266,6 +266,7 @@ export default function QuizEditor({
           answeredQuestionIds={draft.answeredQuestionIds}
           deleting={deleting}
           onDelete={handleDelete}
+          dirty={draft.isDirty}
         />
       )}
     </div>
