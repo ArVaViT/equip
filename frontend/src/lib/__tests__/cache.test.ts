@@ -195,3 +195,21 @@ describe("cache eviction", () => {
     expect(cacheGet("evict:299")).toBe(299)
   })
 })
+
+describe("cached() and a language switch mid-flight", () => {
+  it("stores the answer under the language the request went out in", async () => {
+    const i18n = (await import("@/i18n/config")).default
+    const { cached, cacheGet, cacheClear } = await import("../cache")
+    cacheClear()
+    await i18n.changeLanguage("ru")
+    let release: (v: string) => void = () => {}
+    const pending = cached("race:key", 60_000, () => new Promise<string>((r) => (release = r)))
+    // The reader switches while the Russian answer is still on its way.
+    await i18n.changeLanguage("de")
+    release("русский ответ")
+    await pending
+    expect(cacheGet("race:key")).toBeUndefined()
+    await i18n.changeLanguage("ru")
+    expect(cacheGet("race:key")).toBe("русский ответ")
+  })
+})
