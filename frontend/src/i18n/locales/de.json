@@ -4,13 +4,11 @@
     "cancel": "Abbrechen",
     "confirm": "Bestätigen",
     "ok": "OK",
-    "continue": "Weiter",
     "tryAgain": "Erneut versuchen",
     "loading": "Wird geladen …",
     "loadingAccessible": "Wird geladen",
     "somethingWentWrong": "Etwas ist schiefgelaufen",
     "notTranslatedYet": "Noch nicht in Ihrer Sprache",
-    "view": "Öffnen",
     "signIn": "Anmelden",
     "signOut": "Abmelden",
     "register": "Registrieren",
@@ -57,10 +55,7 @@
     "notifications": "Benachrichtigungen"
   },
   "footer": {
-    "tagline": "Systematische Bibellehre für alle, die es mit der Schrift ernst meinen.",
     "support": "Support kontaktieren",
-    "rightsReserved": "Alle Rechte vorbehalten.",
-    "product": "Produkt",
     "legal": "Rechtliches",
     "soon": "Bald",
     "social": "Equip in sozialen Netzwerken — bald",
@@ -68,7 +63,6 @@
   },
   "landing": {
     "hero": {
-      "registerCta": "Konto erstellen",
       "manifesto": "Die Schrift der Reihe nach studieren, nicht in Bruchstücken",
       "subline": "Kostenlose Kurse mit echter Prüfung und einem Zertifikat, das jeder nachprüfen kann — für alle, die die Schrift ernst nehmen.",
       "facts": "Kostenlos · Open Source · RU EN DE UK · Überprüfbares Zertifikat"
@@ -76,40 +70,20 @@
     "value": {
       "heading": "Was Equip bietet",
       "structure": {
-        "eyebrow": "Kursaufbau",
         "title": "Ein Kurs, kein Haufen Videos",
         "body": "Lektionen in fester Reihenfolge — in Module gruppiert, wenn ein Kurs groß genug dafür wird. Sie sehen immer, was erledigt ist und was als Nächstes kommt.",
-        "short": "Lektionen in fester Reihenfolge. Sie sehen immer, was als Nächstes kommt.",
-        "module": "Modul 1 · 1. Mose 1–11",
-        "chapter1": "Lektion 1 — Die Schöpfung",
-        "chapter2": "Lektion 2 — Der Sündenfall",
-        "chapter3": "Lektion 3 — Kain und Abel"
+        "short": "Lektionen in fester Reihenfolge. Sie sehen immer, was als Nächstes kommt."
       },
       "assessment": {
-        "eyebrow": "Prüfung",
         "title": "Mehr als Multiple Choice",
         "body": "Vier Fragetypen, darunter Aufsätze — gelesen von einer Lehrkraft, nicht nur von der Maschine.",
-        "short": "Auch Aufsätze — gelesen von einer Lehrkraft, nicht nur von der Maschine.",
-        "sampleQuestion": "Fassen Sie den Hauptgedanken dieses Abschnitts in eigenen Worten zusammen.",
-        "gradedBadge": "Vom Dozenten bewertet"
+        "short": "Auch Aufsätze — gelesen von einer Lehrkraft, nicht nur von der Maschine."
       },
       "languages": {
         "title": "Jeder liest in seiner eigenen Sprache",
         "body": "Eine Lehrkraft schreibt den Kurs einmal. Die Studierenden lesen ihn auf Deutsch, Englisch, Russisch oder Ukrainisch — jeder Vers aus einer echten Bibelübersetzung.",
         "short": "Einmal geschrieben — gelesen auf Deutsch, Englisch, Russisch oder Ukrainisch."
-      },
-      "bilingual": {
-        "eyebrow": "Sprache",
-        "title": "Mehrsprachig vom ersten Tag an",
-        "body": "Ein auf Russisch geschriebener Kurs steht sofort auf Englisch, Deutsch und Ukrainisch bereit.",
-        "caption": "Kursmaterialien werden automatisch übersetzt"
       }
-    },
-    "how": {
-      "heading": "So funktioniert es",
-      "step1": "Registrieren — dauert eine Minute, E-Mail oder Google genügt.",
-      "step2": "Katalog öffnen und sich für den gewünschten Kurs einschreiben.",
-      "step3": "Lektionen durcharbeiten, Tests schreiben, am Ende das Zertifikat anfordern."
     },
     "finalCta": {
       "heading": "Bereit anzufangen?",
@@ -142,11 +116,8 @@
   },
   "dashboard": {
     "myCourses": "Meine Kurse",
-    "myCoursesEmptyTitle": "Noch keine Einschreibungen",
     "loadCoursesError": "Ihre Kurse konnten nicht geladen werden. Bitte laden Sie die Seite neu.",
-    "noEnrollments": "Sie haben sich noch für keinen Kurs eingeschrieben. Schauen Sie sich den Katalog an.",
     "course": "Kurs",
-    "grade": "Note: {{grade}}",
     "browseAllCta": "Alle Kurse ansehen",
     "recentlyViewed": "Zuletzt angesehen",
     "votd": {
@@ -251,18 +222,6 @@
     "welcome": {
       "title": "Willkommen bei Equip — sehen wir uns kurz um",
       "body": "Wir gehen die wichtigsten Bereiche gemeinsam durch. Jeder Klick auf „Weiter“ führt zur nächsten Station; Sie können die Tour jederzeit verlassen."
-    },
-    "headerNav": {
-      "title": "Ihre Hauptbereiche",
-      "body": "Start, Kurse, Kalender, Zertifikate — über diese obere Leiste wechseln Sie jederzeit. Was auch immer geöffnet ist, die Leiste bleibt."
-    },
-    "headerProfile": {
-      "title": "Ihr Konto",
-      "body": "Bild, Name, Sprache, Darstellung, Abmelden — all das liegt hinter dieser Schaltfläche. Am Ende der Tour kommen wir noch einmal vorbei."
-    },
-    "calendar": {
-      "title": "Ihr Kalender",
-      "body": "Alles Fällige und Geplante aus all Ihren Kursen — Aufgaben, Unterricht, Termine — erscheint hier. Ohne Kurse bleibt er leer."
     },
     "finale": {
       "title": "Das ist Equip",
@@ -491,10 +450,6 @@
     "loadMoreFailed": "Konnte nicht mehr laden — erneut versuchen."
   },
   "streak": {
-    "eyebrow": "Täglich",
-    "title": "Übung für heute",
-    "weekAriaLabel": "Tage der laufenden Woche",
-    "comingSoon": "Tägliche Aufgaben kommen bald — dies ist der Platzhalter.",
     "days": {
       "mon": "Mo",
       "tue": "Di",
@@ -503,11 +458,6 @@
       "fri": "Fr",
       "sat": "Sa",
       "sun": "So"
-    },
-    "tasksPreview": {
-      "questionOfDay": "Die Frage des Tages beantworten",
-      "readChapter": "Das heutige Kapitel lesen",
-      "memoryVerse": "Den Merkvers aufsagen"
     }
   },
   "dailyChallenge": {
@@ -596,8 +546,7 @@
     "russian": "Russisch",
     "english": "Englisch",
     "german": "Deutsch",
-    "ukrainian": "Ukrainisch",
-    "switchTo": "Zu {{language}} wechseln"
+    "ukrainian": "Ukrainisch"
   },
   "auth": {
     "welcomeBack": "Willkommen zurück",
@@ -910,10 +859,7 @@
     "exportGradesFailed": "Noten konnten nicht exportiert werden",
     "certificatesLoadFailed": "Zertifikate konnten nicht geladen werden",
     "openFileFailed": "Datei konnte nicht geöffnet werden. Bitte erneut versuchen.",
-    "assignmentSubmitFailed": "Aufgabe konnte nicht eingereicht werden",
-    "gradeFailed": "Bewerten fehlgeschlagen",
-    "quizSaved": "Test gespeichert",
-    "quizSaveFailed": "Test konnte nicht gespeichert werden"
+    "assignmentSubmitFailed": "Aufgabe konnte nicht eingereicht werden"
   },
   "module": {
     "overdue": "Überfällig",
@@ -935,7 +881,6 @@
     "attachmentEyebrow": "Anhang",
     "blocksLoadFailed": "Diese Lektion konnte nicht geladen werden",
     "blocksLoadFailedDescription": "Der Lektionsinhalt ließ sich nicht laden. Meist ist das ein vorübergehendes Netzproblem — versuchen Sie es erneut.",
-    "chapterOf": "Lektion {{current}} von {{total}}",
     "completed": "Abgeschlossen",
     "downloadFile": "Datei herunterladen",
     "downloadFileAria": "Anhang herunterladen: {{name}}",
@@ -1285,7 +1230,6 @@
     "overdue": "Überfällig",
     "submit": "Aufgabe einreichen",
     "resubmit": "Erneut einreichen",
-    "points": "Punkte",
     "gradeEyebrow": "Note",
     "instructorFeedback": "Rückmeldung des Dozenten",
     "yourSubmission": "Ihre Abgabe",
@@ -1591,7 +1535,6 @@
     "stats": {
       "totalCourses": "Kurse",
       "published": "Veröffentlicht",
-      "modules": "Module",
       "pendingActions": "Braucht Aufmerksamkeit",
       "pendingGrading": "Wartet auf Bewertung"
     },
@@ -2040,7 +1983,6 @@
       "thStudent": "Studierende Person",
       "thQuiz": "Test",
       "thAssignment": "Aufgabe",
-      "thParticipation": "Teilnahme",
       "thFinal": "Endnote",
       "thGrade": "Note",
       "thManual": "Von Hand",
@@ -2064,7 +2006,6 @@
       "quizzesUntaken": "Dieser Kurs hat Tests, aber noch hat niemand einen abgeschlossen, deshalb wird die Note allein aus den Aufgaben berechnet (Aufgaben: 100 %). Sobald ein Test geschrieben ist, greift Ihre eingestellte Aufteilung — und bei Studierenden, die ihn nicht geschrieben haben, fällt der Prozentwert, denn ein nicht geschriebener Test zählt als null.",
       "noAssignmentsCourse": "Dieser Kurs enthält keine Aufgaben, deshalb wird die Note allein aus den Tests berechnet (Tests: 100 %). Ihre eingestellte Aufteilung gilt, sobald Sie eine Aufgabe hinzufügen und die erste Abgabe bewerten.",
       "noQuizzesCourse": "Dieser Kurs enthält keine Tests, deshalb wird die Note allein aus den Aufgaben berechnet (Aufgaben: 100 %). Ihre eingestellte Aufteilung gilt, sobald Sie einen Test hinzufügen und jemand ihn abschließt.",
-      "breakdownParticipation": "Teilnahme:",
       "manualDiffers": "Handnote <strong>{{manual}}</strong> weicht von der berechneten <strong>{{calc}}</strong> ab ({{pct}} %)",
       "overrideGrade": "Note von Hand setzen",
       "overridePlaceholder": "A, B, C, D, F",
@@ -2117,7 +2058,6 @@
   "admin": {
     "title": "Administration",
     "eyebrow": "Verwaltung",
-    "subtitle": "Personen und Rollen verwalten, Aktivität im Blick behalten",
     "dailyChallenge": {
       "review": {
         "approve": "Bestätigen und weitergeben",
@@ -2314,7 +2254,6 @@
       "title": "Zertifikate bestätigen",
       "studentFallback": "Studierende Person",
       "courseFallback": "Kurs",
-      "approvedBy": "Bestätigt von {{name}}",
       "teacherSignOff": "Dozent {{name}} hat {{relative}} freigegeben",
       "requestedRelative": "Angefordert {{relative}}",
       "requestedAtPrefix": "Angefordert am {{ts}}",
@@ -2339,7 +2278,6 @@
       "toast": {
         "roleUpdated": "Rolle geändert",
         "roleUpdateFailed": "Rolle konnte nicht geändert werden",
-        "userDeleted": "Konto gelöscht",
         "deleteUserFailed": "Konto konnte nicht gelöscht werden",
         "cannotDeleteSelf": "Ihr eigenes Konto können Sie hier nicht löschen.",
         "bulkUpdated": "{{count}} Konto/Konten auf {{role}} gesetzt",
@@ -2856,7 +2794,6 @@
     "loadFailed": "Das Bewertungsraster konnte nicht geladen werden",
     "loadFailedBody": "Ohne sie wird nicht bewertet – eine bloße Zahl würde von den Kriterien abweichen.",
     "saveFailed": "Die Bewertung konnte nicht gespeichert werden",
-    "title": "Bewertungsraster",
     "yourGrid": "So wurde Ihre Arbeit bewertet"
   },
   "grading": {

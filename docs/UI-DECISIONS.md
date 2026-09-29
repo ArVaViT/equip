@@ -9,7 +9,7 @@ the running record of "we tried it, here's what stuck, leave it alone."
 > **Historical record (May 2026).** The pixel values below describe the
 > build they froze, and the August 2026 rebuild replaced most of them:
 > the header is `h-14 md:h-16` with a serif wordmark (`Header.tsx`), the
-> footer is a plain `border-t border-edge` (`Footer.tsx`), and the
+> footer has no rule at all and lives only on the landing (`Footer.tsx`), and the
 > landing page is the manifesto in `pages/Dashboard/PublicLanding.tsx`
 > with no search field. What still holds: the icon-size tiers and the
 > `header.manage` / `header.manageCourses` key split. The section is kept

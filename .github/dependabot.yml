@@ -60,6 +60,11 @@ updates:
           - "prettier"
           - "typescript"
     ignore:
+      # zod 4.6 adds 6kB to the `schemas` chunk and trips the bundle
+      # sentinel (17.2 -> 23.4kB, budget 20). Held at ~4.4.3 until the
+      # budget or the schemas are reconsidered on purpose.
+      - dependency-name: "zod"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
       # Hold major bumps back — they almost always need a codemod or config
       # migration (e.g. React 19, Vite 6, react-router v7 renamed APIs).
       # Major bumps are opened manually when we're ready to do the migration.
@@ -121,8 +126,12 @@ updates:
           - "types-*"
           - "pip-audit"
     ignore:
+      # 2.1 is a minor by semver and a migration in practice: it makes
+      # `postgresql://` mean psycopg 3 (this project ships psycopg2, so the
+      # app cannot connect) and retypes rows (nine mypy errors). #1334 went
+      # red on exactly that. Take it on purpose, in its own PR.
       - dependency-name: "sqlalchemy"
-        update-types: ["version-update:semver-major"]
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "pydantic"
         update-types: ["version-update:semver-major"]
       - dependency-name: "fastapi"

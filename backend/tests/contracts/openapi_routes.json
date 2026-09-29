@@ -2595,25 +2595,6 @@
     "body": true
   },
   {
-    "method": "GET",
-    "path": "/api/v1/invitations/token/{token}",
-    "params": [
-      [
-        "Accept-Language",
-        "header"
-      ],
-      [
-        "token",
-        "path"
-      ]
-    ],
-    "responses": [
-      "200",
-      "422"
-    ],
-    "body": false
-  },
-  {
     "method": "DELETE",
     "path": "/api/v1/invitations/{invitation_id}",
     "params": [

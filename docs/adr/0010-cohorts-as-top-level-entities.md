@@ -138,8 +138,9 @@ honest about the semantics.
   `backend/app/services/course_service/_enrollment.py`,
   `backend/app/models/cohort.py`, `backend/app/models/enrollment.py`,
   `backend/app/models/course.py` (the `access_mode` column).
-- Migrations: `supabase/migrations/20260513205435_cohort_top_level.sql`,
-  `supabase/migrations/20260513215743_cohort_courses_rls.sql`.
+- Migrations: `supabase/migrations/20260513205441_cohort_top_level.sql`
+  (with `20260513205953_cohort_top_level_hotfix_restore_course_id.sql`),
+  `supabase/migrations/20260513215814_cohort_courses_rls.sql`.
 - Frontend: `frontend/src/pages/Admin/cohorts/`,
   `frontend/src/services/cohorts.ts`,
   `frontend/src/types/index.ts` (the `Cohort` + `AccessMode` types).

@@ -121,9 +121,10 @@
      * lightbox. A modal veil is one idea, and the product had four opinions
      * about it depending on which primitive you happened to open.
      *
-     * Two now, and the second has an argument: `--scrim` veils the page while
-     * you deal with something in front of it, and `--scrim-heavy` is for the
-     * image lightbox, where the point is that the room goes dark. */
+     * One now. `--scrim` veils the page while you deal with something in
+     * front of it; the image lightbox takes the same colour at 95%
+     * (`bg-scrim/95`), because there the point is that the room goes dark.
+     * A second token for that was planned and never needed. */
     --scrim: 30 10% 6%;
     --brand-ink: 30 8% 11%;
     --destructive-ink: 0 70% 36.5%;
@@ -142,25 +143,11 @@
     --ring: 30 8% 11%;
     --radius: 0.5rem;
 
-    --sidebar: 40 10% 95%;
-    --sidebar-foreground: 30 8% 11%;
-    --sidebar-border: 40 10% 89%;
-    --sidebar-accent: 40 10% 93%;
-    --sidebar-accent-foreground: 30 8% 11%;
-    --sidebar-ring: 30 8% 11%;
-
     --chart-1: 30 8% 25%;
     --chart-2: 133 17% 37%;
     --chart-3: 156 45% 34%;
     --chart-4: 30 85% 42%;
     --chart-5: 215 75% 42%;
-
-    /* Auth marketing column — semantic only (no raw hsl() in components) */
-    --auth-panel-bg: 262 42% 17%;
-    --auth-panel-glow-warm: 38 48% 52%;
-    --auth-panel-accent-line: 38 42% 58%;
-    --auth-panel-text: 40 35% 96%;
-    --auth-panel-text-muted: 40 18% 70%;
   }
 
   .dark {
@@ -206,24 +193,11 @@
     --input: 30 6% 19%;
     --ring: 40 12% 95%;
 
-    --sidebar: 30 6% 7%;
-    --sidebar-foreground: 40 12% 93%;
-    --sidebar-border: 30 6% 19%;
-    --sidebar-accent: 30 5% 15%;
-    --sidebar-accent-foreground: 40 12% 95%;
-    --sidebar-ring: 262 58% 72%;
-
     --chart-1: 40 12% 80%;
     --chart-2: 129 17% 63%;
     --chart-3: 156 38% 46%;
     --chart-4: 32 78% 54%;
     --chart-5: 215 72% 58%;
-
-    --auth-panel-bg: 262 38% 9%;
-    --auth-panel-glow-warm: 38 38% 48%;
-    --auth-panel-accent-line: 38 35% 45%;
-    --auth-panel-text: 40 25% 94%;
-    --auth-panel-text-muted: 40 12% 58%;
   }
 }
 

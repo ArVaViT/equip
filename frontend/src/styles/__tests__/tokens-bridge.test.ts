@@ -30,7 +30,6 @@ const REQUIRED_TOKENS = [
   "--color-accent-quiet",
   "--color-accent-strong",
   "--color-heritage",
-  "--color-heritage-quiet",
   "--color-edge",
   "--color-edge-strong",
   "--color-success",

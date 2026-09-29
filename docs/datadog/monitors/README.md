@@ -36,8 +36,6 @@ Supabase) are managed in the Synthetics UI and are not mirrored here.
 | `translation-jobs-stuck-processing.json` | jobs piling up in `processing` (workers dying mid-run) | **email** |
 | `equip-frontend-rum-error-spike.json` | spike in real-user JS errors (RUM) | **email** |
 | `equip-backend-warning-log-spike.json` | ≥20 backend `status:warning` logs in 15 min | dashboard-only |
-| `equip-frontend-slow-page-load-p75-lcp-4s.json` | p75 LCP > 4s over an hour (client-rendered SPA — noisy by nature) | dashboard-only |
-| `equip-frontend-frustration-signals-rage-clicks.json` | ≥5 rage-clicks in 30 min | dashboard-only |
 
 ### Translation and spend (added 2026-08-17, not yet applied)
 

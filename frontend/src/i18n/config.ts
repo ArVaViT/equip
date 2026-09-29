@@ -52,17 +52,6 @@ export const LOCALE_MENU_ORDER: readonly SupportedLocale[] = ["en", "ru", "uk", 
  */
 export const DEFAULT_LOCALE: SupportedLocale = "en"
 
-/**
- * The language courses are written in — a different fact that happens to
- * have worn the same value.
- *
- * Every course on this platform is authored in Russian and translated out
- * of it; that is what the landing page's fan-out picture illustrates. It
- * used to read `DEFAULT_LOCALE`, which was true only by coincidence, and
- * the coincidence ended when the last resort became English.
- */
-export const AUTHORING_LOCALE: SupportedLocale = "ru"
-
 const LOCALE_STORAGE_KEY = "equip:locale"
 const LEGACY_LOCALE_STORAGE_KEY = "bible-school:locale"
 

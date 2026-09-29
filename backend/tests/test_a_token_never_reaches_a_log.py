@@ -87,8 +87,9 @@ class TestTheAccessLine:
     def test_a_preview_by_path_is_logged_without_its_token(self, anon_client: TestClient, shipped: Shipped) -> None:
         response = anon_client.get(f"/api/v1/invitations/token/{INVITATION_TOKEN}")
 
-        # The token is unknown, so this is the 404 -- the line is written
-        # either way, and a probe with a guessed token is still a token.
+        # The route itself is gone (2026-09-28: no real caller since
+        # 2026-09-15, only scanners), so this is the 404 -- the line is
+        # written either way, and a probe carrying a token is still a token.
         assert response.status_code == 404
         text = shipped.everything()
         assert "/api/v1/invitations/token/" in text, "the access line was not written at all"

@@ -165,8 +165,9 @@ What guards it now:
 - **Invitation links** — the preview is `POST /invitations/preview` with
   the token in the body, and letters link to `/invite/accept#token=…`; a
   fragment is never sent to a server. The old `GET /invitations/token/…`
-  and `?token=` shapes still work for stale bundles and letters already
-  sent.
+  was removed on 2026-09-28 (last real caller 2026-09-15); the formatter
+  still redacts that path, because scanners keep probing it. The `?token=`
+  link shape still works for letters already sent.
 - **RUM** — `beforeSend` scrubs `view.url`, `view.referrer`,
   `resource.url`, and `error.message` / `error.stack` /
   `error.resource.url` (`frontend/src/lib/datadog.ts`).

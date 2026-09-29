@@ -207,25 +207,6 @@ def preview_invitation(
     return _preview(db, response, body.token, accept_language)
 
 
-@router.get("/token/{token}", response_model=InvitationPreview, deprecated=True)
-def preview_invitation_by_path(
-    response: Response,
-    token: str = Path(..., max_length=128),
-    accept_language: str | None = Header(default=None, alias="Accept-Language"),
-    db: Session = Depends(get_db),
-) -> InvitationPreview:
-    """The previous shape of ``POST /invitations/preview``.
-
-    Kept only for a browser still running a bundle from before the move:
-    a tab left open on the accept page, or a cached ``index.html``. The
-    current client never calls it. Our access line for it is redacted by
-    the log formatter, but the platform's own request log still records
-    the path, so this route should go once nothing has reached it for a
-    while -- the Vercel log drain shows when that is.
-    """
-    return _preview(db, response, token, accept_language)
-
-
 @router.post("/accept", response_model=InvitationAcceptResponse)
 def accept_invitation_route(
     body: InvitationAcceptRequest,
