@@ -562,6 +562,7 @@
       "wrong": "Nicht ganz"
     },
     "streakAriaLabel": "Serie von {{count}} Tagen",
+    "streakPending": "Serie von {{count}} Tagen. Heute antworten, um sie fortzusetzen.",
     "title": "Die Frage von heute",
     "toast": {
       "correct": "Gut — genau die.",
@@ -617,6 +618,7 @@
     "googleLoginFailed": "Anmeldung mit Google fehlgeschlagen.",
     "marketingQuote": "Befleißige dich, Gott zu erzeigen einen rechtschaffenen, unsträflichen Arbeiter, der da recht teile das Wort der Wahrheit.",
     "marketingReference": "2. Timotheus 2,15",
+    "marketingPanelFooter": "© {{year}} {{appName}}",
     "toggleColorTheme": "Darstellung umschalten",
     "errors": {
       "registrationFailed": "Registrierung fehlgeschlagen. Bitte erneut versuchen.",
@@ -704,7 +706,6 @@
     "learningProgressDescription": "Ihre Ergebnisse auf einen Blick",
     "coursesCompleted": "Abgeschlossene Kurse",
     "certificatesEarned": "Erhaltene Zertifikate",
-    "viewAllCertificates": "Alle Zertifikate ansehen",
     "accountDetails": "Kontodaten",
     "memberSince": "Dabei seit",
     "preferences": "Einstellungen",

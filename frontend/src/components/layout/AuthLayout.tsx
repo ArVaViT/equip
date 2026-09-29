@@ -30,6 +30,7 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
   const { theme, toggleTheme } = useTheme()
   const { t } = useTranslation()
   const prefersReducedMotion = useReducedMotion()
+  const year = new Date().getFullYear()
   // `matchMedia` doubles as "is this a real browser": jsdom has neither it
   // nor WebGL. Same fence as the landing.
   const [canAnimate, setCanAnimate] = useState(false)
@@ -64,8 +65,13 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
        * The instinct was right: a verse in the serif is exactly the register.
        * What it needed was paper and ink instead of glow — set as the title
        * page of a book, with the rule doing the work the gradient was doing. */}
-      <aside className="relative hidden bg-card lg:flex lg:w-[480px] xl:w-[560px]">
-        <div className="relative z-10 flex flex-col p-12 text-ink">
+      {/* Solid paper above the scene (`z-10` over its `z-[5]`), not a pane
+          the leaves show through: translucent, the title page read as a
+          rendering fault — «выглядит как ошибка». The scene runs under its
+          edge, as if the page were laid on the table the leaves are on;
+          the hairline and a soft shadow say which is on top. */}
+      <aside className="relative z-10 hidden border-r border-edge bg-card shadow-[12px_0_32px_-20px_hsl(30_10%_12%/0.18)] dark:border-white/5 dark:shadow-[12px_0_32px_-16px_hsl(0_0%_0%/0.7)] lg:flex lg:w-[480px] xl:w-[560px]">
+        <div className="relative z-10 flex flex-col justify-between p-12 text-ink">
           <Link
             to="/"
             className="font-serif text-xl font-semibold tracking-[-0.01em] decoration-transparent underline-offset-4 transition-[text-decoration-color] duration-base hover:underline hover:decoration-ink/30"
@@ -73,9 +79,7 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
             {t("common.appName")}
           </Link>
 
-          {/* No colophon under the verse since 2026-09-28: «футер тут не
-              нужен». The verse holds the middle of the page on its own. */}
-          <div className="my-auto">
+          <div>
             <div className="h-px w-12 bg-border" />
             <blockquote className="mt-8 font-serif text-2xl font-normal italic leading-snug">
               {t("auth.marketingQuote")}
@@ -84,6 +88,11 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
               {t("auth.marketingReference")}
             </p>
           </div>
+
+          {/* Kept, small: without it the bottom of the page was empty. */}
+          <p className="text-xs text-ink-muted">
+            {t("auth.marketingPanelFooter", { year, appName: t("common.appName") })}
+          </p>
         </div>
       </aside>
 

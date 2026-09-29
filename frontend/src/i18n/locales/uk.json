@@ -568,6 +568,7 @@
       "wrong": "Не зовсім"
     },
     "streakAriaLabel": "Серія: {{count}} дн.",
+    "streakPending": "Серія: {{count}} дн. Дайте відповідь сьогодні, щоб продовжити.",
     "title": "Запитання на сьогодні",
     "toast": {
       "correct": "Добре — саме воно.",
@@ -629,6 +630,7 @@
     "googleLoginFailed": "Не вдалося увійти через Google.",
     "marketingQuote": "Старайся поставити себе перед Богом гідним, працівником бездоганним, що вірно навчає слова правди.",
     "marketingReference": "2 Тимофія 2:15",
+    "marketingPanelFooter": "© {{year}} {{appName}}",
     "toggleColorTheme": "Перемкнути тему",
     "errors": {
       "registrationFailed": "Не вдалося зареєструватися. Спробуйте ще раз.",
@@ -720,7 +722,6 @@
     "coursesCompleted": "Завершені курси",
     "learningProgressDescription": "Ваші здобутки одним поглядом",
     "certificatesEarned": "Отримані сертифікати",
-    "viewAllCertificates": "Переглянути всі сертифікати",
     "accountDetails": "Дані облікового запису",
     "memberSince": "З нами від",
     "preferences": "Налаштування",

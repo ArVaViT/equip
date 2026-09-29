@@ -562,6 +562,7 @@
       "wrong": "Not quite"
     },
     "streakAriaLabel": "{{count}}-day streak",
+    "streakPending": "{{count}}-day streak. Answer today to keep it going.",
     "title": "Today's question",
     "toast": {
       "correct": "Nice — that's the one.",
@@ -617,6 +618,7 @@
     "googleLoginFailed": "Google login failed.",
     "marketingQuote": "Study to shew thyself approved unto God, a workman that needeth not to be ashamed.",
     "marketingReference": "2 Timothy 2:15",
+    "marketingPanelFooter": "© {{year}} {{appName}}",
     "toggleColorTheme": "Toggle color theme",
     "errors": {
       "registrationFailed": "Registration failed. Please try again.",
@@ -704,7 +706,6 @@
     "learningProgressDescription": "Your achievements at a glance",
     "coursesCompleted": "Courses Completed",
     "certificatesEarned": "Certificates Earned",
-    "viewAllCertificates": "View all certificates",
     "accountDetails": "Account Details",
     "memberSince": "Member since",
     "preferences": "Preferences",

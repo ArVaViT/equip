@@ -521,3 +521,56 @@ class TestDailyChallengeEndpoints:
         assert body["current_streak"] == 0
         assert body["longest_streak"] == 0
         assert body["last_engaged_date"] is None
+
+    def test_a_reload_after_answering_shows_the_same_reveal(
+        self,
+        db: Session,
+        author: User,
+        student_client: TestClient,
+    ):
+        """A reload used to drop the verdict's substance: the chosen option
+        came back, the right one and the explanation did not."""
+        q = _seed_question_with_options(db, author_id=author.id)
+        _schedule_for_today(db, q, author.id)
+        correct = next(o for o in q.options if o.is_correct)
+        wrong = next(o for o in q.options if not o.is_correct)
+        submitted = student_client.post(
+            "/api/v1/daily-challenge/today/attempt",
+            json={"selected_option_id": str(wrong.id)},
+            headers={"Accept-Language": "en"},
+        ).json()
+
+        attempt = student_client.get("/api/v1/daily-challenge/today", headers={"Accept-Language": "en"}).json()[
+            "user_attempt"
+        ]
+        assert attempt["selected_option_id"] == str(wrong.id)
+        assert attempt["correct_option_id"] == str(correct.id)
+        assert attempt["explanation"] == submitted["explanation"]
+        assert attempt["explanation"]
+
+    @pytest.mark.parametrize(("days_ago", "shown"), [(0, 4), (1, 4), (2, 0), (30, 0)])
+    def test_the_streak_reads_as_of_today(
+        self,
+        db: Session,
+        student: User,
+        student_client: TestClient,
+        days_ago: int,
+        shown: int,
+    ):
+        """The stored counter only moves on the next answer. After a missed
+        day it still held the old run; the card showed a streak that was
+        already over."""
+        db.add(
+            DailyChallengeStreak(
+                user_id=student.id,
+                current_streak=4,
+                longest_streak=6,
+                last_engaged_date=utc_today() - timedelta(days=days_ago),
+            )
+        )
+        db.commit()
+
+        body = student_client.get("/api/v1/daily-challenge/streak").json()
+
+        assert body["current_streak"] == shown
+        assert body["longest_streak"] == 6

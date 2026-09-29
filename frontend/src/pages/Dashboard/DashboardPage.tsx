@@ -212,8 +212,9 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
             >
               <div className="flex items-center gap-3">
                 {/* The cover beside the title — «текст слабо смотрится».
-                    40px, inside the height the row already has. */}
-                <CourseThumb course={enrollment.course!} className="h-10" />
+                    56px: 40 read as a stamp («слишком мелко»), and 56 still
+                    fits the height the row already had. */}
+                <CourseThumb course={enrollment.course!} className="h-14" />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start gap-2">
                     <h3 className="min-w-0 flex-1 truncate font-serif text-sm font-medium leading-tight text-ink transition-colors duration-200 group-hover:text-brand">
@@ -338,15 +339,13 @@ export default function DashboardPage() {
             <MyCoursesSection onTourStart={startTour} />
           </div>
         </div>
-        {/* Right rail on lg+ as ``[auto auto minmax(0,1fr)]``. Verse and
-            Today are light, bounded cards (a single verse; at most three
-            events) so they take exactly their content height (``auto``)
-            and never grow an internal scrollbar. Daily Challenge — the
-            tallest, interactive card — takes the remaining space
-            (``minmax(0,1fr)``), so its question + four options sit in one
-            viewport. Nothing on the dashboard scrolls; the rail just
-            distributes by need instead of forcing equal slots. */}
-        <div className="flex flex-col gap-4 lg:grid lg:grid-rows-[auto_auto_minmax(0,1fr)] lg:gap-5 lg:overflow-hidden">
+        {/* Right rail on lg+: every card its own content height, the rail
+            packed to the top. The Daily Challenge used to take the rest of
+            the column (``minmax(0,1fr)``) and, once the page stopped
+            overflowing, that rest was a tall empty card under four options
+            — «места там слишком много». ``minmax(0,auto)`` still lets it
+            shrink and scroll inside on a short window. */}
+        <div className="flex flex-col gap-4 lg:grid lg:grid-rows-[auto_auto_minmax(0,auto)] lg:content-start lg:gap-5 lg:overflow-hidden">
           <div data-tour="verse-of-day" className="lg:min-h-0 lg:overflow-hidden">
             <VerseOfTheDayCard />
           </div>

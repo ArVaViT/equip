@@ -57,14 +57,6 @@ export function HeaderMobileSheet({ open, onOpenChange, user, isTeacher }: Props
                 <HeaderNavLink variant="sheet" to="/calendar" active={isActive("/calendar")} onNavigate={closeMobile}>
                   {t("header.calendar")}
                 </HeaderNavLink>
-                <HeaderNavLink
-                  variant="sheet"
-                  to="/certificates"
-                  active={isActive("/certificates")}
-                  onNavigate={closeMobile}
-                >
-                  {t("header.certificates")}
-                </HeaderNavLink>
                 {isTeacher && (
                   <HeaderNavLink variant="sheet" to="/teacher" active={isActive("/teacher")} onNavigate={closeMobile}>
                     {t("header.manageCourses")}

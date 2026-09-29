@@ -1,5 +1,5 @@
 import React from "react"
-import { render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { I18nextProvider } from "react-i18next"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -36,7 +36,7 @@ vi.mock("@/services/courses", () => ({
   coursesService: { getTeacherCourses: () => teacherCourses.impl() },
 }))
 
-import { TeacherCoursesCard } from "@/components/dashboard/TeacherCoursesCard"
+import { TEACHING_OPEN_KEY, TeacherCoursesCard } from "@/components/dashboard/TeacherCoursesCard"
 
 function Wrapper({ children }: { children: React.ReactNode }) {
   return (
@@ -68,7 +68,12 @@ describe("TeacherCoursesCard", () => {
   beforeEach(() => {
     auth.user = { id: "u-1", role: "teacher", full_name: "Пётр" }
     teacherCourses.impl = async () => []
+    localStorage.removeItem(TEACHING_OPEN_KEY)
   })
+
+  /** The list is collapsed by default; open it the way a teacher would. */
+  const openList = async () =>
+    fireEvent.click(await screen.findByRole("button", { name: /Courses you teach/ }))
 
   it("renders nothing for a student", () => {
     auth.user = { id: "s-1", role: "student", full_name: "Мария" }
@@ -82,6 +87,7 @@ describe("TeacherCoursesCard", () => {
       makeCourse({ id: "c-2", title: "Acts", status: "published" }),
     ]
     render(<TeacherCoursesCard />, { wrapper: Wrapper })
+    await openList()
     const first = await screen.findByRole("link", { name: /Introduction to Theology/ })
     expect(first).toHaveAttribute("href", "/teacher/courses/c-1")
     expect(screen.getByRole("link", { name: /Acts/ })).toHaveAttribute("href", "/teacher/courses/c-2")
@@ -94,10 +100,30 @@ describe("TeacherCoursesCard", () => {
     teacherCourses.impl = async () =>
       ["a", "b", "c", "d", "e"].map((id) => makeCourse({ id, title: `Course ${id}` }))
     render(<TeacherCoursesCard />, { wrapper: Wrapper })
+    await openList()
     await screen.findByRole("link", { name: /Course a/ })
     expect(screen.getByRole("link", { name: /Course c/ })).toBeInTheDocument()
     expect(screen.queryByRole("link", { name: /Course d/ })).not.toBeInTheDocument()
     expect(screen.getByRole("link", { name: /and 2 more courses/ })).toHaveAttribute("href", "/teacher")
+  })
+
+  it("starts collapsed with a count, opens on its title, and remembers", async () => {
+    teacherCourses.impl = async () => [makeCourse({ id: "c-1", title: "Acts" }), makeCourse({ id: "c-2", title: "Romans" })]
+    const { unmount } = render(<TeacherCoursesCard />, { wrapper: Wrapper })
+    const toggle = await screen.findByRole("button", { name: /Courses you teach/ })
+    await waitFor(() => expect(toggle).toHaveTextContent("2"))
+    expect(toggle).toHaveAttribute("aria-expanded", "false")
+    expect(screen.queryByRole("link", { name: /Acts/ })).not.toBeInTheDocument()
+    // The way into the teaching section is there either way.
+    expect(screen.getByRole("link", { name: /All my courses/ })).toHaveAttribute("href", "/teacher")
+
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute("aria-expanded", "true")
+    expect(screen.getByRole("link", { name: /Acts/ })).toBeInTheDocument()
+
+    unmount()
+    render(<TeacherCoursesCard />, { wrapper: Wrapper })
+    expect(await screen.findByRole("link", { name: /Acts/ })).toBeInTheDocument()
   })
 
   it("invites a teacher with no courses to create the first", async () => {
@@ -132,6 +158,7 @@ describe("TeacherCoursesCard", () => {
     teacherCourses.impl = async () => [makeCourse({ id: "c-9", title: "Деяния апостолов" })]
     render(<TeacherCoursesCard />, { wrapper: Wrapper })
     expect(await screen.findByTestId("teacher-courses-card")).toBeInTheDocument()
+    await openList()
     expect(await screen.findByRole("link", { name: /Деяния апостолов/ })).toHaveAttribute(
       "href",
       "/teacher/courses/c-9",

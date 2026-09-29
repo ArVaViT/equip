@@ -215,4 +215,59 @@ describe("DailyChallengeCard", () => {
     await screen.findByLabelText(/3-day streak/i)
     expect(await axe(container)).toHaveNoViolations()
   })
+
+  it("shows the streak before answering, unlit, and lights it once answered", async () => {
+    // «Огонёк должен всегда быть показан»: outline until today's answer,
+    // orange after. It used to appear only after answering.
+    stub({
+      getToday: vi.fn().mockResolvedValue(todayPayload()),
+      getStreak: vi.fn().mockResolvedValue({ current_streak: 3, longest_streak: 5, last_engaged_date: "2026-05-28" }),
+      submitAttempt: vi.fn().mockResolvedValue({
+        id: "a-1",
+        challenge_date: "2026-05-29",
+        selected_option_id: "o-2",
+        correct_option_id: "o-1",
+        is_correct: false,
+        explanation: "John 3:16 names the Son.",
+        streak_after: 4,
+        submitted_at: "2026-05-29T10:00:00Z",
+      }),
+    })
+    render(<DailyChallengeCard />, { wrapper: Wrapper })
+
+    const pending = await screen.findByRole("img", { name: /3/ })
+    expect(pending).toHaveTextContent("3")
+    expect(pending.querySelector("svg")?.getAttribute("class")).not.toContain("fill-warning")
+
+    await userEvent.click(screen.getByText("The law"))
+
+    const lit = await screen.findByRole("img", { name: /4/ })
+    expect(lit.querySelector("svg")?.getAttribute("class")).toContain("fill-warning")
+  })
+
+  it("after a reload, shows the right answer and the explanation again", async () => {
+    // The reload used to keep the chosen option and lose the rest.
+    stub({
+      getToday: vi.fn().mockResolvedValue(
+        todayPayload({
+          already_attempted: true,
+          user_attempt: {
+            id: "a-1",
+            selected_option_id: "o-2",
+            is_correct: false,
+            streak_after: 4,
+            submitted_at: "2026-05-29T10:00:00Z",
+            correct_option_id: "o-1",
+            explanation: "John 3:16 names the Son.",
+          },
+        }),
+      ),
+      getStreak: vi.fn().mockResolvedValue({ current_streak: 4, longest_streak: 5, last_engaged_date: "2026-05-29" }),
+    })
+    render(<DailyChallengeCard />, { wrapper: Wrapper })
+
+    expect(await screen.findByText("John 3:16 names the Son.")).toBeInTheDocument()
+    const lit = await screen.findByRole("img", { name: /4/ })
+    expect(lit.querySelector("svg")?.getAttribute("class")).toContain("fill-warning")
+  })
 })

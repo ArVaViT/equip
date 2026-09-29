@@ -193,6 +193,7 @@
     "googleLoginFailed": "Не удалось войти через Google.",
     "marketingQuote": "Постарайся представить себя пред Богом испытанным, работником без поругания, верно распределяющим слово истины.",
     "marketingReference": "2 Тимофею 2:15",
+    "marketingPanelFooter": "© {{year}} {{appName}}",
     "toggleColorTheme": "Переключить светлую или тёмную тему",
     "errors": {
       "registrationFailed": "Не удалось зарегистрироваться. Попробуйте снова.",
@@ -284,7 +285,6 @@
     "learningProgressDescription": "Ваши достижения с одного взгляда",
     "coursesCompleted": "Курсов завершено",
     "certificatesEarned": "Сертификатов получено",
-    "viewAllCertificates": "Все сертификаты",
     "accountDetails": "Сведения об аккаунте",
     "memberSince": "С нами с",
     "preferences": "Настройки",
@@ -2807,6 +2807,7 @@
       "wrong": "Не угадал"
     },
     "streakAriaLabel": "Серия: {{count}} дн.",
+    "streakPending": "Серия: {{count}} дн. Ответьте сегодня, чтобы продолжить.",
     "title": "Сегодняшний вопрос",
     "toast": {
       "correct": "Точно — это он.",

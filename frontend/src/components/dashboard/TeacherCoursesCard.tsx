@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
-import { ArrowRight, GraduationCap, Pencil } from "lucide-react"
+import { useState } from "react"
+import { ArrowRight, ChevronDown, GraduationCap, Pencil } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -11,9 +12,21 @@ import { CourseThumb } from "@/components/course/CourseThumb"
 import { coursesService } from "@/services/courses"
 import type { Course } from "@/types"
 import { canTeach } from "@/lib/roles"
+import { cn } from "@/lib/utils"
 
 /** How many courses the card names before it says "and N more". */
 const SHOWN = 3
+
+/** Where the teaching card remembers whether it was left open. */
+export const TEACHING_OPEN_KEY = "equip:dashboard:teaching-open"
+
+function readOpen(): boolean {
+  try {
+    return localStorage.getItem(TEACHING_OPEN_KEY) === "1"
+  } catch {
+    return false
+  }
+}
 
 const STATUS_KEY: Record<Course["status"], string> = {
   draft: "teacherDashboard.courseCard.statusDraft",
@@ -56,6 +69,8 @@ export function TeacherCoursesCard() {
     [user?.id, teaches, i18n.language],
   )
 
+  const [openChoice, setOpenChoice] = useState(readOpen)
+
   if (!teaches) return null
 
   const list = courses ?? []
@@ -66,6 +81,17 @@ export function TeacherCoursesCard() {
   // other invites the first.
   const failed = !loading && courses === null
   const empty = !loading && courses !== null && list.length === 0
+  const collapsible = !loading && !failed && list.length > 0
+  const open = !collapsible || openChoice
+  const toggle = () => {
+    const next = !openChoice
+    setOpenChoice(next)
+    try {
+      localStorage.setItem(TEACHING_OPEN_KEY, next ? "1" : "0")
+    } catch {
+      /* private mode: the choice lasts the page, not the visit */
+    }
+  }
 
   return (
     <section
@@ -79,21 +105,55 @@ export function TeacherCoursesCard() {
           page that talked, and the one link styled differently from
           «Открыть каталог» beside it («кнопки разные, хотя по идее это
           похожие кнопки»). */}
-      <header className="flex items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <GraduationCap className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-          <h2
-            id="teacher-courses-heading"
-            className="truncate font-serif text-sm font-semibold tracking-tight text-ink"
+      <header
+        className={cn(
+          "flex items-center justify-between gap-3 bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4",
+          open && "border-b border-edge",
+        )}
+      >
+        <h2 id="teacher-courses-heading" className="flex min-w-0 flex-1">
+          {/* The whole title opens and closes the list — «можно скрыть под
+              шеврон». Collapsed by default and remembered: a teacher who
+              lands here every day knows what they teach, and the courses
+              they are learning from sit right below. With no courses yet
+              there is nothing to hide, and the invitation to create the
+              first one stays in view. */}
+          <button
+            type="button"
+            onClick={toggle}
+            disabled={!collapsible}
+            aria-expanded={open}
+            aria-controls="teacher-courses-list"
+            className="group -mx-1 flex min-w-0 items-center gap-2.5 rounded-md px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-default"
           >
-            {t("dashboard.teaching.title")}
-          </h2>
-        </div>
+            <GraduationCap className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
+            <span className="truncate font-serif text-sm font-semibold tracking-tight text-ink">
+              {t("dashboard.teaching.title")}
+            </span>
+            {collapsible && (
+              <>
+                <span className="shrink-0 rounded-full bg-muted px-1.5 text-xs font-medium tabular-nums text-ink-muted">
+                  {list.length}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-ink-muted transition-transform duration-base group-hover:text-ink",
+                    open && "rotate-180",
+                  )}
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
+              </>
+            )}
+          </button>
+        </h2>
         <Link
           to="/teacher"
           className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand transition-opacity hover:opacity-80"
         >
-          {t("dashboard.teaching.openAll")}
+          {/* The arrow alone on a phone, as on the calendar card: the words
+              ran under the title and its chevron. They stay the link's name. */}
+          <span className="max-sm:sr-only">{t("dashboard.teaching.openAll")}</span>
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
         </Link>
       </header>
@@ -116,15 +176,15 @@ export function TeacherCoursesCard() {
         </div>
       )}
 
-      {!loading && !failed && shown.length > 0 && (
-        <ul className="divide-y divide-edge dark:divide-white/5">
+      {open && !loading && !failed && shown.length > 0 && (
+        <ul id="teacher-courses-list" className="divide-y divide-edge dark:divide-white/5">
           {shown.map((course) => (
             <li key={course.id}>
               <Link
                 to={`/teacher/courses/${course.id}`}
                 className="group flex items-center gap-3 px-4 py-2 transition-colors hover:bg-muted/40 sm:px-5"
               >
-                <CourseThumb course={course} />
+                <CourseThumb course={course} className="h-10" />
                 <span className="min-w-0 flex-1 truncate font-serif text-sm font-medium text-ink transition-colors group-hover:text-brand">
                   {course.title || t("dashboard.course")}
                 </span>
