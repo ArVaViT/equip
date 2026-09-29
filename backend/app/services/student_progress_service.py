@@ -24,7 +24,7 @@ from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt
 from app.models.user import User
-from app.schemas.locale import normalize_locale
+from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.course_structure import UNGROUPED_GROUP_ID, build_spine
 from app.services.grade_calculator import calculate_all_student_grades
 from app.services.translation.resolve_for_display import populate_module_texts, populate_spine_texts
@@ -573,7 +573,9 @@ def _latest_activity_by_user(db: Session, course_id: str) -> tuple[dict[str, dat
     )
 
 
-def build_course_student_progress(db: Session, course: Course, course_id: str) -> dict[str, Any]:
+def build_course_student_progress(
+    db: Session, course: Course, course_id: str, display_locale: LocaleCode | None = None
+) -> dict[str, Any]:
     """Teacher progress-board LIST payload: one lightweight summary row per
     enrolled student — scalars plus server-computed quiz/assignment/overall
     averages. The heavy per-chapter breakdown (``chapters``) and the full
@@ -586,7 +588,10 @@ def build_course_student_progress(db: Session, course: Course, course_id: str) -
     call, so this board can no longer disagree with the gradebook about the same
     student.
     """
-    populate_spine_texts(db, [course])
+    # The reader's language when they sent one, like the analytics page
+    # beside it: in an English interface the analytics read «Glossary in
+    # Your Pocket» and this page «Глоссарий в кармане» (2026-09-29).
+    populate_spine_texts(db, [course], display_locale=display_locale)
     chapters, module_map, _chapter_titles, _group_of = _load_course_structure(db, course_id)
     gradable_chapter_ids = [c.id for c in chapters if c.chapter_type in GRADABLE_CHAPTER_TYPES]
 
@@ -646,13 +651,18 @@ def build_course_student_progress(db: Session, course: Course, course_id: str) -
     }
 
 
-def build_student_chapter_detail(db: Session, course: Course, course_id: str, student_id: str) -> dict[str, Any]:
+def build_student_chapter_detail(
+    db: Session, course: Course, course_id: str, student_id: str, display_locale: LocaleCode | None = None
+) -> dict[str, Any]:
     """Per-student detail for the progress-board row expansion: the full
     per-chapter breakdown plus the quiz/assignment result arrays for ONE
     student. Every aggregation is scoped to ``student_id`` so this stays cheap
     regardless of roster size.
     """
-    populate_spine_texts(db, [course])
+    # The reader's language when they sent one, like the analytics page
+    # beside it: in an English interface the analytics read «Glossary in
+    # Your Pocket» and this page «Глоссарий в кармане» (2026-09-29).
+    populate_spine_texts(db, [course], display_locale=display_locale)
     chapters, _module_map, chapter_title_map, group_of = _load_course_structure(db, course_id)
     chapter_ids = [c.id for c in chapters]
 
@@ -694,7 +704,9 @@ def build_student_chapter_detail(db: Session, course: Course, course_id: str, st
     }
 
 
-def build_course_gradebook_matrix(db: Session, course: Course, course_id: str) -> dict[str, Any]:
+def build_course_gradebook_matrix(
+    db: Session, course: Course, course_id: str, display_locale: LocaleCode | None = None
+) -> dict[str, Any]:
     """Full students x chapters matrix for the teacher GRADEBOOK.
 
     Unlike the progress-board list (which is a per-student summary), the
@@ -704,7 +716,10 @@ def build_course_gradebook_matrix(db: Session, course: Course, course_id: str) -
     detail carries are omitted — the gradebook reads only the per-chapter
     ``quiz_result`` / ``assignment_result`` embedded in each chapter cell.
     """
-    populate_spine_texts(db, [course])
+    # The reader's language when they sent one, like the analytics page
+    # beside it: in an English interface the analytics read «Glossary in
+    # Your Pocket» and this page «Глоссарий в кармане» (2026-09-29).
+    populate_spine_texts(db, [course], display_locale=display_locale)
     chapters, module_map, _chapter_title_map, group_of = _load_course_structure(db, course_id)
     chapter_ids = [c.id for c in chapters]
     gradable_chapter_ids = [c.id for c in chapters if c.chapter_type in GRADABLE_CHAPTER_TYPES]

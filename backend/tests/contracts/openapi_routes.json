@@ -2887,6 +2887,10 @@
     "path": "/api/v1/progress/course/{course_id}/gradebook",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
         "course_id",
         "path"
       ]
@@ -2917,6 +2921,10 @@
     "path": "/api/v1/progress/course/{course_id}/students",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
         "course_id",
         "path"
       ]
@@ -2931,6 +2939,10 @@
     "method": "GET",
     "path": "/api/v1/progress/course/{course_id}/students/{student_id}/detail",
     "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
       [
         "course_id",
         "path"

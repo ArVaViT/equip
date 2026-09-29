@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Header, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -20,6 +20,7 @@ from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course
 from app.models.enrollment import Enrollment
 from app.models.user import User, UserRole
+from app.schemas.locale import normalize_locale
 from app.services.audit_service import log_action
 from app.services.course_service import sync_enrollment_progress
 from app.services.domain_access import resolve_chapter_course_id
@@ -72,9 +73,12 @@ def get_course_student_progress(
     course_id: str,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
 ):
     course = verify_course_owner(db, course_id, teacher)
-    return build_course_student_progress(db, course, course_id)
+    return build_course_student_progress(
+        db, course, course_id, display_locale=normalize_locale(accept_language) if accept_language else None
+    )
 
 
 @router.get("/course/{course_id}/gradebook")
@@ -82,6 +86,7 @@ def get_course_gradebook_matrix(
     course_id: str,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
 ):
     """Full students x chapters matrix for the gradebook spreadsheet.
 
@@ -90,7 +95,9 @@ def get_course_gradebook_matrix(
     breakdown for the whole roster.
     """
     course = verify_course_owner(db, course_id, teacher)
-    return build_course_gradebook_matrix(db, course, course_id)
+    return build_course_gradebook_matrix(
+        db, course, course_id, display_locale=normalize_locale(accept_language) if accept_language else None
+    )
 
 
 @router.get("/course/{course_id}/students/{student_id}/detail")
@@ -99,6 +106,7 @@ def get_student_progress_detail(
     student_id: UUID,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
 ):
     """Per-chapter breakdown + quiz/assignment results for ONE student.
 
@@ -115,7 +123,13 @@ def get_student_progress_detail(
             message="Student is not enrolled in this course",
             context={"resource_type": "enrollment", "course_id": course_id},
         )
-    return build_student_chapter_detail(db, course, course_id, str(student_id))
+    return build_student_chapter_detail(
+        db,
+        course,
+        course_id,
+        str(student_id),
+        display_locale=normalize_locale(accept_language) if accept_language else None,
+    )
 
 
 @router.put("/chapter/{chapter_id}/read")
