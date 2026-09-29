@@ -293,3 +293,10 @@ def test_post_token_stamps_calendar_ical_min_iat(student: User, secret: str, db:
     finally:
         app.dependency_overrides.pop(deps.get_current_user, None)
         app.dependency_overrides.pop(get_db, None)
+
+
+def test_the_feed_is_named_in_the_subscribers_language() -> None:
+    # The feed's name was English for everybody, in a list of calendars
+    # the subscriber otherwise reads in their own language.
+    ics = render_calendar([_calendar_event()], user_email="x@example.com", locale="ru")
+    assert "X-WR-CALNAME:Календарь Equip (x@example.com)\r\n" in ics
