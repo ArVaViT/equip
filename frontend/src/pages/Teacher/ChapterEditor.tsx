@@ -155,6 +155,23 @@ export default function ChapterEditor() {
   /** Published course: an edit waits for every language (by design). */
   const [coursePublished, setCoursePublished] = useState(false)
   const [typePickerOpen, setTypePickerOpen] = useState(false)
+  /** The course's name for the breadcrumb, which read a bare «Course». */
+  const [courseTitle, setCourseTitle] = useState("")
+  useEffect(() => {
+    if (!courseId) return
+    let cancelled = false
+    // Not awaited by the page: a crumb is not worth holding the editor for,
+    // and on failure the generic word stays.
+    coursesService
+      .getCourseForEdit(courseId)
+      .then((c) => {
+        if (!cancelled) setCourseTitle(c.title)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [courseId])
   /** Why the last save failed, for the status's tooltip. */
   const [errorDetail, setErrorDetail] = useState("")
 
@@ -479,7 +496,7 @@ export default function ChapterEditor() {
         <Link
           to="/teacher"
           onClick={(e) => handleNavClick(e, "/teacher")}
-          className="hidden transition-colors hover:text-ink sm:inline"
+          className="hidden shrink-0 whitespace-nowrap transition-colors hover:text-ink sm:inline"
         >
           {t("chapterEditor.breadcrumb.myCourses")}
         </Link>
@@ -487,9 +504,9 @@ export default function ChapterEditor() {
         <Link
           to={`/teacher/courses/${courseId}`}
           onClick={(e) => handleNavClick(e, `/teacher/courses/${courseId}`)}
-          className="hidden transition-colors hover:text-ink sm:inline"
+          className="hidden max-w-[16rem] truncate transition-colors hover:text-ink sm:inline"
         >
-          {t("chapterEditor.breadcrumb.course")}
+          {courseTitle || t("chapterEditor.breadcrumb.course")}
         </Link>
         {/* The module crumb only when there is a module. A lesson that
             sits straight in the course reads
