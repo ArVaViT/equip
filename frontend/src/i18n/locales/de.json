@@ -2772,6 +2772,10 @@
     "loading": "Ihre Note wird geladen …",
     "setByTeacher": "vom Dozenten gesetzt",
     "finalIs": "Endnote: {{grade}}",
+    "summary": {
+      "checked": "{{done}} von {{total}} bewertet",
+      "hasComment": "Ihre Lehrkraft hat eine Notiz hinterlassen"
+    },
     "state": {
       "byCompletion": "Dieser Kurs wird nach Abschluss bewertet — siehe Ihren Fortschritt oben.",
       "notGradedYet": "Es wurde noch nichts bewertet.",

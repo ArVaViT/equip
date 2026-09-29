@@ -251,7 +251,10 @@ export function DailyChallengeCard() {
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
+      {/* Centred in the height the dashboard rail gives it: the rail shares
+          its room between three cards, and this one may get more than it
+          needs. */}
+      <div className="flex min-h-0 flex-1 flex-col [justify-content:safe_center] gap-2.5 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
         {loading ? (
           <div className="space-y-2">
             <Skeleton className="h-4 w-3/4" />

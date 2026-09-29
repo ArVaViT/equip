@@ -79,7 +79,8 @@ export function VerseOfTheDayCard() {
         </div>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
+      {/* Centred in whatever height the dashboard rail gives it. */}
+      <div className="flex min-h-0 flex-1 flex-col [justify-content:safe_center] overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
         {loading || !verse ? (
           <div className="space-y-2">
             <Skeleton className="h-3.5 w-full" />

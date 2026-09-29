@@ -184,7 +184,7 @@ export function TeacherCoursesCard() {
                 to={`/teacher/courses/${course.id}`}
                 className="group flex items-center gap-3 px-4 py-2 transition-colors hover:bg-muted/40 sm:px-5"
               >
-                <CourseThumb course={course} className="h-10" />
+                <CourseThumb course={course} className="h-12 sm:h-14" />
                 <span className="min-w-0 flex-1 truncate font-serif text-sm font-medium text-ink transition-colors group-hover:text-brand">
                   {course.title || t("dashboard.course")}
                 </span>

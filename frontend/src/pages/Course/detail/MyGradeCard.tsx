@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle2, ChevronDown, Circle, Clock, HeartHandshake, Loader2, Undo2 } from "lucide-react"
+import { Award, CheckCircle2, ChevronDown, Circle, Clock, GraduationCap, HeartHandshake, Loader2, MessageSquareText, Undo2 } from "lucide-react"
 import { gradesService } from "@/services/grades"
 import type { CourseStructure } from "@/lib/courseStructure"
 import type { MyCourseGrade, MyGradeItem } from "@/types"
@@ -102,28 +102,57 @@ export function MyGradeCard({
   const display = myGradeDisplay(grade, t)
   const items = outstandingItems(grade.items)
 
-  // Open when there is something to read, folded when there is not.
-  // On a course somebody just joined this card says "graded on
-  // completion, 0%" and takes a screenful to say it; on a course with a
-  // mark and a teacher's note, hiding it would bury the one thing the
-  // student came to see.
-  const worthOpening = display.headline !== null || grade.comment !== null
-  const expanded = openedByHand ?? worthOpening
+  // Folded by default, and the fold says the essentials: the grade, how
+  // much work is checked, whether the teacher wrote something, whether the
+  // certificate is held back. Open, the card took a screen and a half of
+  // the course page for what those four signs say in one line — «занимает
+  // много места, надо значительно уменьшить».
+  const expanded = openedByHand ?? false
+  const counted = grade.items.filter((i) => i.status !== "excused")
+  const checked = counted.filter((i) => i.status === "graded").length
+  const blocked = grade.certificate_blockers.length > 0
   const setExpanded = (next: (open: boolean) => boolean) => setOpenedByHand(next(expanded))
 
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader className="px-4 py-3 sm:px-5">
         <button
           type="button"
           onClick={() => setExpanded((open) => !open)}
           aria-expanded={expanded}
-          className="flex w-full items-center justify-between gap-2 text-left"
+          className="flex w-full items-center justify-between gap-3 text-left"
         >
-          <CardTitle className="font-serif text-lg">{t("myGrade.title")}</CardTitle>
-          <span className="flex items-center gap-2 text-sm text-ink-muted">
-            {!expanded && display.headline !== null && (
-              <span className="font-medium tabular-nums text-ink">{display.headline}</span>
+          <span className="flex min-w-0 items-center gap-2.5">
+            <GraduationCap className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
+            <CardTitle className="truncate font-serif text-base">{t("myGrade.title")}</CardTitle>
+          </span>
+          <span className="flex shrink-0 items-center gap-2 text-sm text-ink-muted">
+            {display.headline !== null && (
+              <span className="rounded-full bg-muted px-2.5 py-0.5 text-sm font-semibold tabular-nums text-ink">
+                {display.headline}
+              </span>
+            )}
+            {counted.length > 0 && (
+              <span
+                className="inline-flex items-center gap-1 text-xs tabular-nums"
+                title={t("myGrade.summary.checked", { done: checked, total: counted.length })}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                {checked}/{counted.length}
+                <span className="sr-only">{t("myGrade.summary.checked", { done: checked, total: counted.length })}</span>
+              </span>
+            )}
+            {grade.comment && (
+              <span title={t("myGrade.summary.hasComment")}>
+                <MessageSquareText className="h-4 w-4 text-info" strokeWidth={1.75} aria-hidden />
+                <span className="sr-only">{t("myGrade.summary.hasComment")}</span>
+              </span>
+            )}
+            {blocked && (
+              <span title={t("myGrade.certificate.notYetTitle")}>
+                <Award className="h-4 w-4 text-warning" strokeWidth={1.75} aria-hidden />
+                <span className="sr-only">{t("myGrade.certificate.notYetTitle")}</span>
+              </span>
             )}
             <ChevronDown
               className={`h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
@@ -133,26 +162,21 @@ export function MyGradeCard({
           </span>
         </button>
       </CardHeader>
-      <CardContent className={`space-y-4 ${expanded ? "" : "hidden"}`}>
-        <div>
-          <p className="text-3xl font-bold tabular-nums">
-            {display.headline ?? "—"}
-            {display.isManual && (
-              <span className="ml-2 align-middle text-xs font-medium text-info">
-                {t("myGrade.setByTeacher")}
-              </span>
+      <CardContent className={`space-y-3 px-4 pb-4 pt-0 sm:px-5 ${expanded ? "" : "hidden"}`}>
+        {/* The number is in the header now; here only what explains it. */}
+        {(display.isManual || display.finalText || display.noteKey) && (
+          <div className="space-y-0.5 text-sm text-ink-muted">
+            {display.isManual && <p className="text-xs font-medium text-info">{t("myGrade.setByTeacher")}</p>}
+            {/* «Итоговая» appears the day it diverges — never for the first
+                time when a certificate is refused (D10.1). */}
+            {display.finalText && (
+              <p>
+                {t("myGrade.finalIs", { grade: display.finalText })} · {t("gradebook.pair.explainer")}
+              </p>
             )}
-          </p>
-          {/* «Итоговая» appears the day it diverges — never for the first time
-              when a certificate is refused (D10.1). */}
-          {display.finalText && (
-            <p className="mt-1 text-sm text-ink-muted">
-              {t("myGrade.finalIs", { grade: display.finalText })} ·{" "}
-              {t("gradebook.pair.explainer")}
-            </p>
-          )}
-          {display.noteKey && <p className="mt-1 text-sm text-ink-muted">{t(display.noteKey)}</p>}
-        </div>
+            {display.noteKey && <p>{t(display.noteKey)}</p>}
+          </div>
+        )}
 
         {/* The teacher's note written TO the student. The API has shipped this
             field all along and the app dropped it on the floor (D10.3). */}
@@ -171,7 +195,7 @@ export function MyGradeCard({
           courseId={courseId}
         />
 
-        <ul className="space-y-1.5">
+        <ul className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
           {items.map((item) => {
             const Icon = ICON_BY_STATUS[item.status]
             return (
