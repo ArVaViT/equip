@@ -179,7 +179,7 @@ def export_course_pdf(
     # shipping with no lesson text in it at all, in any language.
     _attach_localized_blocks(db, course, display_locale=display_locale)
 
-    pdf_bytes = render_course_pdf(course)
+    pdf_bytes = render_course_pdf(course, display_locale)
 
     safe_title = "".join(c for c in (course.title or "") if c.isascii() and (c.isalnum() or c in " -_"))[:50].strip()
     if not safe_title:
