@@ -34,7 +34,30 @@ logger = logging.getLogger(__name__)
 I18N_KEY = "i18n"
 
 
-def notification_text(key: str, **params: str) -> dict[str, Any]:
+#: A parameter that is itself a catalog key: ``{TRANSLATE: "event_type.exam"}``.
+#: Stored like that it is translated when the row is shown, in the reader's
+#: language at that moment — not frozen in the language they read when the
+#: row was written. «Neues Ereignis: Экзамен „…“» after a switch to German
+#: was the frozen kind (2026-09-29).
+TRANSLATE = "$t"
+
+
+def translatable(key: str) -> dict[str, str]:
+    """A parameter that is a catalog key, translated at render."""
+    return {TRANSLATE: key}
+
+
+def resolve_params(params: dict[str, Any], locale: str) -> dict[str, Any]:
+    """Every ``translatable`` parameter in the reader's language."""
+    return {
+        name: t(locale, value[TRANSLATE])
+        if isinstance(value, dict) and isinstance(value.get(TRANSLATE), str)
+        else value
+        for name, value in params.items()
+    }
+
+
+def notification_text(key: str, **params: Any) -> dict[str, Any]:
     """The recipe for one notification's title and message.
 
     ``key`` is the catalog prefix — ``notif.assignment_graded`` resolves
@@ -56,6 +79,7 @@ def render_notification(notification: Notification, locale: str) -> tuple[str, s
     params = recipe.get("params") or {}
     if not isinstance(params, dict):
         params = {}
+    params = resolve_params(params, locale)
     try:
         title = t(locale, f"{key}.title", **params)
         message = t(locale, f"{key}.body", **params)
