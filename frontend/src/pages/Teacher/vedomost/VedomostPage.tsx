@@ -32,7 +32,7 @@ function formatDate(iso: string | null): string {
  * for a document to be generated differently than it was displayed.
  */
 function VedomostPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { courseId } = useParams<{ courseId: string }>()
   const [params] = useSearchParams()
   const cohortId = params.get("cohort_id")
@@ -122,6 +122,12 @@ function VedomostPage() {
     )
   }
 
+  // The document speaks its own language. The sheet is frozen in English
+  // by decision (`SHEET_LOCALE`), and its labels came from the interface's
+  // catalogue — «Курс», «Преподаватель» over an English course name. The
+  // page around it (buttons, errors) stays in the reader's language.
+  const docT = i18n.getFixedT(sheet.locale || "en")
+
   return (
     <div className="container mx-auto max-w-4xl px-4 py-6">
       <div className="no-print mb-6 flex items-center justify-between gap-3">
@@ -137,20 +143,20 @@ function VedomostPage() {
       <article className="vedomost bg-surface p-8">
         <header className="mb-6 text-center">
           <p className="text-base font-semibold uppercase tracking-wide">
-            {sheet.school_name ?? t("vedomost.schoolUnnamed")}
+            {sheet.school_name ?? docT("vedomost.schoolUnnamed")}
           </p>
           {sheet.school_city && <p className="text-sm">{sheet.school_city}</p>}
-          <h1 className="mt-6 font-serif text-xl font-bold">{t("vedomost.title")}</h1>
+          <h1 className="mt-6 font-serif text-xl font-bold">{docT("vedomost.title")}</h1>
         </header>
 
         <dl className="mb-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-          <dt className="font-medium">{t("vedomost.course")}</dt>
+          <dt className="font-medium">{docT("vedomost.course")}</dt>
           <dd>{sheet.course_title ?? sheet.course_id}</dd>
-          <dt className="font-medium">{t("vedomost.teacher")}</dt>
+          <dt className="font-medium">{docT("vedomost.teacher")}</dt>
           <dd>{sheet.teacher_name ?? "—"}</dd>
-          <dt className="font-medium">{t("vedomost.cohort")}</dt>
+          <dt className="font-medium">{docT("vedomost.cohort")}</dt>
           <dd>
-            {sheet.cohort_name ?? t("vedomost.noCohort")}
+            {sheet.cohort_name ?? docT("vedomost.noCohort")}
             {sheet.cohort_start && (
               <span className="text-ink-muted">
                 {" "}
@@ -160,18 +166,18 @@ function VedomostPage() {
           </dd>
           {sheet.academic_hours !== null && (
             <>
-              <dt className="font-medium">{t("vedomost.hours")}</dt>
+              <dt className="font-medium">{docT("vedomost.hours")}</dt>
               <dd>{sheet.academic_hours}</dd>
             </>
           )}
-          <dt className="font-medium">{t("vedomost.passLine")}</dt>
+          <dt className="font-medium">{docT("vedomost.passLine")}</dt>
           <dd>{sheet.pass_threshold ? formatPercent(Number(sheet.pass_threshold), 0) : "—"}</dd>
         </dl>
 
         {/* A document that changed after signature has to say so on its face. */}
         {sheet.corrects_sheet_id && (
           <p className="marker mb-4 px-3 py-2 text-sm">
-            {t("vedomost.wasReopened", { reason: sheet.correction_reason ?? "" })}
+            {docT("vedomost.wasReopened", { reason: sheet.correction_reason ?? "" })}
           </p>
         )}
 
@@ -179,8 +185,8 @@ function VedomostPage() {
           <thead>
             <tr className="border-y-2 border-ink">
               <th className="w-10 py-2 text-left font-medium">№</th>
-              <th className="py-2 text-left font-medium">{t("vedomost.student")}</th>
-              <th className="w-40 py-2 text-left font-medium">{t("vedomost.resultHeader")}</th>
+              <th className="py-2 text-left font-medium">{docT("vedomost.student")}</th>
+              <th className="w-40 py-2 text-left font-medium">{docT("vedomost.resultHeader")}</th>
             </tr>
           </thead>
           <tbody>
@@ -194,7 +200,7 @@ function VedomostPage() {
                     {result.text}
                     {/* The glyph a signing director should not have to ask about. */}
                     {result.isOverride && (
-                      <span className="marker ml-2 px-1 text-xs">{t("vedomost.byHand")}</span>
+                      <span className="marker ml-2 px-1 text-xs">{docT("vedomost.byHand")}</span>
                     )}
                   </td>
                 </tr>
@@ -204,22 +210,22 @@ function VedomostPage() {
         </table>
 
         {sheet.rows.some((r) => r.is_override) && (
-          <p className="mt-3 text-xs text-ink-muted">{t("vedomost.byHandLegend")}</p>
+          <p className="mt-3 text-xs text-ink-muted">{docT("vedomost.byHandLegend")}</p>
         )}
 
         <div className="signatures mt-12 grid grid-cols-2 gap-12 text-sm">
           <div>
             <div className="border-b border-ink pb-8" />
-            <p className="mt-1">{t("vedomost.signTeacher")}</p>
+            <p className="mt-1">{docT("vedomost.signTeacher")}</p>
           </div>
           <div>
             <div className="border-b border-ink pb-8" />
-            <p className="mt-1">{t("vedomost.signDirector")}</p>
+            <p className="mt-1">{docT("vedomost.signDirector")}</p>
           </div>
         </div>
 
         <p className="mt-8 text-xs text-ink-muted">
-          {t("vedomost.closedOn", { date: formatDate(sheet.finalized_at) })}
+          {docT("vedomost.closedOn", { date: formatDate(sheet.finalized_at) })}
         </p>
       </article>
     </div>
