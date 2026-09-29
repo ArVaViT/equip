@@ -1774,11 +1774,6 @@
       "intoModule": "Move into “{{title}}”",
       "untitledModule": "Untitled module"
     },
-    "confirmDelete": {
-      "title": "Delete this lesson?",
-      "description": "The lesson and everything written in it will be removed.",
-      "confirm": "Delete"
-    },
     "toast": {
       "added": "Lesson added",
       "addFailed": "Failed to add the lesson",
@@ -1791,7 +1786,10 @@
       "reorderFailed": "Failed to save lesson order",
       "movedToCourse": "Lesson taken out of the module — it stays in the course",
       "movedToModule": "Lesson moved into “{{title}}”",
-      "moveFailed": "Failed to move the lesson"
+      "moveFailed": "Failed to move the lesson",
+      "undo": "Undo",
+      "restored": "Lesson restored",
+      "restoreFailed": "Could not restore the lesson"
     },
     "renameAria": "Rename lesson {{title}}",
     "renameTooltip": "Rename"
@@ -1818,7 +1816,7 @@
     "clear": "Clear",
     "noChapters": {
       "title": "No lessons in this module yet",
-      "description": "Pick a lesson type below. Reading lessons hold your written and visual content; quizzes, exams, and assignments each measure understanding differently."
+      "description": "Pick a lesson type below. “Reading” holds your written and visual content; quizzes, exams, and assignments each measure understanding differently."
     }
   },
   "courseEditor": {

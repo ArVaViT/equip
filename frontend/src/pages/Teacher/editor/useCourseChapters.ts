@@ -10,15 +10,11 @@ import { makeChapterSchema } from "@/lib/validations/course"
 import { chapterEditHref, readCourseStructure } from "@/lib/courseStructure"
 import type { ChapterType } from "@/lib/chapterTypes"
 import type { Chapter, Course } from "@/types"
-import type { useConfirm } from "@/components/ui/alert-dialog"
-
-type Confirm = ReturnType<typeof useConfirm>
 
 interface Args {
   courseId: string | undefined
   course: Course | null
   setCourse: Dispatch<SetStateAction<Course | null>>
-  confirm: Confirm
 }
 
 export interface CourseChapters {
@@ -57,7 +53,6 @@ export function useCourseChapters({
   courseId,
   course,
   setCourse,
-  confirm,
 }: Args): CourseChapters {
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -180,13 +175,10 @@ export function useCourseChapters({
   const deleteChapter = useCallback(
     async (chapterId: string) => {
       if (!courseId) return
-      const ok = await confirm({
-        title: t("lessons.confirmDelete.title"),
-        description: t("lessons.confirmDelete.description"),
-        confirmLabel: t("lessons.confirmDelete.confirm"),
-        tone: "destructive",
-      })
-      if (!ok) return
+      // No "are you sure?" dialog in front of it any more: the server only
+      // ever set `deleted_at`, so the honest offer is an "Undo" after it,
+      // not a warning before it that the lesson «будет удалён».
+      const before = course
       try {
         await coursesService.deleteCourseChapter(courseId, chapterId)
         setCourse((prev) =>
@@ -200,12 +192,30 @@ export function useCourseChapters({
               }
             : prev,
         )
-        toast({ title: t("lessons.toast.deleted"), variant: "success" })
+        toast({
+          title: t("lessons.toast.deleted"),
+          variant: "success",
+          duration: 8000,
+          action: {
+            label: t("lessons.toast.undo"),
+            onClick: () => {
+              void coursesService
+                .restoreCourseChapter(courseId, chapterId)
+                .then(() => {
+                  // Back exactly where it was: the course as it stood
+                  // before the delete.
+                  if (before) setCourse(before)
+                  toast({ title: t("lessons.toast.restored"), variant: "success" })
+                })
+                .catch(() => toast({ title: t("lessons.toast.restoreFailed"), variant: "destructive" }))
+            },
+          },
+        })
       } catch {
         toast({ title: t("lessons.toast.deleteFailed"), variant: "destructive" })
       }
     },
-    [confirm, courseId, setCourse, t],
+    [course, courseId, setCourse, t],
   )
 
   const moveChapter = useCallback(

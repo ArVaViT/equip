@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DateTimePicker } from "@/components/ui/datetime-picker";
 import { Label } from "@/components/ui/label";
-import { useConfirm } from "@/components/ui/alert-dialog";
 import { EmptyState, ErrorState, InlineEdit, PageHeader } from "@/components/patterns";
 import { useUserTour } from "@/hooks/useUserTour";
 import { moduleEditorSteps } from "@/lib/tourSteps";
@@ -20,7 +19,6 @@ import { useModuleEditor } from "./moduleEditor/useModuleEditor";
 export default function ModuleEditor() {
   const { courseId, moduleId } = useParams<{ courseId: string; moduleId: string }>();
   const navigate = useNavigate();
-  const confirm = useConfirm();
   const { t } = useTranslation();
 
   const {
@@ -38,7 +36,7 @@ export default function ModuleEditor() {
     ungroupChapter,
     updateChapterLocal,
     handleChapterDragEnd,
-  } = useModuleEditor(courseId, moduleId, confirm);
+  } = useModuleEditor(courseId, moduleId);
 
   useUserTour({
     tourId: "module-editor-v1",

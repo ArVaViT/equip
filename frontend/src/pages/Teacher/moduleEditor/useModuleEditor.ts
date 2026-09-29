@@ -11,10 +11,8 @@ import { isoToLocalInput, localInputToIso } from "@/i18n/format";
 import { makeChapterSchema, makeModuleSchema } from "@/lib/validations/course";
 import { chapterEditHref } from "@/lib/courseStructure";
 import type { Chapter, Module } from "@/types";
-import type { useConfirm } from "@/components/ui/alert-dialog";
 import type { ChapterType } from "@/lib/chapterTypes";
 
-type ConfirmFn = ReturnType<typeof useConfirm>;
 
 /**
  * Encapsulates everything behind the Module editor page: loading the
@@ -27,7 +25,6 @@ type ConfirmFn = ReturnType<typeof useConfirm>;
 export function useModuleEditor(
   courseId: string | undefined,
   moduleId: string | undefined,
-  confirm: ConfirmFn,
 ) {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -208,13 +205,8 @@ export function useModuleEditor(
 
   const deleteChapter = async (chId: string) => {
     if (!courseId || !moduleId) return;
-    const ok = await confirm({
-      title: t("lessons.confirmDelete.title"),
-      description: t("lessons.confirmDelete.description"),
-      confirmLabel: t("lessons.confirmDelete.confirm"),
-      tone: "destructive",
-    });
-    if (!ok) return;
+    // "Undo" after, not "are you sure?" before — as on the course page.
+    const before = mod;
     try {
       await coursesService.deleteCourseChapter(courseId, chId);
       setMod((prev) =>
@@ -222,7 +214,23 @@ export function useModuleEditor(
           ? { ...prev, chapters: prev.chapters?.filter((c) => c.id !== chId) }
           : prev,
       );
-      toast({ title: t("lessons.toast.deleted"), variant: "success" });
+      toast({
+        title: t("lessons.toast.deleted"),
+        variant: "success",
+        duration: 8000,
+        action: {
+          label: t("lessons.toast.undo"),
+          onClick: () => {
+            void coursesService
+              .restoreCourseChapter(courseId, chId)
+              .then(() => {
+                if (before) setMod(before);
+                toast({ title: t("lessons.toast.restored"), variant: "success" });
+              })
+              .catch(() => toast({ title: t("lessons.toast.restoreFailed"), variant: "destructive" }));
+          },
+        },
+      });
     } catch {
       toast({
         title: t("lessons.toast.deleteFailed"),

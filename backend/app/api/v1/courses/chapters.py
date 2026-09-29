@@ -32,6 +32,7 @@ from app.services.course_service import (
     delete_chapter,
     get_chapter,
     get_module,
+    restore_chapter,
     update_chapter,
 )
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
@@ -182,6 +183,32 @@ def remove_chapter_of_course(
 ) -> None:
     verify_course_owner(db, course_id, teacher.id)
     delete_chapter(db, _chapter_or_404(db, course_id, chapter_id))
+
+
+@router.post("/{course_id}/chapters/{chapter_id}/restore", response_model=ChapterResponse)
+def restore_chapter_of_course(
+    course_id: str,
+    chapter_id: str,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+) -> Chapter:
+    """Undo a delete. The editor offers it for a few seconds after one;
+    until then a deleted lesson could only come back through the database.
+    """
+    verify_course_owner(db, course_id, teacher.id)
+    chapter = (
+        db.query(Chapter)
+        .filter(Chapter.id == chapter_id, Chapter.course_id == course_id, Chapter.deleted_at.isnot(None))
+        .first()
+    )
+    if chapter is None:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message=f"No deleted chapter '{chapter_id}' in course '{course_id}'",
+            context={"resource_type": "chapter", "chapter_id": chapter_id, "course_id": course_id},
+        )
+    return restore_chapter(db, chapter)
 
 
 # ---------------------------------------------------------------------------

@@ -1490,6 +1490,25 @@
   },
   {
     "method": "POST",
+    "path": "/api/v1/courses/{course_id}/chapters/{chapter_id}/restore",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
     "path": "/api/v1/courses/{course_id}/clone",
     "params": [
       [

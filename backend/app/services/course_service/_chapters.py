@@ -168,6 +168,21 @@ def update_chapter(db: Session, chapter: Chapter, data: ChapterUpdate) -> Chapte
     return chapter
 
 
+def restore_chapter(db: Session, chapter: Chapter) -> Chapter:
+    """Bring a deleted lesson back — the "Undo" after a delete.
+
+    Deleting only ever stamped ``deleted_at``; the lesson, its blocks, its
+    quiz and every translation stayed where they were, so nothing needs
+    rebuilding. The progress resync runs again for the same reason it runs
+    on delete: the course's gradable chapters just changed.
+    """
+    chapter.deleted_at = None
+    db.commit()
+    db.refresh(chapter)
+    _resync_progress_for_chapter(db, chapter)
+    return chapter
+
+
 def delete_chapter(db: Session, chapter: Chapter) -> None:
     chapter.deleted_at = datetime.now(UTC)
     db.commit()

@@ -1774,11 +1774,6 @@
       "intoModule": "Nach „{{title}}“ verschieben",
       "untitledModule": "Modul ohne Titel"
     },
-    "confirmDelete": {
-      "title": "Diese Lektion löschen?",
-      "description": "Die Lektion und alles, was darin steht, wird entfernt.",
-      "confirm": "Löschen"
-    },
     "toast": {
       "added": "Lektion hinzugefügt",
       "addFailed": "Lektion konnte nicht hinzugefügt werden",
@@ -1791,7 +1786,10 @@
       "reorderFailed": "Reihenfolge der Lektionen konnte nicht gespeichert werden",
       "movedToCourse": "Lektion aus dem Modul genommen — sie bleibt im Kurs",
       "movedToModule": "Lektion nach „{{title}}“ verschoben",
-      "moveFailed": "Lektion konnte nicht verschoben werden"
+      "moveFailed": "Lektion konnte nicht verschoben werden",
+      "undo": "Rückgängig",
+      "restored": "Lektion wiederhergestellt",
+      "restoreFailed": "Lektion konnte nicht wiederhergestellt werden"
     },
     "renameAria": "Lektion {{title}} umbenennen",
     "renameTooltip": "Umbenennen"
@@ -1818,7 +1816,7 @@
     "clear": "Leeren",
     "noChapters": {
       "title": "Noch keine Lektionen in diesem Modul",
-      "description": "Wählen Sie unten eine Lektionsart. Lektionen tragen Ihren geschriebenen und visuellen Inhalt; Tests, Prüfungen und Aufgaben messen das Verständnis jeweils anders."
+      "description": "Wählen Sie unten eine Lektionsart. „Lesetext“ enthält Ihren geschriebenen und visuellen Inhalt; Tests, Prüfungen und Aufgaben messen das Verständnis jeweils anders."
     }
   },
   "courseEditor": {

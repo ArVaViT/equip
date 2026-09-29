@@ -302,7 +302,7 @@ export function useCourseData(
   // editor used to sort modules here and let each child re-derive the rest.
   const structure = useMemo(() => readCourseStructure(course), [course])
 
-  const chapters = useCourseChapters({ courseId, course, setCourse, confirm })
+  const chapters = useCourseChapters({ courseId, course, setCourse })
 
   const reorderModules = useCallback(
     async (result: DropResult) => {
