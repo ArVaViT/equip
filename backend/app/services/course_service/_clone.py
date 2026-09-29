@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
+_COPY_WORD = {"ru": "копия", "uk": "копія", "en": "Copy", "de": "Kopie"}
+
 # Per-entity fields whose cv text rows the clone copies across. Mirrors
 # the ``REGISTRY`` translatable-fields list in
 # ``app/services/translation/registry.py`` — adding a translatable field
@@ -322,7 +324,7 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
         db, entity_type="assignment", id_map=assignment_id_map_cv, fields=_CLONABLE_TEXT_FIELDS["assignment"]
     )
 
-    # Append " (Copy)" to the course title so the catalog stays
+    # Append " (Copy)", in the title's language, to the course title so the catalog stays
     # distinguishable. Try the source-locale row first; fall back to
     # any active title row on the clone if the source locale row
     # didn't exist (draft courses that never went through the
@@ -349,7 +351,10 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
         .first()
     )
     if candidate is not None:
-        candidate.text = f"{candidate.text} (Copy)"
+        # In the language of the title it is appended to. «Книга Деяний
+        # (Copy)» put an English word into a Russian title for good — it is
+        # stored text, and the teacher's own language is the one it is in.
+        candidate.text = f"{candidate.text} ({_COPY_WORD.get(candidate.locale, _COPY_WORD['en'])})"
 
     db.commit()
 
