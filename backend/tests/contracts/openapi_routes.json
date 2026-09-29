@@ -1295,6 +1295,10 @@
     "path": "/api/v1/courses/my",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
         "limit",
         "query"
       ],
@@ -1340,6 +1344,10 @@
     "method": "GET",
     "path": "/api/v1/courses/my/trash",
     "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
       [
         "limit",
         "query"

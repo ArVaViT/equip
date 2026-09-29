@@ -26,6 +26,8 @@ if TYPE_CHECKING:
 
     from sqlalchemy.orm import Session
 
+    from app.schemas.locale import LocaleCode
+
 # Eager-load modules + their chapters without the cartesian row explosion a
 # chained ``joinedload`` would produce: one IN query per level means the
 # course detail page fetches ~3 rows of wire instead of ``courses * modules
@@ -113,10 +115,12 @@ def attach_counts(db: Session, courses: list[Course]) -> None:
         course.module_count = module_counts.get(course.id, 0)
 
 
-def _hydrate(db: Session, courses: list[Course]) -> list[Course]:
+def _hydrate(db: Session, courses: list[Course], display_locale: LocaleCode | None = None) -> list[Course]:
     """Call ``populate_spine_texts`` + ``attach_counts`` and return the same
-    list — convenience so getters can ``return _hydrate(db, query.all())``."""
-    populate_spine_texts(db, courses)
+    list — convenience so getters can ``return _hydrate(db, query.all())``.
+    ``display_locale`` as in ``populate_spine_texts``: the reader's language,
+    falling back to the author's."""
+    populate_spine_texts(db, courses, display_locale=display_locale)
     attach_counts(db, courses)
     return courses
 
@@ -194,7 +198,14 @@ def get_teacher_courses(
     deleted_only: bool = False,
     skip: int = 0,
     limit: int | None = None,
+    display_locale: LocaleCode | None = None,
 ) -> list[Course]:
+    # ``display_locale``: the teacher's interface language. Without it the
+    # list came in the author's language whatever the interface said — a
+    # teacher who switched to German read German everywhere but their own
+    # course list (2026-09-29). Falls back to the author's words, so a
+    # course with no translation yet still has its name.
+    #
     # ``_COURSE_LIST_TREE`` keeps the teacher dashboard to a fixed number
     # of queries even when the teacher owns many courses with many
     # chapters each: modules and their chapters each arrive in one
@@ -208,7 +219,7 @@ def get_teacher_courses(
         query = query.offset(skip)
     if limit is not None:
         query = query.limit(limit)
-    return _hydrate(db, query.all())
+    return _hydrate(db, query.all(), display_locale)
 
 
 def get_module(db: Session, course_id: str, module_id: str) -> Module | None:

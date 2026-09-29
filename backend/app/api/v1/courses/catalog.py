@@ -90,22 +90,32 @@ def list_my_organization_courses(
 
 @router.get("/my", response_model=list[CourseSummary])
 def list_my_courses(
+    response: Response,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    return get_teacher_courses(db, current_user.id, skip=skip, limit=limit)
+    response.headers["Vary"] = "Accept-Language"
+    display_locale = normalize_locale(accept_language) if accept_language else None
+    return get_teacher_courses(db, current_user.id, skip=skip, limit=limit, display_locale=display_locale)
 
 
 @router.get("/my/trash", response_model=list[CourseSummary])
 def list_my_trashed_courses(
+    response: Response,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     current_user: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    return get_teacher_courses(db, current_user.id, deleted_only=True, skip=skip, limit=limit)
+    response.headers["Vary"] = "Accept-Language"
+    display_locale = normalize_locale(accept_language) if accept_language else None
+    return get_teacher_courses(
+        db, current_user.id, deleted_only=True, skip=skip, limit=limit, display_locale=display_locale
+    )
 
 
 @router.get("/{course_id}", response_model=CourseResponse)
