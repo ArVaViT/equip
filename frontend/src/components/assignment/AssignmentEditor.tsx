@@ -167,15 +167,15 @@ export default function AssignmentEditor({
             {t("assignmentEditor.heading", { count: assignments.length })}
           </span>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-7 text-xs"
-          onClick={() => (showCreate ? setShowCreate(false) : openCreate(""))}
-        >
-          <Plus className="h-3 w-3 mr-1" strokeWidth={1.75} />
-          {t("assignmentEditor.newAssignment")}
-        </Button>
+        {/* Not while the form is open: it doubled as a close button there,
+            and a second click on «New assignment» threw away what the
+            teacher had typed without a word. The form has its own Cancel. */}
+        {!showCreate && (
+          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => openCreate("")}>
+            <Plus className="h-3 w-3 mr-1" strokeWidth={1.75} />
+            {t("assignmentEditor.newAssignment")}
+          </Button>
+        )}
       </div>
 
       {showCreate && (
