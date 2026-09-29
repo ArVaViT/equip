@@ -193,7 +193,8 @@ export function CourseOutline({
                               >
                                 <Layers className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
                                 <span className="min-w-0 flex-1">
-                                  <span className="block truncate font-medium">{mod.title}</span>
+                                  {/* Two lines on a phone: one showed «Модуль 1…» and no more. */}
+                                  <span className="line-clamp-2 font-medium sm:line-clamp-1">{mod.title}</span>
                                   <span className="mt-0.5 block text-xs text-ink-muted">
                                     {t("teacherEditor.lessonCount", { count: mod.chapters?.length ?? 0 })}
                                   </span>
@@ -210,7 +211,7 @@ export function CourseOutline({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-11 w-11 shrink-0 p-0 text-ink-muted hover:text-ink sm:h-9 sm:w-9"
+                                className="h-11 w-9 shrink-0 p-0 text-ink-muted hover:text-ink sm:h-9 sm:w-9"
                                 onClick={() => navigate(`/teacher/courses/${courseId}/modules/${mod.id}/edit`)}
                                 aria-label={t("teacherEditor.openModuleAria", { title: mod.title })}
                                 title={t("teacherEditor.openModuleAria", { title: mod.title })}
@@ -220,7 +221,7 @@ export function CourseOutline({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-11 w-11 shrink-0 p-0 text-ink-muted transition-colors hover:text-destructive sm:h-9 sm:w-9"
+                                className="h-11 w-9 shrink-0 p-0 text-ink-muted transition-colors hover:text-destructive sm:h-9 sm:w-9"
                                 onClick={() => onRemoveModule(mod.id)}
                                 aria-label={t("teacherEditor.deleteModuleAria", { title: mod.title })}
                               >

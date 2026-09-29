@@ -136,15 +136,18 @@ export function ChapterRow({
                 <button
                   type="button"
                   onClick={onEdit}
-                  className="min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-left font-medium underline-offset-4 transition-colors hover:text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:text-sm"
+                  className="line-clamp-2 min-w-0 flex-1 rounded-md px-2 py-1.5 text-left sm:line-clamp-1 font-medium underline-offset-4 transition-colors hover:text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:text-sm"
                 >
                   {chapter.title}
                 </button>
               )}
             </div>
 
-            {/* Row 2 on mobile (badge + actions). Inline on sm+. */}
-            <div className="flex items-center justify-end gap-1 sm:gap-2">
+            {/* Row 2 on mobile (badge + actions). Inline on sm+. The buttons
+                are 32px wide on a phone, with no gaps (still 44px tall): at 44 the row
+                was wider than a lesson inside a module and pushed the type
+                badge out past the card's left edge. */}
+            <div className="flex flex-wrap items-center justify-end gap-0 sm:flex-nowrap sm:gap-2">
               <Badge variant="muted" className="mr-auto shrink-0 sm:mr-0">
                 {t(CHAPTER_TYPE_LABEL_KEYS[type])}
               </Badge>
@@ -152,7 +155,7 @@ export function ChapterRow({
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-11 w-11 shrink-0 p-0 sm:h-8 sm:w-8 ${
+                className={`h-11 w-8 shrink-0 p-0 sm:h-8 sm:w-8 ${
                   chapter.is_locked ? "text-warning hover:text-warning" : "text-ink-muted"
                 }`}
                 onClick={onToggleLock}
@@ -172,7 +175,7 @@ export function ChapterRow({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-11 w-11 shrink-0 p-0 text-ink-muted sm:h-8 sm:w-8"
+                      className="h-11 w-8 shrink-0 p-0 text-ink-muted sm:h-8 sm:w-8"
                       title={t("lessons.move.tooltip")}
                       aria-label={t("lessons.move.aria", { title: chapter.title })}
                     >
@@ -201,7 +204,7 @@ export function ChapterRow({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-11 w-11 shrink-0 p-0 text-ink-muted sm:h-8 sm:w-8"
+                className="h-11 w-8 shrink-0 p-0 text-ink-muted sm:h-8 sm:w-8"
                 onClick={() => setRenaming(true)}
                 title={t("lessons.renameTooltip")}
                 aria-label={t("lessons.renameAria", { title: chapter.title })}
@@ -212,7 +215,7 @@ export function ChapterRow({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-11 w-11 shrink-0 p-0 sm:h-8 sm:w-8"
+                className="h-11 w-8 shrink-0 p-0 sm:h-8 sm:w-8"
                 onClick={onEdit}
                 title={t("lessons.editAria", { title: chapter.title })}
                 aria-label={t("lessons.editAria", { title: chapter.title })}
@@ -225,7 +228,7 @@ export function ChapterRow({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-11 w-11 shrink-0 p-0 text-ink-muted transition-colors hover:text-destructive sm:h-8 sm:w-8"
+                className="h-11 w-8 shrink-0 p-0 text-ink-muted transition-colors hover:text-destructive sm:h-8 sm:w-8"
                 onClick={onDelete}
                 aria-label={t("lessons.deleteAria", { title: chapter.title })}
               >
