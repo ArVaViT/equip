@@ -107,8 +107,9 @@ export function EditorToolbar({
     <div
       role="toolbar"
       aria-label={t("blockEditor.toolbar.ariaLabel")}
-      // ``sticky top-0`` keeps the toolbar visible while teachers
-      // scroll long chapters. ``z-20`` sits above prose content but
+      // Sticky just under the site header (57px, 65px from ``md``), which
+      // is sticky itself: at ``top-0`` the toolbar stuck *behind* it and a
+      // teacher 3,000px into a long text had no toolbar in sight. ``z-20`` sits above prose content but
       // below modal/dialog overlays (z-50). ``bg-surface`` is
       // required for sticky semi-transparent flicker over the
       // ProseMirror surface below.
@@ -120,7 +121,7 @@ export function EditorToolbar({
       // there's enough room. ``no-scrollbar`` (utility added in
       // index.css) hides the visible bar — touch scroll still works.
       // ADR-0011 Wave 7 — border-edge-strong -> border-edge-strong, bg-surface -> bg-surface.
-      className="sticky top-0 z-20 flex flex-nowrap items-center gap-0.5 overflow-x-auto border-b border-edge-strong bg-surface px-2 py-1.5 no-scrollbar sm:flex-wrap sm:overflow-x-visible"
+      className="sticky top-[57px] md:top-[65px] z-20 flex flex-nowrap items-center gap-0.5 overflow-x-auto border-b border-edge-strong bg-surface px-2 py-1.5 no-scrollbar sm:flex-wrap sm:overflow-x-visible"
     >
       <ToolbarButton
         onClick={() => editor.chain().focus().toggleBold().run()}
