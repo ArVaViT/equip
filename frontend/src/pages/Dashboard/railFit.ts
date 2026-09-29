@@ -19,7 +19,10 @@ import { useLayoutEffect, type RefObject } from "react"
  * centre their own content in the room they are given.
  */
 
-const MIN_CALENDAR = 120
+// The header and the nearest event in full. 120 cut that event's second
+// line in half on a desktop in production, once the day's question had its
+// explanation open — a card that looked broken rather than scrollable.
+const MIN_CALENDAR = 168
 const MIN_QUESTION = 160
 const MIN_VERSE = 96
 
@@ -84,6 +87,15 @@ export function useRailFit(rail: RefObject<HTMLDivElement | null>, enabled: bool
         const available = el.clientHeight - gap * Math.max(0, shown - 1)
         const heights = distributeRail(natural, available)
         el.style.gridTemplateRows = heights.map((h) => `${Math.max(0, Math.floor(h))}px`).join(" ")
+        // A card given less than its content says so: its body fades out
+        // at the bottom edge (`[data-clipped]` in index.css), which reads as
+        // "there is more" rather than as text cut through the middle.
+        wrappers.forEach((wrapper, i) => {
+          const body = wrapper.firstElementChild?.lastElementChild as HTMLElement | null | undefined
+          if (!body) return
+          const clipped = (heights[i] ?? 0) + 0.5 < (natural[i] ?? 0)
+          body.toggleAttribute("data-clipped", clipped)
+        })
       })
     }
 
