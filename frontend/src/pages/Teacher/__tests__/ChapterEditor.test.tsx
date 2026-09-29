@@ -112,8 +112,12 @@ describe("ChapterEditor — addressed by its course", () => {
     )
 
     // Breadcrumb: «Мои курсы › Курс › Кто написал послание» — three crumbs,
-    // no invented heading in the middle.
-    const crumbs = screen.getAllByRole("link").map((a) => a.getAttribute("href"))
+    // no invented heading in the middle. (The student-view link is the one
+    // other link on the page.)
+    const crumbs = screen
+      .getAllByRole("link")
+      .map((a) => a.getAttribute("href"))
+      .filter((href) => href?.startsWith("/teacher"))
     expect(crumbs).toEqual(["/teacher", "/teacher/courses/c-1"])
   })
 
@@ -150,14 +154,33 @@ describe("ChapterEditor — addressed by its course", () => {
       expect(screen.getByDisplayValue("Кто написал послание")).toBeInTheDocument(),
     )
 
-    await userEvent.click(screen.getByRole("button", { name: "Сохранить урок" }))
+    // No save button any more: the name saves itself after typing stops.
+    await userEvent.type(screen.getByDisplayValue("Кто написал послание"), "?")
 
-    await waitFor(() => expect(update).toHaveBeenCalled())
+    await waitFor(() => expect(update).toHaveBeenCalled(), { timeout: 3000 })
     const [courseId, chapterId, payload] = update.mock.calls[0]!
     expect(courseId).toBe("c-1")
     expect(chapterId).toBe("ch-1")
     // An explicit ``null`` here would lift the lesson out of its module on
     // every save; the key has to be absent for "leave the grouping alone".
     expect(payload).not.toHaveProperty("module_id")
+    expect(payload).toMatchObject({ title: "Кто написал послание?" })
+  })
+
+  it("links to the lesson as a student reads it", async () => {
+    vi.spyOn(coursesService, "getChapterForEdit").mockResolvedValue(chapter())
+    renderAtCourseRoute()
+    const link = await screen.findByRole("link", { name: /Как видит студент/ })
+    expect(link).toHaveAttribute("href", "/courses/c-1/chapters/ch-1")
+    expect(link).toHaveAttribute("target", "_blank")
+  })
+
+  it("keeps the type picker folded until asked", async () => {
+    vi.spyOn(coursesService, "getChapterForEdit").mockResolvedValue(chapter())
+    renderAtCourseRoute()
+    const change = await screen.findByRole("button", { name: /Изменить/ })
+    expect(screen.queryAllByRole("button", { pressed: true })).toHaveLength(0)
+    await userEvent.click(change)
+    expect(screen.getAllByRole("button", { pressed: true })).toHaveLength(1)
   })
 })

@@ -1866,7 +1866,6 @@
     "toast": {
       "loadFailed": "Lektion konnte nicht geladen werden",
       "invalidData": "Ungültige Lektionsdaten",
-      "saved": "Lektion gespeichert",
       "saveFailed": "Speichern fehlgeschlagen: {{detail}}"
     },
     "unknownError": "Unbekannter Fehler",
@@ -1879,14 +1878,24 @@
     "titlePlaceholder": "Titel der Lektion",
     "editTitleAria": "Titel der Lektion bearbeiten",
     "chapterType": "Art der Lektion",
-    "save": "Lektion speichern",
-    "saving": "Wird gespeichert …",
-    "saveHint": "Strg+S zum Speichern",
-    "unsavedChanges": "Sie haben ungespeicherte Änderungen",
     "typeChangeConfirm": {
       "title": "Art der Lektion ändern?",
       "description": "Nichts von dem, was Sie geschrieben haben, wird gelöscht. Der Editor „{{from}}“ wird ausgeblendet, solange die Lektion eine „{{to}}“ ist, und kommt mit allem Inhalt zurück, sobald Sie den Typ zurückstellen.",
       "confirm": "Typ ändern"
+    },
+    "status": {
+      "saved": "Gespeichert",
+      "saving": "Wird gespeichert…",
+      "failed": "Nicht gespeichert",
+      "retry": "Erneut versuchen"
+    },
+    "changeType": "Ändern",
+    "preview": "Ansicht für Lernende",
+    "publishedNote": "Dieser Kurs ist veröffentlicht. Lernende sehen die Änderung, sobald sie in allen Sprachen bereit ist.",
+    "leaveUnsavedWork": {
+      "title": "Seite verlassen?",
+      "description": "Der Test oder die Aufgabe in dieser Lektion ist nicht gespeichert. Wenn Sie jetzt gehen, geht das Geschriebene verloren.",
+      "confirm": "Ohne Speichern verlassen"
     }
   },
   "courseDetail": {

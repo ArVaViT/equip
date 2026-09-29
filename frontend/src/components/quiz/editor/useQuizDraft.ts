@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { coursesService } from "@/services/courses"
 import type { Quiz } from "@/types"
 import {
@@ -12,6 +12,9 @@ import {
 interface Params {
   chapterId: string
   chapterType: "quiz" | "exam"
+  /** A new quiz starts with the lesson's name, not an empty required
+   *  field the teacher has to fill with the same words again. */
+  defaultTitle?: string
 }
 
 interface UseQuizDraftResult {
@@ -44,6 +47,11 @@ interface UseQuizDraftResult {
   removeOption: (qIdx: number, oIdx: number) => void
   updateOption: (qIdx: number, oIdx: number, patch: Partial<DraftOption>) => void
   resetAll: () => void
+  /** Something typed here is not on the server yet. Compared against the
+   *  draft as it was loaded or last saved, so undoing a change clears it. */
+  isDirty: boolean
+  /** The draft on screen is now what the server holds. */
+  markSaved: () => void
 }
 
 const defaultMaxAttempts = (chapterType: "quiz" | "exam") =>
@@ -52,7 +60,14 @@ const defaultMaxAttempts = (chapterType: "quiz" | "exam") =>
 export function useQuizDraft({
   chapterId,
   chapterType,
+  defaultTitle = "",
 }: Params): UseQuizDraftResult {
+  // Read when a lesson opens, not followed: renaming the lesson must not
+  // reload a quiz that is being written.
+  const defaultTitleRef = useRef(defaultTitle)
+  useEffect(() => {
+    defaultTitleRef.current = defaultTitle
+  }, [defaultTitle])
   const [existingQuiz, setExistingQuiz] = useState<Quiz | null>(null)
   const [loading, setLoading] = useState(true)
   const [title, setTitle] = useState("")
@@ -110,6 +125,7 @@ export function useQuizDraft({
           }
         } else {
           setMaxAttempts(defaultMaxAttempts(chapterType))
+          setTitle(defaultTitleRef.current)
         }
       } catch {
         if (!cancelled) setQuestions([])
@@ -239,8 +255,29 @@ export function useQuizDraft({
     clearAttempts()
   }, [chapterType, clearAttempts])
 
+  // The saved state, as the same string the draft is compared in. `null`
+  // while loading; taken from the first render after the load finishes,
+  // and again after every save (`markSaved`).
+  const current = JSON.stringify({ title, description, passingScore, maxAttempts, questions })
+  const [baseline, setBaseline] = useState<string | null>(null)
+  const [saveMarked, setSaveMarked] = useState(false)
+  useEffect(() => {
+    if (loading) {
+      setBaseline(null)
+      return
+    }
+    if (baseline === null || saveMarked) {
+      setBaseline(current)
+      setSaveMarked(false)
+    }
+  }, [loading, baseline, saveMarked, current])
+  const markSaved = useCallback(() => setSaveMarked(true), [])
+  const isDirty = !loading && baseline !== null && !saveMarked && current !== baseline
+
   return {
     loading,
+    isDirty,
+    markSaved,
     existingQuiz,
     setExistingQuiz,
     attemptCount,

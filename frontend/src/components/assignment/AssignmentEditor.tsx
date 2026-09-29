@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { FileText, Loader2, Plus } from "lucide-react"
@@ -20,6 +20,10 @@ interface AssignmentEditorProps {
    *  across the assignments in it. */
   courseId: string
   onAssignmentCreated?: (assignmentId: string) => void
+  /** Told whenever the new-assignment form holds something not yet sent. */
+  onDirtyChange?: (dirty: boolean) => void
+  /** The lesson's name: the first assignment starts with it. */
+  defaultTitle?: string
 }
 
 /**
@@ -31,9 +35,16 @@ export default function AssignmentEditor({
   chapterId,
   courseId,
   onAssignmentCreated,
+  onDirtyChange,
+  defaultTitle = "",
 }: AssignmentEditorProps) {
   const confirm = useConfirm()
   const { t } = useTranslation()
+  // Read when a lesson opens, not followed (see useQuizDraft).
+  const defaultTitleRef = useRef(defaultTitle)
+  useEffect(() => {
+    defaultTitleRef.current = defaultTitle
+  }, [defaultTitle])
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
@@ -41,6 +52,20 @@ export default function AssignmentEditor({
   const [form, setForm] = useState<AssignmentFormState>(EMPTY_ASSIGNMENT_FORM)
   const [creating, setCreating] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
+  // The form as it was opened, to tell typing from looking.
+  const [formBaseline, setFormBaseline] = useState(JSON.stringify(EMPTY_ASSIGNMENT_FORM))
+  const dirty = showCreate && JSON.stringify(form) !== formBaseline
+  useEffect(() => {
+    onDirtyChange?.(dirty)
+  }, [dirty, onDirtyChange])
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange])
+
+  const openCreate = (title: string) => {
+    const start = { ...EMPTY_ASSIGNMENT_FORM, title }
+    setForm(start)
+    setFormBaseline(JSON.stringify(start))
+    setShowCreate(true)
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -53,7 +78,17 @@ export default function AssignmentEditor({
     coursesService
       .getChapterAssignmentsForEdit(chapterId)
       .then((data) => {
-        if (!cancelled) setAssignments(data)
+        if (cancelled) return
+        setAssignments(data)
+        // An assignment lesson with no assignment has one thing to do:
+        // write it. The form opens with the lesson's name instead of an
+        // empty list and a small "New assignment" button to find.
+        if (data.length === 0) {
+          const start = { ...EMPTY_ASSIGNMENT_FORM, title: defaultTitleRef.current }
+          setForm(start)
+          setFormBaseline(JSON.stringify(start))
+          setShowCreate(true)
+        }
       })
       .catch(() => {
         if (!cancelled) setFetchError(true)
@@ -80,6 +115,7 @@ export default function AssignmentEditor({
       setAssignments((prev) => [...prev, a])
       onAssignmentCreated?.(a.id)
       setForm(EMPTY_ASSIGNMENT_FORM)
+      setFormBaseline(JSON.stringify(EMPTY_ASSIGNMENT_FORM))
       setShowCreate(false)
       toast({ title: t("assignmentEditor.toast.created"), variant: "success" })
     } catch {
@@ -135,7 +171,7 @@ export default function AssignmentEditor({
           variant="outline"
           size="sm"
           className="h-7 text-xs"
-          onClick={() => setShowCreate((v) => !v)}
+          onClick={() => (showCreate ? setShowCreate(false) : openCreate(""))}
         >
           <Plus className="h-3 w-3 mr-1" strokeWidth={1.75} />
           {t("assignmentEditor.newAssignment")}
