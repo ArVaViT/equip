@@ -156,10 +156,6 @@ export function QuestionCard({
               </div>
             </div>
 
-            {typeLocked && (
-              <p className="text-xs text-ink-muted italic">{t("quizEditor.questions.typeLocked")}</p>
-            )}
-
             {q.question_type === "multiple_choice" && (
               <RadioGroup
                 className="space-y-2"

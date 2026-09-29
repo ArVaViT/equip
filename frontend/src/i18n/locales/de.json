@@ -1026,7 +1026,8 @@
       "trueFalseOption": {
         "True": "Richtig",
         "False": "Falsch"
-      }
+      },
+      "typeLockedSummary": "Dieser Test wurde bereits abgelegt, daher behalten beantwortete Fragen ihren Typ. Wortlaut, Punkte und richtige Antwort lassen sich weiter korrigieren; für einen anderen Fragetyp fügen Sie eine neue Frage hinzu."
     },
     "save": {
       "saving": "Wird gespeichert …",

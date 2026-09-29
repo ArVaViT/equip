@@ -7,6 +7,8 @@ import uuid
 from uuid import UUID
 
 from fastapi import Depends, Header, Query, Response, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
@@ -24,6 +26,7 @@ from app.models.user import User
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.schemas.quiz import (
     QuizCreate,
+    QuizEditorResponse,
     QuizResponse,
     QuizStudentResponse,
     QuizUpdate,
@@ -90,9 +93,19 @@ def get_chapter_quiz(
         # so re-use the localize path with display=source. ``prefer_human``
         # makes the any-locale fallback prefer human rows so the editor
         # never shows an MT row as authoritative source content.
-        resp = build_localized_quiz_student_response(
+        source_resp = build_localized_quiz_student_response(
             db, quiz, display_locale=ctx.source_locale, source_locale=ctx.source_locale, prefer_human=True
         )
+        # The owner edits the answer key too. Returned as a response of its
+        # own: the route's ``response_model`` is the student shape and would
+        # strip ``is_correct`` on the way out. No extra attempts either —
+        # those are the reader's, and the editor shows the quiz's own limit.
+        correct = {o.id: bool(o.is_correct) for q in quiz.questions for o in q.options}
+        editor = QuizEditorResponse.model_validate(source_resp.model_dump())
+        for question in editor.questions:
+            for option in question.options:
+                option.is_correct = correct.get(option.id, False)
+        return JSONResponse(content=jsonable_encoder(editor), headers={"Vary": "Accept-Language"})
     else:
         display_locale: LocaleCode = normalize_locale(accept_language)
         resp = build_localized_quiz_student_response(

@@ -338,24 +338,23 @@ export default function ChapterEditor() {
   const changeChapterType = useCallback(
     async (next: ChapterType) => {
       if (!chapter || next === chapterType || switchingTypeRef.current) return
-      if (EDITOR_FAMILY[next] === EDITOR_FAMILY[chapterType]) {
-        // Quiz ↔ exam keeps the editor but reloads the quiz from the
-        // server, so questions typed and not saved would go without a word.
-        if (childDirty.quiz) {
-          const ok = await confirm({
-            title: t("chapterEditor.typeChangeUnsaved.title"),
-            description: t("chapterEditor.typeChangeUnsaved.description"),
-            confirmLabel: t("chapterEditor.typeChangeUnsaved.confirm"),
-            tone: "destructive",
-          })
-          if (!ok) return
-        }
-        setChapterType(next)
-        return
-      }
+      // Held for the whole decision, dialogs included: two quick picks
+      // used to open two dialogs on top of each other.
       switchingTypeRef.current = true
       try {
-        if (await editorHasContent(chapterType, chapter.id)) {
+        if (EDITOR_FAMILY[next] === EDITOR_FAMILY[chapterType]) {
+          // Quiz ↔ exam keeps the editor but reloads the quiz from the
+          // server, so questions typed and not saved would go without a word.
+          if (childDirty.quiz) {
+            const ok = await confirm({
+              title: t("chapterEditor.typeChangeUnsaved.title"),
+              description: t("chapterEditor.typeChangeUnsaved.description"),
+              confirmLabel: t("chapterEditor.typeChangeUnsaved.confirm"),
+              tone: "destructive",
+            })
+            if (!ok) return
+          }
+        } else if (await editorHasContent(chapterType, chapter.id)) {
           const ok = await confirm({
             title: t("chapterEditor.typeChangeConfirm.title"),
             description: t("chapterEditor.typeChangeConfirm.description", {
@@ -366,6 +365,9 @@ export default function ChapterEditor() {
           })
           if (!ok) return
         }
+        // A new edit is a new attempt, as with the title: autosave resumes
+        // after a failure instead of holding the new type back.
+        setStatus((s) => (s === "error" ? "idle" : s))
         setChapterType(next)
       } finally {
         switchingTypeRef.current = false

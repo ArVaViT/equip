@@ -1704,13 +1704,23 @@ def _check_passage_language(
             blocking=True,
         )
 
-    # The source is read with the lowest floor the translation is judged
-    # by: a 25-letter Greek quote in a Russian lesson must count as quoted,
-    # or the same quote kept in the German translation would be flagged.
+    def floor(detected: LocaleCode) -> int:
+        if not shares_script(detected, target_locale):
+            return _MIN_LETTERS_ACROSS_SCRIPTS
+        if frozenset({detected, target_locale}) in _PAIRS_TOLD_APART_AT_ANY_LENGTH:
+            return _MIN_LETTERS_FOR_A_PASSAGE
+        return _MIN_LETTERS_FOR_A_CLOSE_PASSAGE
+
+    # A language counts as quoted by the source at the same floor a passage
+    # in it is judged by in the translation — no lower. With one floor for
+    # all, a short English title in a Russian lesson («The Bible Project
+    # Overview») waived English for the whole German translation, and a
+    # stray English paragraph there passed. A short quote kept word for
+    # word is let through by the verbatim check below instead.
     quoted = {
         lang
         for seg in _passages(source)
-        if script_letters(seg) >= _MIN_LETTERS_ACROSS_SCRIPTS and (lang := detect_locale(seg)) is not None
+        if (lang := detect_locale(seg)) is not None and script_letters(seg) >= floor(lang)
     }
     plain_source_words = " ".join(plain_source.split())
     strays: list[str] = []
@@ -1723,14 +1733,7 @@ def _check_passage_language(
         detected = detect_locale(seg)
         if detected is None or detected in (target_locale, source_locale) or detected in quoted:
             continue
-        letters = script_letters(seg)
-        if not shares_script(detected, target_locale):
-            floor = _MIN_LETTERS_ACROSS_SCRIPTS
-        elif frozenset({detected, target_locale}) in _PAIRS_TOLD_APART_AT_ANY_LENGTH:
-            floor = _MIN_LETTERS_FOR_A_PASSAGE
-        else:
-            floor = _MIN_LETTERS_FOR_A_CLOSE_PASSAGE
-        if letters >= floor:
+        if script_letters(seg) >= floor(detected):
             line = f"{detected}: {strip_tags(unescape(seg)).strip()[:80]}"
             if line not in strays:
                 strays.append(line)

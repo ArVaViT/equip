@@ -1026,7 +1026,8 @@
       "trueFalseOption": {
         "True": "True",
         "False": "False"
-      }
+      },
+      "typeLockedSummary": "Students have already taken this quiz, so answered questions keep their type. You can still correct the wording, points and the right answer; for a different kind of question, add a new one."
     },
     "save": {
       "saving": "Saving...",

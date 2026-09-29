@@ -102,3 +102,17 @@ def test_it_withholds_the_row_through_the_full_validator() -> None:
         source=SOURCE_RU, translated=translated, source_locale="ru", target_locale="de", content_kind="html"
     )
     assert any(i.code == "wrong_language_passage" and i.blocking for i in issues)
+
+
+def test_a_short_title_in_the_source_does_not_waive_its_language() -> None:
+    # Review, 2026-09-29: with one low floor for the source, this 38-letter
+    # English title counted English as "quoted", and the stray English
+    # paragraph in the German translation passed.
+    source = SOURCE_RU + "<p>Посмотрите видео The Bible Project Overview.</p>"
+    translated = (
+        "<p>Prophetische Bücher lassen sich leichter lesen, wenn man die Epoche kennt.</p>"
+        "<p>Open the first two or three verses of a prophetic book and read them slowly.</p>"
+        "<p>Sehen Sie sich das Video The Bible Project Overview an.</p>"
+    )
+    issue = _check_passage_language(source, translated, source_locale="ru", target_locale="de")
+    assert issue is not None and issue.code == "wrong_language_passage"

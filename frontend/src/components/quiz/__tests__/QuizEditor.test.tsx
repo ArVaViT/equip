@@ -261,9 +261,9 @@ describe("saving a quiz students have already taken", () => {
     const selectors = screen.getAllByRole("combobox", { name: "Тип вопроса" })
     expect(selectors[0]).toBeDisabled()
     expect(selectors[1]).not.toBeDisabled()
-    expect(
-      screen.getByText(/На этот вопрос уже отвечали, поэтому тип изменить нельзя/),
-    ).toBeInTheDocument()
+    // Said once for the quiz, not under every answered question.
+    expect(screen.getAllByText(/Этот тест уже проходили, поэтому у вопросов с ответами тип не меняется/)).toHaveLength(1)
+    expect(selectors[0]).toHaveAttribute("title", expect.stringMatching(/На этот вопрос уже отвечали/))
   })
 
   it("tells the teacher how many attempts a delete would take with it", async () => {

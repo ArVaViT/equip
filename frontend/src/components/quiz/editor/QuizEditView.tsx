@@ -87,6 +87,13 @@ export function QuizEditView({
           </Button>
         </div>
 
+        {/* Said once for the quiz, not under every answered question: on a
+            quiz a class has taken, ten copies of the same paragraph buried
+            the questions. The locked type selector keeps it as a tooltip. */}
+        {questions.some((q) => answeredQuestionIds.has(q.id)) && (
+          <p className="text-xs text-ink-muted">{t("quizEditor.questions.typeLockedSummary")}</p>
+        )}
+
         {questions.map((q, qIdx) => (
           <QuestionCard
             key={q.id}

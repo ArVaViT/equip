@@ -198,7 +198,10 @@ export function chapterEditHref(courseId: string, chapterId: string): string {
  * from 0 moved those starting points, so sorting one module's lessons could
  * carry a loose lesson past a module the teacher never touched. Reusing the
  * same set of numbers keeps every other lesson where it was. Ties are
- * pulled apart so the new order is the only one the numbers can mean.
+ * pulled apart so the new order is the only one the numbers can mean;
+ * that can hand out a number another lesson holds, so with ties the
+ * guarantee is only "no worse than before" (production had no ties,
+ * 2026-09-29).
  */
 export function reuseOrderNumbers<T extends { order_index: number }>(before: T[], after: T[]): T[] {
   const numbers = before.map((c) => c.order_index).sort((a, b) => a - b)
