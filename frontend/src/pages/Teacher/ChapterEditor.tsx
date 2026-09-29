@@ -487,7 +487,7 @@ export default function ChapterEditor() {
       </div>
 
       {/* Back button + title row */}
-      <div data-tour="chapter-editor-header" className="flex items-center gap-3 mb-6">
+      <div data-tour="chapter-editor-header" className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-2">
         <Button
           variant="ghost"
           size="sm"
@@ -501,15 +501,21 @@ export default function ChapterEditor() {
             outline has the chapter name at heading-level-1, and add
             ``aria-label`` so the input still has an accessible name
             even though its visual label is implicit. */}
-        <h1 className="m-0 flex-1">
+        {/* Its own line on a phone: between "Back" and the eye it had a
+            third of the width and cut the name to «Урок 1. Не кни». */}
+        <h1 className="order-last m-0 w-full sm:order-none sm:w-auto sm:flex-1">
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             aria-label={t("chapterEditor.editTitleAria")}
-            className="h-auto w-full border-none px-2 py-1 font-serif text-2xl font-bold tracking-tight shadow-none hover:border-edge hover:shadow-sm focus-visible:ring-1"
+            // `sm:text-2xl` too: the field's own `sm:text-sm` won at every
+            // width from 640px, and the lesson's name sat in the header at
+            // 14px (found 2026-09-29).
+            className="h-auto w-full border-none bg-transparent px-2 py-1 font-serif text-xl font-bold tracking-tight shadow-none hover:border-edge hover:shadow-sm focus-visible:ring-1 sm:text-2xl"
             placeholder={t("chapterEditor.titlePlaceholder")}
           />
         </h1>
+        <span className="ml-auto flex items-center gap-2 sm:ml-0">
         <SaveStatus
           state={isDirty || status === "saving" ? "saving" : status}
           onRetry={() => {
@@ -525,6 +531,7 @@ export default function ChapterEditor() {
             <span className="max-sm:sr-only">{t("chapterEditor.preview")}</span>
           </a>
         </Button>
+        </span>
       </div>
 
       {coursePublished && (
