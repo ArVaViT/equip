@@ -266,21 +266,33 @@ function GrowingTextarea({
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
-    el.style.height = "auto"
-    el.style.height = `${el.scrollHeight}px`
+    const fit = () => {
+      el.style.height = "auto"
+      // scrollHeight leaves out the border; without it the last line sits
+      // 2px under the edge.
+      el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`
+    }
+    fit()
+    // And when the width changes (a phone turned, a window resized): the
+    // same text wraps into a different number of lines.
+    if (typeof ResizeObserver === "undefined") return
+    let lastWidth = el.clientWidth
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth === lastWidth) return
+      lastWidth = el.clientWidth
+      fit()
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
   }, [value])
   return (
     <Textarea
       ref={ref}
       rows={1}
       value={value}
-      // Wraps on screen but stays one line of data, as the input it
-      // replaced: a line break in a question or an option is not something
-      // the quiz a student takes knows how to show.
-      onChange={(e) => onChange(e.target.value.replace(/\r?\n/g, " "))}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") e.preventDefault()
-      }}
+      // Enter makes a new line: the quiz a student takes shows line breaks
+      // (`whitespace-pre-line`), so they are the teacher's to use.
+      onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       className={
         small

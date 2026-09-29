@@ -157,21 +157,6 @@ export default function ChapterEditor() {
   const [typePickerOpen, setTypePickerOpen] = useState(false)
   /** The course's name for the breadcrumb, which read a bare «Course». */
   const [courseTitle, setCourseTitle] = useState("")
-  useEffect(() => {
-    if (!courseId) return
-    let cancelled = false
-    // Not awaited by the page: a crumb is not worth holding the editor for,
-    // and on failure the generic word stays.
-    coursesService
-      .getCourseForEdit(courseId)
-      .then((c) => {
-        if (!cancelled) setCourseTitle(c.title)
-      })
-      .catch(() => undefined)
-    return () => {
-      cancelled = true
-    }
-  }, [courseId])
   /** Why the last save failed, for the status's tooltip. */
   const [errorDetail, setErrorDetail] = useState("")
 
@@ -201,11 +186,15 @@ export default function ChapterEditor() {
       // what you would PATCH back.
       const ch = await coursesService.getChapterForEdit(courseId, chapterId)
       if (signal?.cancelled) return
-      // For the note about languages; the page works without it.
+      // For the note about languages and the breadcrumb's course name; the
+      // page works without it (the crumb then says «Course»).
+      setCourseTitle("")
       void coursesService
         .getCourseForEdit(courseId)
         .then((c) => {
-          if (!signal?.cancelled) setCoursePublished(c.status !== "draft")
+          if (signal?.cancelled) return
+          setCoursePublished(c.status !== "draft")
+          setCourseTitle(c.title)
         })
         .catch(() => undefined)
       setChapter(ch)

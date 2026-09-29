@@ -125,7 +125,10 @@ export function QuizEditView({
       {/* Held at the bottom of the screen while the quiz scrolls: on a quiz
           of ten questions «Save» was 3,000px below the first one. Above the
           phone's tab bar (57px + safe area), flush to the edge from md. */}
-      <div className="sticky bottom-[calc(57px+env(safe-area-inset-bottom))] z-10 -mx-4 flex flex-wrap items-center gap-2 border-t border-edge bg-surface px-4 py-3 md:bottom-0 sm:-mx-6 sm:px-6">
+      {/* ``-mx-5 pl-5`` matches the card's padding, so the bar meets its
+          edges; ``pr-20`` keeps every button clear of the round
+          scroll-to-top button that sits in the same corner. */}
+      <div className="sticky bottom-[calc(57px+env(safe-area-inset-bottom))] z-10 -mx-5 flex flex-wrap items-center gap-2 border-t border-edge bg-surface py-3 pl-5 pr-20 md:bottom-0">
         <Button size="sm" onClick={onSave} disabled={saving}>
           {saving ? (
             <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} />
@@ -141,13 +144,13 @@ export function QuizEditView({
         {dirty && !saving && (
           <span className="text-xs text-ink-muted">{t("quizEditor.save.unsaved")}</span>
         )}
-        {/* Quiet, and at the far end: a filled red button beside «Save»
-            was one slip away from the class's attempts. */}
+        {/* Quiet: a filled red button beside «Save» was one slip away from
+            the class's attempts. */}
         {existingQuiz && (
           <Button
             size="sm"
             variant="ghost"
-            className="text-destructive hover:text-destructive sm:ml-auto"
+            className="text-destructive hover:text-destructive"
             onClick={onDelete}
             disabled={deleting}
             aria-label={chapterType === "exam" ? t("quizEditor.save.deleteExam") : t("quizEditor.save.deleteQuiz")}
