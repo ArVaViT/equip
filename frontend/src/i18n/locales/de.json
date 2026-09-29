@@ -1733,7 +1733,8 @@
     "empty": {
       "title": "Dieser Kurs hat noch keine Lektionen",
       "description": "Fügen Sie die erste Lektion hinzu — mehr braucht ein Kurs nicht. Wählen Sie, was sie sein soll."
-    }
+    },
+    "openModuleAria": "Moduleinstellungen: {{title}}"
   },
   "lessons": {
     "defaults": {
@@ -1760,8 +1761,8 @@
     "dragAria": "Lektion {{title}} umsortieren",
     "editAria": "Lektion {{title}} bearbeiten",
     "deleteAria": "Lektion {{title}} löschen",
-    "lockTooltip": "Lektion sperren",
-    "unlockTooltip": "Lektion entsperren",
+    "lockTooltip": "Erst nach der vorherigen Lektion öffnen",
+    "unlockTooltip": "Öffnet nach der vorherigen Lektion — sofort freigeben",
     "invalidTitle": "Ungültiger Lektionstitel",
     "unknownError": "Unbekannter Fehler",
     "move": {
@@ -1789,7 +1790,9 @@
       "movedToCourse": "Lektion aus dem Modul genommen — sie bleibt im Kurs",
       "movedToModule": "Lektion nach „{{title}}“ verschoben",
       "moveFailed": "Lektion konnte nicht verschoben werden"
-    }
+    },
+    "renameAria": "Lektion {{title}} umbenennen",
+    "renameTooltip": "Umbenennen"
   },
   "moduleEditor": {
     "toast": {

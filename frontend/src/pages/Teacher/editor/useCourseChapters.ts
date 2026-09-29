@@ -22,8 +22,8 @@ interface Args {
 }
 
 export interface CourseChapters {
-  /** Write a lesson straight into the course and open it. */
-  addChapter: (type: ChapterType) => Promise<void>
+  /** Write a lesson into the course — or into one of its modules — and open it. */
+  addChapter: (type: ChapterType, moduleId?: string | null) => Promise<void>
   /** Local-only, for the row's controlled input between keystrokes. */
   updateChapterLocal: (chapterId: string, patch: Partial<Chapter>) => void
   renameChapter: (chapter: Chapter, title: string) => Promise<void>
@@ -32,6 +32,8 @@ export interface CourseChapters {
   /** `null` takes the lesson out of its module; an id files it under one. */
   moveChapter: (chapterId: string, moduleId: string | null) => Promise<void>
   reorderChapters: (result: DropResult) => Promise<void>
+  /** Reorder the lessons inside one module, from the course page. */
+  reorderModuleChapters: (moduleId: string, result: DropResult) => Promise<void>
 }
 
 /**
@@ -79,7 +81,7 @@ export function useCourseChapters({
 
   const addingRef = useRef(false)
   const addChapter = useCallback(
-    async (type: ChapterType) => {
+    async (type: ChapterType, moduleId: string | null = null) => {
       if (!courseId) return
       // Same guard as `addModule`: a second click before the optimistic
       // state lands would otherwise seed the same default title twice.
@@ -97,13 +99,29 @@ export function useCourseChapters({
         // No `order_index`: the server appends at the course's tail, which
         // is both what "add a lesson" means and immune to the stale-length
         // race a computed index would carry.
-        const ch = await coursesService.createCourseChapter(courseId, {
-          title,
-          chapter_type: type,
+        // Into a module when the teacher added it from inside one on the
+        // course page — at the module's end — and otherwise into the course.
+        const inModule = moduleId ? (course?.modules ?? []).find((m) => m.id === moduleId) : undefined
+        const ch = inModule
+          ? await coursesService.createChapter(courseId, inModule.id, {
+              title,
+              chapter_type: type,
+              order_index: inModule.chapters?.length ?? 0,
+            })
+          : await coursesService.createCourseChapter(courseId, {
+              title,
+              chapter_type: type,
+            })
+        setCourse((prev) => {
+          if (!prev) return prev
+          if (!inModule) return { ...prev, chapters: [...(prev.chapters ?? []), ch] }
+          return {
+            ...prev,
+            modules: prev.modules?.map((m) =>
+              m.id === inModule.id ? { ...m, chapters: [...(m.chapters ?? []), ch] } : m,
+            ),
+          }
         })
-        setCourse((prev) =>
-          prev ? { ...prev, chapters: [...(prev.chapters ?? []), ch] } : prev,
-        )
         toast({ title: t("lessons.toast.added"), variant: "success" })
         navigate(chapterEditHref(courseId, ch.id))
       } catch {
@@ -172,7 +190,15 @@ export function useCourseChapters({
       try {
         await coursesService.deleteCourseChapter(courseId, chapterId)
         setCourse((prev) =>
-          prev ? { ...prev, chapters: prev.chapters?.filter((c) => c.id !== chapterId) } : prev,
+          // Wherever it lived: a lesson deleted from inside a module on the
+          // course page must leave that module's list too.
+          prev
+            ? {
+                ...prev,
+                chapters: prev.chapters?.filter((c) => c.id !== chapterId),
+                modules: prev.modules?.map((m) => ({ ...m, chapters: m.chapters?.filter((c) => c.id !== chapterId) })),
+              }
+            : prev,
         )
         toast({ title: t("lessons.toast.deleted"), variant: "success" })
       } catch {
@@ -265,8 +291,48 @@ export function useCourseChapters({
     [course?.chapters, courseId, setCourse, t],
   )
 
+  const reorderModuleChapters = useCallback(
+    async (moduleId: string, result: DropResult) => {
+      if (!result.destination || !courseId || reorderingRef.current) return
+      const from = result.source.index
+      const to = result.destination.index
+      if (from === to) return
+      const mod = (course?.modules ?? []).find((m) => m.id === moduleId)
+      const sorted = [...(mod?.chapters ?? [])].sort((a, b) => a.order_index - b.order_index)
+      const reordered = Array.from(sorted)
+      const [moved] = reordered.splice(from, 1)
+      if (!moved) return
+      reordered.splice(to, 0, moved)
+      const renumbered = reordered.map((c, i) => ({ ...c, order_index: i }))
+      setCourse((prev) =>
+        prev
+          ? { ...prev, modules: prev.modules?.map((m) => (m.id === moduleId ? { ...m, chapters: renumbered } : m)) }
+          : prev,
+      )
+      reorderingRef.current = true
+      try {
+        await Promise.all(
+          reordered
+            .map((c, i) =>
+              c.order_index !== i ? coursesService.updateCourseChapter(courseId, c.id, { order_index: i }) : null,
+            )
+            .filter(Boolean),
+        )
+      } catch {
+        toast({ title: t("lessons.toast.reorderFailed"), variant: "destructive" })
+        setCourse((prev) =>
+          prev ? { ...prev, modules: prev.modules?.map((m) => (m.id === moduleId ? { ...m, chapters: sorted } : m)) } : prev,
+        )
+      } finally {
+        reorderingRef.current = false
+      }
+    },
+    [course, courseId, setCourse, t],
+  )
+
   return {
     addChapter,
+    reorderModuleChapters,
     updateChapterLocal,
     renameChapter,
     toggleChapterLock,

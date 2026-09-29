@@ -339,10 +339,11 @@ export default function CourseEditor() {
           await data.addModule()
           void readiness.refresh()
         }}
-        onAddChapter={async (type) => {
-          await data.addChapter(type)
+        onAddChapter={async (type, moduleId) => {
+          await data.addChapter(type, moduleId)
           void readiness.refresh()
         }}
+        onModuleChapterDragEnd={data.reorderModuleChapters}
         onRemoveModule={async (id) => {
           await data.removeModule(id)
           void readiness.refresh()
