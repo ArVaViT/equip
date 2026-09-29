@@ -790,7 +790,9 @@
       "copied": "Скопировано",
       "copyAriaLabel": "Скопировать код в буфер обмена"
     },
-    "deleteBlockAria": "Удалить блок «{{label}}»"
+    "deleteBlockAria": "Удалить блок «{{label}}»",
+    "moveUp": "Переместить блок «{{label}}» выше",
+    "moveDown": "Переместить блок «{{label}}» ниже"
   },
   "assignmentEditor": {
     "validation": {

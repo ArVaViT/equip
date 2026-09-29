@@ -26,7 +26,17 @@ export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
   const { t } = useTranslation()
   const [blocks, setBlocks] = useState<ChapterBlock[]>([])
   const [loading, setLoading] = useState(true)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  // Every block open, as a document is. The editor used to be an
+  // accordion — every block folded to «Текст #1», one open at a time — so
+  // a lesson could not be read through while it was written.
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set())
+  const toggleCollapsed = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   const [adding, setAdding] = useState(false)
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
@@ -101,7 +111,6 @@ export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
         order_index: blocks.length,
       })
       setBlocks((prev) => [...prev, newBlock])
-      setExpandedId(newBlock.id)
       toast({
         title: t("blockEditor.addedSuccess", { type: t(BLOCK_TYPE_LABEL_KEYS[type]) }),
         variant: "success",
@@ -136,7 +145,12 @@ export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
     try {
       await coursesService.deleteBlock(id)
       setBlocks((prev) => prev.filter((b) => b.id !== id))
-      if (expandedId === id) setExpandedId(null)
+      setCollapsed((prev) => {
+        if (!prev.has(id)) return prev
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
       markUnsaved(id, false)
       toast({ title: t("blockEditor.deleted"), variant: "success" })
     } catch {
@@ -144,20 +158,24 @@ export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
     }
   }
 
-  const handleDrop = async (targetIdx: number) => {
-    if (dragIdx === null || dragIdx === targetIdx) {
-      setDragIdx(null)
-      setDragOverIdx(null)
-      return
-    }
+  const handleDrop = (targetIdx: number) => {
+    const from = dragIdx
+    setDragIdx(null)
+    setDragOverIdx(null)
+    if (from === null || from === targetIdx) return
+    return moveBlock(from, targetIdx)
+  }
+
+  // Dragging is a mouse gesture — HTML5 drag does not fire on a touch
+  // screen — so the rows also move one step at a time with buttons.
+  const moveBlock = async (fromIdx: number, targetIdx: number) => {
+    if (targetIdx < 0 || targetIdx >= blocks.length) return
     const reordered = [...blocks]
-    const [moved] = reordered.splice(dragIdx, 1)
+    const [moved] = reordered.splice(fromIdx, 1)
     if (!moved) return
     reordered.splice(targetIdx, 0, moved)
     const withIndex = reordered.map((b, i) => ({ ...b, order_index: i }))
     setBlocks(withIndex)
-    setDragIdx(null)
-    setDragOverIdx(null)
 
     try {
       await coursesService.reorderBlocks(
@@ -212,11 +230,11 @@ export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
             courseId={courseId}
             chapterId={chapterId}
             index={idx}
-            expanded={expandedId === block.id}
+            expanded={!collapsed.has(block.id)}
             isDragOver={dragOverIdx === idx}
-            onExpandToggle={() =>
-              setExpandedId((prev) => (prev === block.id ? null : block.id))
-            }
+            onExpandToggle={() => toggleCollapsed(block.id)}
+            onMoveUp={idx > 0 ? () => void moveBlock(idx, idx - 1) : undefined}
+            onMoveDown={idx < blocks.length - 1 ? () => void moveBlock(idx, idx + 1) : undefined}
             onDelete={() => deleteBlock(block.id)}
             onBlockUpdated={replaceBlock}
             onUnsavedChange={(unsaved) => markUnsaved(block.id, unsaved)}

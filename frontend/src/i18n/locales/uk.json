@@ -1203,7 +1203,9 @@
       "copied": "Скопійовано",
       "copyAriaLabel": "Скопіювати код у буфер обміну"
     },
-    "deleteBlockAria": "Видалити блок «{{label}}»"
+    "deleteBlockAria": "Видалити блок «{{label}}»",
+    "moveUp": "Перемістити блок «{{label}}» вище",
+    "moveDown": "Перемістити блок «{{label}}» нижче"
   },
   "assignmentEditor": {
     "validation": {

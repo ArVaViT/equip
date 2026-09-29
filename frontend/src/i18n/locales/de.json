@@ -1163,7 +1163,9 @@
       "copied": "Kopiert",
       "copyAriaLabel": "Code in die Zwischenablage kopieren"
     },
-    "deleteBlockAria": "Block „{{label}}“ löschen"
+    "deleteBlockAria": "Block „{{label}}“ löschen",
+    "moveUp": "Block {{label}} nach oben",
+    "moveDown": "Block {{label}} nach unten"
   },
   "assignmentEditor": {
     "validation": {
