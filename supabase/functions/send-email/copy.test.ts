@@ -100,16 +100,33 @@ function lookupReturning(body: unknown, status = 200) {
   };
 }
 
-Deno.test("signup metadata wins, and costs no request", async () => {
+Deno.test("a language chosen after signup beats the signup metadata", async () => {
+  // Metadata is written once, at signup. A reader who later switched to
+  // German kept getting their password resets in Russian (2026-09-29).
+  const got = await localeFor(
+    "a@example.com",
+    "ru",
+    lookupReturning([{ preferred_locale: "de", locale_source: "chosen" }]),
+  );
+  assertEquals(got, { locale: "de", source: "profile" });
+});
+
+Deno.test("signup metadata beats a profile that only holds the column default", async () => {
+  const got = await localeFor(
+    "a@example.com",
+    "ru",
+    lookupReturning([{ preferred_locale: "en", locale_source: "default" }]),
+  );
+  assertEquals(got, { locale: "ru", source: "metadata" });
+});
+
+Deno.test("signup metadata still decides when the lookup fails", async () => {
   const exploding = {
     supabaseUrl: "https://project.supabase.co",
     secretKey: "sb_secret_test",
-    fetchImpl: (() => {
-      throw new Error("профиль не должен запрашиваться");
-    }) as unknown as typeof fetch,
+    fetchImpl: (() => Promise.reject(new Error("профиль недоступен"))) as typeof fetch,
   };
-  const got = await localeFor("a@example.com", "ru", exploding);
-  assertEquals(got, { locale: "ru", source: "metadata" });
+  assertEquals(await localeFor("a@example.com", "ru", exploding), { locale: "ru", source: "metadata" });
 });
 
 Deno.test("without metadata the profile decides", async () => {
