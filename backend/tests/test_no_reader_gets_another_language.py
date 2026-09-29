@@ -44,6 +44,13 @@ EDITOR_SURFACES = {
     # language first, the author's words rather than a blank group heading
     # when there is no translation — they have to know what they are marking.
     "app/services/grading_queue.py",
+    # A teacher's views of their own course in their interface language:
+    # the course list, analytics, progress and gradebook. With translation
+    # on, "auto" left a course with no row in that language unnamed; the
+    # author's words are the honest answer to "which course is this".
+    "app/services/course_service/_queries.py",
+    "app/api/v1/analytics.py",
+    "app/services/student_progress_service.py",
     # Not a surface at all: this reads a quiz question so the translator
     # can be told what an answer option is answering. An option is a
     # fragment, and a fragment has to agree with the sentence that

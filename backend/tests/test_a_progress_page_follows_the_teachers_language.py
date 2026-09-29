@@ -44,3 +44,14 @@ def test_progress_and_gradebook_name_the_course_in_the_readers_language(client: 
 def test_without_a_language_it_is_the_authors(client: TestClient, db: Session) -> None:
     _course(db, "c-prog-src")
     assert client.get("/api/v1/progress/course/c-prog-src/students").json()["course_title"] == "Глоссарий"
+
+
+def test_with_translation_on_a_missing_translation_keeps_the_name(client: TestClient, db: Session, monkeypatch) -> None:
+    # With a provider configured, "auto" means no fallback, and the page
+    # named the course "" (review, 2026-09-29).
+    monkeypatch.setattr("app.services.content_versions.read.is_translation_enabled", lambda: True)
+    _course(db, "c-prog-on")
+    de = {"Accept-Language": "de"}
+    assert client.get("/api/v1/progress/course/c-prog-on/students", headers=de).json()["course_title"] == "Глоссарий"
+    assert client.get("/api/v1/progress/course/c-prog-on/gradebook", headers=de).json()["course_title"] == "Глоссарий"
+    assert client.get("/api/v1/analytics/course/c-prog-on", headers=de).json()["course_title"] == "Глоссарий"

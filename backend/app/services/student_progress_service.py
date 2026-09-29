@@ -591,7 +591,11 @@ def build_course_student_progress(
     # The reader's language when they sent one, like the analytics page
     # beside it: in an English interface the analytics read «Glossary in
     # Your Pocket» and this page «Глоссарий в кармане» (2026-09-29).
-    populate_spine_texts(db, [course], display_locale=display_locale)
+    # The author's words when there is no row in that language: the teacher
+    # must never see their own course unnamed. Modules and lessons are read
+    # again below at the source (``_load_course_structure``), so only the
+    # course's name is localized here.
+    populate_spine_texts(db, [course], display_locale=display_locale, hydrate_modules=False, fallback="source_then_any")
     chapters, module_map, _chapter_titles, _group_of = _load_course_structure(db, course_id)
     gradable_chapter_ids = [c.id for c in chapters if c.chapter_type in GRADABLE_CHAPTER_TYPES]
 
@@ -662,7 +666,11 @@ def build_student_chapter_detail(
     # The reader's language when they sent one, like the analytics page
     # beside it: in an English interface the analytics read «Glossary in
     # Your Pocket» and this page «Глоссарий в кармане» (2026-09-29).
-    populate_spine_texts(db, [course], display_locale=display_locale)
+    # The author's words when there is no row in that language: the teacher
+    # must never see their own course unnamed. Modules and lessons are read
+    # again below at the source (``_load_course_structure``), so only the
+    # course's name is localized here.
+    populate_spine_texts(db, [course], display_locale=display_locale, hydrate_modules=False, fallback="source_then_any")
     chapters, _module_map, chapter_title_map, group_of = _load_course_structure(db, course_id)
     chapter_ids = [c.id for c in chapters]
 
@@ -719,7 +727,11 @@ def build_course_gradebook_matrix(
     # The reader's language when they sent one, like the analytics page
     # beside it: in an English interface the analytics read «Glossary in
     # Your Pocket» and this page «Глоссарий в кармане» (2026-09-29).
-    populate_spine_texts(db, [course], display_locale=display_locale)
+    # The author's words when there is no row in that language: the teacher
+    # must never see their own course unnamed. Modules and lessons are read
+    # again below at the source (``_load_course_structure``), so only the
+    # course's name is localized here.
+    populate_spine_texts(db, [course], display_locale=display_locale, hydrate_modules=False, fallback="source_then_any")
     chapters, module_map, _chapter_title_map, group_of = _load_course_structure(db, course_id)
     chapter_ids = [c.id for c in chapters]
     gradable_chapter_ids = [c.id for c in chapters if c.chapter_type in GRADABLE_CHAPTER_TYPES]

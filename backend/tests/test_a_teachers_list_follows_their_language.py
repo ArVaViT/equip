@@ -51,3 +51,15 @@ def test_without_a_language_it_is_the_authors(client: TestClient, db: Session) -
     _course(db, "c-list-src", "Книга Деяний", "Die Apostelgeschichte")
     titles = {c["id"]: c["title"] for c in client.get("/api/v1/courses/my").json()}
     assert titles["c-list-src"] == "Книга Деяний"
+
+
+def test_with_translation_on_an_untranslated_course_keeps_its_name(
+    client: TestClient, db: Session, monkeypatch
+) -> None:
+    # Review, 2026-09-29: tests run with no provider, where "auto" falls back
+    # to the source. In production it does not, and the course came back
+    # unnamed in the teacher's own list.
+    monkeypatch.setattr("app.services.content_versions.read.is_translation_enabled", lambda: True)
+    _course(db, "c-list-on", "Черновик курса", None)
+    titles = {c["id"]: c["title"] for c in client.get("/api/v1/courses/my", headers={"Accept-Language": "de"}).json()}
+    assert titles["c-list-on"] == "Черновик курса"

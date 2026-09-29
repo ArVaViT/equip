@@ -69,7 +69,9 @@ def get_course_analytics(
     # EN-source course sees the localized title (matching the editor
     # overlay) instead of always the source. Tier order:
     # display_locale → source_locale → any-locale.
-    populate_spine_texts(db, [course], display_locale=normalize_locale(accept_language))
+    # The author's words when there is no row in that language: a teacher's
+    # own course is never shown unnamed.
+    populate_spine_texts(db, [course], display_locale=normalize_locale(accept_language), fallback="source_then_any")
     # Course title is locale-resolved via populate_spine_texts; downstream
     # caches must not conflate the EN and RU variants of the same payload.
     response.headers["Vary"] = "Accept-Language"

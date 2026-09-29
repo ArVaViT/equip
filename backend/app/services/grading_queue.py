@@ -34,6 +34,7 @@ from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.course import Chapter, Course
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt, QuizQuestion
 from app.models.user import User
+from app.schemas.locale import normalize_locale
 from app.services import quiz_service
 
 if TYPE_CHECKING:
@@ -260,7 +261,7 @@ def _localize_titles(db: Session, groups: list[dict[str, Any]], display_locale: 
     }
     by_source: dict[str, set[str]] = {}
     for g in groups:
-        by_source.setdefault(source_of.get(g["course_id"]) or "ru", set()).add(g["chapter_id"])
+        by_source.setdefault(normalize_locale(source_of.get(g["course_id"])), set()).add(g["chapter_id"])
     names: dict[str, str] = {}
     for source_locale, chapter_ids in by_source.items():
         texts = fetch_cv_entity_texts_with_fallback(
