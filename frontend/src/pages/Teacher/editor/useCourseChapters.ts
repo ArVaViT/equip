@@ -7,7 +7,7 @@ import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { makeChapterSchema } from "@/lib/validations/course"
-import { chapterEditHref, readCourseStructure } from "@/lib/courseStructure"
+import { chapterEditHref, readCourseStructure, reuseOrderNumbers } from "@/lib/courseStructure"
 import type { ChapterType } from "@/lib/chapterTypes"
 import type { Chapter, Course } from "@/types"
 
@@ -271,7 +271,7 @@ export function useCourseChapters({
       if (!moved) return
       reordered.splice(to, 0, moved)
 
-      const renumbered = reordered.map((c, i) => ({ ...c, order_index: i }))
+      const renumbered = reuseOrderNumbers(sorted, reordered)
       setCourse((prev) => (prev ? { ...prev, chapters: renumbered } : prev))
 
       reorderingRef.current = true
@@ -282,10 +282,10 @@ export function useCourseChapters({
         // rarely 0..n-1 to begin with — a positional check would skip rows
         // whose place did not move but whose number still has to.
         await Promise.all(
-          reordered
+          renumbered
             .map((c, i) =>
-              c.order_index !== i
-                ? coursesService.updateCourseChapter(courseId, c.id, { order_index: i })
+              c.order_index !== reordered[i]!.order_index
+                ? coursesService.updateCourseChapter(courseId, c.id, { order_index: c.order_index })
                 : null,
             )
             .filter(Boolean),
@@ -312,7 +312,7 @@ export function useCourseChapters({
       const [moved] = reordered.splice(from, 1)
       if (!moved) return
       reordered.splice(to, 0, moved)
-      const renumbered = reordered.map((c, i) => ({ ...c, order_index: i }))
+      const renumbered = reuseOrderNumbers(sorted, reordered)
       setCourse((prev) =>
         prev
           ? { ...prev, modules: prev.modules?.map((m) => (m.id === moduleId ? { ...m, chapters: renumbered } : m)) }
@@ -321,9 +321,11 @@ export function useCourseChapters({
       reorderingRef.current = true
       try {
         await Promise.all(
-          reordered
+          renumbered
             .map((c, i) =>
-              c.order_index !== i ? coursesService.updateCourseChapter(courseId, c.id, { order_index: i }) : null,
+              c.order_index !== reordered[i]!.order_index
+                ? coursesService.updateCourseChapter(courseId, c.id, { order_index: c.order_index })
+                : null,
             )
             .filter(Boolean),
         )

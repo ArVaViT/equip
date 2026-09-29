@@ -9,7 +9,7 @@ import { getErrorDetail } from "@/lib/errorDetail";
 import { toast } from "@/lib/toast";
 import { isoToLocalInput, localInputToIso } from "@/i18n/format";
 import { makeChapterSchema, makeModuleSchema } from "@/lib/validations/course";
-import { chapterEditHref } from "@/lib/courseStructure";
+import { chapterEditHref, reuseOrderNumbers } from "@/lib/courseStructure";
 import type { Chapter, Module } from "@/types";
 import type { ChapterType } from "@/lib/chapterTypes";
 
@@ -313,22 +313,19 @@ export function useModuleEditor(
       if (!moved) return;
       reordered.splice(to, 0, moved);
 
-      setMod((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          chapters: reordered.map((c, i) => ({ ...c, order_index: i })),
-        };
-      });
+      // The numbers the lessons already had, in the new order — see
+      // `reuseOrderNumbers` for why not 0..n-1.
+      const renumbered = reuseOrderNumbers(sorted, reordered);
+      setMod((prev) => (prev ? { ...prev, chapters: renumbered } : prev));
 
       setReordering(true);
       try {
         await Promise.all(
-          reordered
+          renumbered
             .map((c, i) =>
-              c.order_index !== i
+              c.order_index !== reordered[i]!.order_index
                 ? coursesService.updateCourseChapter(courseId, c.id, {
-                    order_index: i,
+                    order_index: c.order_index,
                   })
                 : null,
             )
