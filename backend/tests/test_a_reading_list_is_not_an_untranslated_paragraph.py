@@ -60,7 +60,10 @@ class TestABibliographyDoesNotParkALesson:
             source=f"<p>For further reading on this question:</p><p><em>{CITATION}</em></p>",
             translated=f"<p>Zur Vertiefung dieser Frage:</p><p><em>{CITATION}</em></p>",
             source_locale="en",
-            target_locale="uk",
+            # German, as the text is. It said "uk" until 2026-09-29, when the
+            # passage check began reading each paragraph and found German in
+            # a Ukrainian row — a defect of its own, not this test's.
+            target_locale="de",
             content_kind="html",
         )
         assert blocking(issues) == set()

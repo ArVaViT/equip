@@ -2345,6 +2345,10 @@
     "path": "/api/v1/grades/my/{course_id}/breakdown",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
         "course_id",
         "path"
       ]

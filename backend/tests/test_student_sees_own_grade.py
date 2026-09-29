@@ -486,3 +486,45 @@ def test_a_pass_fail_student_with_work_returned_is_told_nezachet(student_client,
     # everything is done while the course result says «незачёт».
     assert body["items"][0]["status"] == "returned"
     assert body["items"][0]["score"] is None, "the mark on it is not the state it is in"
+
+
+def test_item_titles_are_in_the_readers_language(student_client, db: Session, teacher, student, monkeypatch) -> None:
+    """The titles were read off the chapter row — the author's Russian — so a
+    German student saw their quizzes in Russian on a German course page. In
+    the reader's language now, and nothing rather than another language when
+    that one is missing (2026-09-29)."""
+    from app.services.content_versions.write import record_human_version, record_mt_version
+    from app.services.translation.hash import compute_source_hash
+
+    # As in production: a platform that translates never falls back to the
+    # author's language for a reader.
+    monkeypatch.setattr("app.services.content_versions.read.is_translation_enabled", lambda: True)
+    course, module = _course(db, teacher, "c-my-locale")
+    course.source_locale = "ru"
+    quiz = _quiz(db, module, course.id, 0, "Тест по главе")
+    chapter_id = f"{course.id}-q0"
+    record_human_version(
+        db, entity_type="chapter", entity_id=chapter_id, field="title", locale="ru", text="Тест по главе"
+    )
+    record_mt_version(
+        db,
+        entity_type="chapter",
+        entity_id=chapter_id,
+        field="title",
+        locale="de",
+        text="Test zum Kapitel",
+        source_locale="ru",
+        source_hash=compute_source_hash("Тест по главе", locale="ru"),
+    )
+    db.commit()
+    assert quiz.id
+
+    def titles(lang: str) -> set[str]:
+        body = student_client.get(URL.format(course_id=course.id), headers={"Accept-Language": lang}).json()
+        return {i["title"] for i in body["items"]}
+
+    assert titles("de") == {"Test zum Kapitel"}
+    assert titles("ru") == {"Тест по главе"}
+    # No Ukrainian row: an empty title the page marks as untranslated,
+    # never the Russian one.
+    assert titles("uk") == {""}

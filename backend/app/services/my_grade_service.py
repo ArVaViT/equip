@@ -26,6 +26,7 @@ from sqlalchemy import case
 from sqlalchemy import func as sqlfunc
 
 from app.models.quiz import QuizAnswer, QuizAttempt
+from app.schemas.locale import normalize_locale
 from app.services.certificate_readiness import certificate_blockers
 from app.services.gradable_items import course_items
 from app.services.grade_calculator import calculate_student_grade_for_course
@@ -106,8 +107,23 @@ def _status_and_score(
     return "graded", round(score, 1)
 
 
-def build_my_course_grade(db: Session, course: Course, enrollment: Enrollment, student_id: UUID) -> dict[str, Any]:
-    """The student's own view of one course. Never anyone else's."""
+def build_my_course_grade(
+    db: Session,
+    course: Course,
+    enrollment: Enrollment,
+    student_id: UUID,
+    *,
+    display_locale: str | None = None,
+) -> dict[str, Any]:
+    """The student's own view of one course. Never anyone else's.
+
+    ``display_locale`` is the reader's language. The item titles are
+    chapter titles, and they came straight off the ``chapters`` row — the
+    author's words — so a German student read their quizzes in Russian on
+    an otherwise German course page (2026-09-29). They are resolved like
+    every other chapter title a reader sees; an untranslated one comes back
+    empty and the page says so rather than showing another language.
+    """
     breakdown = calculate_student_grade_for_course(db, course, student_id)
     excused_quizzes, excused_assignments = excused_item_ids(db, student_id=student_id, course_id=course.id)
 
@@ -168,6 +184,21 @@ def build_my_course_grade(db: Session, course: Course, enrollment: Enrollment, s
                 "feedback": (mark or {}).get("feedback") if status in {"graded", "returned"} else None,
             }
         )
+
+    if display_locale is not None and items:
+        from app.services.content_versions.read import fetch_cv_entity_texts_with_fallback
+
+        chapter_ids = sorted({str(i["chapter_id"]) for i in items})
+        texts = fetch_cv_entity_texts_with_fallback(
+            db,
+            entity_type="chapter",
+            entity_ids=chapter_ids,
+            fields=["title"],
+            display_locale=display_locale,
+            source_locale=normalize_locale(course.source_locale),
+        )
+        for item in items:
+            item["title"] = texts.get((str(item["chapter_id"]), "title")) or ""
 
     scheme = course.grading_scheme
     withheld = scheme in _COMPLETION_NATIVE_SCHEMES
