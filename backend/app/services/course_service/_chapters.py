@@ -177,6 +177,15 @@ def restore_chapter(db: Session, chapter: Chapter) -> Chapter:
     on delete: the course's gradable chapters just changed.
     """
     chapter.deleted_at = None
+    # A binned lesson keeps the module it was binned under (``delete_module``
+    # frees only live lessons). If that module has since been deleted, the
+    # lesson would come back into a module nobody can see, so it comes back
+    # into the course instead, at its tail.
+    if chapter.module_id is not None:
+        home = db.get(Module, chapter.module_id)
+        if home is None or home.deleted_at is not None:
+            chapter.module_id = None
+            chapter.order_index = _next_chapter_order(db, chapter.course_id)
     db.commit()
     db.refresh(chapter)
     _resync_progress_for_chapter(db, chapter)

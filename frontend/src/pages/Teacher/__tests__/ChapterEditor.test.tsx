@@ -167,6 +167,37 @@ describe("ChapterEditor — addressed by its course", () => {
     expect(payload).toMatchObject({ title: "Кто написал послание?" })
   })
 
+  it("says a save failed, instead of «saving…» for ever", async () => {
+    vi.spyOn(coursesService, "getChapterForEdit").mockResolvedValue(chapter())
+    const update = vi.spyOn(coursesService, "updateCourseChapter").mockRejectedValue(new Error("offline"))
+
+    renderAtCourseRoute()
+    const input = await screen.findByDisplayValue("Кто написал послание")
+    await userEvent.type(input, "?")
+
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1), { timeout: 3000 })
+    expect(await screen.findByText(i18n.t("chapterEditor.status.failed"))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t("chapterEditor.status.saving"))).not.toBeInTheDocument()
+
+    // Typing again is a new attempt.
+    update.mockResolvedValue(chapter({ title: "Кто написал послание?!" }))
+    await userEvent.type(input, "!")
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(2), { timeout: 3000 })
+  })
+
+  it("asks for a name rather than spinning on an empty one", async () => {
+    vi.spyOn(coursesService, "getChapterForEdit").mockResolvedValue(chapter())
+    const update = vi.spyOn(coursesService, "updateCourseChapter")
+
+    renderAtCourseRoute()
+    const input = await screen.findByDisplayValue("Кто написал послание")
+    await userEvent.clear(input)
+
+    expect(await screen.findByText(i18n.t("chapterEditor.status.needsTitle"))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t("chapterEditor.status.saving"))).not.toBeInTheDocument()
+    expect(update).not.toHaveBeenCalled()
+  })
+
   it("links to the lesson as a student reads it", async () => {
     vi.spyOn(coursesService, "getChapterForEdit").mockResolvedValue(chapter())
     renderAtCourseRoute()

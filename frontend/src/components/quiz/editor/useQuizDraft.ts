@@ -51,7 +51,9 @@ interface UseQuizDraftResult {
    *  draft as it was loaded or last saved, so undoing a change clears it. */
   isDirty: boolean
   /** The draft on screen is now what the server holds. */
-  markSaved: () => void
+  /** The draft as it now stands, in the form `markSaved` takes. */
+  snapshotKey: string
+  markSaved: (sent?: string) => void
 }
 
 const defaultMaxAttempts = (chapterType: "quiz" | "exam") =>
@@ -271,12 +273,20 @@ export function useQuizDraft({
       setSaveMarked(false)
     }
   }, [loading, baseline, saveMarked, current])
-  const markSaved = useCallback(() => setSaveMarked(true), [])
+  // With `sent` — the draft as it was when the save went out — edits made
+  // while the request was in flight stay unsaved, as they are. Without it,
+  // the next render's draft becomes the baseline (after a delete, or a
+  // rebuild that sets fields from the server's answer).
+  const markSaved = useCallback((sent?: string) => {
+    if (sent === undefined) setSaveMarked(true)
+    else setBaseline(sent)
+  }, [])
   const isDirty = !loading && baseline !== null && !saveMarked && current !== baseline
 
   return {
     loading,
     isDirty,
+    snapshotKey: current,
     markSaved,
     existingQuiz,
     setExistingQuiz,

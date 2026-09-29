@@ -101,7 +101,6 @@ export function useCourseChapters({
           ? await coursesService.createChapter(courseId, inModule.id, {
               title,
               chapter_type: type,
-              order_index: inModule.chapters?.length ?? 0,
             })
           : await coursesService.createCourseChapter(courseId, {
               title,
@@ -178,7 +177,6 @@ export function useCourseChapters({
       // No "are you sure?" dialog in front of it any more: the server only
       // ever set `deleted_at`, so the honest offer is an "Undo" after it,
       // not a warning before it that the lesson «будет удалён».
-      const before = course
       try {
         await coursesService.deleteCourseChapter(courseId, chapterId)
         setCourse((prev) =>
@@ -201,10 +199,11 @@ export function useCourseChapters({
             onClick: () => {
               void coursesService
                 .restoreCourseChapter(courseId, chapterId)
-                .then(() => {
-                  // Back exactly where it was: the course as it stood
-                  // before the delete.
-                  if (before) setCourse(before)
+                .then((restored) => {
+                  // Into the course as it stands now, not a snapshot from
+                  // before the delete: a rename or another lesson added
+                  // in those eight seconds must survive the undo.
+                  setCourse((prev) => (prev ? withRestoredChapter(prev, restored) : prev))
                   toast({ title: t("lessons.toast.restored"), variant: "success" })
                 })
                 .catch(() => toast({ title: t("lessons.toast.restoreFailed"), variant: "destructive" }))
@@ -215,7 +214,7 @@ export function useCourseChapters({
         toast({ title: t("lessons.toast.deleteFailed"), variant: "destructive" })
       }
     },
-    [course, courseId, setCourse, t],
+    [courseId, setCourse, t],
   )
 
   const moveChapter = useCallback(
@@ -350,4 +349,25 @@ export function useCourseChapters({
     moveChapter,
     reorderChapters,
   }
+}
+
+/**
+ * Put a restored lesson back into a course: into its module when that
+ * module is on the page, else among the lessons outside modules (the
+ * server frees a lesson whose module is gone). Sorted by `order_index`,
+ * so it lands where it stood.
+ */
+export function withRestoredChapter(course: Course, restored: Chapter): Course {
+  const byOrder = (a: Chapter, b: Chapter) => a.order_index - b.order_index
+  const without = (list?: Chapter[]) => (list ?? []).filter((c) => c.id !== restored.id)
+  const home = restored.module_id ? course.modules?.find((m) => m.id === restored.module_id) : undefined
+  if (home) {
+    return {
+      ...course,
+      modules: course.modules?.map((m) =>
+        m.id === home.id ? { ...m, chapters: [...without(m.chapters), restored].sort(byOrder) } : m,
+      ),
+    }
+  }
+  return { ...course, chapters: [...without(course.chapters), { ...restored, module_id: null }].sort(byOrder) }
 }

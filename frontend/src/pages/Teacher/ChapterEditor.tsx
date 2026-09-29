@@ -79,9 +79,11 @@ async function editorHasContent(type: ChapterType, chapterId: string): Promise<b
  */
 function SaveStatus({
   state,
+  detail,
   onRetry,
 }: {
-  state: "idle" | "saving" | "saved" | "error"
+  state: "idle" | "saving" | "saved" | "error" | "needsTitle"
+  detail?: string
   onRetry: () => void
 }) {
   const { t } = useTranslation()
@@ -100,10 +102,16 @@ function SaveStatus({
           <span className="max-sm:sr-only">{t("chapterEditor.status.saved")}</span>
         </>
       )}
+      {state === "needsTitle" && (
+        <>
+          <AlertCircle className="h-3.5 w-3.5 text-warning" strokeWidth={1.75} aria-hidden />
+          <span>{t("chapterEditor.status.needsTitle")}</span>
+        </>
+      )}
       {state === "error" && (
         <>
           <AlertCircle className="h-3.5 w-3.5 text-destructive" strokeWidth={1.75} aria-hidden />
-          <span className="text-destructive">{t("chapterEditor.status.failed")}</span>
+          <span className="text-destructive" title={detail || undefined}>{t("chapterEditor.status.failed")}</span>
           <button type="button" onClick={onRetry} className="font-medium text-ink underline underline-offset-2">
             {t("chapterEditor.status.retry")}
           </button>
@@ -147,6 +155,8 @@ export default function ChapterEditor() {
   /** Published course: an edit waits for every language (by design). */
   const [coursePublished, setCoursePublished] = useState(false)
   const [typePickerOpen, setTypePickerOpen] = useState(false)
+  /** Why the last save failed, for the status's tooltip. */
+  const [errorDetail, setErrorDetail] = useState("")
 
   const [title, setTitle] = useState("")
   const [chapterType, setChapterType] = useState<ChapterType>("reading")
@@ -246,7 +256,7 @@ export default function ChapterEditor() {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
   }, [unsaved])
 
-  const save = useCallback(async (): Promise<boolean> => {
+  const save = useCallback(async ({ quiet = false }: { quiet?: boolean } = {}): Promise<boolean> => {
     if (!courseId || !chapterId || !title.trim()) return false
     // Only title + chapter_type live on the chapter row now. Reading content
     // is owned by chapter_blocks (edited inline inside ChapterBlockEditor,
@@ -258,11 +268,14 @@ export default function ChapterEditor() {
       chapter_type: chapterType,
     })
     if (!validation.success) {
+      // The header says so (status "error", the reason on hover). A toast
+      // only when the teacher asked — Ctrl+S, "Retry" — not after every
+      // pause in typing.
       const first = validation.error.issues[0]
-      toast({
-        title: first?.message ?? t("chapterEditor.toast.invalidData"),
-        variant: "destructive",
-      })
+      const message = first?.message ?? t("chapterEditor.toast.invalidData")
+      setErrorDetail(message)
+      setStatus("error")
+      if (!quiet) toast({ title: message, variant: "destructive" })
       return false
     }
     setStatus("saving")
@@ -288,6 +301,7 @@ export default function ChapterEditor() {
         title: t("chapterEditor.toast.saveFailed", { detail }),
         variant: "destructive",
       })
+      setErrorDetail(detail)
       setStatus("error")
       return false
     }
@@ -297,7 +311,7 @@ export default function ChapterEditor() {
   // the way the course's and the module's names already did.
   useEffect(() => {
     if (!isDirty || !title.trim() || status === "error") return
-    const id = window.setTimeout(() => void save(), 800)
+    const id = window.setTimeout(() => void save({ quiet: true }), 800)
     return () => window.clearTimeout(id)
   }, [isDirty, title, chapterType, status, save])
 
@@ -325,6 +339,17 @@ export default function ChapterEditor() {
     async (next: ChapterType) => {
       if (!chapter || next === chapterType || switchingTypeRef.current) return
       if (EDITOR_FAMILY[next] === EDITOR_FAMILY[chapterType]) {
+        // Quiz ↔ exam keeps the editor but reloads the quiz from the
+        // server, so questions typed and not saved would go without a word.
+        if (childDirty.quiz) {
+          const ok = await confirm({
+            title: t("chapterEditor.typeChangeUnsaved.title"),
+            description: t("chapterEditor.typeChangeUnsaved.description"),
+            confirmLabel: t("chapterEditor.typeChangeUnsaved.confirm"),
+            tone: "destructive",
+          })
+          if (!ok) return
+        }
         setChapterType(next)
         return
       }
@@ -346,7 +371,7 @@ export default function ChapterEditor() {
         switchingTypeRef.current = false
       }
     },
-    [chapter, chapterType, confirm, t],
+    [chapter, chapterType, childDirty.quiz, confirm, t],
   )
 
   // Shared dirty-check used by the Back button and every breadcrumb
@@ -506,7 +531,11 @@ export default function ChapterEditor() {
         <h1 className="order-last m-0 w-full sm:order-none sm:w-auto sm:flex-1">
           <Input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value)
+              // A new edit is a new attempt: autosave resumes after a failure.
+              if (status === "error") setStatus("idle")
+            }}
             aria-label={t("chapterEditor.editTitleAria")}
             // `sm:text-2xl` too: the field's own `sm:text-sm` won at every
             // width from 640px, and the lesson's name sat in the header at
@@ -517,7 +546,16 @@ export default function ChapterEditor() {
         </h1>
         <span className="ml-auto flex items-center gap-2 sm:ml-0">
         <SaveStatus
-          state={isDirty || status === "saving" ? "saving" : status}
+          state={
+            status === "error"
+              ? "error"
+              : !title.trim()
+                ? "needsTitle"
+                : isDirty || status === "saving"
+                  ? "saving"
+                  : status
+          }
+          detail={errorDetail}
           onRetry={() => {
             setStatus("idle")
             void save()

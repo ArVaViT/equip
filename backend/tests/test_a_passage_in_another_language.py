@@ -67,6 +67,32 @@ def test_a_quote_the_source_makes_on_purpose_is_left_alone() -> None:
     assert _check_passage_language(source, translated, source_locale="ru", target_locale="de") is None
 
 
+def test_a_short_quote_in_another_alphabet_is_left_alone() -> None:
+    # Under the 45-letter floor a passage in the source was not counted as
+    # quoted, while the same passage in the translation was judged from 20
+    # letters: a short Russian quote kept in a German lesson taught in
+    # English was withheld.
+    source = (
+        "<p>The Russian Synodal Bible renders the opening line like this:</p>"
+        "<p>В начале было Слово, и Слово было у Бога.</p>"
+    )
+    translated = (
+        "<p>Die russische Synodalbibel gibt die erste Zeile so wieder:</p>"
+        "<p>В начале было Слово, и Слово было у Бога.</p>"
+    )
+    assert _check_passage_language(source, translated, source_locale="en", target_locale="de") is None
+
+
+def test_a_stray_passage_is_still_caught_when_it_is_not_in_the_source() -> None:
+    source = "<p>The Russian Synodal Bible renders the opening line in its own way.</p>"
+    translated = (
+        "<p>Die russische Synodalbibel gibt die erste Zeile auf eigene Weise wieder.</p>"
+        "<p>Откройте первые два-три стиха пророческой книги.</p>"
+    )
+    issue = _check_passage_language(source, translated, source_locale="en", target_locale="de")
+    assert issue is not None and issue.code == "wrong_language_passage"
+
+
 def test_it_withholds_the_row_through_the_full_validator() -> None:
     translated = (
         "<p>Prophetische Bücher lassen sich leichter lesen, wenn man die Epoche kennt, in der sie entstanden sind.</p>"

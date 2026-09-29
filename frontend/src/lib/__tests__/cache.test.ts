@@ -213,3 +213,15 @@ describe("cached() and a language switch mid-flight", () => {
     expect(cacheGet("race:key")).toBe("русский ответ")
   })
 })
+
+describe("cached — size bound", () => {
+  it("evicts the oldest entry when a fetched value overflows the store", async () => {
+    // `cached` writes the store itself (the key is fixed before the await);
+    // without the eviction there the store grew past MAX_ENTRIES unbounded.
+    cacheClear()
+    for (let i = 0; i < 200; i++) cacheSet(`fill:${i}`, i)
+    await cached("overflow", 60_000, () => Promise.resolve("new"))
+    expect(cacheGet("fill:0")).toBeUndefined()
+    expect(cacheGet("overflow")).toBe("new")
+  })
+})

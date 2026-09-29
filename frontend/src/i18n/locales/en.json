@@ -1895,7 +1895,8 @@
       "saved": "Saved",
       "saving": "Saving…",
       "failed": "Not saved",
-      "retry": "Retry"
+      "retry": "Retry",
+      "needsTitle": "A name is needed"
     },
     "changeType": "Change",
     "preview": "Student view",
@@ -1904,6 +1905,11 @@
       "title": "Leave this page?",
       "description": "The quiz or assignment in this lesson is not saved. If you leave now, what you wrote will be lost.",
       "confirm": "Leave without saving"
+    },
+    "typeChangeUnsaved": {
+      "title": "Change the type and lose the questions?",
+      "description": "The quiz has unsaved changes. Changing the type reloads the quiz, and they will be lost. Save the quiz first.",
+      "confirm": "Change without saving"
     }
   },
   "courseDetail": {

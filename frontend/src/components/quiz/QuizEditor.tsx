@@ -113,6 +113,7 @@ export default function QuizEditor({
     }
 
     const shape = snapshot()
+    const sent = draft.snapshotKey
     const existing = draft.existingQuiz
     const plan = existing ? planInPlaceSave(existing, shape) : null
 
@@ -135,7 +136,7 @@ export default function QuizEditor({
       if (existing && plan) {
         const quiz = isEmptyPlan(plan) ? existing : await applyInPlace(existing, plan)
         draft.setExistingQuiz(quiz)
-        draft.markSaved()
+        draft.markSaved(sent)
         onQuizSaved?.(quiz.id)
         toast({ title: t("quizEditor.toast.quizSaved"), variant: "success" })
         return

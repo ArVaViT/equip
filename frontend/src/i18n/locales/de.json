@@ -1895,7 +1895,8 @@
       "saved": "Gespeichert",
       "saving": "Wird gespeichert…",
       "failed": "Nicht gespeichert",
-      "retry": "Erneut versuchen"
+      "retry": "Erneut versuchen",
+      "needsTitle": "Ein Name fehlt"
     },
     "changeType": "Ändern",
     "preview": "Ansicht für Lernende",
@@ -1904,6 +1905,11 @@
       "title": "Seite verlassen?",
       "description": "Der Test oder die Aufgabe in dieser Lektion ist nicht gespeichert. Wenn Sie jetzt gehen, geht das Geschriebene verloren.",
       "confirm": "Ohne Speichern verlassen"
+    },
+    "typeChangeUnsaved": {
+      "title": "Typ ändern und Fragen verlieren?",
+      "description": "Der Test hat ungespeicherte Änderungen. Beim Ändern des Typs wird der Test neu geladen, und sie gehen verloren. Speichern Sie den Test zuerst.",
+      "confirm": "Ohne Speichern ändern"
     }
   },
   "courseDetail": {

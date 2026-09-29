@@ -125,7 +125,7 @@ export function useModuleEditor(
     // until a refresh. Same shape as ``addModule``'s ref-based guard.
     if (addingChapterRef.current) return;
     addingChapterRef.current = true;
-    const order = mod.chapters?.length ?? 0;
+    const order = mod.chapters?.length ?? 0;  // for the fallback title only
     // Default title counts existing chapters of the SAME type so
     // teachers see "Quiz 2" rather than "Chapter 5" when adding their
     // second quiz to a mostly-reading module. Falls back to the
@@ -146,7 +146,9 @@ export function useModuleEditor(
         // previous ``Chapter N`` literal stuck English into every
         // Russian-UI teacher's course tree until they renamed it.
         title: seededTitle,
-        order_index: order,
+        // No `order_index`: it is course-wide on the server, and the
+        // module's own count collided with lessons elsewhere in the course.
+        // Left out, the server puts the lesson at the course's tail.
         chapter_type: chapterType,
       });
       setMod((prev) =>
@@ -206,7 +208,6 @@ export function useModuleEditor(
   const deleteChapter = async (chId: string) => {
     if (!courseId || !moduleId) return;
     // "Undo" after, not "are you sure?" before — as on the course page.
-    const before = mod;
     try {
       await coursesService.deleteCourseChapter(courseId, chId);
       setMod((prev) =>
@@ -223,8 +224,20 @@ export function useModuleEditor(
           onClick: () => {
             void coursesService
               .restoreCourseChapter(courseId, chId)
-              .then(() => {
-                if (before) setMod(before);
+              .then((restored) => {
+                // Into the module as it stands now, not a snapshot from
+                // before the delete, so edits made meanwhile survive.
+                setMod((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        chapters: [
+                          ...(prev.chapters ?? []).filter((c) => c.id !== restored.id),
+                          restored,
+                        ].sort((a, b) => a.order_index - b.order_index),
+                      }
+                    : prev,
+                );
                 toast({ title: t("lessons.toast.restored"), variant: "success" });
               })
               .catch(() => toast({ title: t("lessons.toast.restoreFailed"), variant: "destructive" }));

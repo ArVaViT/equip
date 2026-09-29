@@ -144,5 +144,6 @@ export async function cached<T>(
   const scoped = localeScoped(key)
   const fresh = await fetcher()
   store.set(scoped, { value: fresh, expiresAt: Date.now() + ttlMs })
+  evictIfNeeded()
   return fresh
 }

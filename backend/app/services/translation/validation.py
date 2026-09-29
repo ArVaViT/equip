@@ -1704,14 +1704,21 @@ def _check_passage_language(
             blocking=True,
         )
 
+    # The source is read with the lowest floor the translation is judged
+    # by: a 25-letter Greek quote in a Russian lesson must count as quoted,
+    # or the same quote kept in the German translation would be flagged.
     quoted = {
         lang
         for seg in _passages(source)
-        if script_letters(seg) >= _MIN_LETTERS_FOR_A_PASSAGE and (lang := detect_locale(seg)) is not None
+        if script_letters(seg) >= _MIN_LETTERS_ACROSS_SCRIPTS and (lang := detect_locale(seg)) is not None
     }
+    plain_source_words = " ".join(plain_source.split())
     strays: list[str] = []
     for seg in _passages(translated):
         if not _carries_prose(seg) or not carries_language(seg):
+            continue
+        # Carried over word for word: a quotation, whatever its language.
+        if " ".join(strip_tags(unescape(seg)).split()) in plain_source_words:
             continue
         detected = detect_locale(seg)
         if detected is None or detected in (target_locale, source_locale) or detected in quoted:
