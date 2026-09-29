@@ -91,7 +91,9 @@ export function PageHeader({
               </h1>
             ))}
         </div>
-        {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+        {/* Wraps on a phone: three buttons in a row were wider than a
+            390px screen and gave the whole page a sideways scroll. */}
+        {actions && <div className="flex flex-wrap items-center gap-2 sm:shrink-0">{actions}</div>}
       </div>
       {description && (
         <div className="max-w-3xl text-sm leading-relaxed text-ink-muted text-wrap-safe">

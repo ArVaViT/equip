@@ -206,8 +206,10 @@ export default function StudentProgress() {
         <span className="text-ink font-medium">{t("studentProgress.heading")}</span>
       </div>
 
-      <div className="flex items-center gap-3 mb-8">
-        <div className="flex-1">
+      {/* Wraps on a phone: the two buttons beside the heading made the page
+          415px wide on a 360px screen. */}
+      <div className="flex flex-wrap items-center gap-3 mb-8">
+        <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">
           <h1 className="text-3xl font-serif font-bold tracking-tight">{t("studentProgress.heading")}</h1>
           <p className="text-ink-muted mt-1">{data.course_title}</p>
         </div>

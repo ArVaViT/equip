@@ -398,8 +398,10 @@ export default function TeacherGradebook() {
         <span className="text-ink font-medium">{t("gradebook.pageHeading")}</span>
       </div>
 
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
+      {/* On a phone the two buttons go under the heading: side by side they
+          made the page 510px wide on a 360px screen. */}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0">
           <h1 className="flex items-center gap-2 font-serif text-3xl font-bold tracking-tight">
             <Award className="h-6 w-6 shrink-0 text-brand" strokeWidth={1.75} aria-hidden />
             {t("gradebook.pageHeading")}
@@ -407,7 +409,7 @@ export default function TeacherGradebook() {
           {courseTitle && <p className="text-ink-muted mt-1">{courseTitle}</p>}
         </div>
         {studentCount > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
             {/* The CSV is a report; the ведомость is the document a director
                 signs and files. Both belong here, and they are not the same
                 thing. */}

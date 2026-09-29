@@ -103,7 +103,10 @@ export function InlineEditCover({
     <div
       className={cn(
         "relative w-full overflow-hidden rounded-lg bg-muted",
-        aspectClasses[aspect],
+        // No image yet: a strip, not a 16:9 blank. On a course just
+        // created the empty frame took most of the first screen and pushed
+        // "add the first lesson" below the fold.
+        empty ? "h-24 sm:h-28" : aspectClasses[aspect],
         dragOver && "ring-2 ring-brand ring-offset-2",
         className,
       )}
@@ -120,7 +123,7 @@ export function InlineEditCover({
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={disabled || busy}
-          className="group flex h-full w-full flex-col items-center justify-center gap-2 text-ink-muted transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+          className="group flex h-full w-full items-center justify-center gap-2 text-ink-muted transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         >
           {busy ? (
             <Loader2 className="h-6 w-6 animate-spin" strokeWidth={1.75} />
