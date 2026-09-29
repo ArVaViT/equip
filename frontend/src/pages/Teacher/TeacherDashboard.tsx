@@ -147,6 +147,16 @@ export default function TeacherDashboard() {
         confirmLabel: t("teacherDashboard.publishConfirm.confirm"),
       })
       if (!ok) return
+    } else {
+      // Unpublishing closes the course to its enrolled students too; the
+      // editor asks, and so does the card (the same words).
+      const ok = await confirm({
+        title: t("courseEditor.unpublishConfirm.title"),
+        description: t("courseEditor.unpublishConfirm.description"),
+        confirmLabel: t("courseEditor.unpublishConfirm.confirm"),
+        tone: "destructive",
+      })
+      if (!ok) return
     }
     setTogglingId(course.id)
     try {

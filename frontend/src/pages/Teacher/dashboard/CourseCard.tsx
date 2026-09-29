@@ -87,7 +87,16 @@ export function CourseCard({
         )}
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <h3 className="min-w-0 flex-1 truncate text-base font-semibold sm:text-lg">{course.title}</h3>
+            {/* The name opens the course, as a name does everywhere else in
+                the app; it was plain text, and the way in was an icon. */}
+            <h3 className="min-w-0 flex-1 truncate text-base font-semibold sm:text-lg">
+              <Link
+                to={`/teacher/courses/${course.id}`}
+                className="underline-offset-4 transition-colors hover:text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                {course.title}
+              </Link>
+            </h3>
             <Badge
               variant={isPublished ? "success" : isPublishing ? "warningSubtle" : "warning"}
               className="shrink-0"
@@ -190,16 +199,19 @@ export function CourseCard({
             )}
             <span className="sr-only">{togglePublishLabel}</span>
           </Button>
-          <Link to={`/teacher/courses/${course.id}`} className="hidden sm:inline-flex">
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label={t("teacherDashboard.courseCard.actionEditCourse")}
-              title={t("teacherDashboard.courseCard.actionEditCourse")}
-            >
+          {/* On a phone too: editing is what this page is for, and it was
+              only inside the "…" menu there. One link, not a button in a link. */}
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            aria-label={t("teacherDashboard.courseCard.actionEditCourse")}
+            title={t("teacherDashboard.courseCard.actionEditCourse")}
+          >
+            <Link to={`/teacher/courses/${course.id}`}>
               <Pencil className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -213,13 +225,8 @@ export function CourseCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[14rem]">
-              {/* Mobile-only mirror of the inline actions */}
-              <DropdownMenuItem asChild className="sm:hidden">
-                <Link to={`/teacher/courses/${course.id}`}>
-                  <Pencil className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                  {t("teacherDashboard.courseCard.actionEditCourse")}
-                </Link>
-              </DropdownMenuItem>
+              {/* Mobile-only mirror of the inline actions (editing is inline
+                  on every width now). */}
               <DropdownMenuItem
                 onSelect={() => onToggleStatus(course)}
                 disabled={togglingId === course.id}

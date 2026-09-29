@@ -1852,7 +1852,12 @@
       "saving": "Wird gespeichert …"
     },
     "publishing": "Wird veröffentlicht",
-    "viewAsStudent": "Als Studierende ansehen"
+    "viewAsStudent": "Als Studierende ansehen",
+    "unpublishConfirm": {
+      "title": "Veröffentlichung dieses Kurses aufheben?",
+      "description": "Der Kurs verschwindet aus dem Katalog, und Lernende – auch bereits eingeschriebene – können seine Lektionen erst wieder öffnen, wenn Sie ihn erneut veröffentlichen. Fortschritt und Noten bleiben erhalten.",
+      "confirm": "Veröffentlichung aufheben"
+    }
   },
   "chapterEditor": {
     "notFound": {
@@ -2911,7 +2916,7 @@
     "title": "Sprachen des Kurses",
     "complete": "Dieser Kurs liegt in allen Sprachen vor und wurde geprüft",
     "remaining": "Noch zu übersetzen: {{count}}",
-    "prepare": "Für die Veröffentlichung vorbereiten",
+    "prepare": "Jetzt übersetzen",
     "behindBy": "— {{count}} fehlen",
     "heldEdits": "{{count}} Änderungen warten auf die Übersetzung. Studierende sehen sie, sobald alle Sprachen bereit sind.",
     "blockedEdits": "{{count}} Änderungen hängen fest. Eine Übersetzung hat die Prüfung nicht bestanden und braucht einen Menschen.",

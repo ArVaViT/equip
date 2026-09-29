@@ -1852,7 +1852,12 @@
       "saving": "Saving…"
     },
     "publishing": "Publishing",
-    "viewAsStudent": "View as a student"
+    "viewAsStudent": "View as a student",
+    "unpublishConfirm": {
+      "title": "Unpublish this course?",
+      "description": "It will leave the catalog, and students — including those already enrolled — will not be able to open its lessons until you publish it again. Their progress and grades are kept.",
+      "confirm": "Unpublish"
+    }
   },
   "chapterEditor": {
     "notFound": {
@@ -2911,7 +2916,7 @@
     "title": "Course languages",
     "complete": "This course exists in every language and has been checked",
     "remaining": "{{count}} still to translate",
-    "prepare": "Prepare for publication",
+    "prepare": "Translate now",
     "behindBy": "— {{count}} missing",
     "heldEdits": "{{count}} edits waiting on translation. Students see them once every language is ready.",
     "blockedEdits": "{{count}} edits are stuck. A translation failed its check and needs a person.",

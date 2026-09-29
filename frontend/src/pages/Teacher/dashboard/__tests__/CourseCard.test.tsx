@@ -118,4 +118,17 @@ describe("CourseCard — how much of the course is written", () => {
     expect(screen.getByText("7 уроков")).toBeInTheDocument()
     expect(screen.getByText("2 модуля")).toBeInTheDocument()
   })
+
+  it("opens the course from its name, and offers the pencil on every width", async () => {
+    renderCard()
+    const course = makeCourse()
+    const name = await screen.findByRole("link", { name: course.title })
+    expect(name).toHaveAttribute("href", `/teacher/courses/${course.id}`)
+    // One link for the pencil — not a button nested in a link — and not
+    // hidden below `sm`.
+    const edit = screen.getAllByRole("link").filter((a) => a.getAttribute("href") === `/teacher/courses/${course.id}`)
+    expect(edit.length).toBeGreaterThanOrEqual(2)
+    expect(edit.every((a) => !a.className.includes("hidden"))).toBe(true)
+    expect(edit.every((a) => a.querySelector("button") === null)).toBe(true)
+  })
 })
