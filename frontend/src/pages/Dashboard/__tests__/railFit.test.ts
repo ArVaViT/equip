@@ -13,12 +13,12 @@ describe("distributeRail", () => {
 
   it("takes a shortfall from the calendar first, down to its floor", () => {
     expect(distributeRail([150, 250, 300], 650)).toEqual([150, 200, 300])
-    expect(distributeRail([150, 250, 300], 570)).toEqual([150, 120, 300])
+    expect(distributeRail([150, 250, 300], 618)).toEqual([150, 168, 300])
   })
 
   it("then from the question, and the verse last", () => {
-    expect(distributeRail([150, 250, 300], 500)).toEqual([150, 120, 230])
-    expect(distributeRail([150, 250, 300], 400)).toEqual([120, 120, 160])
+    expect(distributeRail([150, 250, 300], 550)).toEqual([150, 168, 232])
+    expect(distributeRail([150, 250, 300], 450)).toEqual([122, 168, 160])
   })
 
   it("never pushes a short card up to its floor", () => {

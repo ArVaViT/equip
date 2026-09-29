@@ -358,6 +358,12 @@
     }
   }
 
+  /* A dashboard card given less room than its content (railFit.ts). */
+  [data-clipped] {
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  }
+
   /* Profile: a soft pool of sage drifting behind the header card's
    * content. Behind it, not over it: the header isolates, the pool sits at
    * -1. `transform` only, so the drift is composited, not repainted. */
