@@ -10,7 +10,7 @@ embarrassing.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from fastapi import Depends, Header, Response
 from fastapi.responses import Response as RawResponse
@@ -39,7 +39,13 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
-def _attach_localized_blocks(db: Session, course: Course, *, display_locale: LocaleCode) -> None:
+def _attach_localized_blocks(
+    db: Session,
+    course: Course,
+    *,
+    display_locale: LocaleCode,
+    fallback: Literal["auto", "none", "source_then_any"] = "auto",
+) -> None:
     """Give every chapter in the tree a ``blocks`` list the renderer can read.
 
     Two things were wrong here at once. ``Chapter`` has no ``blocks``
@@ -76,9 +82,13 @@ def _attach_localized_blocks(db: Session, course: Course, *, display_locale: Loc
         fields=["title"],
         display_locale=display_locale,
         source_locale=normalize_locale(course.source_locale),
+        fallback=fallback,
     )
+    # Onto a runtime attribute, not ``chapter.title``: that is a real
+    # column, and a flush in this session would have written the reader's
+    # translation over the author's words.
     for chapter in chapters:
-        chapter.title = chapter_titles.get((str(chapter.id), "title")) or ""
+        chapter.display_title = chapter_titles.get((str(chapter.id), "title")) or ""  # type: ignore[attr-defined]
     rows = (
         db.query(ChapterBlock)
         .filter(ChapterBlock.chapter_id.in_([str(c.id) for c in chapters]))
@@ -171,13 +181,17 @@ def export_course_pdf(
     # effects" — but that function builds fresh Pydantic objects and
     # deliberately never writes back to the ORM, so the export came out
     # in the author's language whoever asked for it.
-    populate_spine_texts(db, [course], display_locale=display_locale)
+    # The owner and an admin export their own material: in a language it
+    # has no translation for, the author's words rather than blank headings.
+    # A student gets only what exists in their language.
+    fallback: Literal["auto", "none", "source_then_any"] = "source_then_any" if (is_owner or is_admin) else "auto"
+    populate_spine_texts(db, [course], display_locale=display_locale, fallback=fallback)
 
     # Lesson bodies. ``chapter_blocks.content`` was dropped in Phase
     # 5e2, so ``getattr(block, "content", None)`` — which is what the
     # renderer does — was ``None`` for every block: the export had been
     # shipping with no lesson text in it at all, in any language.
-    _attach_localized_blocks(db, course, display_locale=display_locale)
+    _attach_localized_blocks(db, course, display_locale=display_locale, fallback=fallback)
 
     pdf_bytes = render_course_pdf(course, display_locale)
 

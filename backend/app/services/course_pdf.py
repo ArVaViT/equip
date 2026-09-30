@@ -219,6 +219,18 @@ _LABELS: dict[str, dict[str, str]] = {
 }
 
 
+def _chapter_title(chapter: Chapter) -> str:
+    """The lesson's name as the export prints it.
+
+    ``display_title`` when the route resolved one for the reader — even when
+    that is ``""``: a student with no translation gets no heading, never the
+    author's language. The stored column only when nothing was resolved.
+    """
+    if hasattr(chapter, "display_title"):
+        return chapter.display_title or ""
+    return chapter.title or ""
+
+
 def render_course_pdf(course: Course, locale: str = "en") -> bytes:
     """Return the PDF bytes for the given hydrated course.
 
@@ -271,7 +283,7 @@ def render_course_pdf(course: Course, locale: str = "en") -> bytes:
                 story.append(Paragraph(section.module.title or "", styles["toc_module"]))
             entry_style = styles["toc_entry"] if section.module is not None else styles["toc_chapter"]
             for chapter in section.chapters:
-                story.append(Paragraph(chapter.title or "", entry_style))
+                story.append(Paragraph(_chapter_title(chapter), entry_style))
         story.append(PageBreak())
 
     # Body, section by section. The page break goes between sections
@@ -284,7 +296,7 @@ def render_course_pdf(course: Course, locale: str = "en") -> bytes:
             if section.module.description:
                 story.append(Paragraph(_to_plain_text(section.module.description), styles["body"]))
         for chapter in section.chapters:
-            story.append(Paragraph(chapter.title or "", styles["heading_chapter"]))
+            story.append(Paragraph(_chapter_title(chapter), styles["heading_chapter"]))
             # Render any text blocks the chapter carries. We sort by
             # ``order_index`` so the printed sequence matches the
             # student-facing chapter view.

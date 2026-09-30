@@ -240,3 +240,20 @@ def test_cyrillic_is_printed_in_a_font_that_has_it() -> None:
     out = render_course_pdf(course, "ru")
     assert b"/FontFile2" in out  # an embedded TrueType font
     assert b"DejaVuSans" in out
+
+
+def test_the_owner_exports_their_own_words_where_there_is_no_translation(
+    client: TestClient, db: Session, monkeypatch
+) -> None:
+    """With a provider configured, "auto" leaves no fallback: the owner's
+    German export of an untranslated course printed blank headings. And the
+    lesson name must not be written onto the Chapter.title column."""
+    monkeypatch.setattr("app.services.content_versions.read.is_translation_enabled", lambda: True)
+    course = _seed_course_with_outline(db, "pdf-own-1")
+    r = client.get(f"/api/v1/courses/{course.id}/export.pdf", headers={"Accept-Language": "de"})
+    assert r.status_code == 200
+    text = "\n".join(pdf_lines(r.content))
+    assert "PDF Test Course" in text
+    assert "Module One" in text
+    db.expire_all()
+    assert db.get(Chapter, "pdf-own-1-ch").title == "Opening Chapter"

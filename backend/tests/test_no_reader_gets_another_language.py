@@ -51,6 +51,11 @@ EDITOR_SURFACES = {
     "app/services/course_service/_queries.py",
     "app/api/v1/analytics.py",
     "app/services/student_progress_service.py",
+    # The PDF export, for the owner and an admin only (a variable, so the
+    # scan below would not see it — listed here so it is on record): their
+    # own material in a language it has no translation for prints in the
+    # author's words, not as blank headings. Students keep "auto".
+    "app/api/v1/courses/pdf.py",
     # Not a surface at all: this reads a quiz question so the translator
     # can be told what an answer option is answering. An option is a
     # fragment, and a fragment has to agree with the sentence that
