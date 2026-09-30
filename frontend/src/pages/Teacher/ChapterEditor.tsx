@@ -174,6 +174,13 @@ export default function ChapterEditor() {
     ready: !loading && chapter !== null,
   })
 
+  // Read through a ref: with ``t`` in its dependencies, switching the
+  // interface language mid-edit re-ran the load, remounted the quiz or
+  // assignment editor and dropped its unsaved draft without a word.
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
   const load = useCallback(async (signal?: { cancelled: boolean }) => {
     if (!courseId || !chapterId) return
     setLoading(true)
@@ -220,17 +227,17 @@ export default function ChapterEditor() {
         // One breadcrumb crumb is not worth failing the page over — keep
         // the link, lose only the name.
         if (!signal?.cancelled) {
-          setGroup({ id: ch.module_id, title: t("chapterEditor.moduleFallback") })
+          setGroup({ id: ch.module_id, title: tRef.current("chapterEditor.moduleFallback") })
         }
       }
     } catch {
       if (signal?.cancelled) return
-      toast({ title: t("chapterEditor.toast.loadFailed"), variant: "destructive" })
+      toast({ title: tRef.current("chapterEditor.toast.loadFailed"), variant: "destructive" })
       navigate(`/teacher/courses/${courseId}`)
     } finally {
       if (!signal?.cancelled) setLoading(false)
     }
-  }, [courseId, chapterId, navigate, t])
+  }, [courseId, chapterId, navigate])
 
   useEffect(() => {
     const signal = { cancelled: false }
@@ -303,10 +310,15 @@ export default function ChapterEditor() {
       return true
     } catch (error: unknown) {
       const detail = getErrorDetail(error) || t("chapterEditor.unknownError")
-      toast({
-        title: t("chapterEditor.toast.saveFailed", { detail }),
-        variant: "destructive",
-      })
+      // Said once in the header («Не сохранено», the reason on hover); a
+      // toast only when the teacher asked. While the server kept failing,
+      // every pause in typing raised another one.
+      if (!quiet) {
+        toast({
+          title: t("chapterEditor.toast.saveFailed", { detail }),
+          variant: "destructive",
+        })
+      }
       setErrorDetail(detail)
       setStatus("error")
       return false

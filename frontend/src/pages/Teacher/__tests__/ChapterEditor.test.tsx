@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { render, screen, waitFor } from "@testing-library/react"
+import { act, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -196,6 +196,22 @@ describe("ChapterEditor — addressed by its course", () => {
     expect(await screen.findByText(i18n.t("chapterEditor.status.needsTitle"))).toBeInTheDocument()
     expect(screen.queryByText(i18n.t("chapterEditor.status.saving"))).not.toBeInTheDocument()
     expect(update).not.toHaveBeenCalled()
+  })
+
+  it("does not reload the lesson when the interface language changes", async () => {
+    // A reload remounted the quiz or assignment editor and dropped its
+    // unsaved draft without a word.
+    const get = vi.spyOn(coursesService, "getChapterForEdit").mockResolvedValue(chapter())
+    renderAtCourseRoute()
+    await screen.findByDisplayValue("Кто написал послание")
+    expect(get).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      await i18n.changeLanguage("en")
+    })
+
+    expect(get).toHaveBeenCalledTimes(1)
+    expect(screen.getByDisplayValue("Кто написал послание")).toBeInTheDocument()
   })
 
   it("links to the lesson as a student reads it", async () => {

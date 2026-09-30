@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
@@ -68,6 +68,13 @@ export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
     return () => window.removeEventListener("beforeunload", warnBeforeUnload)
   }, [hasUnsaved])
 
+  // Through a ref, not a dependency: a new ``t`` on a language switch
+  // re-ran the load and swapped the blocks out from under the teacher.
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
+
   const load = useCallback(
     async (signal?: { cancelled: boolean }) => {
       try {
@@ -84,7 +91,7 @@ export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
         const detail = getErrorDetail(error)
         if (detail) {
           toast({
-            title: t("blockEditor.loadFailed", { detail }),
+            title: tRef.current("blockEditor.loadFailed", { detail }),
             variant: "destructive",
           })
         }
@@ -92,7 +99,7 @@ export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
         if (!signal?.cancelled) setLoading(false)
       }
     },
-    [chapterId, t],
+    [chapterId],
   )
 
   useEffect(() => {
