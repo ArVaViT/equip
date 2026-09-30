@@ -100,6 +100,7 @@ def _attach_localized_blocks(
         rows,
         display_locale=display_locale,
         source_locale=normalize_locale(course.source_locale),
+        fallback=fallback,
     )
     content_by_id = {str(row.id): (row.content or "") for row in resolved}
     by_chapter: dict[str, list[ChapterBlock]] = {}

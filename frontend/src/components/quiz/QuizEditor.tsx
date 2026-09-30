@@ -19,6 +19,7 @@ import {
   type InPlacePlan,
   type QuizEditorMode,
 } from "./editor"
+import type { DraftQuestion } from "./editor/types"
 
 interface QuizEditorProps {
   chapterId: string
@@ -153,10 +154,17 @@ export default function QuizEditor({
       // instead of rebuilding it (and, once there are attempts, asking to
       // delete them).
       draft.setQuestions((prev) => adoptServerIds(prev, quiz))
-      draft.markSaved()
+      const serverMaxAttempts = quiz.max_attempts ?? (chapterType === "exam" ? 1 : 3)
+      draft.setMaxAttempts(serverMaxAttempts)
+      // Saved is what was sent, with the server's ids and its attempt
+      // limit — not whatever is on screen now: a word typed while the
+      // request was in flight is still unsaved.
+      const sentShape = JSON.parse(sent) as { questions: DraftQuestion[]; maxAttempts: number | null }
+      sentShape.questions = adoptServerIds(sentShape.questions, quiz)
+      sentShape.maxAttempts = serverMaxAttempts
+      draft.markSaved(JSON.stringify(sentShape))
       draft.clearAttempts()
       onQuizSaved?.(quiz.id)
-      draft.setMaxAttempts(quiz.max_attempts ?? (chapterType === "exam" ? 1 : 3))
       if (existing) {
         // The new quiz is saved; the old one goes only after the teacher
         // has agreed to lose its attempts (``force``). If the delete is

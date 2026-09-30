@@ -165,7 +165,7 @@ export default function ChapterEditor() {
   /** The module around this lesson, when there is one. ``null`` is not a
    *  stand-in for "not loaded" — it is the answer for a lesson that is in
    *  no module, and the breadcrumb renders one crumb fewer. */
-  const [group, setGroup] = useState<{ id: string; title: string } | null>(null)
+  const [group, setGroup] = useState<{ id: string; title: string | null } | null>(null)
   const [isDirty, setIsDirty] = useState(false)
 
   useUserTour({
@@ -227,7 +227,9 @@ export default function ChapterEditor() {
         // One breadcrumb crumb is not worth failing the page over — keep
         // the link, lose only the name.
         if (!signal?.cancelled) {
-          setGroup({ id: ch.module_id, title: tRef.current("chapterEditor.moduleFallback") })
+          // ``null``: the generic word is picked at render, in the language
+          // shown then, not frozen at load.
+          setGroup({ id: ch.module_id, title: null })
         }
       }
     } catch {
@@ -521,7 +523,7 @@ export default function ChapterEditor() {
               onClick={(e) => handleNavClick(e, upHref)}
               className="min-w-0 truncate transition-colors hover:text-ink"
             >
-              {group.title}
+              {group.title ?? t("chapterEditor.moduleFallback")}
             </Link>
           </>
         )}

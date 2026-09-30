@@ -248,12 +248,24 @@ def test_the_owner_exports_their_own_words_where_there_is_no_translation(
     """With a provider configured, "auto" leaves no fallback: the owner's
     German export of an untranslated course printed blank headings. And the
     lesson name must not be written onto the Chapter.title column."""
+    # Both readers decide "auto" by their own import of the switch.
     monkeypatch.setattr("app.services.content_versions.read.is_translation_enabled", lambda: True)
+    monkeypatch.setattr("app.services.translation.resolve_for_display.is_translation_enabled", lambda: True)
     course = _seed_course_with_outline(db, "pdf-own-1")
+    from ._cv_helpers import _seed_text_row, make_chapter_block_with_content
+
+    _seed_text_row(
+        db, entity_type="chapter", entity_id="pdf-own-1-ch", field="title", locale="en", text="Opening Chapter"
+    )
+    make_chapter_block_with_content(db, chapter_id="pdf-own-1-ch", content="<p>Genesis begins here</p>")
+    db.commit()
     r = client.get(f"/api/v1/courses/{course.id}/export.pdf", headers={"Accept-Language": "de"})
     assert r.status_code == 200
     text = "\n".join(pdf_lines(r.content))
     assert "PDF Test Course" in text
     assert "Module One" in text
+    assert "Opening Chapter" in text
+    # The lesson body too, not only the headings (review, 2026-09-29).
+    assert "Genesis begins here" in text
     db.expire_all()
     assert db.get(Chapter, "pdf-own-1-ch").title == "Opening Chapter"
