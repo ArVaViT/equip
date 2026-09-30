@@ -17,11 +17,12 @@
  *   1. The string is **identical across locales**. EN and RU users see
  *      the same characters. Unambiguous, sortable, no day/month
  *      confusion across locales that order day and month differently.
- *   2. The wall-clock time is **the browser's local zone**, not UTC.
- *      Backend writes are always UTC; the moment they cross to the
- *      client, JS's ``getFullYear()`` / ``getHours()`` etc. project
- *      them into whatever zone the browser is in. A timezone selector
- *      may ship later; until then, browser zone is the answer.
+ *   2. The wall-clock time is **the reader's zone**, not UTC and not
+ *      the author's. Backend writes are always UTC; here they are
+ *      projected into `getDisplayTimeZone()` — the zone on the
+ *      person's profile, else the browser's (see `timeZone.ts`). This
+ *      module and the date pickers are the only places a zone is
+ *      applied.
  *
  * # The escape hatch (for editorial / ceremonial copy only)
  *
@@ -36,6 +37,7 @@
  * editorial context, you probably want `formatDate` instead.
  */
 import i18n, { activeIntlTag } from "./config"
+import { getDisplayTimeZone, timeZoneLabel, zonedParts, zonedWallTimeToUtc } from "./timeZone"
 
 function pad(value: number, width = 2): string {
   return value.toString().padStart(width, "0")
@@ -46,12 +48,13 @@ function toDate(value: Date | string | number): Date | null {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
-/** Canonical date: ``YYYY-MM-DD`` in the browser's local timezone. */
+/** Canonical date: ``YYYY-MM-DD`` in the reader's zone. */
 export function formatDate(date: Date | string | number | null | undefined): string {
   if (date == null) return ""
   const d = toDate(date)
   if (!d) return ""
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  const p = zonedParts(d)
+  return `${p.year}-${pad(p.month)}-${pad(p.day)}`
 }
 
 /** Canonical date + time: ``YYYY-MM-DD HH:mm:ss``. */
@@ -59,10 +62,8 @@ export function formatDateTime(date: Date | string | number | null | undefined):
   if (date == null) return ""
   const d = toDate(date)
   if (!d) return ""
-  return (
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
-    `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-  )
+  const p = zonedParts(d)
+  return `${p.year}-${pad(p.month)}-${pad(p.day)} ${pad(p.hour)}:${pad(p.minute)}:${pad(p.second)}`
 }
 
 /**
@@ -134,6 +135,7 @@ export function formatDateLong(
     year: "numeric",
     month: "long",
     day: "numeric",
+    timeZone: getDisplayTimeZone(),
     ...options,
   })
 }
@@ -143,9 +145,9 @@ export function formatDateLong(
  * the ``YYYY-MM-DDTHH:mm`` string a ``<input type="datetime-local">``
  * expects.
  *
- * The browser interprets that input value in the **local** timezone,
- * so the obvious shortcut — ``iso.slice(0, 16)`` — silently shows the
- * UTC wall-clock as if it were local. A user in UTC-7 looking at
+ * The value is wall-clock time in the **reader's zone** (profile, else
+ * browser), so the obvious shortcut — ``iso.slice(0, 16)`` — silently
+ * shows the UTC wall-clock as if it were theirs. A user in UTC-7 looking at
  * ``2026-06-01T00:00:00Z`` would see ``2026-06-01 00:00`` in the
  * input, edit it (or just hit save), and have ``new Date(value)``
  * re-encode to ``2026-06-01T07:00:00Z`` — a 7-hour drift on every
@@ -153,28 +155,49 @@ export function formatDateLong(
  *
  * Use together with ``localInputToIso`` on save.
  */
-export function isoToLocalInput(iso: string | null | undefined): string {
+export function isoToLocalInput(iso: string | null | undefined, tz: string = getDisplayTimeZone()): string {
   if (!iso) return ""
   const d = toDate(iso)
   if (!d) return ""
-  return (
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
-  )
+  const p = zonedParts(d, tz)
+  return `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}`
 }
 
 /**
- * Convert the value from a ``<input type="datetime-local">`` (which
- * the browser interprets in the local timezone) into a UTC ISO string
- * the backend can store. Returns ``null`` for an empty input so the
+ * Convert a ``YYYY-MM-DDTHH:mm`` wall-clock value — read in the reader's
+ * zone, the same zone ``isoToLocalInput`` wrote it in — into a UTC ISO
+ * string the backend can store. A teacher in Indiana typing 08:00 stores
+ * 12:00Z (13:00Z in winter), whatever zone their laptop happens to be in. Returns ``null`` for an empty input so the
  * caller can ``PATCH`` a clear without distinguishing missing from
  * empty.
  *
  * Use together with ``isoToLocalInput`` on load.
  */
-export function localInputToIso(value: string): string | null {
+export function localInputToIso(value: string, tz: string = getDisplayTimeZone()): string | null {
   if (!value) return null
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return null
-  return d.toISOString()
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec(value)
+  if (!m) {
+    // Anything else (a full ISO string with its own offset) already names
+    // its instant.
+    const d = new Date(value)
+    return Number.isNaN(d.getTime()) ? null : d.toISOString()
+  }
+  const [, y, mo, da, h = "0", mi = "0", se = "0"] = m
+  const d = zonedWallTimeToUtc(Number(y), Number(mo), Number(da), Number(h), Number(mi), Number(se), tz)
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
+}
+
+/**
+ * A moment people plan around — a deadline, a live lesson — as
+ * ``YYYY-MM-DD HH:mm`` on the reader's clock, with the zone named:
+ * ``2026-10-01 23:59 EDT``. The name is what tells a student in Berlin
+ * that the 23:59 is already theirs.
+ */
+export function formatDateTimeZoned(date: Date | string | number | null | undefined): string {
+  if (date == null) return ""
+  const d = toDate(date)
+  if (!d) return ""
+  const p = zonedParts(d)
+  const locale = activeIntlTag(i18n.resolvedLanguage ?? i18n.language)
+  return `${p.year}-${pad(p.month)}-${pad(p.day)} ${pad(p.hour)}:${pad(p.minute)} ${timeZoneLabel(locale, getDisplayTimeZone(), d)}`
 }

@@ -6,6 +6,7 @@ import type { User } from "@/types"
 import { AuthContext } from "./auth-context"
 import { setDatadogUser, clearDatadogUser } from "@/lib/datadog"
 import { cacheClear } from "@/lib/cache"
+import { setDisplayTimeZone } from "@/i18n/timeZone"
 
 // ``reconcileFreshOAuthLocale`` lived here previously — a silent
 // post-signup PATCH that fired whenever ``profile.preferred_locale``
@@ -116,7 +117,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Null until the first-run flow has been finished once, on any
             // device. ``FirstRunFlow`` reads this, not its own storage flag.
             onboarding_completed_at: data.onboarding_completed_at ?? null,
+            time_zone: data.time_zone ?? null,
+            time_zone_source: data.time_zone_source ?? "default",
+            phone: data.phone ?? null,
+            birth_date: data.birth_date ?? null,
+            country_code: data.country_code ?? null,
+            region: data.region ?? null,
+            city: data.city ?? null,
+            church: data.church ?? null,
           }
+          // Before the first render with this user: every formatter reads
+          // the zone at render time. A zone the person chose wins; anything
+          // else follows the device (useTimeZoneSync records it).
+          setDisplayTimeZone(nextUser.time_zone_source === "chosen" ? nextUser.time_zone : null)
           setUser(nextUser)
           // Attach the authenticated user to the current RUM session so
           // every downstream view/action/error/replay is tagged with
@@ -201,6 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (event === "SIGNED_OUT") {
           activeUserId.current = null
+          setDisplayTimeZone(null)
           setUser(null)
           clearDatadogUser()
           // Drop the signed-out user's cached API payloads so the next
@@ -269,11 +283,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const applyUser = useCallback((next: User) => {
     if (!mounted.current) return
     if (activeUserId.current !== null && activeUserId.current !== next.id) return
+    // A zone chosen on the profile page applies at once, everywhere.
+    setDisplayTimeZone(next.time_zone_source === "chosen" ? next.time_zone : null)
     setUser(next)
   }, [])
 
   const logout = useCallback(async () => {
     try { await authService.logout() } catch { /* ignore */ }
+    setDisplayTimeZone(null)
     setUser(null)
     clearDatadogUser()
   }, [])

@@ -8,6 +8,7 @@ import { ThemeProvider } from "./context/ThemeContext"
 import { useAuth } from "./context/useAuth"
 import { usePageTitle } from "./hooks/usePageTitle"
 import { useLocaleSync } from "./i18n/useLocaleSync"
+import { useTimeZoneSync } from "./i18n/useTimeZoneSync"
 import ErrorBoundary from "./components/ErrorBoundary"
 import { Toaster } from "./components/ui/sonner"
 import { cn } from "@/lib/utils"
@@ -191,6 +192,7 @@ function AppRoutes() {
   const isAuthPage = AUTH_PATHS.some((p) => location.pathname.startsWith(p))
   usePageTitle()
   useLocaleSync()
+  useTimeZoneSync()
   useRouteFocus()
   useResumePendingInvite()
   // Grand tour lives here so it has access to React Router (for
