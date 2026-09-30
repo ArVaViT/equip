@@ -37,7 +37,7 @@ from app.models.translation_job import TranslationJob, TranslationJobStatus
 from app.models.user import User
 from app.services.content_versions.write import record_human_version, record_mt_version
 from app.services.translation.hash import compute_source_hash
-from app.services.translation.reconciler import sweep_courses
+from app.services.translation.reconciler import RECHECK_AFTER, sweep_courses
 from app.services.translation.service import reset_translation_provider_cache
 from tests.conftest import TEACHER_ID
 
@@ -157,6 +157,21 @@ def test_it_moves_on_instead_of_re_examining_the_same_course(db: Session):
     sweep_courses(db, limit=1)
     db.refresh(first)
     assert first.translations_checked_at is not None, "the sweep should have moved on to the next course"
+
+
+def test_a_course_checked_minutes_ago_rests(db: Session):
+    """With six courses and three a tick, every course came round every
+    two minutes: a third of all database time, re-walking trees nothing
+    had changed. A course is looked at again only after RECHECK_AFTER."""
+    recent = _course(db, locales=("ru", "en", "de"), checked=datetime.now(UTC) - timedelta(minutes=5))
+
+    assert sweep_courses(db).examined == 0
+
+    recent.translations_checked_at = datetime.now(UTC) - RECHECK_AFTER - timedelta(minutes=1)
+    db.commit()
+    report = sweep_courses(db)
+    assert report.examined == 1
+    assert report.queued == 1, "the missing language is still found, just not every two minutes"
 
 
 def test_drafts_are_left_to_their_author(db: Session):

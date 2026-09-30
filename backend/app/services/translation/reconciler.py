@@ -49,10 +49,10 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.announcement import Announcement
@@ -93,6 +93,17 @@ logger = logging.getLogger(__name__)
 # served the same day, slow enough that the sweep is never what the
 # database is busy with.
 DEFAULT_SWEEP_LIMIT = 3
+
+# How long a checked course rests before the sweep looks at it again.
+#
+# The limit above was sized for a thousand courses. With six, the same
+# course came round every two minutes: a full tree walk and completeness
+# check each time, about a third of all database time in production
+# (pg_stat_statements, 2026-09-17 to 2026-09-30). The sweep is the safety
+# net -- edits reach the queue through the save hooks -- so a language
+# switched on is still picked up within half an hour, and at a thousand
+# courses, where the cycle is hours long, this changes nothing.
+RECHECK_AFTER = timedelta(minutes=30)
 
 # Platform-wide announcements repaired per tick. Unlike a course, an
 # announcement is translated here and now rather than queued — there are
@@ -166,12 +177,17 @@ def sweep_courses(
 
     announcement_rows = sweep_global_announcements(db, provider=provider, budget=budget)
 
+    now = datetime.now(UTC)
     courses = (
         db.execute(
             select(Course)
             .where(
                 Course.deleted_at.is_(None),
                 Course.status.in_([CourseStatus.PUBLISHED, CourseStatus.PUBLISHING]),
+                or_(
+                    Course.translations_checked_at.is_(None),
+                    Course.translations_checked_at < now - RECHECK_AFTER,
+                ),
             )
             # NULLs first: a course nobody has ever checked — one created
             # by an import, or by any path that fires no hook — is the
@@ -186,7 +202,6 @@ def sweep_courses(
         return SweepReport(announcement_rows=announcement_rows)
 
     examined = queued = complete = stalled = 0
-    now = datetime.now(UTC)
     for course in courses:
         examined += 1
         completeness = course_translation_completeness(db, course)
@@ -515,6 +530,7 @@ def courses_with_gaps(db: Session, *, limit: int = 50) -> list[tuple[str, dict[s
 __all__ = [
     "DEFAULT_ANNOUNCEMENT_SWEEP_LIMIT",
     "DEFAULT_SWEEP_LIMIT",
+    "RECHECK_AFTER",
     "SweepReport",
     "courses_with_gaps",
     "sweep_courses",
