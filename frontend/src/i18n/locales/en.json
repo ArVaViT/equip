@@ -501,7 +501,7 @@
     "loadError": "Couldn't load today's challenge",
     "notScheduled": {
       "title": "No question today",
-      "body": "Tomorrow's challenge unlocks at midnight UTC."
+      "body": "Tomorrow’s challenge unlocks at {{time}} your time."
     },
     "notTranslated": {
       "title": "Not in your language yet",
