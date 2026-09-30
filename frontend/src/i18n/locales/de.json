@@ -1527,6 +1527,20 @@
     "deleteAria": "Bewertung löschen"
   },
   "calendar": {
+    "subscribe": {
+      "open": "Abonnieren",
+      "title": "Ihr Kursplan in Ihrem eigenen Kalender",
+      "description": "Termine und Fristen Ihrer Kurse erscheinen im Kalender Ihres Telefons oder Computers und aktualisieren sich selbst. Zeiten stehen in der Zeitzone Ihres Kalenders.",
+      "replaces": "Der Link ist persönlich. Wenn Sie schon abonniert haben, funktioniert der alte Link nicht mehr.",
+      "create": "Link erstellen",
+      "apple": "Apple und Outlook",
+      "google": "Google Kalender",
+      "copy": "Link kopieren",
+      "copied": "Kopiert",
+      "private": "Leiten Sie den Link nicht weiter: Er zeigt Ihren Stundenplan.",
+      "failed": "Der Link konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
+      "copyFailed": "Der Link konnte nicht kopiert werden."
+    },
     "title": "Kalender",
     "eyebrow": "Termine",
     "filterByCourse": "Nach Kurs filtern",

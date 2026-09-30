@@ -2,7 +2,23 @@ import api from "./api"
 import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type { CalendarEvent, CourseEvent } from "@/types"
 
+export interface IcalFeed {
+  feed_url: string
+  expires_at: string
+}
+
 export const calendarService = {
+  /**
+   * A personal subscription link to the reader's calendar. Every call
+   * issues a new link and switches the previous one off (the server keeps
+   * only a floor, `calendar_ical_min_iat`), so it is called on an explicit
+   * "create a link", never on opening a dialog.
+   */
+  async issueIcalFeed(): Promise<IcalFeed> {
+    const response = await api.post<IcalFeed>("/calendar/ical/token")
+    return response.data
+  },
+
   async getCalendarEvents(courseId?: string): Promise<CalendarEvent[]> {
     return cached(`calendar:events:${courseId ?? "all"}`, CACHE_TTL.ONE_MINUTE, async () => {
       const params = courseId ? { course_id: courseId } : undefined

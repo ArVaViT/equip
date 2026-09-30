@@ -1527,6 +1527,20 @@
     "deleteAria": "Delete review"
   },
   "calendar": {
+    "subscribe": {
+      "open": "Subscribe",
+      "title": "Your course schedule in your own calendar",
+      "description": "Lessons and deadlines from your courses appear in your phone or computer calendar and update on their own. Times show in your calendar's time zone.",
+      "replaces": "The link is personal. If you subscribed before, the old link stops working.",
+      "create": "Create link",
+      "apple": "Apple and Outlook",
+      "google": "Google Calendar",
+      "copy": "Copy link",
+      "copied": "Copied",
+      "private": "Don't forward the link: it shows your schedule.",
+      "failed": "Couldn't create the link. Please try again.",
+      "copyFailed": "Couldn't copy the link."
+    },
     "title": "Calendar",
     "eyebrow": "Schedule",
     "filterByCourse": "Filter by course",
