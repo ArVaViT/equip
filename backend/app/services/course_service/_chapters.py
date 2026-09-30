@@ -186,6 +186,21 @@ def restore_chapter(db: Session, chapter: Chapter) -> Chapter:
         if home is None or home.deleted_at is not None:
             chapter.module_id = None
             chapter.order_index = _next_chapter_order(db, chapter.course_id)
+    # Its number may have been given away meanwhile: delete the last lesson,
+    # add a new one (it takes the freed tail number), then Undo — and two
+    # lessons shared one place. Then it goes to the tail instead.
+    taken = (
+        db.query(Chapter.id)
+        .filter(
+            Chapter.course_id == chapter.course_id,
+            Chapter.deleted_at.is_(None),
+            Chapter.id != chapter.id,
+            Chapter.order_index == chapter.order_index,
+        )
+        .first()
+    )
+    if taken is not None:
+        chapter.order_index = _next_chapter_order(db, chapter.course_id)
     db.commit()
     db.refresh(chapter)
     _resync_progress_for_chapter(db, chapter)

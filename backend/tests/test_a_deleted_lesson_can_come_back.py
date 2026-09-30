@@ -97,3 +97,16 @@ def test_a_lesson_whose_module_is_live_goes_back_into_it(client: TestClient, db:
     base = "/api/v1/courses/c-undo-keep/chapters/c-undo-keep-ch"
     assert client.delete(base).status_code == 204
     assert client.post(f"{base}/restore").json()["module_id"] == "c-undo-keep-m"
+
+
+def test_undo_does_not_share_a_number_given_away_meanwhile(client: TestClient, db: Session) -> None:
+    # Delete the last lesson, add one (it takes the freed tail number),
+    # then Undo: the restored lesson must not land on the same number.
+    chapter_id = _course_with_lesson(db, "c-undo-num")
+    assert client.delete(f"/api/v1/courses/c-undo-num/chapters/{chapter_id}").status_code == 204
+    added = client.post("/api/v1/courses/c-undo-num/chapters", json={"title": "Новый", "chapter_type": "reading"})
+    assert added.status_code in (200, 201), added.text
+
+    restored = client.post(f"/api/v1/courses/c-undo-num/chapters/{chapter_id}/restore").json()
+
+    assert restored["order_index"] != added.json()["order_index"]
