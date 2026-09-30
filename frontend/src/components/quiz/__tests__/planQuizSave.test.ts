@@ -9,7 +9,7 @@
 import { describe, expect, it } from "vitest"
 
 import type { Quiz } from "@/types"
-import { isEmptyPlan, planInPlaceSave, type DraftSnapshot } from "../editor/planQuizSave"
+import { adoptServerIds, isEmptyPlan, planInPlaceSave, type DraftSnapshot } from "../editor/planQuizSave"
 import type { DraftQuestion } from "../editor/types"
 
 function savedQuiz(): Quiz {
@@ -179,5 +179,39 @@ describe("the plan for saving a quiz in place", () => {
     expect(planInPlaceSave(quiz, draft)!.questions).toEqual([
       { id: "q2", patch: { question_type: "short_answer", min_words: null } },
     ])
+  })
+})
+
+describe("adoptServerIds", () => {
+  const draftQ = (id: string, order: number, opts: string[]) => ({
+    id,
+    question_text: `Q${order}`,
+    question_type: "multiple_choice" as const,
+    order_index: order,
+    points: 1,
+    min_words: null,
+    options: opts.map((o, i) => ({ id: o, option_text: o, is_correct: i === 0, order_index: i })),
+  })
+
+  it("takes the server's ids and keeps the draft's text", () => {
+    const draft = [draftQ("tmp-1", 0, ["tmp-a", "tmp-b"])]
+    const saved = {
+      questions: [
+        { id: "q-srv", order_index: 0, question_text: "", options: [
+          { id: "o-srv-1", order_index: 0 }, { id: "o-srv-2", order_index: 1 },
+        ] },
+      ],
+    } as unknown as Quiz
+    const [q] = adoptServerIds(draft, saved)
+    expect(q!.id).toBe("q-srv")
+    expect(q!.question_text).toBe("Q0")
+    expect(q!.options.map((o) => o.id)).toEqual(["o-srv-1", "o-srv-2"])
+    expect(q!.options.map((o) => o.option_text)).toEqual(["tmp-a", "tmp-b"])
+  })
+
+  it("leaves the draft alone when the shapes differ", () => {
+    const draft = [draftQ("tmp-1", 0, ["tmp-a", "tmp-b"])]
+    const saved = { questions: [] } as unknown as Quiz
+    expect(adoptServerIds(draft, saved)).toBe(draft)
   })
 })

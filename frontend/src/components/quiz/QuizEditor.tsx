@@ -11,6 +11,7 @@ import {
   ModeToggle,
   QuizEditView,
   firstDraftProblem,
+  adoptServerIds,
   isEmptyPlan,
   planInPlaceSave,
   useQuizDraft,
@@ -148,6 +149,10 @@ export default function QuizEditor({
 
       const quiz = await createFromDraft(shape)
       draft.setExistingQuiz(quiz)
+      // The server's ids, so the next save corrects this quiz in place
+      // instead of rebuilding it (and, once there are attempts, asking to
+      // delete them).
+      draft.setQuestions((prev) => adoptServerIds(prev, quiz))
       draft.markSaved()
       draft.clearAttempts()
       onQuizSaved?.(quiz.id)
