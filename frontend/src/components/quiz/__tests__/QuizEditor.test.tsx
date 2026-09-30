@@ -364,3 +364,41 @@ describe("a quiz nobody could pass", () => {
     expect(createQuiz).not.toHaveBeenCalled()
   })
 })
+
+describe("the editor's own furniture", () => {
+  beforeAll(async () => {
+    await i18n.changeLanguage("ru")
+  })
+  afterAll(async () => {
+    await i18n.changeLanguage("en")
+  })
+  beforeEach(() => {
+    vi.clearAllMocks()
+    confirm.mockResolvedValue(true)
+  })
+
+  it("says there are unsaved changes, and only once there are", async () => {
+    const user = userEvent.setup()
+    await renderSavedQuiz()
+    expect(screen.queryByText("Есть несохранённые изменения")).not.toBeInTheDocument()
+
+    await user.type(screen.getByDisplayValue("Сколько дней творения?"), "!")
+
+    expect(screen.getByText("Есть несохранённые изменения")).toBeInTheDocument()
+  })
+
+  it("keeps a line break in a question — the student's quiz shows it", async () => {
+    const user = userEvent.setup()
+    await renderSavedQuiz()
+    const field = screen.getByDisplayValue("Сколько дней творения?")
+
+    await user.type(field, "{Enter}Подумайте.")
+
+    expect(field).toHaveValue("Сколько дней творения?\nПодумайте.")
+  })
+
+  it("names the delete button even where it shows only an icon", async () => {
+    await renderSavedQuiz()
+    expect(screen.getByRole("button", { name: "Удалить тест" })).toBeInTheDocument()
+  })
+})
