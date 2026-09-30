@@ -666,7 +666,35 @@
     "switchToDark": "Dark",
     "invalidInput": "Invalid input",
     "editName": "Edit name",
-    "avatarAlt": "{{name}} avatar"
+    "avatarAlt": "{{name}} avatar",
+    "tabs": {
+      "label": "Profile sections",
+      "overview": "Overview",
+      "personal": "Personal details",
+      "settings": "Settings"
+    },
+    "personal": {
+      "title": "Personal details",
+      "description": "Everything here is optional. Only you can see it.",
+      "birthDate": "Date of birth",
+      "birthDateInvalid": "Enter a date between 1900 and today.",
+      "country": "Country",
+      "notGiven": "Not given",
+      "region": "State, province or region",
+      "city": "City",
+      "church": "Church or congregation",
+      "churchPlaceholder": "e.g. Grace Church, Indianapolis",
+      "phone": "Phone",
+      "phoneSoon": "Coming soon: you’ll be able to add a number once it can be confirmed by SMS.",
+      "saved": "Personal details saved"
+    },
+    "timeZone": {
+      "label": "Time zone",
+      "deviceHint": "Taken from this device. All dates and times are shown in it.",
+      "chosenHint": "Chosen by you. All dates and times are shown in it.",
+      "useDevice": "Use this device’s zone",
+      "saved": "Time zone: {{zone}}"
+    }
   },
   "courseCard": {
     "opensOn": "Opens {{date}}",

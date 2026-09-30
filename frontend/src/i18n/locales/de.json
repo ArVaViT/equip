@@ -666,7 +666,35 @@
     "switchToDark": "Dunkel",
     "invalidInput": "Ungültige Eingabe",
     "editName": "Namen bearbeiten",
-    "avatarAlt": "Profilbild von {{name}}"
+    "avatarAlt": "Profilbild von {{name}}",
+    "tabs": {
+      "label": "Profilbereiche",
+      "overview": "Überblick",
+      "personal": "Persönliche Angaben",
+      "settings": "Einstellungen"
+    },
+    "personal": {
+      "title": "Persönliche Angaben",
+      "description": "Alles ist freiwillig. Nur Sie können es sehen.",
+      "birthDate": "Geburtsdatum",
+      "birthDateInvalid": "Geben Sie ein Datum zwischen 1900 und heute ein.",
+      "country": "Land",
+      "notGiven": "Keine Angabe",
+      "region": "Bundesland, Region oder Staat",
+      "city": "Stadt",
+      "church": "Kirche oder Gemeinde",
+      "churchPlaceholder": "z. B. Gnadenkirche, Berlin",
+      "phone": "Telefon",
+      "phoneSoon": "Bald verfügbar: Eine Nummer kann hinzugefügt werden, sobald sie per SMS bestätigt werden kann.",
+      "saved": "Persönliche Angaben gespeichert"
+    },
+    "timeZone": {
+      "label": "Zeitzone",
+      "deviceHint": "Von diesem Gerät übernommen. Alle Daten und Zeiten werden darin angezeigt.",
+      "chosenHint": "Von Ihnen gewählt. Alle Daten und Zeiten werden darin angezeigt.",
+      "useDevice": "Zeitzone dieses Geräts",
+      "saved": "Zeitzone: {{zone}}"
+    }
   },
   "courseCard": {
     "opensOn": "Öffnet am {{date}}",
