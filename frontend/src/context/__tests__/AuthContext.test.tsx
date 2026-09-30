@@ -351,6 +351,31 @@ describe("AuthContext", () => {
     expect(getDisplayTimeZone()).toBe("America/Indiana/Indianapolis")
   })
 
+  it("does not sign a reply that lands after logout back in", async () => {
+    // The zone report can still be in flight when the person signs out; its
+    // reply carried only {id, time_zone}, and with nobody signed in it was
+    // taken as a whole profile — a user with no role and no email.
+    mockProfileFetch({ id: "user-1", email: "a@b.com", full_name: "A", role: "student", created_at: "2024-01-01T00:00:00Z" })
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>,
+    )
+    await act(async () => {
+      authHandler!("INITIAL_SESSION", makeSession(makeSupabaseUser()))
+    })
+    await waitFor(() => expect(screen.getByTestId("user").textContent).toBe("a@b.com"))
+    await act(async () => {
+      authHandler!("SIGNED_OUT", null)
+    })
+    expect(screen.getByTestId("user").textContent).toBe("anon")
+
+    await act(async () => {
+      screen.getByRole("button", { name: "apply backend response" }).click()
+    })
+    expect(screen.getByTestId("user").textContent).toBe("anon")
+  })
+
   it("ignores a stale profile response if the user has since changed", async () => {
     // Arrange two profile fetches: the first resolves slowly and would set
     // a stale teacher role; the second fires immediately and must win.

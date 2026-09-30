@@ -282,7 +282,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // profile that belongs to a session we have already left.
   const applyUser = useCallback((next: Pick<User, "id"> & Partial<User>) => {
     if (!mounted.current) return
-    if (activeUserId.current !== null && activeUserId.current !== next.id) return
+    // Only for the person signed in now. `null` means nobody is — a reply
+    // that lands after a logout must not sign a half-profile back in.
+    if (activeUserId.current !== next.id) return
     setUser((prev) => {
       // Laid over the profile we hold, not in place of it. Several callers
       // hand in a backend `UserResponse` (the language report, the end of
@@ -292,9 +294,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // chosen one, and the details form showed empty and saved nulls over
       // what was there. A field the response does not carry keeps its
       // value; one it carries — null included — wins.
-      // With no profile held yet only a whole profile makes sense; callers
-      // pass partial ones only for a person already signed in.
-      const merged: User = prev && prev.id === next.id ? { ...prev, ...next } : (next as User)
+      // Partial updates are laid over the profile held for this person;
+      // with none held there is nothing to lay them over.
+      if (!prev || prev.id !== next.id) return prev
+      const merged: User = { ...prev, ...next }
       // A zone chosen on the profile page applies at once, everywhere.
       // Idempotent, so safe in an updater React may run twice.
       setDisplayTimeZone(merged.time_zone_source === "chosen" ? merged.time_zone : null)
