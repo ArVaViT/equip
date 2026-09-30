@@ -1,5 +1,7 @@
 import { activeIntlTag } from "@/i18n/config"
 import { getDisplayTimeZone, zonedDayKey, zonedToday } from "@/i18n/timeZone"
+import { useZonedTodayKey } from "@/i18n/useZonedToday"
+import { parseYmd } from "@/lib/calendar"
 import { useMemo } from "react"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import { useTranslation } from "react-i18next"
@@ -58,8 +60,10 @@ export function TodayCard() {
     [user?.id, i18n.language],
   )
 
-  // Today on the reader's calendar (profile zone, else the browser's).
-  const today = useMemo(() => zonedToday(), [])
+  // Today on the reader's calendar (profile zone, else the browser's),
+  // moving on at the reader's midnight in a tab left open.
+  const dayKey = useZonedTodayKey()
+  const today = useMemo(() => parseYmd(dayKey) ?? zonedToday(), [dayKey])
   const todayKey = ymdKey(today)
 
   // Only the events that fall on the reader's calendar day: each instant
