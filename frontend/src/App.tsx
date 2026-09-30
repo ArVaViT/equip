@@ -30,9 +30,8 @@ import { getTeacherAgreementOwed, subscribeTeacherAgreement } from "@/components
 // Lazy: FirstRunFlow renders null until a brand-new user's privacy/setup gate
 // activates, so it never needs to be on the critical path — its component code
 // is dead weight in the eager entry chunk for the 99% of loads that are
-// returning/anonymous users. (Note: this does NOT keep framer-motion itself
-// out of the entry chunk — the bundler hoists motion into `index` because
-// several lazy routes share it; see PressFeedback/CourseCard/DashboardPage.)
+// returning/anonymous users. (Motion itself is kept out of the entry by the
+// `codeSplitting` groups in vite.config.ts, not by this.)
 // Suspense fallback is null because "not loaded yet" is visually identical to
 // its own inactive state.
 const FirstRunFlow = lazyRoute(() =>

@@ -1,49 +1,42 @@
 import { forwardRef, type HTMLAttributes, type ReactNode } from "react"
-import { motion, useReducedMotion, type HTMLMotionProps } from "motion/react"
-import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
+import { cn } from "@/lib/utils"
 
 type PressFeedbackProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode
   className?: string
-  scale?: number
 }
 
 /**
- * A small press-in on tap.
+ * A small press-in on tap: scale 0.97 over `duration-fast` on the editorial
+ * curve, and nothing at all under `prefers-reduced-motion`.
+ *
+ * Plain CSS, not `motion`. This sits in the header, which every page loads
+ * eagerly, and a `motion.div` here was what put the whole motion runtime
+ * (about 41 KB gzip) in the first load of every visitor — anonymous ones
+ * included — for one transform on press (2026-09-30 audit, F1). `:active`
+ * holds on the wrapper while the button inside is pressed, so the effect
+ * is the same.
  *
  * It forwards its ref and every other prop to the element it renders. It
  * did neither until 2026-09-27, and it sits inside `TooltipTrigger asChild`
  * in the header: Radix's `Slot` hands its child the ref it anchors the
  * tooltip to and the pointer handlers that open it, and this component
- * dropped all of them — so the tooltips on the menu buttons never opened,
- * in either motion mode (React said so only in development: «Function
- * components cannot be given refs»).
+ * dropped all of them — so the tooltips on the menu buttons never opened
+ * («Function components cannot be given refs»).
  */
 export const PressFeedback = forwardRef<HTMLDivElement, PressFeedbackProps>(
-  function PressFeedback({ children, className, scale = 0.97, ...rest }, ref) {
-    const prefersReducedMotion = useReducedMotion()
-
-    if (prefersReducedMotion) {
-      return (
-        <div ref={ref} className={className} {...rest}>
-          {children}
-        </div>
-      )
-    }
-
+  function PressFeedback({ children, className, ...rest }, ref) {
     return (
-      <motion.div
+      <div
         ref={ref}
-        className={className}
-        whileTap={{ scale }}
-        transition={{ duration: MOTION_DURATION.fast, ease: EDITORIAL_EASE }}
-        // The DOM handlers a trigger passes down are the same events motion
-        // listens to; its own prop types only differ in the animation ones,
-        // which nobody passes here.
-        {...(rest as HTMLMotionProps<"div">)}
+        className={cn(
+          "transition-transform duration-fast ease-editorial motion-safe:active:scale-[0.97]",
+          className,
+        )}
+        {...rest}
       >
         {children}
-      </motion.div>
+      </div>
     )
   },
 )

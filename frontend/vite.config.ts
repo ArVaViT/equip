@@ -27,33 +27,37 @@ export default defineConfig({
     sourcemap: 'hidden',
     rollupOptions: {
       output: {
-        // Keep only the two chunks that genuinely benefit from manual
-        // splitting: the React runtime (shared by every route) and the Supabase
-        // client (loaded eagerly by AuthContext). The previous `ui` bucket
+        // Keep only the chunks that genuinely benefit from manual splitting:
+        // the React runtime (shared by every route), the Supabase client
+        // (loaded eagerly by AuthContext) and motion. The previous `ui` bucket
         // forced a handful of ~2KB utility libs into a separate request for
         // every visitor, and `editor` duplicated the automatic async chunk
         // that already gets created when `RichTextEditor` is dynamically
         // imported from the lazy teacher routes (CourseEditor / ChapterEditor).
-        manualChunks(id) {
-          if (id.includes('node_modules/@supabase/supabase-js')) return 'supabase'
-          // The `motion` runtime (motion / motion-dom / motion-utils) is used
-          // only by lazy routes + a few shared components (CourseCard,
-          // PressFeedback, DashboardPage, …) — never by the eager shell, since
-          // HeaderNavLink dropped its layoutId underline. Left to rollup's
-          // default heuristic it gets hoisted into the entry `index` chunk
-          // (several async chunks share it), so every anonymous / login load
-          // pays ~30 KB gzip it never uses. Pin it to its own chunk so it
-          // loads in parallel only when a motion-using route mounts.
-          if (/node_modules[\\/]motion(-dom|-utils)?[\\/]/.test(id)) return 'motion'
-          if (
-            id.includes('node_modules/react-router-dom') ||
-            id.includes('node_modules/react-router') ||
-            id.includes('node_modules/react-dom') ||
-            /node_modules[\\/]react[\\/]/.test(id)
-          ) {
-            return 'vendor'
-          }
-          return undefined
+        //
+        // `codeSplitting` groups, not `manualChunks`: under Rolldown the
+        // function form is deprecated, and it put a group's dependencies in
+        // whichever group claimed them first. Motion imports React, so React
+        // and jsx-runtime landed in the motion chunk; every chunk needs React,
+        // so the "lazy" motion chunk was modulepreloaded by the entry on every
+        // page, lesson and teacher screens included (2026-09-30 audit, F1).
+        // Priorities make the claim explicit: React first.
+        codeSplitting: {
+          groups: [
+            {
+              name: 'vendor',
+              test: /node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/,
+              priority: 30,
+            },
+            // Loaded eagerly by AuthContext.
+            { name: 'supabase', test: /node_modules[\\/]@supabase[\\/]supabase-js[\\/]/, priority: 20 },
+            // The `motion` runtime (motion / motion-dom / motion-utils) is used
+            // only by lazy routes and a few shared components (CourseCard,
+            // DashboardPage, the landing); the eager shell has none. Left to the
+            // default heuristic it gets hoisted into the entry chunk. Pinned to
+            // its own chunk, it loads only when a motion-using route mounts.
+            { name: 'motion', test: /node_modules[\\/]motion(-dom|-utils)?[\\/]/, priority: 10 },
+          ],
         },
       },
     },

@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { Menu } from "lucide-react"
-import { PressFeedback } from "@/components/motion"
+import { PressFeedback } from "@/components/motion/PressFeedback"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
