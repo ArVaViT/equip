@@ -171,7 +171,7 @@ function VedomostPage() {
             </>
           )}
           <dt className="font-medium">{docT("vedomost.passLine")}</dt>
-          <dd>{sheet.pass_threshold ? formatPercent(Number(sheet.pass_threshold), 0) : "—"}</dd>
+          <dd>{sheet.pass_threshold ? formatPercent(Number(sheet.pass_threshold), 0, sheet.locale || "en") : "—"}</dd>
         </dl>
 
         {/* A document that changed after signature has to say so on its face. */}
@@ -191,7 +191,9 @@ function VedomostPage() {
           </thead>
           <tbody>
             {sheet.rows.map((row, index) => {
-              const result = printedResult(row, t)
+              // In the sheet's language, like its labels: an English sheet
+              // printed from a Russian interface said «Зачёт» in every row.
+              const result = printedResult(row, docT, sheet.locale || "en")
               return (
                 <tr key={row.student_id} className="border-b">
                   <td className="py-1.5">{index + 1}</td>
