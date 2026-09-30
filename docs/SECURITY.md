@@ -105,10 +105,28 @@ The authoritative list is `grep -rn "log_action(" backend/app` -- this
 prose has fallen behind it once already.
 
 If a new privileged action is added (e.g. promote a user to admin via
-some new flow), it MUST call `audit_service.log_action` in the same
-transaction as the data write. Sharing the transaction guarantees a
-single COMMIT either makes both visible or rolls both back -- there is
-no window where the change is durable but the audit trail is missing.
+some new flow), it MUST call `audit_service.log_action`.
+
+What the trail guarantees today, and what it does not (checked
+2026-09-30 against the code, not the intent this section used to state):
+
+- `log_action` is best-effort. It writes inside a SAVEPOINT and then
+  commits; if the write fails it logs `Failed to write audit log` (an
+  ERROR, which reaches Datadog) and returns. The request succeeds.
+- Most callers commit their own change first and call `log_action`
+  after, so there is a window in which the change is durable and its
+  audit row is not yet written, and a failed audit write leaves the
+  change without a row.
+- A caller that invokes `log_action` with its change still pending gets
+  that change committed by `log_action`'s commit, and on an audit failure
+  rolled back by its rollback (organization create in
+  `admin_organizations.py`). One that logs before making the change
+  (user deactivation in `users.py`) can leave a row for a change whose
+  own commit then failed.
+
+So a missing row is possible and shows up as that ERROR in the logs.
+Making privileged actions fail when their audit row cannot be written
+is an open item (engineering audit 2026-09-30, P1-6).
 
 ## Client Read Surface — RLS Boundary vs Backend Gate
 
