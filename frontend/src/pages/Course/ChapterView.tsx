@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { isAxiosError } from "axios"
 import { sanitizeHtml as sanitize } from "@/lib/sanitize"
+import { tieTypographyIn } from "@/lib/typography"
 import { renderMathIn } from "@/lib/katex-render"
 import { renderToggleCalloutsIn } from "@/lib/callout-toggle"
 import { attachCopyButtonsIn } from "@/lib/codeblock-copy"
@@ -57,7 +58,7 @@ import { orNotTranslated } from "@/lib/untranslated"
  * a stable host element to anchor against.
  */
 function TextBlockRender({ html }: { html: string }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const ref = useRef<HTMLDivElement>(null)
   // Image-lightbox state — the rendered chapter HTML is injected via
   // ``dangerouslySetInnerHTML`` so we can't attach React onClick to
@@ -72,6 +73,9 @@ function TextBlockRender({ html }: { html: string }) {
     // ``<summary>`` and the rendered spans go along intact — but
     // toggle-first avoids extra DOM churn.
     renderToggleCalloutsIn(ref.current)
+    // Before KaTeX, which skips the text it has not rendered yet anyway:
+    // «Ин 3:16» on one line, no «в» left hanging (lib/typography).
+    tieTypographyIn(ref.current, i18n.resolvedLanguage ?? i18n.language)
     // Async fire-and-forget: KaTeX (and its stylesheet) load lazily and
     // only when the chapter actually contains math markers. Copy-button
     // wiring below doesn't depend on math rendering, so no need to await.
@@ -81,7 +85,7 @@ function TextBlockRender({ html }: { html: string }) {
       copied: t("blockEditor.codeBlock.copied"),
       ariaLabel: t("blockEditor.codeBlock.copyAriaLabel"),
     })
-  }, [html, t])
+  }, [html, t, i18n.resolvedLanguage, i18n.language])
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement
