@@ -141,6 +141,19 @@ export function formatDateLong(
 }
 
 /**
+ * A calendar day, not an instant: the local-midnight `Date` the month grids
+ * hold (`zonedCalendarDate`, `zonedToday`), already placed on the reader's
+ * calendar. Formatted with no `timeZone`, because it is a container for
+ * year/month/day in the browser's own clock; shifting it into the profile's
+ * zone again showed the day before whenever that zone is west of the
+ * browser's (2026-09-30 review).
+ */
+export function formatCalendarDay(day: Date, options?: Intl.DateTimeFormatOptions): string {
+  const locale = activeIntlTag(i18n.resolvedLanguage ?? i18n.language)
+  return day.toLocaleDateString(locale, { year: "numeric", month: "long", day: "numeric", ...options })
+}
+
+/**
  * Convert a backend UTC ISO timestamp (or ``null``/``undefined``) into
  * the ``YYYY-MM-DDTHH:mm`` string a ``<input type="datetime-local">``
  * expects.

@@ -9,7 +9,7 @@ import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
 import { LinkifiedText } from "@/components/calendar/LinkifiedText";
 import { getEventColor } from "./constants";
 import { formatTime } from "./utils";
-import { formatDateLong } from "@/i18n/format";
+import { formatCalendarDay } from "@/i18n/format";
 
 interface SelectedDayPanelProps {
   selectedDay: Date;
@@ -18,13 +18,13 @@ interface SelectedDayPanelProps {
 
 export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps) {
   const { t } = useTranslation();
-  const weekday = formatDateLong(selectedDay, {
+  const weekday = formatCalendarDay(selectedDay, {
     year: undefined,
     month: undefined,
     day: undefined,
     weekday: "long",
   });
-  const dateLine = formatDateLong(selectedDay, {
+  const dateLine = formatCalendarDay(selectedDay, {
     year: undefined,
     weekday: undefined,
     month: "long",
