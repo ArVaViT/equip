@@ -225,3 +225,31 @@ describe("cached — size bound", () => {
     expect(cacheGet("overflow")).toBe("new")
   })
 })
+
+describe("cached — concurrent readers", () => {
+  it("shares one request between two readers of the same key", async () => {
+    cacheClear()
+    let calls = 0
+    let release: (v: string) => void = () => {}
+    const fetcher = () => {
+      calls++
+      return new Promise<string>((r) => (release = r))
+    }
+    const a = cached("shared", 60_000, fetcher)
+    const b = cached("shared", 60_000, fetcher)
+    release("one answer")
+    expect(await a).toBe("one answer")
+    expect(await b).toBe("one answer")
+    expect(calls).toBe(1)
+  })
+
+  it("does not store an answer sent before an invalidation that landed meanwhile", async () => {
+    cacheClear()
+    let release: (v: string) => void = () => {}
+    const pending = cached("mutated", 60_000, () => new Promise<string>((r) => (release = r)))
+    cacheInvalidate("mutated")
+    release("stale")
+    expect(await pending).toBe("stale")
+    expect(cacheGet("mutated")).toBeUndefined()
+  })
+})

@@ -215,6 +215,11 @@ def _emit_queue_gauges(db: Session) -> None:
                 ", ".join(stuck[:10]),
             )
     except Exception:
+        # A failed query leaves the session in an aborted transaction, and
+        # every statement the rest of the tick sends would fail with it —
+        # the metric must not take the worker down. Roll back, say so, go on.
+        db.rollback()
+        logger.warning("translation worker: queue gauges failed; tick continues", exc_info=True)
         return
 
 
