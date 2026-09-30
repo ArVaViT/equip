@@ -80,7 +80,7 @@ export function PersonalDetailsCard() {
         church: trimmed(value.church),
       })
       applyUser({
-        ...user,
+        id: user.id,
         birth_date: profile.birth_date ?? null,
         country_code: profile.country_code ?? null,
         region: profile.region ?? null,

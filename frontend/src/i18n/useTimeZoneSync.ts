@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 
 import { useAuth } from "@/context/useAuth"
 import { usersService } from "@/services/users"
@@ -12,26 +12,42 @@ import { browserTimeZone, isValidTimeZone } from "./timeZone"
  * says when a lesson starts). Until someone chooses a zone on the profile
  * page, it follows the device — a teacher who flies from Indiana to Kyiv sees
  * Kyiv time without touching a setting. Once chosen, nothing automatic
- * overwrites it (same rule as `locale_source`).
+ * overwrites it (same rule as `locale_source`): not on the client, and not in
+ * the database either, where the write itself refuses a chosen row — a
+ * choice made while this report is in flight wins whichever lands first.
+ *
+ * One report per person and device zone: a re-render while it is in flight
+ * does not send it again.
  */
 export function useTimeZoneSync(): void {
   const { user, applyUser } = useAuth()
+  const reported = useRef<string | null>(null)
+  const latest = useRef(user)
+  useEffect(() => {
+    latest.current = user
+  })
 
   useEffect(() => {
     if (!user) return
     if (user.time_zone_source === "chosen") return
     const device = browserTimeZone()
     if (!isValidTimeZone(device) || device === user.time_zone) return
-    let cancelled = false
+    const key = `${user.id}:${device}`
+    if (reported.current === key) return
+    reported.current = key
+    const id = user.id
     usersService
-      .updateProfile({ time_zone: device, time_zone_source: "detected" })
+      .reportDetectedTimeZone(device)
       .then((profile) => {
-        if (!cancelled) applyUser({ ...user, time_zone: profile.time_zone ?? device, time_zone_source: "detected" })
+        // Nothing written: the row already holds a chosen zone.
+        if (!profile) return
+        // Chosen here since the report left: the choice stands.
+        if (latest.current?.time_zone_source === "chosen") return
+        applyUser({ id, time_zone: profile.time_zone ?? device, time_zone_source: "detected" })
       })
       // Best effort: display already follows the device; the next load retries.
-      .catch(() => undefined)
-    return () => {
-      cancelled = true
-    }
+      .catch(() => {
+        reported.current = null
+      })
   }, [user, applyUser])
 }

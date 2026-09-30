@@ -41,7 +41,7 @@ export function TimeZoneSetting() {
     setSaving(true)
     try {
       const profile = await usersService.updateProfile({ time_zone: zone, time_zone_source: source })
-      applyUser({ ...user, time_zone: profile.time_zone ?? zone, time_zone_source: source })
+      applyUser({ id: user.id, time_zone: profile.time_zone ?? zone, time_zone_source: source })
       toast({ title: t("profile.timeZone.saved", { zone: zone.replace(/_/g, " ") }), variant: "success" })
     } catch {
       toast({ title: t("profile.updateFailed"), variant: "destructive" })

@@ -280,12 +280,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // See ``AuthContextValue.applyUser``. Same two guards ``enrichProfile``
   // applies to its own result: don't write after unmount, and don't write a
   // profile that belongs to a session we have already left.
-  const applyUser = useCallback((next: User) => {
+  const applyUser = useCallback((next: Pick<User, "id"> & Partial<User>) => {
     if (!mounted.current) return
     if (activeUserId.current !== null && activeUserId.current !== next.id) return
-    // A zone chosen on the profile page applies at once, everywhere.
-    setDisplayTimeZone(next.time_zone_source === "chosen" ? next.time_zone : null)
-    setUser(next)
+    setUser((prev) => {
+      // Laid over the profile we hold, not in place of it. Several callers
+      // hand in a backend `UserResponse` (the language report, the end of
+      // first run), and that shape carries only the account fields: taken
+      // whole, it dropped the time zone and the personal details, so the
+      // display fell back to the browser's zone, the zone sync overwrote a
+      // chosen one, and the details form showed empty and saved nulls over
+      // what was there. A field the response does not carry keeps its
+      // value; one it carries — null included — wins.
+      // With no profile held yet only a whole profile makes sense; callers
+      // pass partial ones only for a person already signed in.
+      const merged: User = prev && prev.id === next.id ? { ...prev, ...next } : (next as User)
+      // A zone chosen on the profile page applies at once, everywhere.
+      // Idempotent, so safe in an updater React may run twice.
+      setDisplayTimeZone(merged.time_zone_source === "chosen" ? merged.time_zone : null)
+      return merged
+    })
   }, [])
 
   const logout = useCallback(async () => {
