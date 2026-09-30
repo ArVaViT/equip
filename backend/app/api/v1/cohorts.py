@@ -852,6 +852,26 @@ def list_cohorts_for_course(
             context={"resource_type": "course", "resource_id": course_id},
         )
 
+    # The same rule as ``GET /courses/{id}``: an institute course belongs to
+    # its organization, and to anyone else it does not exist. Without this
+    # its cohort names were readable by id to anybody, signed in or not —
+    # and the course page is open to visitors now (2026-09-30 review).
+    if (
+        course.access_mode == "institute"
+        and not is_owner_or_admin(course, current_user)
+        and not (
+            current_user is not None
+            and current_user.organization_id is not None
+            and current_user.organization_id == course.organization_id
+        )
+    ):
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
+
     cohorts = (
         db.query(Cohort)
         .join(CohortCourse, Cohort.id == CohortCourse.cohort_id)

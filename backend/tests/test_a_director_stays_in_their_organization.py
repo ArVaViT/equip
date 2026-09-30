@@ -105,3 +105,32 @@ def test_their_own_institute_course_and_any_public_one_can(as_director: TestClie
         ).status_code
         == 201
     )
+
+
+def _as(db: Session, user: User | None) -> TestClient:
+    def _db():
+        yield db
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_optional_user] = lambda: user
+    return TestClient(app, raise_server_exceptions=True)
+
+
+def test_an_institute_courses_cohorts_are_not_listed_to_outsiders(world, db: Session) -> None:
+    """The cohort list of an institute course read by id to anybody, signed in
+    or not, while the course itself answered 404; with the course page open
+    to visitors that mattered (2026-09-30 review)."""
+    from app.models.cohort import CohortCourse
+
+    db.add(CohortCourse(cohort_id=world["cohort_a"].id, course_id="c-own-inst"))
+    db.commit()
+    try:
+        assert _as(db, None).get("/api/v1/cohorts/course/c-own-inst").status_code == 404
+        assert _as(db, world["student"]).get("/api/v1/cohorts/course/c-own-inst").status_code == 404
+        member = _as(db, world["director"]).get("/api/v1/cohorts/course/c-own-inst")
+        assert member.status_code == 200
+        assert len(member.json()) == 1
+        # A public course's cohorts stay public.
+        assert _as(db, None).get("/api/v1/cohorts/course/c-other-pub").status_code == 200
+    finally:
+        app.dependency_overrides.clear()
