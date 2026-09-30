@@ -98,11 +98,14 @@ function offsetMs(instantMs: number, tz: string): number {
 /**
  * The instant at which `tz`'s clock reads the given wall time.
  *
- * Two passes: guess with the offset at the naive instant, then correct with
- * the offset at the guess. Across a DST change a wall time can be missing
- * (spring: 02:30 does not happen) — it lands an hour later, on the clock
- * that did happen — or doubled (autumn: 01:30 happens twice) — the earlier
- * one is taken.
+ * The zone's offset a day before and a day after gives the two candidate
+ * instants (the same one, except across a DST change). Across a change a
+ * wall time can be doubled (autumn: 01:30 happens twice) — the earlier of
+ * the candidates that really read that time is taken — or missing (spring:
+ * 02:30 does not happen) — it lands on the clock that did happen, an hour
+ * later, by the offset in force before the change. The same on both sides
+ * of Greenwich; the two-pass version this replaces took the later instant
+ * for zones east of it (Berlin, Kyiv).
  */
 export function zonedWallTimeToUtc(
   year: number,
@@ -114,16 +117,15 @@ export function zonedWallTimeToUtc(
   tz: string = getDisplayTimeZone(),
 ): Date {
   const naive = Date.UTC(year, month - 1, day, hour, minute, second)
-  const first = naive - offsetMs(naive, tz)
-  const second_ = naive - offsetMs(first, tz)
-  if (first === second_) return new Date(first)
-  // The two passes disagree only at a transition: prefer the earlier
-  // instant whose wall clock matches; otherwise the later guess.
-  const earlier = Math.min(first, second_)
-  const p = zonedParts(new Date(earlier), tz)
-  const matches =
-    p.year === year && p.month === month && p.day === day && p.hour === hour && p.minute === minute
-  return new Date(matches ? earlier : Math.max(first, second_))
+  const DAY = 24 * 60 * 60 * 1000
+  const before = naive - offsetMs(naive - DAY, tz)
+  const after = naive - offsetMs(naive + DAY, tz)
+  const reads = (instant: number) => {
+    const p = zonedParts(new Date(instant), tz)
+    return p.year === year && p.month === month && p.day === day && p.hour === hour && p.minute === minute
+  }
+  const real = [before, after].filter(reads)
+  return new Date(real.length > 0 ? Math.min(...real) : before)
 }
 
 /** `YYYY-MM-DD` of the calendar day an instant falls on in `tz`. */

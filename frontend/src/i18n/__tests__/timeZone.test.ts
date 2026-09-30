@@ -7,6 +7,7 @@ import {
   setDisplayTimeZone,
   timeZoneLabel,
   zonedDayKey,
+  zonedParts,
   zonedWallTimeToUtc,
 } from "../timeZone"
 
@@ -64,6 +65,30 @@ describe("one instant, read in each person's zone", () => {
     expect(zonedWallTimeToUtc(2026, 11, 1, 1, 30, 0, "America/New_York").toISOString()).toBe(
       "2026-11-01T05:30:00.000Z",
     )
+  })
+
+  it("takes the earlier of a doubled wall time east of Greenwich too", () => {
+    // 2026-10-25: Berlin 02:30 happens at 00:30Z (CEST) and 01:30Z (CET);
+    // Kyiv 03:30 at 00:30Z (EEST) and 01:30Z (EET).
+    expect(zonedWallTimeToUtc(2026, 10, 25, 2, 30, 0, "Europe/Berlin").toISOString()).toBe("2026-10-25T00:30:00.000Z")
+    expect(zonedWallTimeToUtc(2026, 10, 25, 3, 30, 0, "Europe/Kyiv").toISOString()).toBe("2026-10-25T00:30:00.000Z")
+  })
+
+  it("moves a skipped spring wall time forward east of Greenwich too", () => {
+    // 2027-03-28: Berlin 02:30 does not happen (02:00 → 03:00 CEST).
+    const d = zonedWallTimeToUtc(2027, 3, 28, 2, 30, 0, "Europe/Berlin")
+    expect(isoToLocalInput(d.toISOString(), "Europe/Berlin")).toBe("2027-03-28T03:30")
+  })
+
+  it("an instant read on the wall and back is the same instant, all year, on both sides of Greenwich", () => {
+    for (const tz of ["America/Los_Angeles", "America/Indiana/Indianapolis", "Europe/Berlin", "Europe/Kyiv", "Australia/Sydney"]) {
+      for (let t = Date.UTC(2026, 0, 1); t < Date.UTC(2027, 0, 1); t += 7 * 3600 * 1000) {
+        const p = zonedParts(new Date(t), tz)
+        const back = zonedWallTimeToUtc(p.year, p.month, p.day, p.hour, p.minute, p.second, tz).getTime()
+        // A doubled autumn hour gives back the earlier of its two instants.
+        expect(back === t || back === t - 3600 * 1000, `${tz} ${new Date(t).toISOString()}`).toBe(true)
+      }
+    }
   })
 
   it("a date-only value is midnight in the reader's zone, not in UTC", () => {
