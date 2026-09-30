@@ -301,7 +301,11 @@ function AppRoutes() {
               <Route path="/calendar" element={<Gate mode="private"><CalendarPage /></Gate>} />
               <Route path="/daily-challenge/archive" element={<Gate mode="private"><DailyChallengeArchivePage /></Gate>} />
               <Route path="/certificates" element={<Gate mode="private"><CertificatesPage /></Gate>} />
-              <Route path="/courses/:id" element={<Gate mode="private"><CourseDetail /></Gate>} />
+              {/* No <Gate>: a course page is open to anyone, as the landing FAQ
+                  promises; enrolling, lessons and progress still need an
+                  account (the lesson routes below are private). CourseDetail
+                  has its signed-out path — NotEnrolledView asks to sign in. */}
+              <Route path="/courses/:id" element={<CourseDetail />} />
               <Route path="/courses/:courseId/modules/:moduleId" element={<Gate mode="private"><ModuleView /></Gate>} />
               {/* A lesson is addressed by its course, because that is what it
                   belongs to — a module is only a grouping, and one a teacher
