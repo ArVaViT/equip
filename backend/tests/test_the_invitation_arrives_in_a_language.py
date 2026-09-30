@@ -297,3 +297,15 @@ class TestTheTextAlternative:
         message = build_invitation_message(db, invitation, accept_url=ACCEPT_URL, locale=locale, inviter_name=None)
 
         assert any(expected in note for note in message.notes)
+
+    def test_the_last_day_is_the_school_clock_s_not_utc_s(self, db: Session, admin: User) -> None:
+        # Sent at 21:00 EDT on 30.09 with a seven-day life: the link dies at
+        # 21:00 EDT on 07.10, which UTC already calls the 8th.
+        invitation = _invitation(db)
+        invitation.expires_at = datetime(2026, 10, 8, 1, 0, tzinfo=UTC)
+        db.commit()
+
+        message = build_invitation_message(db, invitation, accept_url=ACCEPT_URL, locale="ru", inviter_name=None)
+
+        assert any("07.10.2026" in note for note in message.notes)
+        assert not any("08.10.2026" in note for note in message.notes)
