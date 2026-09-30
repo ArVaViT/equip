@@ -394,9 +394,9 @@ def courses_stuck_in_publishing(
     When a course entered ``publishing`` is read off the audit log —
     the ``publish`` action ``PUT /courses/{id}`` records whether the
     course went straight out or was held — rather than off a column,
-    because ``courses.updated_at`` is bumped by the sweep's own
-    timestamp every cycle and would say every course was touched a
-    minute ago. A course with no such entry (moved by some other path)
+    because ``courses.updated_at`` records any edit, not the move into
+    ``publishing`` (and until 20260930150000 it was also bumped by the
+    sweep's own timestamp every cycle). A course with no such entry (moved by some other path)
     falls back to ``updated_at``, then ``created_at``; a course with no
     date at all is not counted, because "unknown" is not "over an hour".
     """

@@ -57,6 +57,26 @@ $$;
 
 
 --
+-- Name: courses_touch_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.courses_touch_updated_at() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+  IF (to_jsonb(NEW) - 'translations_checked_at' - 'updated_at')
+     IS NOT DISTINCT FROM (to_jsonb(OLD) - 'translations_checked_at' - 'updated_at') THEN
+    NEW.updated_at = OLD.updated_at;
+  ELSE
+    NEW.updated_at = now();
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: current_organization_id(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2653,7 +2673,7 @@ CREATE TRIGGER trg_cohorts_updated_at BEFORE UPDATE ON public.cohorts FOR EACH R
 -- Name: courses trg_courses_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER trg_courses_updated_at BEFORE UPDATE ON public.courses FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+CREATE TRIGGER trg_courses_updated_at BEFORE UPDATE ON public.courses FOR EACH ROW EXECUTE FUNCTION public.courses_touch_updated_at();
 
 
 --
