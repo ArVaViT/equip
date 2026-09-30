@@ -244,3 +244,31 @@ class TestWorkerTickUnconfigured:
         monkeypatch.setattr(settings, "GEMINI_API_KEY", None)
         out = W._run_one_tick(db)
         assert out.status == "unconfigured"
+
+
+class TestWorkerTickSweepHasAClock:
+    def test_the_backlog_sweep_runs_on_the_ticks_clock(self, db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The sweep after generation gets a budget whose clock started
+        with the tick — before, it ran with none and could be killed by the
+        function limit in the middle of a question (2026-09-30 audit)."""
+        from pydantic import SecretStr
+
+        from app.api.v1 import internal_daily_challenge_worker as W
+        from app.core.config import settings
+        from app.services.daily_challenge.translate import SweepReport
+        from app.services.translation.budget import TranslationBudget
+        from app.services.translation.orchestrator import OrchestratorReport
+
+        monkeypatch.setattr(settings, "GEMINI_API_KEY", SecretStr("test-key"))
+        monkeypatch.setattr(W, "replenish_one_question", lambda db, client: R.ReplenishOutcome(status="no_survivors"))
+        seen: dict[str, object] = {}
+
+        def fake_sweep(db: Session, *, limit: int, budget: TranslationBudget | None = None) -> SweepReport:
+            seen["budget"] = budget
+            return SweepReport(questions=0, rows=OrchestratorReport())
+
+        monkeypatch.setattr(W, "translate_pending_questions", fake_sweep)
+        W._run_one_tick(db)
+        budget = seen["budget"]
+        assert isinstance(budget, TranslationBudget)
+        assert budget.seconds == settings.TRANSLATION_WORKER_BUDGET_SECONDS
