@@ -78,6 +78,7 @@ export function ChapterRow({
   // accidental click on the row's title field fired a no-op update —
   // wasted network round-trip and an audit-log row per visit.
   const focusValueRef = useRef<string>("");
+  const escapedRef = useRef(false);
   // The name opens the lesson — the thing a teacher clicks a lesson for.
   // It used to be an input: a click on the name started renaming it, and
   // the lesson itself opened from a small unlabelled pencil at the end of
@@ -115,16 +116,24 @@ export function ChapterRow({
                   onChange={(e) => onTitleChange(e.target.value)}
                   onFocus={(e) => {
                     focusValueRef.current = e.target.value;
+                    escapedRef.current = false;
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") e.currentTarget.blur();
                     if (e.key === "Escape") {
+                      // Flagged: the input unmounts next, and a blur fired
+                      // on the way out must not save what Escape cancelled.
+                      escapedRef.current = true;
                       onTitleChange(focusValueRef.current);
                       setRenaming(false);
                     }
                   }}
                   onBlur={(e) => {
                     setRenaming(false);
+                    if (escapedRef.current) {
+                      escapedRef.current = false;
+                      return;
+                    }
                     if (e.target.value.trim() === focusValueRef.current.trim()) {
                       return;
                     }
