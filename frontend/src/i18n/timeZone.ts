@@ -154,6 +154,40 @@ export function timeZoneLabel(
   }
 }
 
+/** How many minutes `tz` is ahead of UTC at `at` (negative west of Greenwich). */
+export function timeZoneOffsetMinutes(tz: string, at: Date = new Date()): number {
+  return Math.round(offsetMs(at.getTime(), tz) / 60000)
+}
+
+/**
+ * How the profile's picker names a zone: the city, the zone's name in the
+ * reader's language, and its offset — "Kyiv — Восточная Европа · GMT+3".
+ * The raw IANA name ("Europe/Kyiv") is what the list used to show, four
+ * hundred of them in alphabetical order, which nobody looking for their own
+ * clock can use. The generic name ("Eastern Time", not "Eastern Daylight
+ * Time") does not change with the season.
+ */
+export function timeZoneOptionLabel(locale: string, tz: string, at: Date = new Date()): string {
+  const city = (tz.split("/").pop() ?? tz).replace(/_/g, " ")
+  const generic = genericZoneName(locale, tz, at)
+  const short = timeZoneLabel(locale, tz, at)
+  // Where the engine has no name for the zone it answers with the offset,
+  // and "GMT+3 · GMT+3" says nothing twice.
+  return generic && generic !== short ? `${city} — ${generic} · ${short}` : `${city} · ${short}`
+}
+
+function genericZoneName(locale: string, tz: string, at: Date): string {
+  try {
+    return (
+      new Intl.DateTimeFormat(locale, { timeZone: tz, timeZoneName: "longGeneric" })
+        .formatToParts(at)
+        .find((p) => p.type === "timeZoneName")?.value ?? ""
+    )
+  } catch {
+    return ""
+  }
+}
+
 /** Every IANA zone the engine knows, for the profile's picker (empty on engines without the API). */
 export function supportedTimeZones(): string[] {
   const intl = Intl as unknown as { supportedValuesOf?: (key: string) => string[] }

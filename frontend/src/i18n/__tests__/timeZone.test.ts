@@ -6,6 +6,8 @@ import {
   isValidTimeZone,
   setDisplayTimeZone,
   timeZoneLabel,
+  timeZoneOffsetMinutes,
+  timeZoneOptionLabel,
   zonedDayKey,
   zonedParts,
   zonedWallTimeToUtc,
@@ -104,6 +106,14 @@ describe("one instant, read in each person's zone", () => {
   it("names the zone so nobody wonders whose 8:00 it is", () => {
     expect(timeZoneLabel("en-US", "America/New_York", new Date("2026-10-05T12:00:00Z"))).toBe("EDT")
     expect(timeZoneLabel("en-US", "UTC", new Date("2026-10-05T12:00:00Z"))).toBe("UTC")
+  })
+
+  it("names a zone for a person, in their language, and knows its offset", () => {
+    const at = new Date("2026-10-05T12:00:00Z")
+    expect(timeZoneOptionLabel("ru-RU", "Europe/Kyiv", at)).toMatch(/^Kyiv — Восточная Европа · GMT\+3$/)
+    expect(timeZoneOptionLabel("en-US", "America/Indiana/Indianapolis", at)).toBe("Indianapolis — Eastern Time · EDT")
+    expect(timeZoneOffsetMinutes("America/Los_Angeles", at)).toBe(-420)
+    expect(timeZoneOffsetMinutes("Asia/Kolkata", at)).toBe(330)
   })
 
   it("says when the next Daily Challenge day starts on the reader's clock", () => {

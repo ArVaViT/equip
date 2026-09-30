@@ -6,7 +6,13 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/context/useAuth"
 import { activeIntlTag } from "@/i18n/config"
-import { browserTimeZone, getDisplayTimeZone, supportedTimeZones, timeZoneLabel } from "@/i18n/timeZone"
+import {
+  browserTimeZone,
+  getDisplayTimeZone,
+  supportedTimeZones,
+  timeZoneOffsetMinutes,
+  timeZoneOptionLabel,
+} from "@/i18n/timeZone"
 import { toast } from "@/lib/toast"
 import { usersService } from "@/services/users"
 
@@ -30,9 +36,11 @@ export function TimeZoneSetting() {
     // device may use the current one ("Europe/Kyiv"). Always offer both.
     for (const z of [current, device]) if (!all.includes(z)) all.push(z)
     const now = new Date()
+    // West to east, as a phone's own picker lists them: the neighbours of
+    // the reader's clock sit next to it, whatever the city is called.
     return all
-      .map((z) => ({ zone: z, label: `${z.replace(/_/g, " ")} · ${timeZoneLabel(locale, z, now)}` }))
-      .sort((a, b) => a.zone.localeCompare(b.zone))
+      .map((z) => ({ zone: z, offset: timeZoneOffsetMinutes(z, now), label: timeZoneOptionLabel(locale, z, now) }))
+      .sort((a, b) => a.offset - b.offset || a.zone.localeCompare(b.zone))
   }, [current, device, locale])
 
   if (!user) return null

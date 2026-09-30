@@ -123,6 +123,8 @@ describe("time zone setting", () => {
     setDisplayTimeZone("Europe/Berlin")
     render(<TimeZoneSetting />, { wrapper: Wrapper })
     expect(screen.getByText(/Выбран вами/)).toBeInTheDocument()
-    expect(screen.getByRole("combobox", { name: "Часовой пояс" })).toHaveTextContent("Europe/Berlin")
+    // A city and the zone's name in the reader's language, not "Europe/Berlin".
+    const picker = screen.getByRole("combobox", { name: "Часовой пояс" })
+    expect(picker).toHaveTextContent(/^Berlin — .*Европа.* · GMT\+[12]$/)
   })
 })
