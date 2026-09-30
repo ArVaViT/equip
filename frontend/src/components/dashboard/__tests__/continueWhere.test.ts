@@ -49,4 +49,20 @@ describe("continue where you left off", () => {
     expect([next?.position, next?.total]).toEqual([2, 3])
     expect(nextLesson(course("a", ["l1"]), ["l1"])).toBeNull()
   })
+
+  it("does not send anyone to a locked lesson", () => {
+    const c = course("a", ["quiz", "after", "free"])
+    const chapters = (c as unknown as { chapters: Array<Record<string, unknown>> }).chapters
+    chapters[0]!.chapter_type = "quiz"
+    chapters[1]!.is_locked = true // opens once the quiz before it is passed
+    // The quiz is taken but not yet passed: "after" is locked, so the card
+    // offers the quiz itself — the first undone lesson that is open.
+    expect(nextLesson(c, [])?.chapter.id).toBe("quiz")
+    // Quiz passed: the lock opens.
+    expect(nextLesson(c, ["quiz"])?.chapter.id).toBe("after")
+    // A teacher's lock on the only lesson left: nowhere to send them.
+    const only = course("b", ["x"])
+    ;(only as unknown as { chapters: Array<Record<string, unknown>> }).chapters[0]!.is_locked = true
+    expect(nextLesson(only, [])).toBeNull()
+  })
 })

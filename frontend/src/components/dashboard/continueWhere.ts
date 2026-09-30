@@ -1,4 +1,6 @@
+import { isGradableChapterType } from "@/lib/chapterTypes"
 import { readCourseStructure } from "@/lib/courseStructure"
+import { isChapterLocked } from "@/pages/Course/moduleProgress"
 import type { Chapter, Course, Enrollment } from "@/types"
 
 /**
@@ -21,14 +23,29 @@ export function courseToContinue(enrollments: Enrollment[], recentIds: string[])
   return [...open].sort((a, b) => b.enrolled_at.localeCompare(a.enrolled_at))[0] ?? null
 }
 
-/** The first lesson in reading order not yet done, with its place in the course. */
+/**
+ * The first lesson in reading order not yet done and not locked, with its
+ * place in the course. A lesson behind a lock (a test still to be graded, a
+ * teacher's "not ready") is not somewhere to send a person; `null` when every
+ * lesson left is locked or done.
+ */
 export function nextLesson(
   course: Course,
   done: readonly string[],
 ): { chapter: Chapter; position: number; total: number } | null {
   const chapters = readCourseStructure(course).chapters
   const finished = new Set(done)
-  const index = chapters.findIndex((c) => !finished.has(c.id))
-  if (index < 0) return null
-  return { chapter: chapters[index]!, position: index + 1, total: chapters.length }
+  for (let i = 0; i < chapters.length; i++) {
+    const chapter = chapters[i]!
+    if (finished.has(chapter.id)) continue
+    const previous = i > 0 ? chapters[i - 1]! : null
+    const locked = isChapterLocked(
+      finished,
+      chapter,
+      previous,
+      previous ? isGradableChapterType(previous.chapter_type) : false,
+    )
+    if (!locked) return { chapter, position: i + 1, total: chapters.length }
+  }
+  return null
 }

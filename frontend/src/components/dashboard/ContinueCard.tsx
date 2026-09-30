@@ -36,7 +36,10 @@ export function ContinueCard() {
         coursesService.getCourse(pick.course_id),
         progressService.getMyChapterProgress(pick.course_id).catch(() => null),
       ])
-      const next = nextLesson(course, done ?? [])
+      // Unknown progress is not "nothing done": pointing at lesson 1 would
+      // send somebody back to the start (see pages/Course/moduleProgress).
+      if (done === null) return null
+      const next = nextLesson(course, done)
       return next ? { course, ...next } : null
     },
     [user?.id, i18n.language],

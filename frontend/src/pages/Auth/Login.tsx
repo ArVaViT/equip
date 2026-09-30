@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Link, useLocation, useSearchParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
@@ -12,7 +12,7 @@ import { authErrorMessage } from "@/lib/authError"
 import { GoogleIcon } from "./register/GoogleIcon"
 import { SignInLinkSent } from "./SignInLinkSent"
 import { takeSignOutReason, type SignOutReason } from "@/lib/signOutReason"
-import { returnPathFrom } from "@/lib/authRedirect"
+import { rememberReturnPath, returnPathFrom } from "@/lib/authRedirect"
 
 /**
  * Why the sign-in form is on screen, when the person did not come here on
@@ -42,6 +42,9 @@ export default function Login() {
   const [noticeKey] = useState(() =>
     noticeKeyFor(searchParams.get("error"), takeSignOutReason(), location.state),
   )
+  // Google and an emailed link come back in a fresh page; keep where the
+  // visitor was going for /auth/callback (lib/authRedirect).
+  useEffect(() => rememberReturnPath(location.state), [location.state])
   const [form, setForm] = useState<LoginFormData>({ email: "", password: "" })
   const [errors, setErrors] = useState<Partial<Record<keyof LoginFormData, string>>>({})
   const [serverError, setServerError] = useState("")
@@ -255,7 +258,7 @@ export default function Login() {
 
         <p className="text-sm text-center text-ink-muted">
           {t("auth.noAccount")}{" "}
-          <Link to="/register" className="text-brand font-medium hover:text-brand-ink transition-colors">
+          <Link to="/register" state={location.state} className="text-brand font-medium hover:text-brand-ink transition-colors">
             {t("auth.createOne")}
           </Link>
         </p>
