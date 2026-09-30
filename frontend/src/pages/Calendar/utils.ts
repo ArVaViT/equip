@@ -1,5 +1,6 @@
 import i18n, { activeIntlTag } from "@/i18n/config";
 import { formatDateLong } from "@/i18n/format";
+import { getDisplayTimeZone } from "@/i18n/timeZone";
 
 export function isSameDay(a: Date, b: Date): boolean {
   return (
@@ -26,6 +27,8 @@ export function formatTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString(locale, {
     hour: "2-digit",
     minute: "2-digit",
+    // The reader's zone (profile, else browser), as every time in the app.
+    timeZone: getDisplayTimeZone(),
   });
 }
 

@@ -161,3 +161,19 @@ export function supportedTimeZones(): string[] {
     return []
   }
 }
+
+/**
+ * The calendar day an instant falls on in `tz`, as a plain local `Date` at
+ * midnight — the container the month grids work in. Grids compare these by
+ * year/month/day only, so an event at 23:30 in California lands on that
+ * Californian day whatever zone the browser is in.
+ */
+export function zonedCalendarDate(date: Date, tz: string = getDisplayTimeZone()): Date {
+  const p = zonedParts(date, tz)
+  return new Date(p.year, p.month - 1, p.day)
+}
+
+/** Today, on the reader's calendar. */
+export function zonedToday(tz: string = getDisplayTimeZone()): Date {
+  return zonedCalendarDate(new Date(), tz)
+}

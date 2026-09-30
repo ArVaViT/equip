@@ -1,3 +1,4 @@
+import { zonedToday } from "@/i18n/timeZone";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { CalendarDays, Filter, RefreshCw } from "lucide-react";
@@ -138,7 +139,7 @@ export default function CalendarPage() {
             <MonthGrid
               year={year}
               month={month}
-              today={new Date()}
+              today={zonedToday()}
               calendarDays={calendarDays}
               eventsByDate={eventsByDate}
               selectedDay={selectedDay}
