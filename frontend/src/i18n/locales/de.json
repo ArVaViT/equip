@@ -702,8 +702,8 @@
     "enrollingNow": "Einschreibung läuft",
     "byInvitation": "Auf Einladung",
     "openCourse": "Öffnen",
-    "modulesLabel_one": "{{count}} Modul",
-    "modulesLabel_other": "{{count}} Module",
+    "lessonsLabel_one": "{{count}} Lektion",
+    "lessonsLabel_other": "{{count}} Lektionen",
     "inProgress": "Läuft",
     "completed": "Abgeschlossen",
     "progressLabel": "{{percent}} % abgeschlossen"

@@ -702,8 +702,8 @@
     "enrollingNow": "Enrolling now",
     "byInvitation": "By invitation",
     "openCourse": "Open",
-    "modulesLabel_one": "{{count}} module",
-    "modulesLabel_other": "{{count}} modules",
+    "lessonsLabel_one": "{{count}} lesson",
+    "lessonsLabel_other": "{{count}} lessons",
     "inProgress": "In progress",
     "completed": "Completed",
     "progressLabel": "{{percent}}% complete"
