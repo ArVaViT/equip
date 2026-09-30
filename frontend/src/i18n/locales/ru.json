@@ -537,6 +537,7 @@
     "nextChapter": "Следующий урок",
     "nextEyebrow": "Далее",
     "notTranslated": "Этот урок пока недоступен на вашем языке. Он появится здесь, как только будет готов.",
+    "readingTime": "≈ {{count}} мин чтения",
     "positionEyebrow": "Урок {{current}} из {{total}}",
     "prevChapter": "Предыдущий урок",
     "prevEyebrow": "Назад",

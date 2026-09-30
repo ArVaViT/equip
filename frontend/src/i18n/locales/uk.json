@@ -950,6 +950,7 @@
     "nextChapter": "Наступний урок",
     "nextEyebrow": "Далі",
     "notTranslated": "Цей урок поки недоступний вашою мовою. Він з'явиться тут, щойно буде готовий.",
+    "readingTime": "≈ {{count}} хв читання",
     "positionEyebrow": "Урок {{current}} з {{total}}",
     "prevChapter": "Попередній урок",
     "prevEyebrow": "Назад",

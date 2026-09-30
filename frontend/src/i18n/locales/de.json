@@ -930,6 +930,7 @@
     "nextChapter": "Nächste Lektion",
     "nextEyebrow": "Weiter",
     "notTranslated": "Diese Lektion ist noch nicht in Ihrer Sprache verfügbar. Sie erscheint hier, sobald sie fertig ist.",
+    "readingTime": "≈ {{count}} Min. Lesezeit",
     "positionEyebrow": "Lektion {{current}} von {{total}}",
     "prevChapter": "Vorige Lektion",
     "prevEyebrow": "Zurück",

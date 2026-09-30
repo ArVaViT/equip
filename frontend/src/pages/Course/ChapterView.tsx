@@ -4,6 +4,7 @@ import { useParams, Link, useNavigate } from "react-router-dom"
 import { isAxiosError } from "axios"
 import { sanitizeHtml as sanitize } from "@/lib/sanitize"
 import { tieTypographyIn } from "@/lib/typography"
+import { readingMinutes } from "@/lib/readingTime"
 import { renderMathIn } from "@/lib/katex-render"
 import { renderToggleCalloutsIn } from "@/lib/callout-toggle"
 import { attachCopyButtonsIn } from "@/lib/codeblock-copy"
@@ -767,6 +768,14 @@ export default function ChapterView() {
   }
 
   const chapterType = normalizeChapterType(chapter.chapter_type)
+  // Minutes to read the lesson's text, once its blocks are here (lib/readingTime).
+  const readingTime =
+    chapterType === "reading" && !loadingBlocks
+      ? readingMinutes(
+          chapterBlocks.filter((b) => b.block_type === "text").map((b) => b.content ?? ""),
+          i18n.resolvedLanguage ?? i18n.language,
+        )
+      : 0
   const chapterTypeMeta = getChapterTypeMeta(chapterType)
   const ChapterTypeIcon = chapterTypeMeta.icon
 
@@ -795,6 +804,14 @@ export default function ChapterView() {
                 they were at the start of something they were halfway through. */}
             {t("chapter.positionEyebrow", { current: currentIdx + 1, total: structure.chapters.length })}
           </span>
+          {readingTime > 0 && (
+            <>
+              <span aria-hidden className="text-ink-muted">·</span>
+              <span className="normal-case tracking-normal tabular-nums">
+                {t("chapter.readingTime", { count: readingTime })}
+              </span>
+            </>
+          )}
           {parentModule?.title && (
             <>
               <span aria-hidden className="text-ink-muted">·</span>

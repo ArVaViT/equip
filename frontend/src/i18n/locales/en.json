@@ -930,6 +930,7 @@
     "nextChapter": "Next lesson",
     "nextEyebrow": "Next",
     "notTranslated": "This lesson is not available in your language yet. It will appear here as soon as it is ready.",
+    "readingTime": "≈ {{count}} min read",
     "positionEyebrow": "Lesson {{current}} of {{total}}",
     "prevChapter": "Previous lesson",
     "prevEyebrow": "Previous",
