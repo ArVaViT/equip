@@ -1632,6 +1632,120 @@ def _without_the_editions_verses(
     return plain, translated
 
 
+# Where a text breaks into passages a reader sees one at a time. Block
+# tags, line breaks, and blank lines in plain text.
+_PASSAGE_BREAK = re.compile(r"</?(?:p|li|h[1-6]|blockquote|div|td|th|dd|dt|figcaption)\b[^>]*>|<br\s*/?>|\n\s*\n", re.I)
+
+# One word written in two alphabets: «Demтріус», «щz». No language
+# writes like that; it is a model stopping halfway through a word.
+_MIXED_SCRIPT_WORD = re.compile(r"\b(?=\w*[A-Za-z])(?=\w*[\u0400-\u04FF])\w+\b")
+
+# A passage needs this many letters before its language counts against the
+# whole text. The detector's own table (``_check_language``) puts de/en at
+# 0% false positives from 45 letters; ru/uk is held to 60, where it is also
+# 0% and still catches all of it; across scripts 20 letters are plenty.
+_MIN_LETTERS_FOR_A_PASSAGE: Final[int] = 45
+_MIN_LETTERS_FOR_A_CLOSE_PASSAGE: Final[int] = 60
+_MIN_LETTERS_ACROSS_SCRIPTS: Final[int] = 20
+
+
+def _passages(text: str) -> list[str]:
+    """Block-level passages, and the sentences inside them.
+
+    Sentences too: a model that slips can slip for one sentence, and an
+    English sentence inside a German paragraph leaves the paragraph German.
+    The floors below still apply to each piece, so a short quoted phrase
+    never counts."""
+    pieces: list[str] = []
+    for seg in (seg.strip() for seg in _PASSAGE_BREAK.split(text)):
+        if not seg:
+            continue
+        pieces.append(seg)
+        sentences = [x.strip() for x in _SENTENCE_BREAK.split(seg) if x.strip()]
+        if len(sentences) > 1:
+            pieces.extend(sentences)
+    return pieces
+
+
+_SENTENCE_BREAK = re.compile(r"(?<=[.!?…])\s+(?=[A-ZА-ЯЁІЇЄҐ«„“\"(])")
+
+
+def _check_passage_language(
+    source: str,
+    translated: str,
+    *,
+    source_locale: LocaleCode,
+    target_locale: LocaleCode,
+) -> ValidationIssue | None:
+    """Is every passage in the language asked for — not only the whole?
+
+    ``_check_language`` reads the text as one piece, and a German lesson
+    with four English sentences in the middle reads as German: it is. That
+    is how a German student met «Open the first two or three verses of a
+    prophetic book…» in the middle of a German lesson, served as ``ok``
+    (production, 2026-09-29: two blocks, five sentences). A model that
+    loses the thread for a paragraph writes that paragraph in the language
+    of its instructions, and the whole-text reading cannot see it.
+
+    So each passage is read on its own, with the detector's measured
+    floors (see the constants). A passage in the source language is left
+    to ``_check_untranslated_run``; a passage in a language the source
+    itself quotes is the lesson quoting on purpose. Anything else is a
+    reader served a language they did not choose.
+
+    Also here: a word spelled in two alphabets, which no language does.
+    """
+    plain_source = strip_tags(unescape(source))
+    mixed = [w for w in _MIXED_SCRIPT_WORD.findall(strip_tags(unescape(translated))) if w not in plain_source]
+    if mixed:
+        return ValidationIssue(
+            code="mixed_script",
+            detail=f"Words spelled in two alphabets: {', '.join(sorted(set(mixed))[:5])}.",
+            blocking=True,
+        )
+
+    def floor(detected: LocaleCode) -> int:
+        if not shares_script(detected, target_locale):
+            return _MIN_LETTERS_ACROSS_SCRIPTS
+        if frozenset({detected, target_locale}) in _PAIRS_TOLD_APART_AT_ANY_LENGTH:
+            return _MIN_LETTERS_FOR_A_PASSAGE
+        return _MIN_LETTERS_FOR_A_CLOSE_PASSAGE
+
+    # A language counts as quoted by the source at the same floor a passage
+    # in it is judged by in the translation — no lower. With one floor for
+    # all, a short English title in a Russian lesson («The Bible Project
+    # Overview») waived English for the whole German translation, and a
+    # stray English paragraph there passed. A short quote kept word for
+    # word is let through by the verbatim check below instead.
+    quoted = {
+        lang
+        for seg in _passages(source)
+        if (lang := detect_locale(seg)) is not None and script_letters(seg) >= floor(lang)
+    }
+    plain_source_words = " ".join(plain_source.split())
+    strays: list[str] = []
+    for seg in _passages(translated):
+        if not _carries_prose(seg) or not carries_language(seg):
+            continue
+        # Carried over word for word: a quotation, whatever its language.
+        if " ".join(strip_tags(unescape(seg)).split()) in plain_source_words:
+            continue
+        detected = detect_locale(seg)
+        if detected is None or detected in (target_locale, source_locale) or detected in quoted:
+            continue
+        if script_letters(seg) >= floor(detected):
+            line = f"{detected}: {strip_tags(unescape(seg)).strip()[:80]}"
+            if line not in strays:
+                strays.append(line)
+    if not strays:
+        return None
+    return ValidationIssue(
+        code="wrong_language_passage",
+        detail=f"{len(strays)} passage(s) not in {target_locale}: " + " | ".join(strays[:3]),
+        blocking=True,
+    )
+
+
 def validate_translation(
     *,
     source: str,
@@ -1689,6 +1803,12 @@ def validate_translation(
             content_kind=content_kind,
         ),
         _check_untranslated_run(
+            source,
+            translated,
+            source_locale=source_locale,
+            target_locale=target_locale,
+        ),
+        _check_passage_language(
             source,
             translated,
             source_locale=source_locale,

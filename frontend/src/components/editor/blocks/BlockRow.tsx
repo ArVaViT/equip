@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
-import { ChevronDown, ChevronRight, GripVertical, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, GripVertical, Trash2 } from "lucide-react"
 import QuizEditor from "@/components/quiz/QuizEditor"
 import AssignmentEditor from "@/components/assignment/AssignmentEditor"
 import { coursesService } from "@/services/courses"
@@ -10,6 +10,14 @@ import { blockIcon } from "./types"
 import { TextBlockEditor } from "./TextBlockEditor"
 import { FileBlockEditor } from "./FileBlockEditor"
 
+/** The first words of a block, for its folded header. */
+function blockPreview(block: ChapterBlock): string {
+  const raw = block.content ?? block.file_name ?? ""
+  if (!raw) return ""
+  const text = raw.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim()
+  return text.length > 90 ? `${text.slice(0, 90)}…` : text
+}
+
 interface Props {
   block: ChapterBlock
   courseId: string
@@ -18,6 +26,9 @@ interface Props {
   expanded: boolean
   isDragOver: boolean
   onExpandToggle: () => void
+  /** One step up / down; absent at the ends. For touch, where drag does not work. */
+  onMoveUp?: () => void
+  onMoveDown?: () => void
   onDelete: () => void
   onBlockUpdated: (updated: ChapterBlock) => void
   /** The block's editor holds text the server does not have yet (or no longer does). */
@@ -40,6 +51,8 @@ export function BlockRow({
   expanded,
   isDragOver,
   onExpandToggle,
+  onMoveUp,
+  onMoveDown,
   onDelete,
   onBlockUpdated,
   onUnsavedChange,
@@ -51,6 +64,9 @@ export function BlockRow({
   const { t } = useTranslation()
   const Icon = blockIcon(block.block_type)
   const label = t(`blockEditor.types.${block.block_type}`, { defaultValue: block.block_type })
+  // What the block says, for its header when folded: «Текст #1» told a
+  // teacher nothing about which of six text blocks was which.
+  const preview = blockPreview(block)
 
   const updateField = async (field: string, value: string) => {
     try {
@@ -83,19 +99,41 @@ export function BlockRow({
           <ChevronRight className="h-3.5 w-3.5 text-ink-muted shrink-0" strokeWidth={1.75} />
         )}
         <Icon className="h-3.5 w-3.5 text-ink-muted shrink-0" />
-        <span className="text-sm font-medium flex-1">{label}</span>
-        <span className="text-xs text-ink-muted">#{index + 1}</span>
+        <span className="shrink-0 text-sm font-medium">{label}</span>
+        <span className="min-w-0 flex-1 truncate text-xs text-ink-muted">
+          {!expanded && preview ? preview : `#${index + 1}`}
+        </span>
+        {[
+          { run: onMoveUp, Icon: ArrowUp, key: "blockEditor.moveUp" },
+          { run: onMoveDown, Icon: ArrowDown, key: "blockEditor.moveDown" },
+        ].map(({ run, Icon: MoveIcon, key }) => (
+          <Button
+            key={key}
+            variant="ghost"
+            size="sm"
+            className="h-9 w-9 shrink-0 p-0 text-ink-muted sm:h-7 sm:w-7"
+            disabled={!run}
+            onClick={(e) => {
+              e.stopPropagation()
+              run?.()
+            }}
+            aria-label={t(key, { label })}
+            title={t(key, { label })}
+          >
+            <MoveIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+          </Button>
+        ))}
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0"
+          className="h-9 w-9 shrink-0 p-0 text-ink-muted transition-colors hover:text-destructive sm:h-7 sm:w-7"
           onClick={(e) => {
             e.stopPropagation()
             onDelete()
           }}
           aria-label={t("blockEditor.deleteBlockAria", { label })}
         >
-          <Trash2 className="h-3 w-3" strokeWidth={1.75} />
+          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
         </Button>
       </div>
 
@@ -112,6 +150,7 @@ export function BlockRow({
             <QuizEditor
               chapterId={chapterId}
               onQuizSaved={(quizId) => updateField("quiz_id", quizId)}
+              embedded
             />
           )}
           {block.block_type === "assignment" && (

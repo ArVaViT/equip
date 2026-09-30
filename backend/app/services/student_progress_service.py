@@ -24,7 +24,7 @@ from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt
 from app.models.user import User
-from app.schemas.locale import normalize_locale
+from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.course_structure import UNGROUPED_GROUP_ID, build_spine
 from app.services.grade_calculator import calculate_all_student_grades
 from app.services.translation.resolve_for_display import populate_module_texts, populate_spine_texts
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 
 def _load_course_structure(
-    db: Session, course_id: str
+    db: Session, course_id: str, display_locale: str | None = None
 ) -> tuple[list[Chapter], dict[str, dict[str, Any]], dict[str, str], dict[str, str]]:
     """Return (chapters, group_summary_map, chapter_title_map, group_of).
 
@@ -57,11 +57,48 @@ def _load_course_structure(
         .order_by(Module.order_index)
         .all()
     )
+    src = normalize_locale(db.query(Course.source_locale).filter(Course.id == course_id).scalar() or "en")
     if modules:
-        src = db.query(Course.source_locale).filter(Course.id == course_id).scalar() or "en"
-        populate_module_texts(db, modules, source_locale=normalize_locale(src))
+        populate_module_texts(db, modules, source_locale=src)
 
     all_chapters = db.query(Chapter).filter(Chapter.course_id == course_id, Chapter.deleted_at.is_(None)).all()
+
+    # In the teacher's language when they sent one — the course name above
+    # the matrix already was, and its headings stayed in the author's
+    # (2026-09-29). The author's words where there is no translation.
+    # ``Chapter.title`` is a real column, so lesson names go into the map
+    # below rather than onto the ORM object, where a flush would write the
+    # translation over the source.
+    localized_chapter_titles: dict[str, str] = {}
+    if display_locale:
+        from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
+        if modules:
+            module_texts = fetch_cv_entity_texts_with_fallback(
+                db,
+                entity_type="module",
+                entity_ids=[m.id for m in modules],
+                fields=["title"],
+                display_locale=display_locale,
+                source_locale=src,
+                fallback="source_then_any",
+            )
+            for m in modules:
+                if module_texts.get((m.id, "title")):
+                    m.title = module_texts[(m.id, "title")]
+        if all_chapters:
+            chapter_texts = fetch_cv_entity_texts_with_fallback(
+                db,
+                entity_type="chapter",
+                entity_ids=[c.id for c in all_chapters],
+                fields=["title"],
+                display_locale=display_locale,
+                source_locale=src,
+                fallback="source_then_any",
+            )
+            localized_chapter_titles = {
+                c.id: text for c in all_chapters if (text := chapter_texts.get((c.id, "title")))
+            }
     # The one rule, shared with the readiness checklist and the PDF
     # export, in ``course_structure``.
     spine = build_spine(modules, all_chapters)
@@ -90,7 +127,7 @@ def _load_course_structure(
             "is_ungrouped": True,
         }
 
-    chapter_title_map = {c.id: c.title for c in chapters}
+    chapter_title_map = {c.id: localized_chapter_titles.get(c.id, c.title) for c in chapters}
     return chapters, module_map, chapter_title_map, spine.group_of
 
 
@@ -308,7 +345,9 @@ def _load_completed_progress(
     return out
 
 
-def _load_assignment_titles(db: Session, course: Course, assignment_by_id_str: dict[str, Assignment]) -> dict[str, str]:
+def _load_assignment_titles(
+    db: Session, course: Course, assignment_by_id_str: dict[str, Assignment], display_locale: str | None = None
+) -> dict[str, str]:
     """``assignments.title`` column dropped — bulk-fetch the
     source-language title from cv. Any-locale fallback keeps the lookup
     defensive against missing rows (prefer showing *something* over crashing).
@@ -323,8 +362,11 @@ def _load_assignment_titles(db: Session, course: Course, assignment_by_id_str: d
         entity_type="assignment",
         entity_ids=list(assignment_by_id_str.keys()),
         fields=["title"],
-        display_locale=source_locale,
+        # The teacher's language when asked, like the lesson names beside it;
+        # the author's words where there is no translation.
+        display_locale=display_locale or source_locale,
         source_locale=source_locale,
+        fallback="source_then_any",
     )
     return {aid: (cv_titles.get((aid, "title")) or "") for aid in assignment_by_id_str}
 
@@ -473,6 +515,7 @@ def _build_chapter_infos(
     quiz_map: dict[str, list[Quiz]] | None = None,
     assignment_map: dict[str, list[Assignment]] | None = None,
     group_of: dict[str, str] | None = None,
+    title_of: dict[str, str] | None = None,
 ) -> list[dict[str, Any]]:
     """Per-chapter completion + embedded quiz/assignment result for one student.
 
@@ -523,7 +566,7 @@ def _build_chapter_infos(
         chapter_infos.append(
             {
                 "id": str(ch.id),
-                "title": ch.title,
+                "title": (title_of or {}).get(ch.id, ch.title),
                 "module_id": (group_of or {}).get(ch.id) or (ch.module_id or UNGROUPED_GROUP_ID),
                 "chapter_type": ch.chapter_type or "reading",
                 "requires_completion": bool(ch.requires_completion),
@@ -573,7 +616,9 @@ def _latest_activity_by_user(db: Session, course_id: str) -> tuple[dict[str, dat
     )
 
 
-def build_course_student_progress(db: Session, course: Course, course_id: str) -> dict[str, Any]:
+def build_course_student_progress(
+    db: Session, course: Course, course_id: str, display_locale: LocaleCode | None = None
+) -> dict[str, Any]:
     """Teacher progress-board LIST payload: one lightweight summary row per
     enrolled student — scalars plus server-computed quiz/assignment/overall
     averages. The heavy per-chapter breakdown (``chapters``) and the full
@@ -586,8 +631,15 @@ def build_course_student_progress(db: Session, course: Course, course_id: str) -
     call, so this board can no longer disagree with the gradebook about the same
     student.
     """
-    populate_spine_texts(db, [course])
-    chapters, module_map, _chapter_titles, _group_of = _load_course_structure(db, course_id)
+    # The reader's language when they sent one, like the analytics page
+    # beside it: in an English interface the analytics read «Glossary in
+    # Your Pocket» and this page «Глоссарий в кармане» (2026-09-29).
+    # The author's words when there is no row in that language: the teacher
+    # must never see their own course unnamed. Modules and lessons are read
+    # again below at the source (``_load_course_structure``), so only the
+    # course's name is localized here.
+    populate_spine_texts(db, [course], display_locale=display_locale, hydrate_modules=False, fallback="source_then_any")
+    chapters, module_map, _chapter_titles, _group_of = _load_course_structure(db, course_id, display_locale)
     gradable_chapter_ids = [c.id for c in chapters if c.chapter_type in GRADABLE_CHAPTER_TYPES]
 
     # Only two timestamps are needed from the result tables now — "last seen".
@@ -646,14 +698,23 @@ def build_course_student_progress(db: Session, course: Course, course_id: str) -
     }
 
 
-def build_student_chapter_detail(db: Session, course: Course, course_id: str, student_id: str) -> dict[str, Any]:
+def build_student_chapter_detail(
+    db: Session, course: Course, course_id: str, student_id: str, display_locale: LocaleCode | None = None
+) -> dict[str, Any]:
     """Per-student detail for the progress-board row expansion: the full
     per-chapter breakdown plus the quiz/assignment result arrays for ONE
     student. Every aggregation is scoped to ``student_id`` so this stays cheap
     regardless of roster size.
     """
-    populate_spine_texts(db, [course])
-    chapters, _module_map, chapter_title_map, group_of = _load_course_structure(db, course_id)
+    # The reader's language when they sent one, like the analytics page
+    # beside it: in an English interface the analytics read «Glossary in
+    # Your Pocket» and this page «Глоссарий в кармане» (2026-09-29).
+    # The author's words when there is no row in that language: the teacher
+    # must never see their own course unnamed. Modules and lessons are read
+    # again below at the source (``_load_course_structure``), so only the
+    # course's name is localized here.
+    populate_spine_texts(db, [course], display_locale=display_locale, hydrate_modules=False, fallback="source_then_any")
+    chapters, _module_map, chapter_title_map, group_of = _load_course_structure(db, course_id, display_locale)
     chapter_ids = [c.id for c in chapters]
 
     quiz_map, assignment_map = _load_chapter_quizzes_and_assignments(db, chapter_ids)
@@ -663,7 +724,7 @@ def build_student_chapter_detail(db: Session, course: Course, course_id: str, st
     subs_by_user_chapter, assignment_by_id_str, _latest_sub = _aggregate_assignment_submissions(
         db, assignment_map, user_ids=[student_id]
     )
-    assignment_title_by_id = _load_assignment_titles(db, course, assignment_by_id_str)
+    assignment_title_by_id = _load_assignment_titles(db, course, assignment_by_id_str, display_locale)
     progress_by_user = _load_completed_progress(db, chapter_ids, user_ids=[student_id])
     user_progress = progress_by_user.get(student_id, {})
 
@@ -684,6 +745,7 @@ def build_student_chapter_detail(db: Session, course: Course, course_id: str, st
         quiz_map,
         assignment_map,
         group_of,
+        chapter_title_map,
     )
 
     return {
@@ -694,7 +756,9 @@ def build_student_chapter_detail(db: Session, course: Course, course_id: str, st
     }
 
 
-def build_course_gradebook_matrix(db: Session, course: Course, course_id: str) -> dict[str, Any]:
+def build_course_gradebook_matrix(
+    db: Session, course: Course, course_id: str, display_locale: LocaleCode | None = None
+) -> dict[str, Any]:
     """Full students x chapters matrix for the teacher GRADEBOOK.
 
     Unlike the progress-board list (which is a per-student summary), the
@@ -704,8 +768,15 @@ def build_course_gradebook_matrix(db: Session, course: Course, course_id: str) -
     detail carries are omitted — the gradebook reads only the per-chapter
     ``quiz_result`` / ``assignment_result`` embedded in each chapter cell.
     """
-    populate_spine_texts(db, [course])
-    chapters, module_map, _chapter_title_map, group_of = _load_course_structure(db, course_id)
+    # The reader's language when they sent one, like the analytics page
+    # beside it: in an English interface the analytics read «Glossary in
+    # Your Pocket» and this page «Глоссарий в кармане» (2026-09-29).
+    # The author's words when there is no row in that language: the teacher
+    # must never see their own course unnamed. Modules and lessons are read
+    # again below at the source (``_load_course_structure``), so only the
+    # course's name is localized here.
+    populate_spine_texts(db, [course], display_locale=display_locale, hydrate_modules=False, fallback="source_then_any")
+    chapters, module_map, chapter_titles, group_of = _load_course_structure(db, course_id, display_locale)
     chapter_ids = [c.id for c in chapters]
     gradable_chapter_ids = [c.id for c in chapters if c.chapter_type in GRADABLE_CHAPTER_TYPES]
 
@@ -749,6 +820,7 @@ def build_course_gradebook_matrix(db: Session, course: Course, course_id: str) -
                     quiz_map,
                     assignment_map,
                     group_of,
+                    chapter_titles,
                 ),
             }
         )

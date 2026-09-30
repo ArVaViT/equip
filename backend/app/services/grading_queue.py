@@ -34,6 +34,7 @@ from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.course import Chapter, Course
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt, QuizQuestion
 from app.models.user import User
+from app.schemas.locale import normalize_locale
 from app.services import quiz_service
 
 if TYPE_CHECKING:
@@ -148,7 +149,7 @@ def pending_summary(db: Session, teacher_id: UUID) -> dict[str, Any]:
 # answer has to fit on a phone screen.
 
 
-def waiting_groups(db: Session, teacher_id: UUID) -> list[dict[str, Any]]:
+def waiting_groups(db: Session, teacher_id: UUID, *, display_locale: str | None = None) -> list[dict[str, Any]]:
     """Every piece of work waiting on this teacher, gathered by the item it answers.
 
     Two queries, one per kind. A group per course *and* item, because the same
@@ -233,10 +234,48 @@ def waiting_groups(db: Session, teacher_id: UUID) -> list[dict[str, Any]]:
             }
         )
 
+    if display_locale:
+        _localize_titles(db, groups, display_locale)
+
     # Oldest first. A queue sorted by size buries the essay that has been
     # waiting three weeks under the assignment twelve people just handed in,
     # and the three-week-old one is the one somebody is upset about.
     return sorted(groups, key=lambda g: (g["oldest"] is None, g["oldest"]))
+
+
+def _localize_titles(db: Session, groups: list[dict[str, Any]], display_locale: str) -> None:
+    """Lesson names in the teacher's language, like the gradebook beside it.
+
+    ``Chapter.title`` is the author's words; in an English interface the
+    queue read Russian while the progress and analytics pages read English
+    (2026-09-29). Falls back to the author's words, never to nothing: the
+    teacher has to know what they are marking.
+    """
+    from app.services.content_versions.read import fetch_cv_entity_texts_with_fallback
+
+    course_ids = sorted({g["course_id"] for g in groups})
+    if not course_ids:
+        return
+    source_of: dict[str, str | None] = {
+        row.id: row.source_locale for row in db.query(Course.id, Course.source_locale).filter(Course.id.in_(course_ids))
+    }
+    by_source: dict[str, set[str]] = {}
+    for g in groups:
+        by_source.setdefault(normalize_locale(source_of.get(g["course_id"])), set()).add(g["chapter_id"])
+    names: dict[str, str] = {}
+    for source_locale, chapter_ids in by_source.items():
+        texts = fetch_cv_entity_texts_with_fallback(
+            db,
+            entity_type="chapter",
+            entity_ids=sorted(chapter_ids),
+            fields=["title"],
+            display_locale=display_locale,
+            source_locale=source_locale,
+            fallback="source_then_any",
+        )
+        names.update({entity_id: text for (entity_id, _field), text in texts.items() if text})
+    for g in groups:
+        g["title"] = names.get(g["chapter_id"], g["title"])
 
 
 def assignment_work(db: Session, teacher_id: UUID, assignment_id: UUID) -> list[dict[str, Any]]:

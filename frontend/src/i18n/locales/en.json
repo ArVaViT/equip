@@ -1026,14 +1026,16 @@
       "trueFalseOption": {
         "True": "True",
         "False": "False"
-      }
+      },
+      "typeLockedSummary": "Students have already taken this quiz, so answered questions keep their type. You can still correct the wording, points and the right answer; for a different kind of question, add a new one."
     },
     "save": {
       "saving": "Saving...",
       "saveQuiz": "Save Quiz",
       "saveExam": "Save Exam",
       "deleteQuiz": "Delete Quiz",
-      "deleteExam": "Delete Exam"
+      "deleteExam": "Delete Exam",
+      "unsaved": "Unsaved changes"
     },
     "modeToggle": {
       "edit": "Edit",
@@ -1163,7 +1165,9 @@
       "copied": "Copied",
       "copyAriaLabel": "Copy code to clipboard"
     },
-    "deleteBlockAria": "Delete {{label}} block"
+    "deleteBlockAria": "Delete {{label}} block",
+    "moveUp": "Move block {{label}} up",
+    "moveDown": "Move block {{label}} down"
   },
   "assignmentEditor": {
     "validation": {
@@ -1733,7 +1737,8 @@
     "empty": {
       "title": "This course has no lessons yet",
       "description": "Add the first lesson — that is all a course needs. Pick what it should be."
-    }
+    },
+    "openModuleAria": "Module settings: {{title}}"
   },
   "lessons": {
     "defaults": {
@@ -1760,8 +1765,8 @@
     "dragAria": "Reorder lesson {{title}}",
     "editAria": "Edit lesson {{title}}",
     "deleteAria": "Delete lesson {{title}}",
-    "lockTooltip": "Lock lesson",
-    "unlockTooltip": "Unlock lesson",
+    "lockTooltip": "Open only after the previous lesson",
+    "unlockTooltip": "Opens after the previous lesson — make it available right away",
     "invalidTitle": "Invalid lesson title",
     "unknownError": "Unknown error",
     "move": {
@@ -1770,11 +1775,6 @@
       "toCourse": "Take out of the module",
       "intoModule": "Move into “{{title}}”",
       "untitledModule": "Untitled module"
-    },
-    "confirmDelete": {
-      "title": "Delete this lesson?",
-      "description": "The lesson and everything written in it will be removed.",
-      "confirm": "Delete"
     },
     "toast": {
       "added": "Lesson added",
@@ -1788,8 +1788,13 @@
       "reorderFailed": "Failed to save lesson order",
       "movedToCourse": "Lesson taken out of the module — it stays in the course",
       "movedToModule": "Lesson moved into “{{title}}”",
-      "moveFailed": "Failed to move the lesson"
-    }
+      "moveFailed": "Failed to move the lesson",
+      "undo": "Undo",
+      "restored": "Lesson restored",
+      "restoreFailed": "Could not restore the lesson"
+    },
+    "renameAria": "Rename lesson {{title}}",
+    "renameTooltip": "Rename"
   },
   "moduleEditor": {
     "toast": {
@@ -1813,7 +1818,7 @@
     "clear": "Clear",
     "noChapters": {
       "title": "No lessons in this module yet",
-      "description": "Pick a lesson type below. Reading lessons hold your written and visual content; quizzes, exams, and assignments each measure understanding differently."
+      "description": "Pick a lesson type below. “Reading” holds your written and visual content; quizzes, exams, and assignments each measure understanding differently."
     }
   },
   "courseEditor": {
@@ -1849,7 +1854,12 @@
       "saving": "Saving…"
     },
     "publishing": "Publishing",
-    "viewAsStudent": "View as a student"
+    "viewAsStudent": "View as a student",
+    "unpublishConfirm": {
+      "title": "Unpublish this course?",
+      "description": "It will leave the catalog, and students — including those already enrolled — will not be able to open its lessons until you publish it again. Their progress and grades are kept.",
+      "confirm": "Unpublish"
+    }
   },
   "chapterEditor": {
     "notFound": {
@@ -1866,7 +1876,6 @@
     "toast": {
       "loadFailed": "Failed to load the lesson",
       "invalidData": "Invalid lesson data",
-      "saved": "Lesson saved",
       "saveFailed": "Failed to save: {{detail}}"
     },
     "unknownError": "Unknown error",
@@ -1879,14 +1888,30 @@
     "titlePlaceholder": "Lesson title",
     "editTitleAria": "Edit lesson title",
     "chapterType": "Lesson type",
-    "save": "Save lesson",
-    "saving": "Saving...",
-    "saveHint": "Ctrl+S to save",
-    "unsavedChanges": "You have unsaved changes",
     "typeChangeConfirm": {
       "title": "Change the lesson type?",
       "description": "Nothing you wrote is deleted. The \"{{from}}\" editor is hidden while the lesson is a \"{{to}}\", and comes back with everything in it the moment you switch the type back.",
       "confirm": "Change type"
+    },
+    "status": {
+      "saved": "Saved",
+      "saving": "Saving…",
+      "failed": "Not saved",
+      "retry": "Retry",
+      "needsTitle": "A name is needed"
+    },
+    "changeType": "Change",
+    "preview": "Student view",
+    "publishedNote": "This course is published. Students will see the change once it is ready in every language.",
+    "leaveUnsavedWork": {
+      "title": "Leave this page?",
+      "description": "The quiz or assignment in this lesson is not saved. If you leave now, what you wrote will be lost.",
+      "confirm": "Leave without saving"
+    },
+    "typeChangeUnsaved": {
+      "title": "Change the type and lose the questions?",
+      "description": "The quiz has unsaved changes. Changing the type reloads the quiz, and they will be lost. Save the quiz first.",
+      "confirm": "Change without saving"
     }
   },
   "courseDetail": {
@@ -2899,7 +2924,7 @@
     "title": "Course languages",
     "complete": "This course exists in every language and has been checked",
     "remaining": "{{count}} still to translate",
-    "prepare": "Prepare for publication",
+    "prepare": "Translate now",
     "behindBy": "— {{count}} missing",
     "heldEdits": "{{count}} edits waiting on translation. Students see them once every language is ready.",
     "blockedEdits": "{{count}} edits are stuck. A translation failed its check and needs a person.",

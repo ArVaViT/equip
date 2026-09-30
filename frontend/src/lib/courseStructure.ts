@@ -186,3 +186,29 @@ export function chapterHref(courseId: string, chapterId: string): string {
 export function chapterEditHref(courseId: string, chapterId: string): string {
   return `/teacher/courses/${courseId}/chapters/${chapterId}/edit`
 }
+
+/**
+ * New `order_index` values for a list of lessons the teacher has just
+ * reordered: the numbers the lessons already had, handed out again in the
+ * new order.
+ *
+ * The number is course-wide, and it does more than order a list: a lesson
+ * outside modules is placed among the modules by comparing its number with
+ * where each module starts (`build_spine`). Renumbering a reordered list
+ * from 0 moved those starting points, so sorting one module's lessons could
+ * carry a loose lesson past a module the teacher never touched. Reusing the
+ * same set of numbers keeps every other lesson where it was. Ties are
+ * pulled apart so the new order is the only one the numbers can mean;
+ * that can hand out a number another lesson holds, so with ties the
+ * guarantee is only "no worse than before" (production had no ties,
+ * 2026-09-29).
+ */
+export function reuseOrderNumbers<T extends { order_index: number }>(before: T[], after: T[]): T[] {
+  const numbers = before.map((c) => c.order_index).sort((a, b) => a - b)
+  let last = -Infinity
+  return after.map((c, i) => {
+    const n = Math.max(numbers[i] ?? i, last + 1)
+    last = n
+    return { ...c, order_index: n }
+  })
+}

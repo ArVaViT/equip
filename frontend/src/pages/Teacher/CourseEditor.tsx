@@ -124,6 +124,19 @@ export default function CourseEditor() {
       })
       if (!ok) return
     }
+    // Taking a course out of the catalog is one click away from the same
+    // button that put it in, and it took effect without a word: students
+    // lose the course from their catalog at once. Asked, like publishing
+    // with problems is.
+    if (isOut) {
+      const ok = await confirm({
+        title: t("courseEditor.unpublishConfirm.title"),
+        description: t("courseEditor.unpublishConfirm.description"),
+        confirmLabel: t("courseEditor.unpublishConfirm.confirm"),
+        tone: "destructive",
+      })
+      if (!ok) return
+    }
     await data.togglePublish()
     void readiness.refresh()
   }, [confirm, data, isOut, readiness, t])
@@ -254,8 +267,10 @@ export default function CourseEditor() {
             {/* A course in ``publishing`` is already on its way out;
                 offering "Publish" again would change nothing on the
                 server and tell the teacher their click did not count. */}
+            {/* "Publish" is the step a draft is waiting for: the primary
+                button. "Unpublish" is the quiet one. They looked the same. */}
             <Button
-              variant="outline"
+              variant={isOut ? "outline" : "default"}
               size="sm"
               onClick={handleTogglePublish}
               disabled={data.publishPending}
@@ -339,10 +354,11 @@ export default function CourseEditor() {
           await data.addModule()
           void readiness.refresh()
         }}
-        onAddChapter={async (type) => {
-          await data.addChapter(type)
+        onAddChapter={async (type, moduleId) => {
+          await data.addChapter(type, moduleId)
           void readiness.refresh()
         }}
+        onModuleChapterDragEnd={data.reorderModuleChapters}
         onRemoveModule={async (id) => {
           await data.removeModule(id)
           void readiness.refresh()

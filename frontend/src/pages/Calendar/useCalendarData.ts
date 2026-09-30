@@ -23,7 +23,7 @@ interface CalendarData {
  * reload after a transient fetch failure.
  */
 export function useCalendarData(): CalendarData {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [retryCount, setRetryCount] = useState(0);
   const [params, setParams] = useSearchParams();
 
@@ -47,7 +47,10 @@ export function useCalendarData(): CalendarData {
       if (isCancelled()) return undefined;
       return { events: evts, enrollments: enrolls };
     },
-    [filterCourseId, retryCount],
+    // The language too: event and course titles arrive translated, and
+    // without it they stayed in the previous language after a switch
+    // until the reader left the page.
+    [filterCourseId, retryCount, i18n.language],
   );
 
   // The CalendarData interface promises a `string | null` user-facing message.

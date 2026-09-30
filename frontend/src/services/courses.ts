@@ -301,6 +301,13 @@ const courseCrud = {
     invalidateCourseScope(courseId)
   },
 
+  /** Undo a delete: the lesson comes back where it was. */
+  async restoreCourseChapter(courseId: string, chapterId: string): Promise<Chapter> {
+    const response = await api.post<Chapter>(`/courses/${courseId}/chapters/${chapterId}/restore`)
+    invalidateCourseScope(courseId)
+    return response.data
+  },
+
   // ─── Chapters, addressed through their module (legacy) ────────────────
   // Kept working while the screens migrate. Same endpoints as before; only
   // the invalidation changed, to the course — see `invalidateCourseScope`.

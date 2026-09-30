@@ -1,8 +1,10 @@
 import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react"
+import { useLayoutEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import {
@@ -66,15 +68,18 @@ export function QuestionCard({
             </button>
           </div>
           <div className="flex-1 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-ink-muted">
+            <div className="flex items-start gap-2">
+              <span className="pt-2 text-xs font-semibold text-ink-muted">
                 {t("quizEditor.questions.questionPrefix", { n: qIdx + 1 })}
               </span>
-              <Input
+              {/* Grows with the question. A one-line input cut every long
+                  question off at the edge — on a phone after twenty
+                  letters — so the teacher could not read what they were
+                  correcting. */}
+              <GrowingTextarea
                 value={q.question_text}
-                onChange={(e) => onUpdate({ question_text: e.target.value })}
+                onChange={(value) => onUpdate({ question_text: value })}
                 placeholder={t("quizEditor.questions.questionPlaceholder")}
-                className="h-8 text-sm flex-1"
               />
               <Button
                 variant="ghost"
@@ -156,10 +161,6 @@ export function QuestionCard({
               </div>
             </div>
 
-            {typeLocked && (
-              <p className="text-xs text-ink-muted italic">{t("quizEditor.questions.typeLocked")}</p>
-            )}
-
             {q.question_type === "multiple_choice" && (
               <RadioGroup
                 className="space-y-2"
@@ -176,13 +177,11 @@ export function QuestionCard({
                       title={t("quizEditor.questions.markCorrect")}
                       aria-label={t("quizEditor.questions.markCorrect")}
                     />
-                    <Input
+                    <GrowingTextarea
                       value={opt.option_text}
-                      onChange={(e) =>
-                        onUpdateOption(oIdx, { option_text: e.target.value })
-                      }
+                      onChange={(value) => onUpdateOption(oIdx, { option_text: value })}
                       placeholder={t("quizEditor.questions.optionPlaceholder", { n: oIdx + 1 })}
-                      className="h-7 text-xs flex-1"
+                      small
                     />
                     {q.options.length > 2 && (
                       <Button
@@ -245,5 +244,61 @@ export function QuestionCard({
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function GrowingTextarea({
+  value,
+  onChange,
+  placeholder,
+  small = false,
+}: {
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+  /** The answer options' size: a step smaller than the question. */
+  small?: boolean
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  // Height follows the text on every change (and on mount, for a long
+  // question loaded from the server). `field-sizing: content` would do it
+  // in CSS, but not yet in every browser a teacher uses.
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const fit = () => {
+      el.style.height = "auto"
+      // scrollHeight leaves out the border; without it the last line sits
+      // 2px under the edge.
+      el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`
+    }
+    fit()
+    // And when the width changes (a phone turned, a window resized): the
+    // same text wraps into a different number of lines.
+    if (typeof ResizeObserver === "undefined") return
+    let lastWidth = el.clientWidth
+    const observer = new ResizeObserver(() => {
+      if (el.clientWidth === lastWidth) return
+      lastWidth = el.clientWidth
+      fit()
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [value])
+  return (
+    <Textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      // Enter makes a new line: the quiz a student takes shows line breaks
+      // (`whitespace-pre-line`), so they are the teacher's to use.
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={
+        small
+          ? "min-h-7 flex-1 resize-none overflow-hidden py-1 text-xs sm:text-xs"
+          : "min-h-8 flex-1 resize-none overflow-hidden py-1.5 text-sm sm:text-sm"
+      }
+    />
   )
 }

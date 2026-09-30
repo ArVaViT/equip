@@ -31,6 +31,10 @@ interface Props {
   /** Questions students have already answered — their type is fixed. */
   answeredQuestionIds?: ReadonlySet<string>
   deleting: boolean
+  /** The draft differs from what is saved: said in the action bar. */
+  dirty?: boolean
+  /** Held at the bottom of the screen (the lesson editor), or in place. */
+  stickyActions?: boolean
   onDelete: () => void
 }
 
@@ -59,6 +63,8 @@ export function QuizEditView({
   existingQuiz,
   answeredQuestionIds = NONE,
   deleting,
+  dirty = false,
+  stickyActions = true,
   onDelete,
 }: Props) {
   const { t } = useTranslation()
@@ -87,6 +93,13 @@ export function QuizEditView({
           </Button>
         </div>
 
+        {/* Said once for the quiz, not under every answered question: on a
+            quiz a class has taken, ten copies of the same paragraph buried
+            the questions. The locked type selector keeps it as a tooltip. */}
+        {questions.some((q) => answeredQuestionIds.has(q.id)) && (
+          <p className="text-xs text-ink-muted">{t("quizEditor.questions.typeLockedSummary")}</p>
+        )}
+
         {questions.map((q, qIdx) => (
           <QuestionCard
             key={q.id}
@@ -112,7 +125,19 @@ export function QuizEditView({
         )}
       </div>
 
-      <div className="flex items-center gap-2 pt-2">
+      {/* Held at the bottom of the screen while the quiz scrolls: on a quiz
+          of ten questions «Save» was 3,000px below the first one. Above the
+          phone's tab bar (57px + safe area), flush to the edge from md. */}
+      {/* ``-mx-5 pl-5`` matches the card's padding, so the bar meets its
+          edges; ``pr-20`` keeps every button clear of the round
+          scroll-to-top button that sits in the same corner. */}
+      <div
+        className={
+          stickyActions
+            ? "sticky bottom-[calc(57px+env(safe-area-inset-bottom))] z-10 -mx-5 flex flex-wrap items-center gap-2 border-t border-edge bg-surface py-3 pl-5 pr-20 md:bottom-0"
+            : "flex flex-wrap items-center gap-2 pt-2"
+        }
+      >
         <Button size="sm" onClick={onSave} disabled={saving}>
           {saving ? (
             <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} />
@@ -125,16 +150,32 @@ export function QuizEditView({
               ? t("quizEditor.save.saveExam")
               : t("quizEditor.save.saveQuiz")}
         </Button>
+        {dirty && !saving && (
+          <span className="text-xs text-ink-muted">{t("quizEditor.save.unsaved")}</span>
+        )}
+        {/* Quiet: a filled red button beside «Save» was one slip away from
+            the class's attempts. */}
         {existingQuiz && (
-          <Button size="sm" variant="destructive" onClick={onDelete} disabled={deleting}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-destructive hover:text-destructive"
+            onClick={onDelete}
+            disabled={deleting}
+            aria-label={chapterType === "exam" ? t("quizEditor.save.deleteExam") : t("quizEditor.save.deleteQuiz")}
+          >
             {deleting ? (
               <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} />
             ) : (
-              <Trash2 className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
+              <Trash2 className="h-3.5 w-3.5 sm:mr-1.5" strokeWidth={1.75} />
             )}
-            {chapterType === "exam"
-              ? t("quizEditor.save.deleteExam")
-              : t("quizEditor.save.deleteQuiz")}
+            {/* Icon only on a phone, where the words wrapped under the
+                scroll-to-top button. */}
+            <span className="hidden sm:inline">
+              {chapterType === "exam"
+                ? t("quizEditor.save.deleteExam")
+                : t("quizEditor.save.deleteQuiz")}
+            </span>
           </Button>
         )}
       </div>

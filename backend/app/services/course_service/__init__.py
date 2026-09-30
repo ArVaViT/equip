@@ -13,7 +13,7 @@ Everything is re-exported from this package so existing callers can keep
 writing ``from app.services.course_service import <name>``.
 """
 
-from ._chapters import create_chapter, delete_chapter, update_chapter
+from ._chapters import create_chapter, delete_chapter, restore_chapter, update_chapter
 from ._clone import clone_course
 from ._courses import (
     create_course,
@@ -49,6 +49,7 @@ __all__ = [
     "get_user_courses",
     "permanently_delete_course",
     "reading_progress_by_course",
+    "restore_chapter",
     "restore_course",
     "resync_course_progress",
     "sync_enrollment_progress",

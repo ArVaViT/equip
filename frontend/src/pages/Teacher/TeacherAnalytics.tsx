@@ -133,8 +133,10 @@ export default function TeacherAnalytics() {
         <span className="text-ink font-medium">{t("teacherAnalytics.heading")}</span>
       </div>
 
-      <div className="flex items-center gap-3 mb-8">
-        <div className="flex-1">
+      {/* Wraps on a phone, as on the gradebook: in one row the two
+          buttons made the page 514px wide on a 360px screen. */}
+      <div className="flex flex-wrap items-center gap-3 mb-8">
+        <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">
           <h1 className="flex items-center gap-2 font-serif text-3xl font-bold tracking-tight">
             <BarChart3 className="h-6 w-6 shrink-0 text-brand" strokeWidth={1.75} aria-hidden />
             {t("teacherAnalytics.heading")}

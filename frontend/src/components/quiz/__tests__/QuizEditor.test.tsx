@@ -261,9 +261,9 @@ describe("saving a quiz students have already taken", () => {
     const selectors = screen.getAllByRole("combobox", { name: "Тип вопроса" })
     expect(selectors[0]).toBeDisabled()
     expect(selectors[1]).not.toBeDisabled()
-    expect(
-      screen.getByText(/На этот вопрос уже отвечали, поэтому тип изменить нельзя/),
-    ).toBeInTheDocument()
+    // Said once for the quiz, not under every answered question.
+    expect(screen.getAllByText(/Этот тест уже проходили, поэтому у вопросов с ответами тип не меняется/)).toHaveLength(1)
+    expect(selectors[0]).toHaveAttribute("title", expect.stringMatching(/На этот вопрос уже отвечали/))
   })
 
   it("tells the teacher how many attempts a delete would take with it", async () => {
@@ -325,6 +325,43 @@ describe("a quiz nobody could pass", () => {
     expect(deleteQuiz).not.toHaveBeenCalled()
   })
 
+  it("corrects the quiz it just created instead of building another", async () => {
+    // A new quiz used to keep its client-side ids after the first save, so
+    // the second save rebuilt the whole quiz.
+    const user = await renderNewQuizWithOneQuestion()
+    createQuiz.mockResolvedValue({
+      ...savedQuiz(),
+      id: "quiz-9",
+      title: "Бытие 1",
+      questions: [
+        {
+          id: "srv-q",
+          quiz_id: "quiz-9",
+          question_text: "Сколько дней творения?",
+          question_type: "multiple_choice",
+          order_index: 0,
+          points: 1,
+          min_words: null,
+          options: [
+            { id: "srv-o1", question_id: "srv-q", option_text: "Шесть", is_correct: true, order_index: 0 },
+            { id: "srv-o2", question_id: "srv-q", option_text: "Семь", is_correct: false, order_index: 1 },
+          ],
+        },
+      ],
+    })
+    updateQuizQuestion.mockResolvedValue({ ...savedQuiz(), id: "quiz-9" })
+    await user.click(screen.getAllByRole("radio", { name: "Отметить как правильный" })[0]!)
+    await user.click(saveButton())
+    await waitFor(() => expect(createQuiz).toHaveBeenCalledTimes(1))
+
+    await user.type(screen.getByDisplayValue("Сколько дней творения?"), "!")
+    await user.click(saveButton())
+
+    await waitFor(() => expect(updateQuizQuestion).toHaveBeenCalled())
+    expect(updateQuizQuestion.mock.calls[0]![0]).toBe("srv-q")
+    expect(createQuiz).toHaveBeenCalledTimes(1)
+  })
+
   it("shows a 422 as a Russian sentence naming the field, not pydantic's English", async () => {
     const user = await renderNewQuizWithOneQuestion()
     createImpl = async () => {
@@ -362,5 +399,43 @@ describe("a quiz nobody could pass", () => {
 
     expect(toast).toHaveBeenCalledWith({ title: "Вопрос 1: баллы — целое число от 1 до 100", variant: "destructive" })
     expect(createQuiz).not.toHaveBeenCalled()
+  })
+})
+
+describe("the editor's own furniture", () => {
+  beforeAll(async () => {
+    await i18n.changeLanguage("ru")
+  })
+  afterAll(async () => {
+    await i18n.changeLanguage("en")
+  })
+  beforeEach(() => {
+    vi.clearAllMocks()
+    confirm.mockResolvedValue(true)
+  })
+
+  it("says there are unsaved changes, and only once there are", async () => {
+    const user = userEvent.setup()
+    await renderSavedQuiz()
+    expect(screen.queryByText("Есть несохранённые изменения")).not.toBeInTheDocument()
+
+    await user.type(screen.getByDisplayValue("Сколько дней творения?"), "!")
+
+    expect(screen.getByText("Есть несохранённые изменения")).toBeInTheDocument()
+  })
+
+  it("keeps a line break in a question — the student's quiz shows it", async () => {
+    const user = userEvent.setup()
+    await renderSavedQuiz()
+    const field = screen.getByDisplayValue("Сколько дней творения?")
+
+    await user.type(field, "{Enter}Подумайте.")
+
+    expect(field).toHaveValue("Сколько дней творения?\nПодумайте.")
+  })
+
+  it("names the delete button even where it shows only an icon", async () => {
+    await renderSavedQuiz()
+    expect(screen.getByRole("button", { name: "Удалить тест" })).toBeInTheDocument()
   })
 })

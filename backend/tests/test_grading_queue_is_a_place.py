@@ -186,3 +186,33 @@ def test_a_teacher_cannot_open_a_group_in_a_course_they_do_not_own(client, db: S
 
 def test_a_student_cannot_read_the_queue(student_client, db: Session, teacher, student) -> None:
     assert student_client.get(QUEUE).status_code == 403
+
+
+def test_the_queue_names_the_lesson_in_the_teachers_language(client, db: Session, teacher, student) -> None:
+    # In an English interface the queue read Russian while the gradebook and
+    # progress pages beside it read English (2026-09-29).
+    from app.services.content_versions.write import record_human_version, record_mt_version
+    from app.services.translation.hash import compute_source_hash
+
+    course, module = _course(db, "q-lang")
+    assignment = _assignment(db, module, course.id, title="Эссе про благодать")
+    chapter_id = assignment.chapter_id
+    db.query(Course).filter(Course.id == course.id).update({"source_locale": "ru"})
+    record_human_version(
+        db, entity_type="chapter", entity_id=chapter_id, field="title", locale="ru", text="Эссе про благодать"
+    )
+    record_mt_version(
+        db,
+        entity_type="chapter",
+        entity_id=chapter_id,
+        field="title",
+        locale="en",
+        text="An essay on grace",
+        source_locale="ru",
+        source_hash=compute_source_hash("Эссе про благодать", locale="ru"),
+    )
+    _submit(db, assignment)
+    db.commit()
+
+    assert client.get(QUEUE, headers={"Accept-Language": "en"}).json()[0]["title"] == "An essay on grace"
+    assert client.get(QUEUE).json()[0]["title"] == "Эссе про благодать"

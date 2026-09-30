@@ -50,7 +50,7 @@ import { usePhoneCut } from "./phoneCut"
  */
 
 export function CourseShowcase() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const prefersReducedMotion = useReducedMotion()
   // A pinned shelf is a desktop idea. On a phone it turned five courses
   // into two and a half screens of vertical scrolling, and it competes with
@@ -91,7 +91,9 @@ export function CourseShowcase() {
     return () => {
       alive = false
     }
-  }, [])
+    // Course names under the covers follow the language switch in the
+    // header; they kept the first language until a reload.
+  }, [i18n.language])
 
   // How far the row must move for its last card to reach the right edge,
   // kept in a ref so the scroll handler always reads the current value.

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import userEvent from "@testing-library/user-event"
 import { render, screen } from "@testing-library/react"
 import { I18nextProvider } from "react-i18next"
 import { MemoryRouter } from "react-router-dom"
@@ -80,7 +81,7 @@ function Wrapper({ children }: { children: ReactNode }) {
   )
 }
 
-function renderOutline(c: Course) {
+function renderOutline(c: Course, onAddChapter = vi.fn()) {
   const modules = [...(c.modules ?? [])].sort((a, b) => a.order_index - b.order_index)
   return render(
     <CourseOutline
@@ -90,7 +91,8 @@ function renderOutline(c: Course) {
       onModuleDragEnd={vi.fn()}
       onChapterDragEnd={vi.fn()}
       onAddModule={vi.fn()}
-      onAddChapter={vi.fn()}
+      onAddChapter={onAddChapter}
+      onModuleChapterDragEnd={vi.fn()}
       onRemoveModule={vi.fn()}
       onChapterTitleChange={vi.fn()}
       onRenameChapter={vi.fn()}
@@ -129,7 +131,7 @@ describe("CourseOutline — a course that is only lessons", () => {
       "Оправдание верой",
       "Жизнь в Духе",
     ]) {
-      expect(screen.getByDisplayValue(title)).toBeInTheDocument()
+      expect(screen.getByText(title)).toBeInTheDocument()
     }
 
     // Everything on screen, including the aria-labels a screen reader
@@ -186,7 +188,7 @@ describe("CourseOutline — a course that groups its lessons", () => {
     expect(screen.getByText("1 урок")).toBeInTheDocument()
     // …and the lesson that is in no module is right there beside it,
     // editable, rather than hidden behind a heading it does not have.
-    expect(screen.getByDisplayValue("Послесловие")).toBeInTheDocument()
+    expect(screen.getByText("Послесловие")).toBeInTheDocument()
   })
 
   it("offers to file a loose lesson under a module once one exists", async () => {
@@ -194,5 +196,28 @@ describe("CourseOutline — a course that groups its lessons", () => {
     renderOutline(mixed)
 
     expect(screen.getByLabelText(/Переместить урок «Послесловие»/i)).toBeInTheDocument()
+  })
+
+  it("opens a module in place, with its lessons and a way to add one to it", async () => {
+    await i18n.changeLanguage("ru")
+    const onAdd = vi.fn()
+    renderOutline(mixed, onAdd)
+
+    const header = screen
+      .getAllByRole("button", { name: /Часть первая/ })
+      .find((b) => b.hasAttribute("aria-expanded"))!
+    expect(header).toHaveAttribute("aria-expanded", "false")
+    await userEvent.click(header)
+    expect(header).toHaveAttribute("aria-expanded", "true")
+
+    // Its lesson is right there, editable, without leaving the course page.
+    const inside = mixed.modules![0]!.chapters![0]!
+    expect(screen.getByText(inside.title)).toBeInTheDocument()
+
+    // Two add bars now — the module's and the course's. The module's one
+    // files the new lesson under the module.
+    const readingButtons = screen.getAllByRole("button", { name: /Чтение/ })
+    await userEvent.click(readingButtons[0]!)
+    expect(onAdd).toHaveBeenCalledWith("reading", mixed.modules![0]!.id)
   })
 })

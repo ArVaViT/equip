@@ -71,14 +71,19 @@ def _format_dt(value: datetime) -> str:
     return value.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
 
 
-def render_calendar(events: list[CalendarEvent], *, user_email: str | None = None) -> str:
+# The feed's name in the subscriber's calendar list — the one thing in it
+# that is not the course's own text. It was English for everybody.
+_CALNAME = {"ru": "Календарь Equip", "uk": "Календар Equip", "en": "Equip Calendar", "de": "Equip-Kalender"}
+
+
+def render_calendar(events: list[CalendarEvent], *, user_email: str | None = None, locale: str = "en") -> str:
     """Serialize ``events`` to an RFC 5545 VCALENDAR.
 
     ``user_email`` shows up in the ``X-WR-CALNAME`` so the user sees
     "Equip Calendar (foo@example.com)" in their client's calendar
     list — useful when they subscribe from multiple accounts."""
     now_stamp = _format_dt(datetime.now(UTC))
-    calname = "Equip Calendar"
+    calname = _CALNAME.get(locale, _CALNAME["en"])
     if user_email:
         calname = f"{calname} ({user_email})"
 

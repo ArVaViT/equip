@@ -2013,3 +2013,26 @@ class TestTheGradingQueueSpeaksTheTeachersLanguage:
         ).json()
 
         assert [row["question_text"] for row in pending] == ["Reflect on the book of Acts (≥300 words)."]
+
+
+def test_the_editor_gets_the_answer_key(client: TestClient, db: Session):
+    """The editor read the student shape, which has no ``is_correct``: every
+    existing quiz opened with no answer marked and could not be saved until
+    the teacher marked them all again (production, 2026-09-29)."""
+    _seed_course_with_enrollment(db)
+    _seed_quiz_with_questions(db)
+
+    editor = client.get("/api/v1/quizzes/chapter/ch-1", params={"source": 1})
+    assert editor.status_code == 200, editor.text
+    marked = {o["option_text"]: o["is_correct"] for q in editor.json()["questions"] for o in q["options"]}
+    assert marked == {"3": False, "4": True, "London": False, "Paris": True}
+
+
+def test_a_student_still_does_not_get_the_answer_key(student_client: TestClient, db: Session):
+    # Separate from the editor's test: the two client fixtures override the
+    # same current-user dependency, and the later one wins.
+    _seed_course_with_enrollment(db)
+    _seed_quiz_with_questions(db)
+    student = student_client.get("/api/v1/quizzes/chapter/ch-1")
+    assert student.status_code == 200
+    assert all("is_correct" not in o for q in student.json()["questions"] for o in q["options"])

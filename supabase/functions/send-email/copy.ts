@@ -69,8 +69,14 @@ export function knownLocale(raw: unknown): Locale | null {
  * twelve of the thirteen Russian speakers: a translation that misses almost
  * everyone it was for.
  *
- * So metadata first (it is the freshest thing we have, and during signup the
- * profile row may not exist yet), then the profile, then English.
+ * The profile first, when somebody chose its language or it was detected
+ * from their browser: that is the language they use now. Metadata was read
+ * first until 2026-09-29 as "the freshest thing we have", and it is the
+ * oldest — written once at signup, never updated — so a reader who had
+ * switched to German kept getting their password resets in Russian. Then
+ * the signup metadata (during signup the profile may not exist yet, or
+ * still holds the column default), then whatever the profile holds, then
+ * English.
  *
  * Best-effort by design: a failed lookup must not stop the email. The
  * request is given three seconds and every failure falls through to the
@@ -89,26 +95,33 @@ export async function localeFor(
   lookup: ProfileLookup = {},
 ): Promise<{ locale: Locale; source: "metadata" | "profile" | "default" }> {
   const fromMetadata = knownLocale(metadataLocale);
-  if (fromMetadata) return { locale: fromMetadata, source: "metadata" };
+  const fallback = fromMetadata
+    ? { locale: fromMetadata, source: "metadata" as const }
+    : { locale: DEFAULT_LOCALE, source: "default" as const };
 
   const { supabaseUrl, secretKey, fetchImpl = fetch } = lookup;
-  if (!supabaseUrl || !secretKey) return { locale: DEFAULT_LOCALE, source: "default" };
+  if (!supabaseUrl || !secretKey) return fallback;
 
   try {
-    const url = `${supabaseUrl}/rest/v1/profiles?select=preferred_locale&email=eq.${encodeURIComponent(email)}`;
+    const url =
+      `${supabaseUrl}/rest/v1/profiles?select=preferred_locale,locale_source&email=eq.${encodeURIComponent(email)}`;
     const res = await fetchImpl(url, {
       headers: { apikey: secretKey, Authorization: `Bearer ${secretKey}` },
       signal: AbortSignal.timeout(3000),
     });
-    if (!res.ok) return { locale: DEFAULT_LOCALE, source: "default" };
-    const rows = (await res.json()) as Array<{ preferred_locale?: string }>;
+    if (!res.ok) return fallback;
+    const rows = (await res.json()) as Array<{ preferred_locale?: string; locale_source?: string }>;
     const fromProfile = knownLocale(rows[0]?.preferred_locale);
-    if (fromProfile) return { locale: fromProfile, source: "profile" };
+    if (!fromProfile) return fallback;
+    // A language somebody chose, or their browser's: it is current.
+    if (rows[0]?.locale_source !== "default") return { locale: fromProfile, source: "profile" };
+    // The column default says nothing about the reader; signup metadata does.
+    return fromMetadata ? fallback : { locale: fromProfile, source: "profile" };
   } catch {
     // Swallowed on purpose: an unreachable PostgREST is a reason to write in
     // English, never a reason to withhold somebody's confirmation link.
   }
-  return { locale: DEFAULT_LOCALE, source: "default" };
+  return fallback;
 }
 
 export interface Copy {

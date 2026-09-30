@@ -5,7 +5,6 @@ import { getErrorDetail } from "@/lib/errorDetail"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import ChapterBlockEditor from "@/components/editor/ChapterBlockEditor"
 import QuizEditor from "@/components/quiz/QuizEditor"
 import AssignmentEditor from "@/components/assignment/AssignmentEditor"
@@ -15,8 +14,9 @@ import { toast } from "@/lib/toast"
 import { makeChapterSchema } from "@/lib/validations/course"
 import { useConfirm } from "@/components/ui/alert-dialog"
 import {
-  ChevronRight, Save, Loader2, ArrowLeft,
+  AlertCircle, ArrowLeft, Check, ChevronDown, ChevronRight, Eye, Info, Loader2,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import {
   CHAPTER_TYPES,
   CHAPTER_TYPE_DESCRIPTION_KEYS,
@@ -72,6 +72,55 @@ async function editorHasContent(type: ChapterType, chapterId: string): Promise<b
   }
 }
 
+/**
+ * What the header says about saving. One place, one sentence — the page
+ * saves by itself, so the only thing a teacher needs is to know it did, or
+ * that it did not and can be tried again.
+ */
+function SaveStatus({
+  state,
+  detail,
+  onRetry,
+}: {
+  state: "idle" | "saving" | "saved" | "error" | "needsTitle"
+  detail?: string
+  onRetry: () => void
+}) {
+  const { t } = useTranslation()
+  if (state === "idle") return null
+  return (
+    <span role="status" aria-live="polite" className="flex shrink-0 items-center gap-1.5 text-xs text-ink-muted">
+      {state === "saving" && (
+        <>
+          <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} aria-hidden />
+          <span className="max-sm:sr-only">{t("chapterEditor.status.saving")}</span>
+        </>
+      )}
+      {state === "saved" && (
+        <>
+          <Check className="h-3.5 w-3.5 text-success" strokeWidth={1.75} aria-hidden />
+          <span className="max-sm:sr-only">{t("chapterEditor.status.saved")}</span>
+        </>
+      )}
+      {state === "needsTitle" && (
+        <>
+          <AlertCircle className="h-3.5 w-3.5 text-warning" strokeWidth={1.75} aria-hidden />
+          <span>{t("chapterEditor.status.needsTitle")}</span>
+        </>
+      )}
+      {state === "error" && (
+        <>
+          <AlertCircle className="h-3.5 w-3.5 text-destructive" strokeWidth={1.75} aria-hidden />
+          <span className="text-destructive" title={detail || undefined}>{t("chapterEditor.status.failed")}</span>
+          <button type="button" onClick={onRetry} className="font-medium text-ink underline underline-offset-2">
+            {t("chapterEditor.status.retry")}
+          </button>
+        </>
+      )}
+    </span>
+  )
+}
+
 export default function ChapterEditor() {
   // The older address also carries a ``moduleId``; this page no longer
   // reads it. The lesson's own ``module_id`` is the authority either way,
@@ -87,14 +136,36 @@ export default function ChapterEditor() {
 
   const [chapter, setChapter] = useState<Chapter | null>(null)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  /** The one save state on the page. The lesson's name and type save
+   *  themselves; this is what the header says about it. There used to be
+   *  a "Save lesson" button that saved only those two fields while the
+   *  text saved itself and the quiz had its own button — three ways to
+   *  save, and no way to tell which one a change needed. */
+  const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle")
+  /** The quiz or assignment editor below holds work it has not sent. */
+  const [childDirty, setChildDirty] = useState({ quiz: false, assignment: false })
+  const onQuizDirty = useCallback(
+    (dirty: boolean) => setChildDirty((p) => (p.quiz === dirty ? p : { ...p, quiz: dirty })),
+    [],
+  )
+  const onAssignmentDirty = useCallback(
+    (dirty: boolean) => setChildDirty((p) => (p.assignment === dirty ? p : { ...p, assignment: dirty })),
+    [],
+  )
+  /** Published course: an edit waits for every language (by design). */
+  const [coursePublished, setCoursePublished] = useState(false)
+  const [typePickerOpen, setTypePickerOpen] = useState(false)
+  /** The course's name for the breadcrumb, which read a bare «Course». */
+  const [courseTitle, setCourseTitle] = useState("")
+  /** Why the last save failed, for the status's tooltip. */
+  const [errorDetail, setErrorDetail] = useState("")
 
   const [title, setTitle] = useState("")
   const [chapterType, setChapterType] = useState<ChapterType>("reading")
   /** The module around this lesson, when there is one. ``null`` is not a
    *  stand-in for "not loaded" — it is the answer for a lesson that is in
    *  no module, and the breadcrumb renders one crumb fewer. */
-  const [group, setGroup] = useState<{ id: string; title: string } | null>(null)
+  const [group, setGroup] = useState<{ id: string; title: string | null } | null>(null)
   const [isDirty, setIsDirty] = useState(false)
 
   useUserTour({
@@ -103,6 +174,13 @@ export default function ChapterEditor() {
     ready: !loading && chapter !== null,
   })
 
+  // Read through a ref: with ``t`` in its dependencies, switching the
+  // interface language mid-edit re-ran the load, remounted the quiz or
+  // assignment editor and dropped its unsaved draft without a word.
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
   const load = useCallback(async (signal?: { cancelled: boolean }) => {
     if (!courseId || !chapterId) return
     setLoading(true)
@@ -115,6 +193,17 @@ export default function ChapterEditor() {
       // what you would PATCH back.
       const ch = await coursesService.getChapterForEdit(courseId, chapterId)
       if (signal?.cancelled) return
+      // For the note about languages and the breadcrumb's course name; the
+      // page works without it (the crumb then says «Course»).
+      setCourseTitle("")
+      void coursesService
+        .getCourseForEdit(courseId)
+        .then((c) => {
+          if (signal?.cancelled) return
+          setCoursePublished(c.status !== "draft")
+          setCourseTitle(c.title)
+        })
+        .catch(() => undefined)
       setChapter(ch)
       setTitle(ch.title)
       const resolvedType = normalizeChapterType(ch.chapter_type)
@@ -138,17 +227,19 @@ export default function ChapterEditor() {
         // One breadcrumb crumb is not worth failing the page over — keep
         // the link, lose only the name.
         if (!signal?.cancelled) {
-          setGroup({ id: ch.module_id, title: t("chapterEditor.moduleFallback") })
+          // ``null``: the generic word is picked at render, in the language
+          // shown then, not frozen at load.
+          setGroup({ id: ch.module_id, title: null })
         }
       }
     } catch {
       if (signal?.cancelled) return
-      toast({ title: t("chapterEditor.toast.loadFailed"), variant: "destructive" })
+      toast({ title: tRef.current("chapterEditor.toast.loadFailed"), variant: "destructive" })
       navigate(`/teacher/courses/${courseId}`)
     } finally {
       if (!signal?.cancelled) setLoading(false)
     }
-  }, [courseId, chapterId, navigate, t])
+  }, [courseId, chapterId, navigate])
 
   useEffect(() => {
     const signal = { cancelled: false }
@@ -168,17 +259,20 @@ export default function ChapterEditor() {
     setIsDirty(snapshot !== initialSnapshot)
   }, [chapter, title, chapterType, initialSnapshot])
 
+  const childUnsaved = childDirty.quiz || childDirty.assignment
+  const unsaved = isDirty || childUnsaved || status === "saving"
+
   useEffect(() => {
-    if (!isDirty) return
+    if (!unsaved) return
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault()
     }
     window.addEventListener("beforeunload", handleBeforeUnload)
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
-  }, [isDirty])
+  }, [unsaved])
 
-  const save = useCallback(async () => {
-    if (!courseId || !chapterId || !title.trim()) return
+  const save = useCallback(async ({ quiet = false }: { quiet?: boolean } = {}): Promise<boolean> => {
+    if (!courseId || !chapterId || !title.trim()) return false
     // Only title + chapter_type live on the chapter row now. Reading content
     // is owned by chapter_blocks (edited inline inside ChapterBlockEditor,
     // which auto-saves). Quiz/exam/assignment editors write their own rows.
@@ -189,14 +283,17 @@ export default function ChapterEditor() {
       chapter_type: chapterType,
     })
     if (!validation.success) {
+      // The header says so (status "error", the reason on hover). A toast
+      // only when the teacher asked — Ctrl+S, "Retry" — not after every
+      // pause in typing.
       const first = validation.error.issues[0]
-      toast({
-        title: first?.message ?? t("chapterEditor.toast.invalidData"),
-        variant: "destructive",
-      })
-      return
+      const message = first?.message ?? t("chapterEditor.toast.invalidData")
+      setErrorDetail(message)
+      setStatus("error")
+      if (!quiet) toast({ title: message, variant: "destructive" })
+      return false
     }
-    setSaving(true)
+    setStatus("saving")
     try {
       const payload: ChapterUpdatePayload = {
         title: title.trim(),
@@ -207,31 +304,49 @@ export default function ChapterEditor() {
       // "leave the grouping alone". An explicit ``null`` here would lift
       // every saved lesson out of its module.
       await coursesService.updateCourseChapter(courseId, chapterId, payload)
-      const snapshot = JSON.stringify({ title: title.trim(), chapterType })
-      setInitialSnapshot(snapshot)
+      // The snapshot is what was sent, untrimmed as typed: a trailing
+      // space the teacher is still typing must not read as a new change.
+      setInitialSnapshot(JSON.stringify({ title, chapterType }))
       setIsDirty(false)
-      toast({ title: t("chapterEditor.toast.saved") })
+      setStatus("saved")
+      return true
     } catch (error: unknown) {
       const detail = getErrorDetail(error) || t("chapterEditor.unknownError")
-      toast({
-        title: t("chapterEditor.toast.saveFailed", { detail }),
-        variant: "destructive",
-      })
-    } finally {
-      setSaving(false)
+      // Said once in the header («Не сохранено», the reason on hover); a
+      // toast only when the teacher asked. While the server kept failing,
+      // every pause in typing raised another one.
+      if (!quiet) {
+        toast({
+          title: t("chapterEditor.toast.saveFailed", { detail }),
+          variant: "destructive",
+        })
+      }
+      setErrorDetail(detail)
+      setStatus("error")
+      return false
     }
   }, [courseId, chapterId, title, chapterType, t])
+
+  // Name and type save themselves, a moment after the last keystroke —
+  // the way the course's and the module's names already did.
+  useEffect(() => {
+    if (!isDirty || !title.trim() || status === "error") return
+    const id = window.setTimeout(() => void save({ quiet: true }), 800)
+    return () => window.clearTimeout(id)
+  }, [isDirty, title, chapterType, status, save])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        // Habit, not a requirement: everything saves itself. The browser's
+        // "save page" dialog is the one thing this must not open.
         e.preventDefault()
-        save()
+        if (isDirty) void save()
       }
     }
     document.addEventListener("keydown", handleKeyDown)
     return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [save])
+  }, [save, isDirty])
 
   // Switching the tile from "Reading" to "Quiz" used to swap the editor
   // instantly. Nothing is deleted — the blocks stay in their table and
@@ -243,13 +358,23 @@ export default function ChapterEditor() {
   const changeChapterType = useCallback(
     async (next: ChapterType) => {
       if (!chapter || next === chapterType || switchingTypeRef.current) return
-      if (EDITOR_FAMILY[next] === EDITOR_FAMILY[chapterType]) {
-        setChapterType(next)
-        return
-      }
+      // Held for the whole decision, dialogs included: two quick picks
+      // used to open two dialogs on top of each other.
       switchingTypeRef.current = true
       try {
-        if (await editorHasContent(chapterType, chapter.id)) {
+        if (EDITOR_FAMILY[next] === EDITOR_FAMILY[chapterType]) {
+          // Quiz ↔ exam keeps the editor but reloads the quiz from the
+          // server, so questions typed and not saved would go without a word.
+          if (childDirty.quiz) {
+            const ok = await confirm({
+              title: t("chapterEditor.typeChangeUnsaved.title"),
+              description: t("chapterEditor.typeChangeUnsaved.description"),
+              confirmLabel: t("chapterEditor.typeChangeUnsaved.confirm"),
+              tone: "destructive",
+            })
+            if (!ok) return
+          }
+        } else if (await editorHasContent(chapterType, chapter.id)) {
           const ok = await confirm({
             title: t("chapterEditor.typeChangeConfirm.title"),
             description: t("chapterEditor.typeChangeConfirm.description", {
@@ -260,21 +385,27 @@ export default function ChapterEditor() {
           })
           if (!ok) return
         }
+        // A new edit is a new attempt, as with the title: autosave resumes
+        // after a failure instead of holding the new type back.
+        setStatus((s) => (s === "error" ? "idle" : s))
         setChapterType(next)
       } finally {
         switchingTypeRef.current = false
       }
     },
-    [chapter, chapterType, confirm, t],
+    [chapter, chapterType, childDirty.quiz, confirm, t],
   )
 
   // Shared dirty-check used by the Back button and every breadcrumb
   // link. Pre-fix, only the Back button asked before discarding work;
   // a click on any breadcrumb crumb silently navigated away. Three of
   // them — easy to miss when you've just typed two paragraphs.
+  // A name still waiting for its save goes now; only a quiz or an
+  // assignment that has not been sent needs the teacher's decision —
+  // those are the work that would be lost (they used to be lost silently).
   const guardedNavigate = useCallback(
     async (to: string) => {
-      if (isDirty) {
+      if (isDirty && title.trim() && !(await save())) {
         const ok = await confirm({
           title: t("chapterEditor.leaveConfirm.title"),
           description: t("chapterEditor.leaveConfirm.description"),
@@ -283,9 +414,18 @@ export default function ChapterEditor() {
         })
         if (!ok) return
       }
+      if (childUnsaved) {
+        const ok = await confirm({
+          title: t("chapterEditor.leaveUnsavedWork.title"),
+          description: t("chapterEditor.leaveUnsavedWork.description"),
+          confirmLabel: t("chapterEditor.leaveUnsavedWork.confirm"),
+          tone: "destructive",
+        })
+        if (!ok) return
+      }
       navigate(to)
     },
-    [confirm, isDirty, navigate, t],
+    [childUnsaved, confirm, isDirty, navigate, save, t, title],
   )
 
   // Click interceptor for breadcrumb ``<Link>`` elements. Only swallows
@@ -309,6 +449,8 @@ export default function ChapterEditor() {
   // is not. Both the Back button and the "not found" escape hatch use it,
   // so a lesson written straight into the course leads back to the course
   // rather than to a module that was never there.
+  const CurrentTypeIcon = CHAPTER_TYPE_META[chapterType].icon
+
   const upHref = group
     ? `/teacher/courses/${courseId}/modules/${group.id}/edit`
     : `/teacher/courses/${courseId}`
@@ -357,7 +499,7 @@ export default function ChapterEditor() {
         <Link
           to="/teacher"
           onClick={(e) => handleNavClick(e, "/teacher")}
-          className="hidden transition-colors hover:text-ink sm:inline"
+          className="hidden shrink-0 whitespace-nowrap transition-colors hover:text-ink sm:inline"
         >
           {t("chapterEditor.breadcrumb.myCourses")}
         </Link>
@@ -365,9 +507,9 @@ export default function ChapterEditor() {
         <Link
           to={`/teacher/courses/${courseId}`}
           onClick={(e) => handleNavClick(e, `/teacher/courses/${courseId}`)}
-          className="hidden transition-colors hover:text-ink sm:inline"
+          className="hidden max-w-[16rem] truncate transition-colors hover:text-ink sm:inline"
         >
-          {t("chapterEditor.breadcrumb.course")}
+          {courseTitle || t("chapterEditor.breadcrumb.course")}
         </Link>
         {/* The module crumb only when there is a module. A lesson that
             sits straight in the course reads
@@ -381,7 +523,7 @@ export default function ChapterEditor() {
               onClick={(e) => handleNavClick(e, upHref)}
               className="min-w-0 truncate transition-colors hover:text-ink"
             >
-              {group.title}
+              {group.title ?? t("chapterEditor.moduleFallback")}
             </Link>
           </>
         )}
@@ -392,7 +534,7 @@ export default function ChapterEditor() {
       </div>
 
       {/* Back button + title row */}
-      <div data-tour="chapter-editor-header" className="flex items-center gap-3 mb-6">
+      <div data-tour="chapter-editor-header" className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-2">
         <Button
           variant="ghost"
           size="sm"
@@ -406,61 +548,123 @@ export default function ChapterEditor() {
             outline has the chapter name at heading-level-1, and add
             ``aria-label`` so the input still has an accessible name
             even though its visual label is implicit. */}
-        <h1 className="m-0 flex-1">
+        {/* Its own line on a phone: between "Back" and the eye it had a
+            third of the width and cut the name to «Урок 1. Не кни». */}
+        <h1 className="order-last m-0 w-full sm:order-none sm:w-auto sm:flex-1">
           <Input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value)
+              // A new edit is a new attempt: autosave resumes after a failure.
+              if (status === "error") setStatus("idle")
+            }}
             aria-label={t("chapterEditor.editTitleAria")}
-            className="h-auto w-full border-none px-2 py-1 font-serif text-2xl font-bold tracking-tight shadow-none hover:border-edge hover:shadow-sm focus-visible:ring-1"
+            // `sm:text-2xl` too: the field's own `sm:text-sm` won at every
+            // width from 640px, and the lesson's name sat in the header at
+            // 14px (found 2026-09-29).
+            className="h-auto w-full border-none bg-transparent px-2 py-1 font-serif text-xl font-bold tracking-tight shadow-none hover:border-edge hover:shadow-sm focus-visible:ring-1 sm:text-2xl"
             placeholder={t("chapterEditor.titlePlaceholder")}
           />
         </h1>
+        <span className="ml-auto flex items-center gap-2 sm:ml-0">
+        <SaveStatus
+          state={
+            status === "error"
+              ? "error"
+              : !title.trim()
+                ? "needsTitle"
+                : isDirty || status === "saving"
+                  ? "saving"
+                  : status
+          }
+          detail={errorDetail}
+          onRetry={() => {
+            setStatus("idle")
+            void save()
+          }}
+        />
+        {/* The lesson as a student reads it, in a new tab so the editor
+            stays where it was. From the course page only, until now. */}
+        <Button asChild variant="ghost" size="sm" className="shrink-0">
+          <a href={`/courses/${courseId}/chapters/${chapter.id}`} target="_blank" rel="noopener">
+            <Eye className="h-4 w-4 sm:mr-1.5" strokeWidth={1.75} aria-hidden />
+            <span className="max-sm:sr-only">{t("chapterEditor.preview")}</span>
+          </a>
+        </Button>
+        </span>
       </div>
 
-      {/* Chapter Type Selector */}
-      <div className="mb-6">
-        <Label className="text-sm font-semibold mb-3 block">
-          {t("chapterEditor.chapterType")}
-        </Label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {EDITOR_OPTIONS.map((ct) => {
-            const Icon = ct.icon
-            const selected = chapterType === ct.value
-            return (
-              <button
-                key={ct.value}
-                type="button"
-                onClick={() => void changeChapterType(ct.value)}
-                aria-pressed={selected}
-                className={`flex items-start gap-3 rounded-md border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
-                  selected
-                    ? "border-brand bg-brand/[0.08] ring-1 ring-primary/40 dark:bg-brand/15"
-                    : "border-edge hover:border-brand/30 hover:bg-muted/40"
-                }`}
-              >
-                <Icon
-                  className={`h-5 w-5 mt-0.5 shrink-0 ${
-                    selected ? "text-brand" : "text-ink-muted"
-                  }`}
-                  strokeWidth={1.75}
-                  aria-hidden
-                />
-                <div>
-                  <div
-                    className={`text-sm font-medium ${
-                      selected ? "text-brand" : ""
-                    }`}
-                  >
-                    {t(CHAPTER_TYPE_LABEL_KEYS[ct.value])}
-                  </div>
-                  <div className="text-xs text-ink-muted mt-0.5">
-                    {t(CHAPTER_TYPE_DESCRIPTION_KEYS[ct.value])}
-                  </div>
-                </div>
-              </button>
-            )
-          })}
+      {coursePublished && (
+        <p className="-mt-3 mb-5 flex items-start gap-2 text-xs text-ink-muted">
+          <Info className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
+          {t("chapterEditor.publishedNote")}
+        </p>
+      )}
+
+      {/* Lesson type — one line. It is chosen when the lesson is created;
+          a grid of four large cards at the top of every lesson asked the
+          question again each time the lesson was opened. */}
+      <div className="mb-4">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-ink-muted">{t("chapterEditor.chapterType")}:</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 font-medium text-ink">
+            <CurrentTypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            {t(CHAPTER_TYPE_LABEL_KEYS[chapterType])}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-ink-muted"
+            aria-expanded={typePickerOpen}
+            onClick={() => setTypePickerOpen((open) => !open)}
+          >
+            {t("chapterEditor.changeType")}
+            <ChevronDown
+              className={cn("ml-1 h-3.5 w-3.5 transition-transform", typePickerOpen && "rotate-180")}
+              strokeWidth={1.75}
+              aria-hidden
+            />
+          </Button>
         </div>
+        {typePickerOpen && (
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {EDITOR_OPTIONS.map((ct) => {
+              const Icon = ct.icon
+              const selected = chapterType === ct.value
+              return (
+                <button
+                  key={ct.value}
+                  type="button"
+                  onClick={() => {
+                    setTypePickerOpen(false)
+                    void changeChapterType(ct.value)
+                  }}
+                  aria-pressed={selected}
+                  className={`flex items-start gap-3 rounded-lg border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
+                    selected
+                      ? "border-brand bg-brand/[0.08] ring-1 ring-primary/40 dark:bg-brand/15"
+                      : "border-edge hover:border-brand/30 hover:bg-muted/40"
+                  }`}
+                >
+                  <Icon
+                    className={`h-5 w-5 mt-0.5 shrink-0 ${selected ? "text-brand" : "text-ink-muted"}`}
+                    strokeWidth={1.75}
+                    aria-hidden
+                  />
+                  <div>
+                    <div className={`text-sm font-medium ${selected ? "text-brand" : ""}`}>
+                      {t(CHAPTER_TYPE_LABEL_KEYS[ct.value])}
+                    </div>
+                    <div className="text-xs text-ink-muted mt-0.5">
+                      {t(CHAPTER_TYPE_DESCRIPTION_KEYS[ct.value])}
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Type-specific editor */}
@@ -471,74 +675,24 @@ export default function ChapterEditor() {
           )}
 
           {(chapterType === "quiz" || chapterType === "exam") && (
-            <QuizEditor chapterId={chapter.id} chapterType={chapterType} />
+            <QuizEditor
+              chapterId={chapter.id}
+              chapterType={chapterType}
+              defaultTitle={title.trim()}
+              onDirtyChange={onQuizDirty}
+            />
           )}
 
           {chapterType === "assignment" && (
-            <AssignmentEditor chapterId={chapter.id} courseId={courseId!} />
+            <AssignmentEditor
+              chapterId={chapter.id}
+              courseId={courseId}
+              defaultTitle={title.trim()}
+              onDirtyChange={onAssignmentDirty}
+            />
           )}
         </CardContent>
       </Card>
-
-      {/* Inline save button (always visible). When the chapter is dirty,
-          a sticky reminder also appears at the bottom of the viewport. */}
-      <div className="flex items-center gap-3">
-        <Button onClick={save} disabled={saving}>
-          {saving ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} aria-hidden />
-          ) : (
-            <Save className="h-4 w-4 mr-2" strokeWidth={1.75} aria-hidden />
-          )}
-          {saving ? t("chapterEditor.saving") : t("chapterEditor.save")}
-        </Button>
-        <span className="text-xs text-ink-muted">{t("chapterEditor.saveHint")}</span>
-      </div>
-
-      {/* Sticky save bar — only renders while there are unsaved
-          changes. The pulsing warning dot is the visual cue, the
-          ``aria-label`` on the parent card is the screen-reader cue
-          (announced via ``aria-live="polite"`` on first transition to
-          dirty). Inline text shows the Ctrl+S shortcut. */}
-      {isDirty && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:pb-6">
-          <Card
-            role="status"
-            aria-live="polite"
-            aria-label={t("chapterEditor.unsavedChanges")}
-            className="pointer-events-auto animate-fade-in w-full max-w-2xl border border-edge bg-card shadow-lg"
-          >
-            <CardContent className="flex items-center gap-3 px-4 py-3">
-              <span
-                className="relative flex h-2 w-2 shrink-0"
-                aria-hidden
-              >
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning/60" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-warning" />
-              </span>
-              <span className="flex-1 text-xs text-ink-muted sm:text-sm">
-                <span className="font-medium text-ink">
-                  {t("chapterEditor.unsavedChanges")}
-                </span>
-                <span className="mx-1.5 opacity-40">·</span>
-                {t("chapterEditor.saveHint")}
-              </span>
-              <Button
-                type="button"
-                size="sm"
-                onClick={save}
-                disabled={saving}
-              >
-                {saving ? (
-                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} aria-hidden />
-                ) : (
-                  <Save className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} aria-hidden />
-                )}
-                {saving ? t("chapterEditor.saving") : t("chapterEditor.save")}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   )
 }

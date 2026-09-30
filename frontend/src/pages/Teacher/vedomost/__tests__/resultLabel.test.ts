@@ -67,3 +67,11 @@ describe("printedResult", () => {
     )
   })
 })
+
+describe("printedResult in the sheet's own language", () => {
+  it("writes the percentage the way the sheet's language does, not the interface's", () => {
+    // An English sheet printed from a Russian interface read «87,5%».
+    expect(printedResult(row({ official_score: "87.50" }), t, "en").text).toBe("87.5%")
+    expect(printedResult(row({ official_score: "87.50" }), t, "de").text).toBe("87,5%")
+  })
+})

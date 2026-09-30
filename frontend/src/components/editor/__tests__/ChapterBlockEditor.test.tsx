@@ -64,7 +64,8 @@ async function elapse(ms: number) {
 async function renderAndExpand() {
   render(<ChapterBlockEditor courseId="c-1" chapterId="ch-1" />, { wrapper: Wrapper })
   await elapse(0)
-  fireEvent.click(screen.getByText("Text"))
+  // Blocks open by default now (2026-09-29): no click needed to reach the
+  // editor, and a click here would fold it.
   return screen.getByLabelText("content")
 }
 

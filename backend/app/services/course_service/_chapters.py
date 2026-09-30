@@ -168,6 +168,45 @@ def update_chapter(db: Session, chapter: Chapter, data: ChapterUpdate) -> Chapte
     return chapter
 
 
+def restore_chapter(db: Session, chapter: Chapter) -> Chapter:
+    """Bring a deleted lesson back — the "Undo" after a delete.
+
+    Deleting only ever stamped ``deleted_at``; the lesson, its blocks, its
+    quiz and every translation stayed where they were, so nothing needs
+    rebuilding. The progress resync runs again for the same reason it runs
+    on delete: the course's gradable chapters just changed.
+    """
+    chapter.deleted_at = None
+    # A binned lesson keeps the module it was binned under (``delete_module``
+    # frees only live lessons). If that module has since been deleted, the
+    # lesson would come back into a module nobody can see, so it comes back
+    # into the course instead, at its tail.
+    if chapter.module_id is not None:
+        home = db.get(Module, chapter.module_id)
+        if home is None or home.deleted_at is not None:
+            chapter.module_id = None
+            chapter.order_index = _next_chapter_order(db, chapter.course_id)
+    # Its number may have been given away meanwhile: delete the last lesson,
+    # add a new one (it takes the freed tail number), then Undo — and two
+    # lessons shared one place. Then it goes to the tail instead.
+    taken = (
+        db.query(Chapter.id)
+        .filter(
+            Chapter.course_id == chapter.course_id,
+            Chapter.deleted_at.is_(None),
+            Chapter.id != chapter.id,
+            Chapter.order_index == chapter.order_index,
+        )
+        .first()
+    )
+    if taken is not None:
+        chapter.order_index = _next_chapter_order(db, chapter.course_id)
+    db.commit()
+    db.refresh(chapter)
+    _resync_progress_for_chapter(db, chapter)
+    return chapter
+
+
 def delete_chapter(db: Session, chapter: Chapter) -> None:
     chapter.deleted_at = datetime.now(UTC)
     db.commit()

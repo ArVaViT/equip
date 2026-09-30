@@ -138,7 +138,12 @@ export async function cached<T>(
 ): Promise<T> {
   const hit = cacheGet<T>(key)
   if (hit !== undefined) return hit
+  // The language is the one the request went out in. Read after the
+  // `await`, a response still in flight when the reader switched language
+  // was stored under the new one and served as it for up to the TTL.
+  const scoped = localeScoped(key)
   const fresh = await fetcher()
-  cacheSet(key, fresh, ttlMs)
+  store.set(scoped, { value: fresh, expiresAt: Date.now() + ttlMs })
+  evictIfNeeded()
   return fresh
 }

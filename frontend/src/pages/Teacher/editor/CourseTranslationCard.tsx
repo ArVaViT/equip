@@ -158,7 +158,9 @@ export function CourseTranslationCard({
         </div>
 
         {!done && (
-          <Button type="button" size="sm" onClick={onPrepare} disabled={preparing}>
+          // Secondary, and named for what it does: next to "Publish" the
+          // old «Подготовить к публикации» read as a second way to publish.
+          <Button type="button" variant="outline" size="sm" onClick={onPrepare} disabled={preparing}>
             {preparing && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.75} />}
             {t("courseTranslation.prepare")}
           </Button>

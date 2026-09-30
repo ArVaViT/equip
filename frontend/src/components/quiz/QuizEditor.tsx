@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { ClipboardList, Loader2 } from "lucide-react"
 import { useConfirm } from "@/components/ui/alert-dialog"
@@ -11,6 +11,7 @@ import {
   ModeToggle,
   QuizEditView,
   firstDraftProblem,
+  adoptServerIds,
   isEmptyPlan,
   planInPlaceSave,
   useQuizDraft,
@@ -18,21 +19,38 @@ import {
   type InPlacePlan,
   type QuizEditorMode,
 } from "./editor"
+import type { DraftQuestion } from "./editor/types"
 
 interface QuizEditorProps {
   chapterId: string
   chapterType?: "quiz" | "exam"
   onQuizSaved?: (quizId: string) => void
+  /** Told whenever the draft gains or loses changes the server has not
+   *  seen, so the page can stop the teacher leaving without them. */
+  onDirtyChange?: (dirty: boolean) => void
+  /** The lesson's name: a new quiz starts with it. */
+  defaultTitle?: string
+  /** Inside a lesson's block list: the Save row stays in place instead of
+   *  sticking to the screen, where two open blocks would stack two bars. */
+  embedded?: boolean
 }
 
 export default function QuizEditor({
   chapterId,
   chapterType = "quiz",
   onQuizSaved,
+  onDirtyChange,
+  defaultTitle,
+  embedded = false,
 }: QuizEditorProps) {
   const confirm = useConfirm()
   const { t } = useTranslation()
-  const draft = useQuizDraft({ chapterId, chapterType })
+  const draft = useQuizDraft({ chapterId, chapterType, defaultTitle })
+  useEffect(() => {
+    onDirtyChange?.(draft.isDirty)
+  }, [draft.isDirty, onDirtyChange])
+  // Unmounting (switching the lesson's type) takes the draft with it.
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange])
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [mode, setMode] = useState<QuizEditorMode>("edit")
@@ -101,6 +119,7 @@ export default function QuizEditor({
     }
 
     const shape = snapshot()
+    const sent = draft.snapshotKey
     const existing = draft.existingQuiz
     const plan = existing ? planInPlaceSave(existing, shape) : null
 
@@ -123,6 +142,7 @@ export default function QuizEditor({
       if (existing && plan) {
         const quiz = isEmptyPlan(plan) ? existing : await applyInPlace(existing, plan)
         draft.setExistingQuiz(quiz)
+        draft.markSaved(sent)
         onQuizSaved?.(quiz.id)
         toast({ title: t("quizEditor.toast.quizSaved"), variant: "success" })
         return
@@ -130,9 +150,21 @@ export default function QuizEditor({
 
       const quiz = await createFromDraft(shape)
       draft.setExistingQuiz(quiz)
+      // The server's ids, so the next save corrects this quiz in place
+      // instead of rebuilding it (and, once there are attempts, asking to
+      // delete them).
+      draft.setQuestions((prev) => adoptServerIds(prev, quiz))
+      const serverMaxAttempts = quiz.max_attempts ?? (chapterType === "exam" ? 1 : 3)
+      draft.setMaxAttempts(serverMaxAttempts)
+      // Saved is what was sent, with the server's ids and its attempt
+      // limit — not whatever is on screen now: a word typed while the
+      // request was in flight is still unsaved.
+      const sentShape = JSON.parse(sent) as { questions: DraftQuestion[]; maxAttempts: number | null }
+      sentShape.questions = adoptServerIds(sentShape.questions, quiz)
+      sentShape.maxAttempts = serverMaxAttempts
+      draft.markSaved(JSON.stringify(sentShape))
       draft.clearAttempts()
       onQuizSaved?.(quiz.id)
-      draft.setMaxAttempts(quiz.max_attempts ?? (chapterType === "exam" ? 1 : 3))
       if (existing) {
         // The new quiz is saved; the old one goes only after the teacher
         // has agreed to lose its attempts (``force``). If the delete is
@@ -178,6 +210,7 @@ export default function QuizEditor({
     try {
       await coursesService.deleteQuiz(draft.existingQuiz.id, chapterId, { force: attempts > 0 })
       draft.resetAll()
+      draft.markSaved()
       toast({ title: t("quizEditor.toast.quizDeleted"), variant: "success" })
     } catch (err) {
       toast({
@@ -250,6 +283,8 @@ export default function QuizEditor({
           answeredQuestionIds={draft.answeredQuestionIds}
           deleting={deleting}
           onDelete={handleDelete}
+          dirty={draft.isDirty}
+          stickyActions={!embedded}
         />
       )}
     </div>

@@ -287,6 +287,7 @@ def populate_spine_texts(
     *,
     display_locale: LocaleCode | None = None,
     hydrate_modules: bool = True,
+    fallback: Literal["auto", "none", "source_then_any"] = "auto",
 ) -> None:
     """``courses.title|description`` and ``modules.title|description``
     columns dropped. Hydrate each course (and every loaded module/chapter
@@ -315,6 +316,11 @@ def populate_spine_texts(
     reader's: the first pass had already filled in Russian, and the
     second had nothing to overwrite it with.
 
+    ``fallback`` is the cv reader's: a teacher reading their own course in
+    another interface language passes ``"source_then_any"`` — under
+    ``"auto"`` with translation on, a course with no row in that language
+    came back with an empty name (review, 2026-09-29).
+
     So an explicit ``display_locale`` clears what it cannot fill. The
     source-hydration path (no ``display_locale``) keeps the old
     behaviour, because there is nothing else it could mean.
@@ -336,6 +342,7 @@ def populate_spine_texts(
                 fields=["title", "description"],
                 display_locale=display_locale or src_locale,
                 source_locale=src_locale,
+                fallback=fallback,
             )
         )
     for c in courses:
@@ -380,6 +387,7 @@ def populate_spine_texts(
             fields=["title", "description"],
             display_locale=display_locale or src_locale,
             source_locale=src_locale,
+            fallback=fallback,
         )
         for m in mods:
             cv_t = bulk.get((str(m.id), "title"))

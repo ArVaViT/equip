@@ -1,6 +1,6 @@
-import { useRef, type HTMLAttributes } from "react";
+import { useRef, useState, type HTMLAttributes } from "react";
 import { Draggable } from "@hello-pangea/dnd";
-import { FolderInput, GripVertical, Lock, Pencil, Trash2, Unlock } from "lucide-react";
+import { FolderInput, GripVertical, Lock, Pencil, TextCursorInput, Trash2, Unlock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +78,12 @@ export function ChapterRow({
   // accidental click on the row's title field fired a no-op update —
   // wasted network round-trip and an audit-log row per visit.
   const focusValueRef = useRef<string>("");
+  const escapedRef = useRef(false);
+  // The name opens the lesson — the thing a teacher clicks a lesson for.
+  // It used to be an input: a click on the name started renaming it, and
+  // the lesson itself opened from a small unlabelled pencil at the end of
+  // the row. Renaming is the rarer act and has its own button now.
+  const [renaming, setRenaming] = useState(false);
 
   return (
     <Draggable draggableId={chapter.id} index={index}>
@@ -91,7 +97,7 @@ export function ChapterRow({
         >
           <div className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:gap-3 sm:p-4">
             {/* Row 1 on mobile (grip + input). Inline on sm+. */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
               <div
                 {...dragProvided.dragHandleProps}
                 className="-ml-1 flex h-11 w-8 shrink-0 cursor-grab items-center justify-center text-ink-muted transition-colors hover:text-ink active:cursor-grabbing sm:ml-0 sm:h-9"
@@ -102,24 +108,55 @@ export function ChapterRow({
                 <GripVertical className="h-4 w-4" strokeWidth={1.75} aria-hidden />
               </div>
 
-              <Input
-                value={chapter.title}
-                onChange={(e) => onTitleChange(e.target.value)}
-                onFocus={(e) => {
-                  focusValueRef.current = e.target.value;
-                }}
-                onBlur={(e) => {
-                  if (e.target.value.trim() === focusValueRef.current.trim()) {
-                    return;
-                  }
-                  onRename(e.target.value);
-                }}
-                className="h-9 flex-1 border-none font-medium shadow-none focus-visible:ring-1 sm:h-8 sm:text-sm"
-              />
+              {renaming ? (
+                <Input
+                  autoFocus
+                  value={chapter.title}
+                  aria-label={t("lessons.renameAria", { title: chapter.title })}
+                  onChange={(e) => onTitleChange(e.target.value)}
+                  onFocus={(e) => {
+                    focusValueRef.current = e.target.value;
+                    escapedRef.current = false;
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                    if (e.key === "Escape") {
+                      // Flagged: the input unmounts next, and a blur fired
+                      // on the way out must not save what Escape cancelled.
+                      escapedRef.current = true;
+                      onTitleChange(focusValueRef.current);
+                      setRenaming(false);
+                    }
+                  }}
+                  onBlur={(e) => {
+                    setRenaming(false);
+                    if (escapedRef.current) {
+                      escapedRef.current = false;
+                      return;
+                    }
+                    if (e.target.value.trim() === focusValueRef.current.trim()) {
+                      return;
+                    }
+                    onRename(e.target.value);
+                  }}
+                  className="h-9 min-w-0 flex-1 font-medium sm:h-8 sm:text-sm"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  className="line-clamp-2 min-w-0 flex-1 rounded-md px-2 py-1.5 text-left sm:line-clamp-1 font-medium underline-offset-4 transition-colors hover:text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:text-sm"
+                >
+                  {chapter.title}
+                </button>
+              )}
             </div>
 
-            {/* Row 2 on mobile (badge + actions). Inline on sm+. */}
-            <div className="flex items-center justify-end gap-1 sm:gap-2">
+            {/* Row 2 on mobile (badge + actions). Inline on sm+. The buttons
+                are 32px wide on a phone, with no gaps (still 44px tall): at 44 the row
+                was wider than a lesson inside a module and pushed the type
+                badge out past the card's left edge. */}
+            <div className="flex flex-wrap items-center justify-end gap-0 sm:flex-nowrap sm:gap-2">
               <Badge variant="muted" className="mr-auto shrink-0 sm:mr-0">
                 {t(CHAPTER_TYPE_LABEL_KEYS[type])}
               </Badge>
@@ -127,7 +164,7 @@ export function ChapterRow({
               <Button
                 variant="ghost"
                 size="sm"
-                className={`h-11 w-11 shrink-0 p-0 sm:h-8 sm:w-8 ${
+                className={`h-11 w-8 shrink-0 p-0 sm:h-8 sm:w-8 ${
                   chapter.is_locked ? "text-warning hover:text-warning" : "text-ink-muted"
                 }`}
                 onClick={onToggleLock}
@@ -147,7 +184,7 @@ export function ChapterRow({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-11 w-11 shrink-0 p-0 text-ink-muted sm:h-8 sm:w-8"
+                      className="h-11 w-8 shrink-0 p-0 text-ink-muted sm:h-8 sm:w-8"
                       title={t("lessons.move.tooltip")}
                       aria-label={t("lessons.move.aria", { title: chapter.title })}
                     >
@@ -176,17 +213,31 @@ export function ChapterRow({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-11 w-11 shrink-0 p-0 sm:h-8 sm:w-8"
-                onClick={onEdit}
-                aria-label={t("lessons.editAria", { title: chapter.title })}
+                className="h-11 w-8 shrink-0 p-0 text-ink-muted sm:h-8 sm:w-8"
+                onClick={() => setRenaming(true)}
+                title={t("lessons.renameTooltip")}
+                aria-label={t("lessons.renameAria", { title: chapter.title })}
               >
-                <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                <TextCursorInput className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
               </Button>
 
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-11 w-11 shrink-0 p-0 text-destructive hover:text-destructive sm:h-8 sm:w-8"
+                className="h-11 w-8 shrink-0 p-0 sm:h-8 sm:w-8"
+                onClick={onEdit}
+                title={t("lessons.editAria", { title: chapter.title })}
+                aria-label={t("lessons.editAria", { title: chapter.title })}
+              >
+                <Pencil className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+              </Button>
+
+              {/* Quiet until hovered: a red bin on every row read as the
+                  row's main action. */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-11 w-8 shrink-0 p-0 text-ink-muted transition-colors hover:text-destructive sm:h-8 sm:w-8"
                 onClick={onDelete}
                 aria-label={t("lessons.deleteAria", { title: chapter.title })}
               >

@@ -86,3 +86,32 @@ export function planInPlaceSave(existing: Quiz, draft: DraftSnapshot): InPlacePl
 
   return { quiz: Object.keys(quiz).length > 0 ? quiz : null, questions, options }
 }
+
+/**
+ * The draft with the ids the server gave its questions and options on
+ * create, matched by position; the draft's own text stays as typed.
+ *
+ * After the first save a new quiz kept its client-side ids, so
+ * `planInPlaceSave` found nothing to match and the next save rebuilt the
+ * whole quiz — and once students had attempts, a rebuild takes them (with
+ * a confirm). All or nothing: if the shapes differ, the draft is returned
+ * unchanged and the old behaviour stands.
+ */
+export function adoptServerIds(draft: DraftQuestion[], saved: Quiz): DraftQuestion[] {
+  const byOrder = new Map(saved.questions.map((question) => [question.order_index, question]))
+  if (byOrder.size !== draft.length) return draft
+  const adopted: DraftQuestion[] = []
+  for (const question of draft) {
+    const server = byOrder.get(question.order_index)
+    if (!server || server.options.length !== question.options.length) return draft
+    const options = new Map(server.options.map((option) => [option.order_index, option]))
+    const nextOptions = []
+    for (const option of question.options) {
+      const serverOption = options.get(option.order_index)
+      if (!serverOption) return draft
+      nextOptions.push({ ...option, id: serverOption.id })
+    }
+    adopted.push({ ...question, id: server.id, options: nextOptions })
+  }
+  return adopted
+}

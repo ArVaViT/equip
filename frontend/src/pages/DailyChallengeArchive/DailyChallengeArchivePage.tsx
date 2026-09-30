@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { activeIntlTag } from "@/i18n/config"
 import { useSearchParams } from "react-router-dom"
 import { Calendar, Check, ChevronLeft, Sparkles, X } from "lucide-react"
 import { toast } from "sonner"
@@ -196,6 +197,7 @@ interface CalendarGridProps {
 }
 
 function CalendarGrid({ entries, selectedDate, onSelect, t }: CalendarGridProps) {
+  const { i18n } = useTranslation()
   // Group entries by month so the grid reads as time, not as a tag soup.
   const byMonth = useMemo(() => {
     const groups: Record<string, DailyChallengeArchiveEntry[]> = {}
@@ -212,9 +214,12 @@ function CalendarGrid({ entries, selectedDate, onSelect, t }: CalendarGridProps)
     <div className="space-y-5">
       {months.map((monthKey) => {
         const monthEntries = byMonth[monthKey] ?? []
+        // The interface's language, not the browser's («September 2026»
+        // on a Russian page in a German browser), and in UTC: midnight UTC
+        // on the 1st is still the previous month anywhere west of London.
         const monthLabel = new Date(`${monthKey}-01T00:00:00Z`).toLocaleDateString(
-          undefined,
-          { year: "numeric", month: "long" },
+          activeIntlTag(i18n.resolvedLanguage ?? i18n.language),
+          { year: "numeric", month: "long", timeZone: "UTC" },
         )
         return (
           <div key={monthKey} className="space-y-2">

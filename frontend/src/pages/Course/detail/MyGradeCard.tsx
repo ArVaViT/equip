@@ -48,7 +48,7 @@ export function MyGradeCard({
    *  cards must agree, and two fetches is how they stop agreeing. */
   onBlockersChange?: (count: number) => void
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [grade, setGrade] = useState<MyCourseGrade | null>(null)
   const [loading, setLoading] = useState(true)
   // ``null`` until the grade arrives and decides the default; a person
@@ -75,7 +75,9 @@ export function MyGradeCard({
     return () => {
       cancelled = true
     }
-  }, [courseId, onBlockersChange])
+    // The item titles come back in the reader's language, so a switch of
+    // language fetches them again.
+  }, [courseId, onBlockersChange, i18n.language])
 
   if (loading) {
     return (

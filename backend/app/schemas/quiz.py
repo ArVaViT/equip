@@ -176,6 +176,16 @@ class QuizQuestionStudentResponse(BaseModel):
     options: list[QuizOptionStudentResponse] = []
 
 
+class QuizOptionEditorResponse(QuizOptionStudentResponse):
+    """An option as its teacher edits it: with the answer key."""
+
+    is_correct: bool = False
+
+
+class QuizQuestionEditorResponse(QuizQuestionStudentResponse):
+    options: list[QuizOptionEditorResponse] = []  # type: ignore[assignment]
+
+
 class QuizCreate(RequestModel):
     # Chapter ids are UUIDs (36 chars). Cap at the schema layer so a crafted
     # 1 MB string is rejected by Pydantic before the route runs ``verify_chapter_owner``
@@ -230,6 +240,17 @@ class QuizStudentResponse(BaseModel):
     max_attempts: int | None = None
     passing_score: int
     questions: list[QuizQuestionStudentResponse] = []
+
+
+class QuizEditorResponse(QuizStudentResponse):
+    """The quiz editor's payload: the student shape plus which option is right.
+
+    The editor read the student shape, which has no ``is_correct``, so every
+    existing quiz opened with no answer marked — and could not be saved
+    until the teacher marked all of them again from memory.
+    """
+
+    questions: list[QuizQuestionEditorResponse] = []  # type: ignore[assignment]
 
 
 class QuizSubmitAnswer(RequestModel):

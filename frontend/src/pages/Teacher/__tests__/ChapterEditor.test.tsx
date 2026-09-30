@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { render, screen, waitFor } from "@testing-library/react"
+import { act, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -112,8 +112,12 @@ describe("ChapterEditor — addressed by its course", () => {
     )
 
     // Breadcrumb: «Мои курсы › Курс › Кто написал послание» — three crumbs,
-    // no invented heading in the middle.
-    const crumbs = screen.getAllByRole("link").map((a) => a.getAttribute("href"))
+    // no invented heading in the middle. (The student-view link is the one
+    // other link on the page.)
+    const crumbs = screen
+      .getAllByRole("link")
+      .map((a) => a.getAttribute("href"))
+      .filter((href) => href?.startsWith("/teacher"))
     expect(crumbs).toEqual(["/teacher", "/teacher/courses/c-1"])
   })
 
@@ -150,14 +154,80 @@ describe("ChapterEditor — addressed by its course", () => {
       expect(screen.getByDisplayValue("Кто написал послание")).toBeInTheDocument(),
     )
 
-    await userEvent.click(screen.getByRole("button", { name: "Сохранить урок" }))
+    // No save button any more: the name saves itself after typing stops.
+    await userEvent.type(screen.getByDisplayValue("Кто написал послание"), "?")
 
-    await waitFor(() => expect(update).toHaveBeenCalled())
+    await waitFor(() => expect(update).toHaveBeenCalled(), { timeout: 3000 })
     const [courseId, chapterId, payload] = update.mock.calls[0]!
     expect(courseId).toBe("c-1")
     expect(chapterId).toBe("ch-1")
     // An explicit ``null`` here would lift the lesson out of its module on
     // every save; the key has to be absent for "leave the grouping alone".
     expect(payload).not.toHaveProperty("module_id")
+    expect(payload).toMatchObject({ title: "Кто написал послание?" })
+  })
+
+  it("says a save failed, instead of «saving…» for ever", async () => {
+    vi.spyOn(coursesService, "getChapterForEdit").mockResolvedValue(chapter())
+    const update = vi.spyOn(coursesService, "updateCourseChapter").mockRejectedValue(new Error("offline"))
+
+    renderAtCourseRoute()
+    const input = await screen.findByDisplayValue("Кто написал послание")
+    await userEvent.type(input, "?")
+
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1), { timeout: 3000 })
+    expect(await screen.findByText(i18n.t("chapterEditor.status.failed"))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t("chapterEditor.status.saving"))).not.toBeInTheDocument()
+
+    // Typing again is a new attempt.
+    update.mockResolvedValue(chapter({ title: "Кто написал послание?!" }))
+    await userEvent.type(input, "!")
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(2), { timeout: 3000 })
+  })
+
+  it("asks for a name rather than spinning on an empty one", async () => {
+    vi.spyOn(coursesService, "getChapterForEdit").mockResolvedValue(chapter())
+    const update = vi.spyOn(coursesService, "updateCourseChapter")
+
+    renderAtCourseRoute()
+    const input = await screen.findByDisplayValue("Кто написал послание")
+    await userEvent.clear(input)
+
+    expect(await screen.findByText(i18n.t("chapterEditor.status.needsTitle"))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t("chapterEditor.status.saving"))).not.toBeInTheDocument()
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it("does not reload the lesson when the interface language changes", async () => {
+    // A reload remounted the quiz or assignment editor and dropped its
+    // unsaved draft without a word.
+    const get = vi.spyOn(coursesService, "getChapterForEdit").mockResolvedValue(chapter())
+    renderAtCourseRoute()
+    await screen.findByDisplayValue("Кто написал послание")
+    expect(get).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      await i18n.changeLanguage("en")
+    })
+
+    expect(get).toHaveBeenCalledTimes(1)
+    expect(screen.getByDisplayValue("Кто написал послание")).toBeInTheDocument()
+  })
+
+  it("links to the lesson as a student reads it", async () => {
+    vi.spyOn(coursesService, "getChapterForEdit").mockResolvedValue(chapter())
+    renderAtCourseRoute()
+    const link = await screen.findByRole("link", { name: /Как видит студент/ })
+    expect(link).toHaveAttribute("href", "/courses/c-1/chapters/ch-1")
+    expect(link).toHaveAttribute("target", "_blank")
+  })
+
+  it("keeps the type picker folded until asked", async () => {
+    vi.spyOn(coursesService, "getChapterForEdit").mockResolvedValue(chapter())
+    renderAtCourseRoute()
+    const change = await screen.findByRole("button", { name: /Изменить/ })
+    expect(screen.queryAllByRole("button", { pressed: true })).toHaveLength(0)
+    await userEvent.click(change)
+    expect(screen.getAllByRole("button", { pressed: true })).toHaveLength(1)
   })
 })

@@ -32,12 +32,12 @@ const STATE_KEY: Record<string, string> = {
  *
  * Nothing here recomputes anything. Every input came off the frozen row.
  */
-export function printedResult(row: SheetRow, t: (key: string) => string): PrintedResult {
+export function printedResult(row: SheetRow, t: (key: string) => string, locale?: string): PrintedResult {
   if (row.official_code) {
     return { text: row.official_code, isOverride: row.is_override }
   }
   if (row.official_score !== null && row.official_score !== undefined) {
-    return { text: formatPercent(Number(row.official_score), 1), isOverride: row.is_override }
+    return { text: formatPercent(Number(row.official_score), 1, locale), isOverride: row.is_override }
   }
   return {
     text: t(STATE_KEY[row.result_state] ?? "vedomost.result.notAttested"),

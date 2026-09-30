@@ -1026,14 +1026,16 @@
       "trueFalseOption": {
         "True": "Richtig",
         "False": "Falsch"
-      }
+      },
+      "typeLockedSummary": "Dieser Test wurde bereits abgelegt, daher behalten beantwortete Fragen ihren Typ. Wortlaut, Punkte und richtige Antwort lassen sich weiter korrigieren; für einen anderen Fragetyp fügen Sie eine neue Frage hinzu."
     },
     "save": {
       "saving": "Wird gespeichert …",
       "saveQuiz": "Test speichern",
       "saveExam": "Prüfung speichern",
       "deleteQuiz": "Test löschen",
-      "deleteExam": "Prüfung löschen"
+      "deleteExam": "Prüfung löschen",
+      "unsaved": "Ungespeicherte Änderungen"
     },
     "modeToggle": {
       "edit": "Bearbeiten",
@@ -1163,7 +1165,9 @@
       "copied": "Kopiert",
       "copyAriaLabel": "Code in die Zwischenablage kopieren"
     },
-    "deleteBlockAria": "Block „{{label}}“ löschen"
+    "deleteBlockAria": "Block „{{label}}“ löschen",
+    "moveUp": "Block {{label}} nach oben",
+    "moveDown": "Block {{label}} nach unten"
   },
   "assignmentEditor": {
     "validation": {
@@ -1733,7 +1737,8 @@
     "empty": {
       "title": "Dieser Kurs hat noch keine Lektionen",
       "description": "Fügen Sie die erste Lektion hinzu — mehr braucht ein Kurs nicht. Wählen Sie, was sie sein soll."
-    }
+    },
+    "openModuleAria": "Moduleinstellungen: {{title}}"
   },
   "lessons": {
     "defaults": {
@@ -1760,8 +1765,8 @@
     "dragAria": "Lektion {{title}} umsortieren",
     "editAria": "Lektion {{title}} bearbeiten",
     "deleteAria": "Lektion {{title}} löschen",
-    "lockTooltip": "Lektion sperren",
-    "unlockTooltip": "Lektion entsperren",
+    "lockTooltip": "Erst nach der vorherigen Lektion öffnen",
+    "unlockTooltip": "Öffnet nach der vorherigen Lektion — sofort freigeben",
     "invalidTitle": "Ungültiger Lektionstitel",
     "unknownError": "Unbekannter Fehler",
     "move": {
@@ -1770,11 +1775,6 @@
       "toCourse": "Aus dem Modul nehmen",
       "intoModule": "Nach „{{title}}“ verschieben",
       "untitledModule": "Modul ohne Titel"
-    },
-    "confirmDelete": {
-      "title": "Diese Lektion löschen?",
-      "description": "Die Lektion und alles, was darin steht, wird entfernt.",
-      "confirm": "Löschen"
     },
     "toast": {
       "added": "Lektion hinzugefügt",
@@ -1788,8 +1788,13 @@
       "reorderFailed": "Reihenfolge der Lektionen konnte nicht gespeichert werden",
       "movedToCourse": "Lektion aus dem Modul genommen — sie bleibt im Kurs",
       "movedToModule": "Lektion nach „{{title}}“ verschoben",
-      "moveFailed": "Lektion konnte nicht verschoben werden"
-    }
+      "moveFailed": "Lektion konnte nicht verschoben werden",
+      "undo": "Rückgängig",
+      "restored": "Lektion wiederhergestellt",
+      "restoreFailed": "Lektion konnte nicht wiederhergestellt werden"
+    },
+    "renameAria": "Lektion {{title}} umbenennen",
+    "renameTooltip": "Umbenennen"
   },
   "moduleEditor": {
     "toast": {
@@ -1813,7 +1818,7 @@
     "clear": "Leeren",
     "noChapters": {
       "title": "Noch keine Lektionen in diesem Modul",
-      "description": "Wählen Sie unten eine Lektionsart. Lektionen tragen Ihren geschriebenen und visuellen Inhalt; Tests, Prüfungen und Aufgaben messen das Verständnis jeweils anders."
+      "description": "Wählen Sie unten eine Lektionsart. „Lesetext“ enthält Ihren geschriebenen und visuellen Inhalt; Tests, Prüfungen und Aufgaben messen das Verständnis jeweils anders."
     }
   },
   "courseEditor": {
@@ -1849,7 +1854,12 @@
       "saving": "Wird gespeichert …"
     },
     "publishing": "Wird veröffentlicht",
-    "viewAsStudent": "Als Studierende ansehen"
+    "viewAsStudent": "Als Studierende ansehen",
+    "unpublishConfirm": {
+      "title": "Veröffentlichung dieses Kurses aufheben?",
+      "description": "Der Kurs verschwindet aus dem Katalog, und Lernende – auch bereits eingeschriebene – können seine Lektionen erst wieder öffnen, wenn Sie ihn erneut veröffentlichen. Fortschritt und Noten bleiben erhalten.",
+      "confirm": "Veröffentlichung aufheben"
+    }
   },
   "chapterEditor": {
     "notFound": {
@@ -1866,7 +1876,6 @@
     "toast": {
       "loadFailed": "Lektion konnte nicht geladen werden",
       "invalidData": "Ungültige Lektionsdaten",
-      "saved": "Lektion gespeichert",
       "saveFailed": "Speichern fehlgeschlagen: {{detail}}"
     },
     "unknownError": "Unbekannter Fehler",
@@ -1879,14 +1888,30 @@
     "titlePlaceholder": "Titel der Lektion",
     "editTitleAria": "Titel der Lektion bearbeiten",
     "chapterType": "Art der Lektion",
-    "save": "Lektion speichern",
-    "saving": "Wird gespeichert …",
-    "saveHint": "Strg+S zum Speichern",
-    "unsavedChanges": "Sie haben ungespeicherte Änderungen",
     "typeChangeConfirm": {
       "title": "Art der Lektion ändern?",
       "description": "Nichts von dem, was Sie geschrieben haben, wird gelöscht. Der Editor „{{from}}“ wird ausgeblendet, solange die Lektion eine „{{to}}“ ist, und kommt mit allem Inhalt zurück, sobald Sie den Typ zurückstellen.",
       "confirm": "Typ ändern"
+    },
+    "status": {
+      "saved": "Gespeichert",
+      "saving": "Wird gespeichert…",
+      "failed": "Nicht gespeichert",
+      "retry": "Erneut versuchen",
+      "needsTitle": "Ein Name fehlt"
+    },
+    "changeType": "Ändern",
+    "preview": "Ansicht für Lernende",
+    "publishedNote": "Dieser Kurs ist veröffentlicht. Lernende sehen die Änderung, sobald sie in allen Sprachen bereit ist.",
+    "leaveUnsavedWork": {
+      "title": "Seite verlassen?",
+      "description": "Der Test oder die Aufgabe in dieser Lektion ist nicht gespeichert. Wenn Sie jetzt gehen, geht das Geschriebene verloren.",
+      "confirm": "Ohne Speichern verlassen"
+    },
+    "typeChangeUnsaved": {
+      "title": "Typ ändern und Fragen verlieren?",
+      "description": "Der Test hat ungespeicherte Änderungen. Beim Ändern des Typs wird der Test neu geladen, und sie gehen verloren. Speichern Sie den Test zuerst.",
+      "confirm": "Ohne Speichern ändern"
     }
   },
   "courseDetail": {
@@ -2899,7 +2924,7 @@
     "title": "Sprachen des Kurses",
     "complete": "Dieser Kurs liegt in allen Sprachen vor und wurde geprüft",
     "remaining": "Noch zu übersetzen: {{count}}",
-    "prepare": "Für die Veröffentlichung vorbereiten",
+    "prepare": "Jetzt übersetzen",
     "behindBy": "— {{count}} fehlen",
     "heldEdits": "{{count}} Änderungen warten auf die Übersetzung. Studierende sehen sie, sobald alle Sprachen bereit sind.",
     "blockedEdits": "{{count}} Änderungen hängen fest. Eine Übersetzung hat die Prüfung nicht bestanden und braucht einen Menschen.",

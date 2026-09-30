@@ -1295,6 +1295,10 @@
     "path": "/api/v1/courses/my",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
         "limit",
         "query"
       ],
@@ -1340,6 +1344,10 @@
     "method": "GET",
     "path": "/api/v1/courses/my/trash",
     "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
       [
         "limit",
         "query"
@@ -1479,6 +1487,25 @@
       "422"
     ],
     "body": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/courses/{course_id}/chapters/{chapter_id}/restore",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
   },
   {
     "method": "POST",
@@ -2345,6 +2372,10 @@
     "path": "/api/v1/grades/my/{course_id}/breakdown",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
         "course_id",
         "path"
       ]
@@ -2382,9 +2413,15 @@
   {
     "method": "GET",
     "path": "/api/v1/grades/queue",
-    "params": [],
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ]
+    ],
     "responses": [
-      "200"
+      "200",
+      "422"
     ],
     "body": false
   },
@@ -2856,6 +2893,10 @@
     "path": "/api/v1/progress/course/{course_id}/gradebook",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
         "course_id",
         "path"
       ]
@@ -2886,6 +2927,10 @@
     "path": "/api/v1/progress/course/{course_id}/students",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
         "course_id",
         "path"
       ]
@@ -2900,6 +2945,10 @@
     "method": "GET",
     "path": "/api/v1/progress/course/{course_id}/students/{student_id}/detail",
     "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
       [
         "course_id",
         "path"

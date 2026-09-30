@@ -416,6 +416,15 @@ class TestCloneCourse:
         assert cloned_quiz["questions"][0]["question_type"] == "essay"
         assert cloned_quiz["questions"][0]["min_words"] == 150
 
+    def test_a_copy_is_marked_in_the_courses_own_language(self, client: TestClient, db: Session):
+        """«Книга Деяний (Copy)»: the suffix put an English word into a
+        Russian title for good (2026-09-29)."""
+        course = _create_course(client, title="Книга Деяний Апостолов", description="Академический курс")
+        db.query(Course).filter(Course.id == course["id"]).update({"source_locale": "ru"})
+        db.commit()
+        clone = client.post(f"{PREFIX}/{course['id']}/clone").json()
+        assert clone["title"] == "Книга Деяний Апостолов (копия)"
+
     def test_clone_copies_cv_text_rows_so_clone_is_not_empty(self, client: TestClient):
         """Phase 5z regression: the clone path used to copy only structural
         rows; cv text rows were left untouched. Result: every cloned

@@ -41,9 +41,11 @@ import i18n, { activeIntlTag } from "./config"
  * load-bearing (see `formatGradePercent` — a grade rounded before its letter
  * is chosen contradicts the band table it sits next to).
  */
-export function formatNumber(value: number, fractionDigits = 1): string {
+export function formatNumber(value: number, fractionDigits = 1, locale?: string): string {
   if (!Number.isFinite(value)) return ""
-  return new Intl.NumberFormat(activeIntlTag(i18n.resolvedLanguage ?? i18n.language), {
+  // ``locale`` for a document in its own language (the ведомость), not the
+  // interface's.
+  return new Intl.NumberFormat(activeIntlTag(locale ?? i18n.resolvedLanguage ?? i18n.language), {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
   }).format(value)
@@ -53,7 +55,7 @@ export function formatNumber(value: number, fractionDigits = 1): string {
  * A percentage: the number above, then the sign. `86.5` → `86,5%` for a
  * German reader, `86.5%` for an English one.
  */
-export function formatPercent(value: number, fractionDigits = 1): string {
+export function formatPercent(value: number, fractionDigits = 1, locale?: string): string {
   if (!Number.isFinite(value)) return ""
-  return `${formatNumber(value, fractionDigits)}%`
+  return `${formatNumber(value, fractionDigits, locale)}%`
 }

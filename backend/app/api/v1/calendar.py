@@ -1,4 +1,5 @@
 from datetime import UTC
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Response, status
@@ -33,7 +34,12 @@ from app.services.course_notifications import (
     enrolled_recipients_by_locale,
     entity_title_for_locale,
 )
-from app.services.notification_service import create_notifications_bulk, notification_text
+from app.services.notification_service import (
+    create_notifications_bulk,
+    notification_text,
+    resolve_params,
+    translatable,
+)
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import localize_course_event_rows
 
@@ -73,8 +79,9 @@ def _notify_students_about_event(
     recipients_by_locale = enrolled_recipients_by_locale(db, course_id=course.id, exclude_user_id=author.id)
     key = "notif.event_rescheduled" if rescheduled else "notif.new_event"
     for locale, recipients in recipients_by_locale.items():
-        params = {
-            "kind": t(locale, f"event_type.{event.event_type}"),
+        params: dict[str, Any] = {
+            # A catalog key, translated whenever the bell is opened.
+            "kind": translatable(f"event_type.{event.event_type}"),
             "title": entity_title_for_locale(
                 db,
                 entity_type="course_event",
@@ -86,7 +93,7 @@ def _notify_students_about_event(
             "course": course_title_for_locale(db, course, locale),
         }
         title = t(locale, f"{key}.title")
-        message = t(locale, f"{key}.body", **params)
+        message = t(locale, f"{key}.body", **resolve_params(params, locale))
         link = _event_link(course.id)
         metadata: dict[str, str] = {"course_id": course.id, "event_id": str(event.id)}
         # The bell is where a student is standing when the session is

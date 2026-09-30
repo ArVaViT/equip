@@ -9,12 +9,10 @@ import { getErrorDetail } from "@/lib/errorDetail";
 import { toast } from "@/lib/toast";
 import { isoToLocalInput, localInputToIso } from "@/i18n/format";
 import { makeChapterSchema, makeModuleSchema } from "@/lib/validations/course";
-import { chapterEditHref } from "@/lib/courseStructure";
+import { chapterEditHref, reuseOrderNumbers } from "@/lib/courseStructure";
 import type { Chapter, Module } from "@/types";
-import type { useConfirm } from "@/components/ui/alert-dialog";
 import type { ChapterType } from "@/lib/chapterTypes";
 
-type ConfirmFn = ReturnType<typeof useConfirm>;
 
 /**
  * Encapsulates everything behind the Module editor page: loading the
@@ -27,7 +25,6 @@ type ConfirmFn = ReturnType<typeof useConfirm>;
 export function useModuleEditor(
   courseId: string | undefined,
   moduleId: string | undefined,
-  confirm: ConfirmFn,
 ) {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -128,7 +125,7 @@ export function useModuleEditor(
     // until a refresh. Same shape as ``addModule``'s ref-based guard.
     if (addingChapterRef.current) return;
     addingChapterRef.current = true;
-    const order = mod.chapters?.length ?? 0;
+    const order = mod.chapters?.length ?? 0;  // for the fallback title only
     // Default title counts existing chapters of the SAME type so
     // teachers see "Quiz 2" rather than "Chapter 5" when adding their
     // second quiz to a mostly-reading module. Falls back to the
@@ -149,7 +146,9 @@ export function useModuleEditor(
         // previous ``Chapter N`` literal stuck English into every
         // Russian-UI teacher's course tree until they renamed it.
         title: seededTitle,
-        order_index: order,
+        // No `order_index`: it is course-wide on the server, and the
+        // module's own count collided with lessons elsewhere in the course.
+        // Left out, the server puts the lesson at the course's tail.
         chapter_type: chapterType,
       });
       setMod((prev) =>
@@ -208,13 +207,7 @@ export function useModuleEditor(
 
   const deleteChapter = async (chId: string) => {
     if (!courseId || !moduleId) return;
-    const ok = await confirm({
-      title: t("lessons.confirmDelete.title"),
-      description: t("lessons.confirmDelete.description"),
-      confirmLabel: t("lessons.confirmDelete.confirm"),
-      tone: "destructive",
-    });
-    if (!ok) return;
+    // "Undo" after, not "are you sure?" before — as on the course page.
     try {
       await coursesService.deleteCourseChapter(courseId, chId);
       setMod((prev) =>
@@ -222,7 +215,35 @@ export function useModuleEditor(
           ? { ...prev, chapters: prev.chapters?.filter((c) => c.id !== chId) }
           : prev,
       );
-      toast({ title: t("lessons.toast.deleted"), variant: "success" });
+      toast({
+        title: t("lessons.toast.deleted"),
+        variant: "success",
+        duration: 8000,
+        action: {
+          label: t("lessons.toast.undo"),
+          onClick: () => {
+            void coursesService
+              .restoreCourseChapter(courseId, chId)
+              .then((restored) => {
+                // Into the module as it stands now, not a snapshot from
+                // before the delete, so edits made meanwhile survive.
+                setMod((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        chapters: [
+                          ...(prev.chapters ?? []).filter((c) => c.id !== restored.id),
+                          restored,
+                        ].sort((a, b) => a.order_index - b.order_index),
+                      }
+                    : prev,
+                );
+                toast({ title: t("lessons.toast.restored"), variant: "success" });
+              })
+              .catch(() => toast({ title: t("lessons.toast.restoreFailed"), variant: "destructive" }));
+          },
+        },
+      });
     } catch {
       toast({
         title: t("lessons.toast.deleteFailed"),
@@ -292,22 +313,19 @@ export function useModuleEditor(
       if (!moved) return;
       reordered.splice(to, 0, moved);
 
-      setMod((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          chapters: reordered.map((c, i) => ({ ...c, order_index: i })),
-        };
-      });
+      // The numbers the lessons already had, in the new order — see
+      // `reuseOrderNumbers` for why not 0..n-1.
+      const renumbered = reuseOrderNumbers(sorted, reordered);
+      setMod((prev) => (prev ? { ...prev, chapters: renumbered } : prev));
 
       setReordering(true);
       try {
         await Promise.all(
-          reordered
+          renumbered
             .map((c, i) =>
-              c.order_index !== i
+              c.order_index !== reordered[i]!.order_index
                 ? coursesService.updateCourseChapter(courseId, c.id, {
-                    order_index: i,
+                    order_index: c.order_index,
                   })
                 : null,
             )
