@@ -681,7 +681,10 @@ def add_student(
     # SQLite (test path) treats ``with_for_update`` as a no-op.
     # ``_visible_to`` as every other cohort route: without it a director of
     # one organization could add anyone to another's cohort — and so to its
-    # institute courses — and probe which emails are registered.
+    # institute courses. It does not stop a director learning whether an
+    # email is registered: the lookup below is platform-wide, so their own
+    # cohort still answers 404 for an unknown address and 201 for a known
+    # one. Closing that is a product decision (invite by email instead).
     cohort = _visible_to(db.query(Cohort), director).filter(Cohort.id == cohort_id).with_for_update().first()
     if not cohort:
         raise equip_error(

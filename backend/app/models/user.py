@@ -88,6 +88,15 @@ class User(Base):
             "time_zone_source IN ('default', 'detected', 'chosen')",
             name="profiles_time_zone_source_check",
         ),
+        CheckConstraint(
+            "birth_date IS NULL OR birth_date >= '1900-01-01'",
+            name="profiles_birth_date_floor_check",
+        ),
+        # Not mirrored, like ``organizations.slug``: ``profiles_country_code_check``
+        # is a regex (SQLite has no ``~``) and ``profiles_personal_text_lengths_check``
+        # uses ``char_length`` (SQLite has ``length``). A constraint the test
+        # database cannot build is worse than the two places that enforce it:
+        # Postgres, and the profile form. The backend never writes these fields.
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
