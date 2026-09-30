@@ -5,7 +5,11 @@ import type { Chapter, Course, Enrollment } from "@/types"
 
 /**
  * Which course the "Continue" card offers: the most recently opened one
- * that is not finished, else the most recently joined unfinished one.
+ * that is not finished; else — on a new device, where the recently opened
+ * list is empty — one already started, most recently joined first; else
+ * the most recently joined unfinished one. Without the middle step a
+ * student halfway through one course was sent to the untouched course
+ * they had joined last.
  *
  * "Not finished" reads both halves of progress, as the dashboard does:
  * `progress` counts only assessed work, so a course of readings sits at 0%
@@ -20,7 +24,12 @@ export function courseToContinue(enrollments: Enrollment[], recentIds: string[])
     const hit = open.find((e) => e.course_id === id)
     if (hit) return hit
   }
-  return [...open].sort((a, b) => b.enrolled_at.localeCompare(a.enrolled_at))[0] ?? null
+  const started = (e: Enrollment) => e.progress > 0 || e.chapters_read > 0
+  return (
+    [...open].sort(
+      (a, b) => Number(started(b)) - Number(started(a)) || b.enrolled_at.localeCompare(a.enrolled_at),
+    )[0] ?? null
+  )
 }
 
 /**

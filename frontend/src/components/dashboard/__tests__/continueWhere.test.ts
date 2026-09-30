@@ -36,6 +36,16 @@ describe("continue where you left off", () => {
     expect(courseToContinue(list, [])?.course_id).toBe("b")
   })
 
+  it("prefers a course already started to one joined later but untouched", () => {
+    const list = [
+      enrollment("started", { enrolled_at: "2026-08-01T00:00:00Z", chapters_read: 2 }),
+      enrollment("untouched", { enrolled_at: "2026-09-10T00:00:00Z" }),
+    ]
+    expect(courseToContinue(list, [])?.course_id).toBe("started")
+    // What the reader opened last still wins.
+    expect(courseToContinue(list, ["untouched"])?.course_id).toBe("untouched")
+  })
+
   it("counts reading, not only assessed work, as progress", () => {
     // 0% assessed, but two of three lessons read: still unfinished.
     expect(courseToContinue([enrollment("a", { progress: 0, chapters_read: 2 })], [])?.course_id).toBe("a")
