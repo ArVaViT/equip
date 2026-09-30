@@ -10,13 +10,19 @@ import { toast } from "@/lib/toast"
 import type { GradeSheet } from "@/types"
 import { printedResult } from "./resultLabel"
 import { formatPercent } from "@/i18n/number"
+import { zonedParts } from "@/i18n/timeZone"
 import "./print.css"
 
-/** `dd.mm.yyyy` — the form every Russian-language document uses. */
+/**
+ * `dd.mm.yyyy` — the form every Russian-language document uses — on the
+ * reader's calendar, so the paper carries the day the screens show.
+ */
 function formatDate(iso: string | null): string {
   if (!iso) return "—"
   const d = new Date(iso)
-  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`
+  if (Number.isNaN(d.getTime())) return "—"
+  const p = zonedParts(d)
+  return `${String(p.day).padStart(2, "0")}.${String(p.month).padStart(2, "0")}.${p.year}`
 }
 
 /**

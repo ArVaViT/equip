@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input"
 import { CalendarPopover } from "@/components/ui/CalendarPopover"
 import { startOfMonth, ymdKey } from "@/lib/calendar"
 import { cn } from "@/lib/utils"
-import { getDisplayTimeZone, timeZoneLabel, zonedWallTimeToUtc } from "@/i18n/timeZone"
+import { getDisplayTimeZone, timeZoneLabel, zonedToday, zonedWallTimeToUtc } from "@/i18n/timeZone"
 
 interface Props {
   /** ``"YYYY-MM-DDTHH:MM"`` string — identical contract to the native
@@ -106,7 +106,7 @@ export function DateTimePicker({
       className={className}
       triggerLabel={value ? formatLong(value, i18n.language) : placeholder ?? t("dateTimePicker.placeholder")}
       triggerMuted={!value}
-      initialMonth={startOfMonth(parsed?.date ?? new Date())}
+      initialMonth={startOfMonth(parsed?.date ?? zonedToday())}
       renderDay={(date, { isToday }) => {
         const selected = !!selectedYmd && ymdKey(date) === selectedYmd
         return {
