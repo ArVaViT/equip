@@ -272,3 +272,27 @@ class TestWorkerTickSweepHasAClock:
         budget = seen["budget"]
         assert isinstance(budget, TranslationBudget)
         assert budget.seconds == settings.TRANSLATION_WORKER_BUDGET_SECONDS
+
+
+class TestWorkerTickIsCounted:
+    def test_every_tick_is_counted_by_outcome(self, db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A night that produced nothing used to leave only a WARNING and a
+        200 behind; the count by outcome is what a monitor can watch."""
+        from pydantic import SecretStr
+
+        from app.api.v1 import internal_daily_challenge_worker as W
+        from app.core.config import settings
+        from app.services.daily_challenge.translate import SweepReport
+        from app.services.translation.orchestrator import OrchestratorReport
+
+        monkeypatch.setattr(settings, "GEMINI_API_KEY", SecretStr("test-key"))
+        monkeypatch.setattr(W, "replenish_one_question", lambda db, client: R.ReplenishOutcome(status="no_survivors"))
+        monkeypatch.setattr(
+            W,
+            "translate_pending_questions",
+            lambda db, **_: SweepReport(questions=0, rows=OrchestratorReport()),
+        )
+        counted: list[tuple[str, dict[str, object]]] = []
+        monkeypatch.setattr(W, "increment", lambda name, **tags: counted.append((name, tags)))
+        W._run_one_tick(db)
+        assert counted == [("equip.daily_challenge.replenish_total", {"status": "no_survivors"})]
