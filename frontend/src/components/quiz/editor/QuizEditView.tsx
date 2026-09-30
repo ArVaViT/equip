@@ -33,6 +33,8 @@ interface Props {
   deleting: boolean
   /** The draft differs from what is saved: said in the action bar. */
   dirty?: boolean
+  /** Held at the bottom of the screen (the lesson editor), or in place. */
+  stickyActions?: boolean
   onDelete: () => void
 }
 
@@ -62,6 +64,7 @@ export function QuizEditView({
   answeredQuestionIds = NONE,
   deleting,
   dirty = false,
+  stickyActions = true,
   onDelete,
 }: Props) {
   const { t } = useTranslation()
@@ -128,7 +131,13 @@ export function QuizEditView({
       {/* ``-mx-5 pl-5`` matches the card's padding, so the bar meets its
           edges; ``pr-20`` keeps every button clear of the round
           scroll-to-top button that sits in the same corner. */}
-      <div className="sticky bottom-[calc(57px+env(safe-area-inset-bottom))] z-10 -mx-5 flex flex-wrap items-center gap-2 border-t border-edge bg-surface py-3 pl-5 pr-20 md:bottom-0">
+      <div
+        className={
+          stickyActions
+            ? "sticky bottom-[calc(57px+env(safe-area-inset-bottom))] z-10 -mx-5 flex flex-wrap items-center gap-2 border-t border-edge bg-surface py-3 pl-5 pr-20 md:bottom-0"
+            : "flex flex-wrap items-center gap-2 pt-2"
+        }
+      >
         <Button size="sm" onClick={onSave} disabled={saving}>
           {saving ? (
             <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" strokeWidth={1.75} />

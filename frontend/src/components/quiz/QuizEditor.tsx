@@ -28,6 +28,9 @@ interface QuizEditorProps {
   onDirtyChange?: (dirty: boolean) => void
   /** The lesson's name: a new quiz starts with it. */
   defaultTitle?: string
+  /** Inside a lesson's block list: the Save row stays in place instead of
+   *  sticking to the screen, where two open blocks would stack two bars. */
+  embedded?: boolean
 }
 
 export default function QuizEditor({
@@ -36,6 +39,7 @@ export default function QuizEditor({
   onQuizSaved,
   onDirtyChange,
   defaultTitle,
+  embedded = false,
 }: QuizEditorProps) {
   const confirm = useConfirm()
   const { t } = useTranslation()
@@ -267,6 +271,7 @@ export default function QuizEditor({
           deleting={deleting}
           onDelete={handleDelete}
           dirty={draft.isDirty}
+          stickyActions={!embedded}
         />
       )}
     </div>

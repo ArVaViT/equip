@@ -150,6 +150,7 @@ export function BlockRow({
             <QuizEditor
               chapterId={chapterId}
               onQuizSaved={(quizId) => updateField("quiz_id", quizId)}
+              embedded
             />
           )}
           {block.block_type === "assignment" && (
