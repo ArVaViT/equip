@@ -116,6 +116,11 @@
     }
   },
   "dashboard": {
+    "continue": {
+      "eyebrow": "Continue",
+      "position": "lesson {{current}} of {{total}}",
+      "cta": "Continue"
+    },
     "myCourses": "My Courses",
     "loadCoursesError": "Could not load your courses. Please try refreshing the page.",
     "course": "Course",

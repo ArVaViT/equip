@@ -116,6 +116,11 @@
     }
   },
   "dashboard": {
+    "continue": {
+      "eyebrow": "Продовжити",
+      "position": "урок {{current}} з {{total}}",
+      "cta": "Продовжити"
+    },
     "myCourses": "Мої курси",
     "loadCoursesError": "Не вдалося завантажити ваші курси. Спробуйте оновити сторінку.",
     "course": "Курс",

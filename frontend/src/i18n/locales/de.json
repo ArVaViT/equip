@@ -116,6 +116,11 @@
     }
   },
   "dashboard": {
+    "continue": {
+      "eyebrow": "Weiterlernen",
+      "position": "Lektion {{current}} von {{total}}",
+      "cta": "Weiter"
+    },
     "myCourses": "Meine Kurse",
     "loadCoursesError": "Ihre Kurse konnten nicht geladen werden. Bitte laden Sie die Seite neu.",
     "course": "Kurs",
