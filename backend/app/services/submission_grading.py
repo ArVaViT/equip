@@ -21,7 +21,6 @@ from fastapi import status as http_status
 from app.core.errors import ErrorCode, equip_error
 from app.core.i18n import t
 from app.services.audit_service import log_action
-from app.services.email.graded import send_graded_email
 from app.services.notification_service import create_notification, notification_text
 from app.services.translation.resolve_for_display import fetch_cv_entity_texts_with_fallback
 from app.services.user_locale import preferred_locale_of
@@ -122,17 +121,3 @@ def apply_grade(
         str(submission.id),
         details={"grade": grade, "status": new_status, "source": source},
     )
-    # The bell is read only by someone already in the app; this reaches a
-    # student who is not. After the commit and never raising: the mark is
-    # saved whether or not the mail gets out.
-    if new_status in ("graded", "returned"):
-        send_graded_email(
-            db,
-            submission=submission,
-            assignment=assignment,
-            assignment_title=title,
-            locale=reader_locale,
-            teacher_id=teacher_id,
-            grade=grade,
-            returned=new_status == "returned",
-        )

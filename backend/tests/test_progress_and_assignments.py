@@ -1,4 +1,3 @@
-import re
 import uuid
 
 from fastapi.testclient import TestClient
@@ -412,79 +411,6 @@ class TestGradeSubmission:
         assert body["grade"] == 8
         assert body["feedback"] == "Nice"
         assert body["status"] == "graded"
-
-    def _graded(self, client, student_client, db, teacher, *, status: str, sends: list, fail_build: bool = False):
-        from unittest.mock import patch
-
-        from ._cv_helpers import make_assignment_with_text
-
-        _course, _mod, chapter = _seed_course_graph(db)
-        asg = make_assignment_with_text(db, chapter_id=chapter.id, title="Romans 8", max_score=10)
-        aid = asg.id
-        db.commit()
-        sub = student_client.post(
-            f"/api/v1/assignments/{aid}/submit",
-            json={"content": "Answer", "declaration": {"ai_use": "none", "statement": "Я написал эту работу сам."}},
-        )
-        sid = sub.json()["id"]
-        app.dependency_overrides[get_current_user] = lambda: teacher
-        app.dependency_overrides[get_optional_user] = lambda: teacher
-
-        def record(**kwargs):
-            sends.append(kwargs)
-
-        build = "app.services.email.graded.build_graded_message"
-        with patch("app.services.email.graded.send_email", side_effect=record):
-            if fail_build:
-                with patch(build, side_effect=RuntimeError("renderer broke")):
-                    return client.put(
-                        f"/api/v1/assignments/submissions/{sid}/grade",
-                        json={"grade": 8, "feedback": "Good", "status": status},
-                    )
-            return client.put(
-                f"/api/v1/assignments/submissions/{sid}/grade",
-                json={"grade": 8, "feedback": "Good", "status": status},
-            )
-
-    def test_a_marked_student_hears_back_by_mail(self, client, student_client, db: Session, teacher: User):
-        """The bell is read only in the app; 14 of 61 notifications ever were.
-        The mark now reaches the student by mail too, in their language."""
-        sends: list = []
-        r = self._graded(client, student_client, db, teacher, status="graded", sends=sends)
-        assert r.status_code == 200, r.text
-        assert len(sends) == 1
-        mail = sends[0]
-        student = db.get(User, STUDENT_ID)
-        assert mail["to"] == student.email
-        assert mail["kind"] == "assignment_graded"
-        assert "Romans 8" in mail["subject"]
-        assert "8" in mail["text"] and "10" in mail["text"]
-        # One link, to the lesson where the feedback is.
-        assert re.search(r"/courses/[^/\s]+/chapters/[^/\s]+", mail["text"])
-
-    def test_work_sent_back_says_so_and_shows_no_mark(self, client, student_client, db: Session, teacher: User):
-        sends: list = []
-        r = self._graded(client, student_client, db, teacher, status="returned", sends=sends)
-        assert r.status_code == 200, r.text
-        assert len(sends) == 1
-        subject = sends[0]["subject"]
-        assert "Romans 8" in subject
-        # Whatever the student's language, the returned subject is not the graded one.
-        from app.core.i18n import t
-        from app.services.user_locale import preferred_locale_of
-
-        locale = preferred_locale_of(db, STUDENT_ID)
-        assert subject == t(locale, "email.graded.subject.returned", title="Romans 8")
-        assert t(locale, "email.graded.fact.grade") not in sends[0]["text"]
-
-    def test_a_mail_that_cannot_be_built_does_not_cost_the_mark(
-        self, client, student_client, db: Session, teacher: User
-    ):
-        sends: list = []
-        r = self._graded(client, student_client, db, teacher, status="graded", sends=sends, fail_build=True)
-        assert r.status_code == 200, r.text
-        assert r.json()["grade"] == 8
-        assert sends == []
 
     def test_grade_exceeds_max_score(
         self,
