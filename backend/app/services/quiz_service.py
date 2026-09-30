@@ -181,6 +181,15 @@ def persist_answers(
                 message=f"Unknown question_id: {ans.question_id}",
                 context={"resource_type": "quiz_question", "question_id": str(ans.question_id)},
             )
+        if question.id in answered:
+            # The schema refuses this; a caller that skips it must not be
+            # able to score one question twice.
+            raise equip_error(
+                ErrorCode.VALIDATION_FAILED,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message=f"Question answered more than once: {ans.question_id}",
+                context={"resource_type": "quiz_question", "question_id": str(ans.question_id)},
+            )
         answered.add(question.id)
         is_correct, points_earned = grade_auto_answer(question, ans.selected_option_id, options_by_id)
         total_score += points_earned

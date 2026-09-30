@@ -2036,3 +2036,16 @@ def test_a_student_still_does_not_get_the_answer_key(student_client: TestClient,
     student = student_client.get("/api/v1/quizzes/chapter/ch-1")
     assert student.status_code == 200
     assert all("is_correct" not in o for q in student.json()["questions"] for o in q["options"])
+
+
+def test_one_question_answered_five_times_is_refused_not_scored_five_times(student_client: TestClient, db: Session):
+    """The right option sent five times for one question used to earn five
+    times its points — past the maximum, and a pass (2026-09-30 audit)."""
+    _seed_course_with_enrollment(db)
+    quiz, questions, opts = _seed_quiz_with_questions(db)
+    same = {"question_id": str(questions[0].id), "selected_option_id": str(opts["q1_correct"])}
+
+    resp = student_client.post(f"/api/v1/quizzes/{quiz.id}/submit", json={"answers": [same] * 5})
+
+    assert resp.status_code == 422
+    assert db.query(QuizAttempt).filter(QuizAttempt.quiz_id == quiz.id).count() == 0

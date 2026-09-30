@@ -386,6 +386,32 @@ def verify_chapter_access(db: Session, chapter_id: str, user: User) -> Chapter:
     return chapter
 
 
+def refuse_if_chapter_locked(db: Session, chapter_id: str, user: User, course: Course | None = None) -> None:
+    """The lock on the write paths too — submitting a quiz or an assignment,
+    marking a lesson read.
+
+    ``verify_chapter_access`` honoured the lock only where a lesson is read,
+    so a student could submit the work of a lesson still closed to them and
+    have it count (2026-09-30 audit). Same rule and the same 403 as the read
+    path; the course's owner and platform staff pass, as they do there.
+    """
+    if user.role == UserRole.ADMIN.value:
+        return
+    chapter = db.get(Chapter, chapter_id)
+    if chapter is None or not chapter.is_locked:
+        return
+    owner = course if course is not None else db.get(Course, chapter.course_id)
+    if owner is not None and str(owner.created_by) == str(user.id):
+        return
+    if not chapter_is_open_to(db, chapter, user.id):
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="This lesson is not open yet",
+            context={"resource_type": "chapter", "resource_id": chapter_id},
+        )
+
+
 def verify_chapter_owner(db: Session, chapter_id: str, teacher: User | str) -> tuple[Chapter, str]:
     """Resolve chapter -> course and verify ownership.
 

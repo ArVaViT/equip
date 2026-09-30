@@ -434,6 +434,21 @@ def attach_course(
     all sharing the same ``cohort_id``)."""
     cohort = _get_or_404(db, cohort_id, director)
     course = _course_or_404(db, body.course_id)
+    # An institute course belongs to its organization. Attaching it to a
+    # cohort of another one would enrol that cohort's students in it and
+    # step round its invitations. 404, as the catalog answers, so a course
+    # id is not confirmed to a director who may not see it.
+    if (
+        course.access_mode == "institute"
+        and director.role != UserRole.ADMIN.value
+        and course.organization_id != organization_of(director)
+    ):
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message=f"Course '{body.course_id}' not found",
+            context={"resource_type": "course", "resource_id": body.course_id},
+        )
 
     # Already attached? Idempotent.
     existing = (
@@ -664,7 +679,10 @@ def add_student(
     # add_student calls — without this, two admins seeing
     # ``current_count == max_students - 1`` can both succeed and overshoot.
     # SQLite (test path) treats ``with_for_update`` as a no-op.
-    cohort = db.query(Cohort).filter(Cohort.id == cohort_id).with_for_update().first()
+    # ``_visible_to`` as every other cohort route: without it a director of
+    # one organization could add anyone to another's cohort — and so to its
+    # institute courses — and probe which emails are registered.
+    cohort = _visible_to(db.query(Cohort), director).filter(Cohort.id == cohort_id).with_for_update().first()
     if not cohort:
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,

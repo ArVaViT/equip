@@ -166,3 +166,47 @@ class TestWhoIsNotGated:
         shut = _chapter(db, order=0, locked=True)
 
         assert verify_chapter_access(db, shut.id, admin).id == shut.id
+
+
+class TestTheLockOnTheWritePaths:
+    """The lock was honoured only where a lesson is read: a student could
+    still submit its quiz or assignment, or mark it read, and have it count
+    (2026-09-30 audit)."""
+
+    def test_a_locked_lesson_cannot_be_marked_read(
+        self, db: Session, course: Course, student: User, student_client
+    ) -> None:
+        _chapter(db, order=0, locked=False, kind="quiz")
+        closed = _chapter(db, order=1, locked=True)
+        _enrol(db, student)
+        r = student_client.put(f"/api/v1/progress/chapter/{closed.id}/read")
+        assert r.status_code == 403
+        assert db.query(ChapterProgress).filter(ChapterProgress.chapter_id == closed.id).count() == 0
+
+    def test_it_can_once_the_lesson_before_is_done(
+        self, db: Session, course: Course, student: User, student_client
+    ) -> None:
+        before = _chapter(db, order=0, locked=False, kind="quiz")
+        closed = _chapter(db, order=1, locked=True)
+        _enrol(db, student)
+        _finish(db, student, before)
+        assert student_client.put(f"/api/v1/progress/chapter/{closed.id}/read").status_code == 200
+
+    def test_a_locked_lessons_quiz_cannot_be_submitted(
+        self, db: Session, course: Course, student: User, student_client
+    ) -> None:
+        from tests._cv_helpers import make_quiz_option_with_text, make_quiz_question_with_text, make_quiz_with_text
+
+        _chapter(db, order=0, locked=False, kind="quiz")
+        closed = _chapter(db, order=1, locked=True, kind="quiz")
+        _enrol(db, student)
+        quiz = make_quiz_with_text(db, chapter_id=closed.id, title="Тест")
+        q = make_quiz_question_with_text(db, quiz_id=quiz.id, question_text="2+2?", order_index=0)
+        right = make_quiz_option_with_text(db, question_id=q.id, option_text="4", is_correct=True, order_index=0)
+        make_quiz_option_with_text(db, question_id=q.id, option_text="5", is_correct=False, order_index=1)
+        db.commit()
+        r = student_client.post(
+            f"/api/v1/quizzes/{quiz.id}/submit",
+            json={"answers": [{"question_id": str(q.id), "selected_option_id": str(right.id)}]},
+        )
+        assert r.status_code == 403

@@ -124,7 +124,8 @@ class QuizExtraAttempt(Base):
 class QuizAnswer(Base):
     __tablename__ = "quiz_answers"
     __table_args__ = (
-        Index("ix_quiz_answers_attempt_question", "attempt_id", "question_id"),
+        # Unique: one answer per question per attempt (see the 2026-09-30 migration).
+        Index("ix_quiz_answers_attempt_question", "attempt_id", "question_id", unique=True),
         Index("ix_quiz_answers_question_id", "question_id"),
     )
 

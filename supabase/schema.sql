@@ -2408,7 +2408,7 @@ CREATE INDEX ix_profiles_organization_id ON public.profiles USING btree (organiz
 -- Name: ix_quiz_answers_attempt_question; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_quiz_answers_attempt_question ON public.quiz_answers USING btree (attempt_id, question_id);
+CREATE UNIQUE INDEX ix_quiz_answers_attempt_question ON public.quiz_answers USING btree (attempt_id, question_id);
 
 
 --

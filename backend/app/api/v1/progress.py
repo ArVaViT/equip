@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import (
     get_current_user,
     lookup_enrollment,
+    refuse_if_chapter_locked,
     require_teacher,
     verify_chapter_owner,
     verify_course_owner,
@@ -189,6 +190,7 @@ def mark_chapter_read(
             message="You must be enrolled in this course",
             context={"resource_type": "progress", "course_id": course_id},
         )
+    refuse_if_chapter_locked(db, chapter_id, current_user, course)
 
     progress = (
         db.query(ChapterProgress)

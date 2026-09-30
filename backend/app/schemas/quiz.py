@@ -262,6 +262,22 @@ class QuizSubmitAnswer(RequestModel):
 class QuizSubmitRequest(RequestModel):
     answers: list[QuizSubmitAnswer] = Field(..., min_length=1, max_length=200)
 
+    @model_validator(mode="after")
+    def _one_answer_per_question(self) -> "QuizSubmitRequest":
+        # Each answer was scored as it came: the right option sent five
+        # times for one question earned five times its points, past the
+        # maximum, and ``passed`` with it (2026-09-30 audit).
+        seen: set[UUID] = set()
+        for answer in self.answers:
+            if answer.question_id in seen:
+                raise PydanticCustomError(
+                    "quiz_duplicate_answer",
+                    "Question {question_id} is answered more than once",
+                    {"question_id": str(answer.question_id)},
+                )
+            seen.add(answer.question_id)
+        return self
+
 
 class QuizAnswerResult(BaseModel):
     model_config = ConfigDict(from_attributes=True)
