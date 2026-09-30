@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/context/useAuth"
 import { activeIntlTag } from "@/i18n/config"
+import { zonedDayKey } from "@/i18n/timeZone"
 import { countriesSorted } from "@/lib/countries"
 import { toast } from "@/lib/toast"
 import { usersService } from "@/services/users"
@@ -35,10 +36,9 @@ function formOf(user: User): Form {
   }
 }
 
-/** Today as the reader's calendar has it, for the date field's upper bound. */
+/** Today on the reader's calendar (the profile's zone), for the date field's upper bound. */
 function todayKey(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+  return zonedDayKey(new Date())
 }
 
 /**

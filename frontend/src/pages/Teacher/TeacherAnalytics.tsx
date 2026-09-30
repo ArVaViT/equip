@@ -8,6 +8,7 @@ import { coursesService } from "@/services/courses"
 import { ArrowLeft, Users, TrendingUp, Award, Calendar, BarChart3, ChevronRight, ClipboardList, UserCheck } from "lucide-react"
 import { EmptyState, ErrorState, StatCard } from "@/components/patterns"
 import { formatDate } from "@/i18n/format"
+import { zonedDayKey } from "@/i18n/timeZone"
 import { useUserTour } from "@/hooks/useUserTour"
 import { analyticsSteps } from "@/lib/tourSteps"
 
@@ -78,12 +79,13 @@ export default function TeacherAnalytics() {
     return () => { cancelled = true }
   }, [courseId, t])
 
+  // "This month" on the reader's calendar, the one the dates below are shown in.
+  const thisMonth = zonedDayKey(new Date()).slice(0, 7)
   const enrolledThisMonth = analytics?.enrollments.filter((e) => {
     if (!e.enrolled_at) return false
     const d = new Date(e.enrolled_at)
     if (isNaN(d.getTime())) return false
-    const now = new Date()
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    return zonedDayKey(d).slice(0, 7) === thisMonth
   }).length ?? 0
 
   if (loading) {

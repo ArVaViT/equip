@@ -5,7 +5,7 @@ import { I18nextProvider } from "react-i18next"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 import i18n from "@/i18n/config"
-import { setDisplayTimeZone } from "@/i18n/timeZone"
+import { setDisplayTimeZone, zonedDayKey } from "@/i18n/timeZone"
 import type { User } from "@/types"
 
 const updateProfile = vi.fn()
@@ -81,6 +81,17 @@ describe("personal details", () => {
       church: "Благодать",
     })
     expect(payload).not.toHaveProperty("phone")
+  })
+
+  it("bounds the birth date by today in the profile's zone, not the browser's", () => {
+    // UTC+14: for most of the day its date is not the test machine's.
+    setDisplayTimeZone("Pacific/Kiritimati")
+    try {
+      render(<PersonalDetailsCard />, { wrapper: Wrapper })
+      expect(screen.getByLabelText("Дата рождения")).toHaveAttribute("max", zonedDayKey(new Date(), "Pacific/Kiritimati"))
+    } finally {
+      setDisplayTimeZone(null)
+    }
   })
 
   it("refuses a birth date in the future before asking the server", async () => {
