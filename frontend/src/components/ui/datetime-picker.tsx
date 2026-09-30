@@ -94,8 +94,8 @@ export function DateTimePicker({
   const hh = clampHH(parsed?.hh ?? defaultTime.hh)
   const mm = clampMM(parsed?.mm ?? defaultTime.mm)
 
-  const setHH = (next: number) => onChange(compose(parsed?.date ?? new Date(), next, mm))
-  const setMM = (next: number) => onChange(compose(parsed?.date ?? new Date(), hh, next))
+  const setHH = (next: number) => onChange(compose(parsed?.date ?? zonedToday(), next, mm))
+  const setMM = (next: number) => onChange(compose(parsed?.date ?? zonedToday(), hh, next))
 
   return (
     <CalendarPopover
