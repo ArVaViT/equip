@@ -325,6 +325,43 @@ describe("a quiz nobody could pass", () => {
     expect(deleteQuiz).not.toHaveBeenCalled()
   })
 
+  it("corrects the quiz it just created instead of building another", async () => {
+    // A new quiz used to keep its client-side ids after the first save, so
+    // the second save rebuilt the whole quiz.
+    const user = await renderNewQuizWithOneQuestion()
+    createQuiz.mockResolvedValue({
+      ...savedQuiz(),
+      id: "quiz-9",
+      title: "Бытие 1",
+      questions: [
+        {
+          id: "srv-q",
+          quiz_id: "quiz-9",
+          question_text: "Сколько дней творения?",
+          question_type: "multiple_choice",
+          order_index: 0,
+          points: 1,
+          min_words: null,
+          options: [
+            { id: "srv-o1", question_id: "srv-q", option_text: "Шесть", is_correct: true, order_index: 0 },
+            { id: "srv-o2", question_id: "srv-q", option_text: "Семь", is_correct: false, order_index: 1 },
+          ],
+        },
+      ],
+    })
+    updateQuizQuestion.mockResolvedValue({ ...savedQuiz(), id: "quiz-9" })
+    await user.click(screen.getAllByRole("radio", { name: "Отметить как правильный" })[0]!)
+    await user.click(saveButton())
+    await waitFor(() => expect(createQuiz).toHaveBeenCalledTimes(1))
+
+    await user.type(screen.getByDisplayValue("Сколько дней творения?"), "!")
+    await user.click(saveButton())
+
+    await waitFor(() => expect(updateQuizQuestion).toHaveBeenCalled())
+    expect(updateQuizQuestion.mock.calls[0]![0]).toBe("srv-q")
+    expect(createQuiz).toHaveBeenCalledTimes(1)
+  })
+
   it("shows a 422 as a Russian sentence naming the field, not pydantic's English", async () => {
     const user = await renderNewQuizWithOneQuestion()
     createImpl = async () => {
