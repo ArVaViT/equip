@@ -1362,6 +1362,13 @@
     "draftRestored": "Draft restored from this device"
   },
   "certificates": {
+    "share": {
+      "share": "Share",
+      "linkedIn": "Add to LinkedIn",
+      "text": "I have completed the course “{{course}}”. The certificate can be verified here:",
+      "copied": "Verification link copied",
+      "copyFailed": "Could not copy the link"
+    },
     "backToCourses": "Back to courses",
     "title": "My Certificates",
     "eyebrow": "Achievements",

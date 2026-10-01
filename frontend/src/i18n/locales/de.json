@@ -1362,6 +1362,13 @@
     "draftRestored": "Entwurf von diesem Gerät wiederhergestellt"
   },
   "certificates": {
+    "share": {
+      "share": "Teilen",
+      "linkedIn": "Zu LinkedIn hinzufügen",
+      "text": "Ich habe den Kurs „{{course}}“ abgeschlossen. Das Zertifikat lässt sich hier prüfen:",
+      "copied": "Prüflink kopiert",
+      "copyFailed": "Link konnte nicht kopiert werden"
+    },
     "backToCourses": "Zurück zu den Kursen",
     "title": "Meine Zertifikate",
     "eyebrow": "Erreichtes",

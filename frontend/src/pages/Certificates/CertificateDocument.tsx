@@ -9,6 +9,7 @@ import { getErrorDetail } from "@/lib/errorDetail"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import { getDisplayTimeZone } from "@/i18n/timeZone"
 import type { Certificate } from "@/types"
+import { CertificateShare } from "./CertificateShare"
 import "./certificate-print.css"
 
 /**
@@ -108,10 +109,13 @@ export default function CertificateDocument() {
             {t("certificates.document.back")}
           </Button>
         </Link>
-        <Button size="sm" onClick={() => window.print()}>
-          <Printer className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-          {t("certificates.document.print")}
-        </Button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {cert.certificate_number && <CertificateShare cert={cert} />}
+          <Button size="sm" onClick={() => window.print()}>
+            <Printer className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+            {t("certificates.document.print")}
+          </Button>
+        </div>
       </div>
 
       <article className="certificate-sheet">
