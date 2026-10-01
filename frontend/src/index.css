@@ -515,6 +515,27 @@
       width: 100%;
     }
   }
+  /* A progress bar that fills from empty on arrival. Transform, not width:
+     the compositor moves it without laying the row out again. Was a
+     motion.div on the dashboard, which made the whole animation library part
+     of the first screen a student opens every day. */
+  @keyframes fill-in {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+  .animate-fill-in {
+    transform-origin: left center;
+    animation: fill-in var(--motion-panel) cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fill-in {
+      animation: none;
+    }
+  }
   /* Password-reset success rail — named alias for reduced-motion parity */
   .animate-grow-bar {
     width: 0;
