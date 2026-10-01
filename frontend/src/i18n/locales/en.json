@@ -1083,6 +1083,11 @@
     }
   },
   "review": {
+    "teaser": {
+      "title": "This week's review is ready",
+      "count_one": "{{count}} question",
+      "count_other": "{{count}} questions"
+    },
     "checkFailed": "Could not check — please try again.",
     "title": "This week's review",
     "hint_one": "{{count}} question from what you have done — for you; it does not affect grades.",

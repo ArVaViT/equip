@@ -15,10 +15,13 @@ from sqlalchemy.orm import Session  # noqa: TC002
 from app.api.dependencies import get_current_user, get_live_course_or_404, lookup_enrollment
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.models.course import Course, CourseStatus
+from app.models.enrollment import Enrollment
 from app.models.quiz import QuizOption, QuizQuestion
 from app.models.user import User  # noqa: TC001
 from app.schemas.locale import normalize_locale
 from app.services.review_questions import pick_review_questions, question_may_be_reviewed
+from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
 router = APIRouter(prefix="/review", tags=["review"])
 
@@ -32,6 +35,13 @@ class ReviewQuestionOut(BaseModel):
     id: str
     question_text: str
     options: list[ReviewOptionOut]
+
+
+class ReviewWaiting(BaseModel):
+    course_id: str
+    #: In the reader's language; ``None`` when the course has no title in it.
+    course_title: str | None
+    count: int
 
 
 class ReviewAnswer(BaseModel):
@@ -76,6 +86,43 @@ def this_weeks_review(
         )
         for q in picked
     ]
+
+
+@router.get("/me", response_model=list[ReviewWaiting])
+def reviews_waiting(
+    response: Response,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[ReviewWaiting]:
+    """Which of the reader's courses have a review this week, and how long it is — for the home page."""
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Vary"] = "Accept-Language"
+    locale = normalize_locale(accept_language, fallback="en")
+    courses = (
+        db.query(Course)
+        .join(Enrollment, Enrollment.course_id == Course.id)
+        .filter(
+            Enrollment.user_id == current_user.id,
+            Course.status == CourseStatus.PUBLISHED,
+            Course.deleted_at.is_(None),
+        )
+        .distinct()
+        .all()
+    )
+    waiting = []
+    for course in courses:
+        picked = pick_review_questions(
+            db,
+            user_id=current_user.id,
+            course_id=course.id,
+            display_locale=locale,
+            source_locale=course.source_locale or "en",
+        )
+        if picked:
+            waiting.append((course.id, len(picked)))
+    titles = fetch_course_titles_by_id(db, [c for c, _ in waiting], display_locale=locale) if waiting else {}
+    return [ReviewWaiting(course_id=c, course_title=titles.get(c) or None, count=n) for c, n in waiting]
 
 
 @router.post("/check", response_model=ReviewVerdict)

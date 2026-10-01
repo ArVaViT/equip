@@ -46,6 +46,12 @@ export function WeeklyReview({ courseId }: { courseId: string }) {
     setFailed(false)
   }, [data])
 
+  // Arriving from the home page's "review is ready" link.
+  const arrivedFor = (data?.length ?? 0) > 0 && window.location.hash === "#weekly-review"
+  useEffect(() => {
+    if (arrivedFor) document.getElementById("weekly-review")?.scrollIntoView({ block: "start" })
+  }, [arrivedFor])
+
   useEffect(() => {
     if (!started) return
     ;(index < (data?.length ?? 0) ? questionRef : resultRef).current?.focus()
@@ -78,7 +84,7 @@ export function WeeklyReview({ courseId }: { courseId: string }) {
   }
 
   return (
-    <section aria-labelledby="weekly-review-heading" className="mt-6 rounded-md border border-edge p-4">
+    <section id="weekly-review" aria-labelledby="weekly-review-heading" className="mt-6 scroll-mt-20 rounded-md border border-edge p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 id="weekly-review-heading" className="flex items-center gap-2 font-serif text-lg font-semibold">

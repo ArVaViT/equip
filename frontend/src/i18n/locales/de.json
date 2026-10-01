@@ -1083,6 +1083,11 @@
     }
   },
   "review": {
+    "teaser": {
+      "title": "Die Wiederholung der Woche ist bereit",
+      "count_one": "{{count}} Frage",
+      "count_other": "{{count}} Fragen"
+    },
     "checkFailed": "Prüfung fehlgeschlagen — bitte erneut versuchen.",
     "title": "Wiederholung der Woche",
     "hint_one": "{{count}} Frage aus dem Gelernten — für Sie, ohne Einfluss auf Noten.",

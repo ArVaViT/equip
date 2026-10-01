@@ -176,3 +176,12 @@ def test_a_test_that_turns_a_week_old_mid_week_waits_for_monday(db: Session, tea
     )
     assert [q.id for q in friday] == [q.id for q in thursday]
     assert not any(q.question_text.startswith("mid ") for q in friday)
+
+
+def test_the_home_page_learns_which_courses_have_a_review(
+    student_client: TestClient, db: Session, teacher: User, student: User
+) -> None:
+    course, *_ = _setup(db)
+    r = student_client.get("/api/v1/review/me")
+    assert r.status_code == 200, r.text
+    assert r.json() == [{"course_id": course.id, "course_title": "Acts", "count": 5}]

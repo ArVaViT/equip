@@ -15,6 +15,7 @@ import { TodayCard } from "@/components/dashboard/TodayCard"
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard"
 import { RecentlyViewedRow } from "@/components/dashboard/RecentlyViewedRow"
 import { ContinueCard } from "@/components/dashboard/ContinueCard"
+import { WeeklyReviewTeaser } from "@/components/review/WeeklyReviewTeaser"
 import { CourseThumb } from "@/components/course/CourseThumb"
 import { TeacherCoursesCard } from "@/components/dashboard/TeacherCoursesCard"
 import { TeacherAtRiskCard } from "@/components/dashboard/TeacherAtRiskCard"
@@ -343,6 +344,7 @@ export default function DashboardPage() {
           {/* Who to write to this week — teachers only, nothing when nobody. */}
           <TeacherAtRiskCard />
           <ContinueCard />
+          <WeeklyReviewTeaser />
           <RecentlyViewedRow />
           <div className="min-h-0 flex-1">
             <MyCoursesSection onTourStart={startTour} />
