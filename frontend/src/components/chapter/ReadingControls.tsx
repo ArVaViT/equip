@@ -24,7 +24,7 @@ export function ReadingControls({ prefs, onChange }: { prefs: ReadingPrefs; onCh
           A<span className="text-xs">a</span>
         </span>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-64 space-y-4">
+      <PopoverContent align="end" className="w-64 space-y-4" aria-label={t("chapter.reading.label")}>
         <div role="group" aria-label={t("chapter.reading.size")}>
           <p className="mb-2 text-xs font-medium text-ink-muted">{t("chapter.reading.size")}</p>
           <div className="grid grid-cols-4 gap-1">

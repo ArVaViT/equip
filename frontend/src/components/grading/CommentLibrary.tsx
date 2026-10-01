@@ -48,7 +48,7 @@ export function CommentLibrary({ current, onInsert }: { current: string; onInser
         <Library className="h-3 w-3" strokeWidth={1.75} aria-hidden />
         {t("grading.library.open", { count: library.length })}
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 space-y-2 p-3">
+      <PopoverContent align="end" className="w-80 space-y-2 p-3" aria-label={t("grading.library.open", { count: library.length })}>
         {library.length === 0 ? (
           <p className="text-xs text-ink-muted">{t("grading.library.empty")}</p>
         ) : (
