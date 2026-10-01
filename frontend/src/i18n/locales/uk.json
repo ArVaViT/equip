@@ -978,6 +978,12 @@
     "submitAssignmentToComplete": "Надішліть завдання, щоб завершити цей урок"
   },
   "quiz": {
+    "result": {
+      "correct": "Правильно",
+      "incorrect": "Неправильно",
+      "yourAnswer": "ваша відповідь",
+      "rightAnswer": "правильна відповідь"
+    },
     "answerAll": "Дайте відповідь на всі запитання, щоб здати",
     "attemptPoints": "{{score}}/{{max}} балів",
     "attemptsShort": "Спроби: {{used}}/{{max}}",

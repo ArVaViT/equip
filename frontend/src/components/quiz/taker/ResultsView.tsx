@@ -115,11 +115,14 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                 </p>
                 {isCorrect !== null && (
                   <span className="shrink-0">
+                    {/* Said, not only shown: the icon's colour and shape are
+                        all a screen reader had, which is nothing. */}
                     {isCorrect ? (
-                      <CheckCircle className="h-4 w-4 text-success" strokeWidth={1.75} />
+                      <CheckCircle className="h-4 w-4 text-success" strokeWidth={1.75} aria-hidden />
                     ) : (
-                      <XCircle className="h-4 w-4 text-destructive" strokeWidth={1.75} />
+                      <XCircle className="h-4 w-4 text-destructive" strokeWidth={1.75} aria-hidden />
                     )}
+                    <span className="sr-only">{isCorrect ? t("quiz.result.correct") : t("quiz.result.incorrect")}</span>
                   </span>
                 )}
               </div>
@@ -145,9 +148,20 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                                 : "text-ink-muted"
                           }`}
                         >
-                          {isSelected && !isRight ? "✗ " : ""}
-                          {isRight ? "✓ " : ""}
+                          {/* Glyphs for the eye, words for the ear — and the
+                              reader's own choice marked even when it was right,
+                              which colour alone could not say. */}
+                          {isSelected && !isRight && <span aria-hidden>✗ </span>}
+                          {isRight && <span aria-hidden>✓ </span>}
                           {displayText}
+                          {(isRight || isSelected) && (
+                            <span className="ml-1.5 text-ink-muted font-normal">
+                              {isSelected && <span>({t("quiz.result.yourAnswer")})</span>}
+                              {isRight && !isSelected && <span className="sr-only">{t("quiz.result.rightAnswer")}</span>}
+                              {isRight && isSelected && <span className="sr-only">{t("quiz.result.correct")}</span>}
+                              {isSelected && !isRight && <span className="sr-only">{t("quiz.result.incorrect")}</span>}
+                            </span>
+                          )}
                         </div>
                       )
                     })}

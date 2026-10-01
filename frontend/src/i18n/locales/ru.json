@@ -560,6 +560,12 @@
     "submitAssignmentToComplete": "Отправьте задание, чтобы завершить урок"
   },
   "quiz": {
+    "result": {
+      "correct": "Верно",
+      "incorrect": "Неверно",
+      "yourAnswer": "ваш ответ",
+      "rightAnswer": "правильный ответ"
+    },
     "answerAll": "Ответьте на все вопросы, чтобы отправить",
     "attemptPoints": "{{score}}/{{max}} баллов",
     "attemptsShort": "Попытки: {{used}}/{{max}}",

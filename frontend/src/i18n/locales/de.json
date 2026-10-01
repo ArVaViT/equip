@@ -958,6 +958,12 @@
     "submitAssignmentToComplete": "Reichen Sie die Aufgabe ein, um diese Lektion abzuschließen"
   },
   "quiz": {
+    "result": {
+      "correct": "Richtig",
+      "incorrect": "Falsch",
+      "yourAnswer": "Ihre Antwort",
+      "rightAnswer": "richtige Antwort"
+    },
     "answerAll": "Beantworten Sie alle Fragen, um abzugeben",
     "attemptPoints": "{{score}}/{{max}} Punkte",
     "attemptsShort": "Versuche: {{used}}/{{max}}",

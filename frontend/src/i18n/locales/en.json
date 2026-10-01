@@ -958,6 +958,12 @@
     "submitAssignmentToComplete": "Submit the assignment to complete this lesson"
   },
   "quiz": {
+    "result": {
+      "correct": "Correct",
+      "incorrect": "Incorrect",
+      "yourAnswer": "your answer",
+      "rightAnswer": "right answer"
+    },
     "answerAll": "Answer all questions to submit",
     "attemptPoints": "{{score}}/{{max}} points",
     "attemptsShort": "Attempts: {{used}}/{{max}}",
