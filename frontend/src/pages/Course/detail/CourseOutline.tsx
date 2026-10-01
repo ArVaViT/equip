@@ -166,33 +166,35 @@ export function CourseOutline({ courseId, structure, completedChapterIds }: Prop
         // CSS, not the animation library: the course page no longer pays
         // 38 KB (gzip) of JavaScript for a 45 ms stagger.
         <div className="stagger-fade-in space-y-2">
-          {rows.map((row) =>
-            row.kind === "module" ? (
-              <ModuleRow
-                key={row.key}
-                courseId={courseId}
-                module={row.module}
-                chapters={row.group.chapters}
-                ordinal={row.ordinal}
-                isLocked={row.locked}
-                isFirstLocked={row.key === firstLockedKey}
-                completedChapterIds={completedChapterIds}
-                minutes={minutes ? row.group.chapters.reduce((sum, ch) => sum + (minutes[ch.id] ?? 0), 0) : undefined}
-              />
-            ) : (
-              <LessonRow
-                key={row.key}
-                courseId={courseId}
-                chapter={row.chapter}
-                position={row.position}
-                isLocked={row.locked}
-                lockReason={row.lockReason}
-                isFirstLocked={row.key === firstLockedKey}
-                completedChapterIds={completedChapterIds}
-                minutes={minutes?.[row.chapter.id]}
-              />
-            ),
-          )}
+          {rows.map((row, index) => (
+            // Each row its own wrapper with its index, as StaggerChildren gave
+            // it: the CSS fallback staggers only the first eight.
+            <div key={row.key} style={{ "--stagger-index": index } as React.CSSProperties}>
+              {row.kind === "module" ? (
+                <ModuleRow
+                  courseId={courseId}
+                  module={row.module}
+                  chapters={row.group.chapters}
+                  ordinal={row.ordinal}
+                  isLocked={row.locked}
+                  isFirstLocked={row.key === firstLockedKey}
+                  completedChapterIds={completedChapterIds}
+                  minutes={minutes ? row.group.chapters.reduce((sum, ch) => sum + (minutes[ch.id] ?? 0), 0) : undefined}
+                />
+              ) : (
+                <LessonRow
+                  courseId={courseId}
+                  chapter={row.chapter}
+                  position={row.position}
+                  isLocked={row.locked}
+                  lockReason={row.lockReason}
+                  isFirstLocked={row.key === firstLockedKey}
+                  completedChapterIds={completedChapterIds}
+                  minutes={minutes?.[row.chapter.id]}
+                />
+              )}
+            </div>
+          ))}
         </div>
       ) : (
         <EmptyState

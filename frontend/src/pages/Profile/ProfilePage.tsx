@@ -25,6 +25,7 @@ import {
 import { useUserTour } from "@/hooks/useUserTour"
 import { profileSteps } from "@/lib/tourSteps"
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
+import { cn } from "@/lib/utils"
 import { initialsOf } from "@/lib/names"
 import { PersonalDetailsCard } from "./PersonalDetailsCard"
 import { TimeZoneSetting } from "./TimeZoneSetting"
@@ -73,6 +74,8 @@ function useCountUp(target: number, durationMs = 800) {
 export default function ProfilePage() {
   const { user, refreshUser, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
+  // The icon turns only when the reader turns it, not on every visit.
+  const [themeToggled, setThemeToggled] = useState(false)
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [error, setError] = useState("")
@@ -388,11 +391,18 @@ export default function ProfilePage() {
                       </p>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" onClick={toggleTheme}>
-                    {/* Keyed by the theme, so the icon turns in when it
-                        changes — CSS (`.animate-icon-in`), not the animation
-                        library; reduced motion makes it a plain swap. */}
-                    <span key={theme} className="animate-icon-in mr-1.5 inline-flex">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setThemeToggled(true)
+                      toggleTheme()
+                    }}
+                  >
+                    {/* Keyed by the theme, so the icon turns in when the
+                        reader changes it — CSS (`.animate-icon-in`), not the
+                        animation library; reduced motion makes it a swap. */}
+                    <span key={theme} className={cn("mr-1.5 inline-flex", themeToggled && "animate-icon-in")}>
                       {theme === "dark" ? (
                         <Sun className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                       ) : (

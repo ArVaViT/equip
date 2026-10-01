@@ -44,6 +44,7 @@ def build_certificate_message(
     certificate_number: str | None,
     verify_url: str | None,
     action_url: str,
+    to_certificates: bool = False,
 ) -> Message:
     """The message, already in ``locale``. Split from sending so a test can read it."""
     facts: list[Fact] = []
@@ -57,7 +58,7 @@ def build_certificate_message(
         title=t(locale, f"email.cert.title.{state}"),
         lede=t(locale, f"email.cert.lede.{state}"),
         facts=tuple(facts),
-        cta_label=t(locale, f"email.cert.cta.{state}"),
+        cta_label=t(locale, "email.cert.cta.certificates" if to_certificates else f"email.cert.cta.{state}"),
         cta_url=action_url,
         preview=t(locale, f"email.cert.preview.{state}", course=course_title),
         notes=(t(locale, "email.cert.why"),),
@@ -89,6 +90,7 @@ def send_certificate_email(db: Session, *, cert: Certificate, locale: LocaleCode
             issued=issued,
             certificate_number=number,
             verify_url=f"{base}/verify/{number}" if number else None,
+            to_certificates=not issued and not course_open,
             action_url=(
                 f"{base}/certificates/{cert.id}"
                 if issued

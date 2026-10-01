@@ -61,7 +61,9 @@ const AcceptInvite = lazyRoute(() => import("./pages/Invite/AcceptInvite"))
 // requested together with the dashboard chunk, so the landing costs no extra
 // round trip; a signed-in reader never downloads it.
 const DashboardPage = lazyRoute(() => {
-  if (!hasStoredSupabaseSession()) void import("./pages/Dashboard/PublicLanding")
+  // A failed prefetch is not an error: the landing's own lazy load retries
+  // (and recovers from a stale deploy) when it is actually rendered.
+  if (!hasStoredSupabaseSession()) import("./pages/Dashboard/PublicLanding").catch(() => undefined)
   return import("./pages/Dashboard/DashboardPage")
 })
 const CoursesPage = lazyRoute(() => import("./pages/Courses/CoursesPage"))

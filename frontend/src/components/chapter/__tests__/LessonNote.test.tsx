@@ -6,6 +6,7 @@ import { MemoryRouter } from "react-router-dom"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
 import i18n from "@/i18n/config"
+import api from "@/services/api"
 import { notesService } from "@/services/notes"
 import { LessonNote } from "../LessonNote"
 
@@ -82,5 +83,36 @@ describe("LessonNote", () => {
     release()
     await new Promise((r) => setTimeout(r, 0))
     expect(save).toHaveBeenCalledTimes(1)
+  })
+
+  it("coming straight back reads the note after every save from leaving has landed", async () => {
+    const user = userEvent.setup()
+    let server = ""
+    const releases: (() => void)[] = []
+    vi.spyOn(api, "put").mockImplementation(
+      (_url, body) =>
+        new Promise((resolve) =>
+          releases.push(() => {
+            server = (body as { body: string }).body
+            resolve({ data: { chapter_id: "c1", body: server, updated_at: null } })
+          }),
+        ),
+    )
+    vi.spyOn(api, "get").mockImplementation(async () => ({ data: { chapter_id: "c1", body: server || null, updated_at: null } }))
+
+    const first = show()
+    await user.click(await screen.findByRole("button", { name: "Добавить заметку к уроку" }))
+    await user.type(screen.getByRole("textbox"), "A")
+    await user.tab() // save "A" starts and hangs
+    await user.click(screen.getByRole("textbox"))
+    await user.type(screen.getByRole("textbox"), "B")
+    first.unmount() // save "AB" is handed over at once, behind "A"
+
+    show() // straight back
+    await new Promise((r) => setTimeout(r, 0))
+    releases.shift()!()
+    await new Promise((r) => setTimeout(r, 0))
+    releases.shift()!()
+    expect(await screen.findByRole("textbox")).toHaveValue("AB")
   })
 })

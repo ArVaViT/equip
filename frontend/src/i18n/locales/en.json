@@ -1078,6 +1078,7 @@
     }
   },
   "review": {
+    "checkFailed": "Could not check — please try again.",
     "title": "This week's review",
     "hint_one": "{{count}} question from what you have done — for you; it does not affect grades.",
     "hint_other": "{{count}} questions from what you have done — for you; they do not affect grades.",

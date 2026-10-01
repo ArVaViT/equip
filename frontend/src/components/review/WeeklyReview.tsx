@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { RotateCcw } from "lucide-react"
 
@@ -30,6 +30,26 @@ export function WeeklyReview({ courseId }: { courseId: string }) {
   const [verdict, setVerdict] = useState<(ReviewVerdict & { chosen: string }) | null>(null)
   const [right, setRight] = useState(0)
   const [busy, setBusy] = useState(false)
+  const [failed, setFailed] = useState(false)
+  // Focus follows the reader into each question: the button they pressed
+  // ("Start", "Next") is gone the moment they press it.
+  const questionRef = useRef<HTMLParagraphElement>(null)
+  const resultRef = useRef<HTMLParagraphElement>(null)
+
+  // A new set (another language, another week) starts the review over;
+  // keeping the place would pair a verdict with a question not answered.
+  useEffect(() => {
+    setStarted(false)
+    setIndex(0)
+    setVerdict(null)
+    setRight(0)
+    setFailed(false)
+  }, [data])
+
+  useEffect(() => {
+    if (!started) return
+    ;(index < (data?.length ?? 0) ? questionRef : resultRef).current?.focus()
+  }, [started, index, data])
 
   const questions = data ?? []
   if (questions.length === 0) return null
@@ -39,12 +59,14 @@ export function WeeklyReview({ courseId }: { courseId: string }) {
   const choose = async (optionId: string) => {
     if (verdict || busy) return
     setBusy(true)
+    setFailed(false)
     try {
       const v = await reviewService.check(question.id, optionId)
       setVerdict({ ...v, chosen: optionId })
       if (v.correct) setRight((n) => n + 1)
     } catch {
-      // A check that failed is not an answer: the reader can try again.
+      // A check that failed is not an answer: say so, and let them try again.
+      setFailed(true)
     } finally {
       setBusy(false)
     }
@@ -75,7 +97,9 @@ export function WeeklyReview({ courseId }: { courseId: string }) {
       {started && !done && (
         <div className="mt-4 space-y-3">
           <p className="text-xs text-ink-muted">{t("review.progress", { n: index + 1, total: questions.length })}</p>
-          <p className="font-medium">{question.question_text}</p>
+          <p ref={questionRef} tabIndex={-1} className="font-medium outline-none">
+            {question.question_text}
+          </p>
           <ul className="space-y-2">
             {question.options.map((o) => {
               const isRight = verdict?.correct_option_id === o.id
@@ -104,7 +128,13 @@ export function WeeklyReview({ courseId }: { courseId: string }) {
           </ul>
           <div className="flex items-center justify-between gap-2" aria-live="polite">
             <p className="text-sm">
-              {verdict ? (verdict.correct ? t("quiz.result.correct") : t("quiz.result.incorrect")) : ""}
+              {verdict
+                ? verdict.correct
+                  ? t("quiz.result.correct")
+                  : t("quiz.result.incorrect")
+                : failed
+                  ? t("review.checkFailed")
+                  : ""}
             </p>
             {verdict && (
               <Button size="sm" onClick={next}>
@@ -116,7 +146,7 @@ export function WeeklyReview({ courseId }: { courseId: string }) {
       )}
 
       {started && done && (
-        <p className="mt-4 text-sm" aria-live="polite">
+        <p ref={resultRef} tabIndex={-1} className="mt-4 text-sm outline-none" aria-live="polite">
           {t("review.result", { right, total: questions.length })}
         </p>
       )}

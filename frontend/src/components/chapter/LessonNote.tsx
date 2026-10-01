@@ -20,12 +20,13 @@ const SAVE_AFTER_MS = 1200
  * line until opened, unless there is a note already.
  *
  * Rendered with `key={chapterId}` by the lesson page: a different lesson is a
- * different note, never this one's state carried over. Saves go one at a
- * time, each skipped if what it would send is already saved, so a blur and
- * leaving the lesson never send the same note twice, and an older save can
- * never land after a newer one. Until the note has loaded the box is not
- * offered at all — typing into an empty box over a note that failed to load
- * would replace it.
+ * different note, never this one's state carried over. Saves are handed to
+ * `notesService`, which runs a lesson's saves one after another across
+ * components and makes reads wait for them — so coming straight back to the
+ * lesson reads what leaving it saved. A save of text already handed over is
+ * skipped, so a blur and leaving never send the same note twice. Until the
+ * note has loaded the box is not offered at all — typing into an empty box
+ * over a note that failed to load would replace it.
  */
 export function LessonNote({ chapterId }: { chapterId: string }) {
   const { t } = useTranslation()
@@ -39,7 +40,8 @@ export function LessonNote({ chapterId }: { chapterId: string }) {
   const saved = useRef("")
   const latest = useRef("")
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const queue = useRef<Promise<void>>(Promise.resolve())
+  // The text last handed to the service, landed or not.
+  const sent = useRef("")
   const mounted = useRef(true)
 
   useEffect(() => {
@@ -50,6 +52,7 @@ export function LessonNote({ chapterId }: { chapterId: string }) {
       .then((note) => {
         if (!live) return
         saved.current = note.body ?? ""
+        sent.current = note.body ?? ""
         latest.current = note.body ?? ""
         setBody(note.body ?? "")
         setOpen(Boolean(note.body))
@@ -61,21 +64,24 @@ export function LessonNote({ chapterId }: { chapterId: string }) {
     }
   }, [chapterId, attempt])
 
-  /** Queue a save of whatever is latest; runs after the one in flight. */
+  /** Hand the latest text to the service, unless it was handed over already. */
   const save = () => {
     if (timer.current) clearTimeout(timer.current)
-    queue.current = queue.current.then(async () => {
-      const text = latest.current
-      if (text.trim() === saved.current.trim()) return
-      if (mounted.current) setState("saving")
-      try {
-        const note = await notesService.save(chapterId, text)
+    const text = latest.current
+    if (text.trim() === sent.current.trim()) return
+    sent.current = text
+    if (mounted.current) setState("saving")
+    notesService.save(chapterId, text).then(
+      (note) => {
         saved.current = note.body ?? ""
         if (mounted.current) setState(latest.current.trim() === saved.current.trim() ? "saved" : "idle")
-      } catch {
+      },
+      () => {
+        // Not saved: the next blur or keystroke tries again.
+        sent.current = saved.current
         if (mounted.current) setState("failed")
-      }
-    })
+      },
+    )
   }
 
   const change = (text: string) => {

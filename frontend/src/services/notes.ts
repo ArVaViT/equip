@@ -28,6 +28,11 @@ export const NOTE_MAX_LENGTH = 10_000
 // overwrite the one that was still in flight.
 const pending = new Map<string, Promise<unknown>>()
 
+/** Every save still in flight, each allowed to fail. */
+function settled(): Promise<unknown> {
+  return Promise.allSettled([...pending.values()])
+}
+
 /** A student's own notes on lessons. Never cached: they are being typed. */
 export const notesService = {
   async get(chapterId: string): Promise<LessonNote> {
@@ -49,9 +54,13 @@ export const notesService = {
     return next
   },
   async remove(chapterId: string): Promise<void> {
+    await settled()
     await api.delete(`/notes/chapters/${encodeURIComponent(chapterId)}`)
   },
+  /** Every note, after any save still on its way — "All notes" from a lesson
+   *  must list what was just typed there. */
   async mine(): Promise<NoteInList[]> {
+    await settled()
     return (await api.get<NoteInList[]>("/notes/me")).data
   },
 }

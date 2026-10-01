@@ -137,3 +137,42 @@ def test_the_course_page_gets_the_set(student_client: TestClient, db: Session, t
     # least the old test qualifies whatever today is.
     rows = r.json()
     assert rows and all("is_correct" not in o for q in rows for o in q["options"])
+
+
+def test_a_question_added_after_the_attempt_is_neither_offered_nor_checked(
+    student_client: TestClient, db: Session, teacher: User, student: User
+) -> None:
+    course, old_qs, _untaken, _exam = _setup(db)
+    added = make_quiz_question_with_text(db, quiz_id=old_qs[0][0].quiz_id, question_text="added later?", order_index=99)
+    right = make_quiz_option_with_text(db, question_id=added.id, option_text="right", is_correct=True)
+    make_quiz_option_with_text(db, question_id=added.id, option_text="wrong", order_index=1)
+    db.commit()
+    r = student_client.post("/api/v1/review/check", json={"question_id": str(added.id), "option_id": str(right.id)})
+    assert r.status_code == 404
+    picked = pick_review_questions(
+        db, user_id=STUDENT_ID, course_id=course.id, display_locale="en", source_locale="en", now=NOW
+    )
+    assert "added later?" not in {q.question_text for q in picked}
+
+
+def test_a_test_that_turns_a_week_old_mid_week_waits_for_monday(db: Session, teacher: User, student: User) -> None:
+    course, *_ = _setup(db)
+    module_id = f"m-{course.id}"
+    # Thursday 2026-10-01: taken the Thursday before, 7 days ago, but after
+    # the Monday a week before this week's start — so not this week.
+    mid, mid_qs = _quiz(db, course.id, module_id, "mid")
+    _took(db, mid, mid_qs, days_ago=6.5, wrong={0, 1, 2})
+    db.commit()
+    thursday = pick_review_questions(
+        db, user_id=STUDENT_ID, course_id=course.id, display_locale="en", source_locale="en", now=NOW
+    )
+    friday = pick_review_questions(
+        db,
+        user_id=STUDENT_ID,
+        course_id=course.id,
+        display_locale="en",
+        source_locale="en",
+        now=NOW + timedelta(days=1),
+    )
+    assert [q.id for q in friday] == [q.id for q in thursday]
+    assert not any(q.question_text.startswith("mid ") for q in friday)

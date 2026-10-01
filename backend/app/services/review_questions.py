@@ -16,8 +16,9 @@ What is never offered, and why:
   with none or two), or **without its text in the reader's language** —
   nobody is served a language they did not choose.
 
-The set is chosen once per ISO week per student and course, so reopening the
-page shows the same questions until Monday.
+The set is chosen once per ISO week per student and course — from tests
+completed at least a week before that Monday (UTC), in an order seeded by the
+week — so reopening the page shows the same questions until the next Monday.
 """
 
 from __future__ import annotations
@@ -87,13 +88,23 @@ def _completed_quizzes(db: Session, user_id: uuid.UUID, course_id: str, *, befor
 
 
 def question_may_be_reviewed(db: Session, user_id: uuid.UUID, question: QuizQuestion) -> bool:
-    """Whether checking an answer to ``question`` reveals nothing new to this student."""
+    """Whether checking an answer to ``question`` reveals nothing new to this student.
+
+    Only a question they answered in a completed attempt of an ordinary test:
+    its right answer is on their results screen already. A question added to
+    the test after their attempt is not, and neither is anything in an exam.
+    """
     quiz = db.get(Quiz, question.quiz_id)
     if quiz is None or quiz.quiz_type != "quiz":
         return False
     return (
-        db.query(QuizAttempt.id)
-        .filter(QuizAttempt.user_id == user_id, QuizAttempt.quiz_id == quiz.id, QuizAttempt.completed_at.isnot(None))
+        db.query(QuizAnswer.id)
+        .join(QuizAttempt, QuizAttempt.id == QuizAnswer.attempt_id)
+        .filter(
+            QuizAttempt.user_id == user_id,
+            QuizAttempt.completed_at.isnot(None),
+            QuizAnswer.question_id == question.id,
+        )
         .first()
         is not None
     )
@@ -109,14 +120,25 @@ def pick_review_questions(
     now: datetime | None = None,
 ) -> list[ReviewQuestion]:
     moment = now or datetime.now(UTC)
-    attempts = _completed_quizzes(db, user_id, course_id, before=moment - REVIEW_AFTER)
+    # From the start of the week, not from now: a threshold that slid with
+    # the clock let a test turn a week old on Friday and reshuffle the set
+    # the student had been working through since Monday.
+    week_start = (moment - timedelta(days=moment.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    attempts = _completed_quizzes(db, user_id, course_id, before=week_start - REVIEW_AFTER)
     if not attempts:
         return []
+    # Only questions the student met in that attempt: one a teacher added
+    # afterwards has an answer the student has never been shown.
+    answered = {
+        question_id
+        for (question_id,) in db.query(QuizAnswer.question_id).filter(
+            QuizAnswer.attempt_id.in_([a.id for a in attempts.values()])
+        )
+    }
+    if not answered:
+        return []
     questions = (
-        db.query(QuizQuestion)
-        .options(selectinload(QuizQuestion.options))
-        .filter(QuizQuestion.quiz_id.in_([a.quiz_id for a in attempts.values()]))
-        .all()
+        db.query(QuizQuestion).options(selectinload(QuizQuestion.options)).filter(QuizQuestion.id.in_(answered)).all()
     )
     questions = [
         q for q in questions if q.question_type in _CHOICE_TYPES and sum(1 for o in q.options if o.is_correct) == 1

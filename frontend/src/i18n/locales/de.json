@@ -1078,6 +1078,7 @@
     }
   },
   "review": {
+    "checkFailed": "Prüfung fehlgeschlagen — bitte erneut versuchen.",
     "title": "Wiederholung der Woche",
     "hint_one": "{{count}} Frage aus dem Gelernten — für Sie, ohne Einfluss auf Noten.",
     "hint_other": "{{count}} Fragen aus dem Gelernten — für Sie, ohne Einfluss auf Noten.",
