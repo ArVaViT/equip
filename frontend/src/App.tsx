@@ -26,6 +26,7 @@ import { returnPathFrom } from "@/lib/authRedirect"
 import { canTeach } from "@/lib/roles"
 import { DeniedRedirect } from "@/components/auth/DeniedRedirect"
 import { getTeacherAgreementOwed, subscribeTeacherAgreement } from "@/components/legal/useTeacherAgreement"
+import { hasStoredSupabaseSession } from "@/lib/storedSession"
 
 // Lazy: FirstRunFlow renders null until a brand-new user's privacy/setup gate
 // activates, so it never needs to be on the critical path — its component code
@@ -55,7 +56,14 @@ const ForgotPassword = lazyRoute(() => import("./pages/Auth/ForgotPassword"))
 const ResetPassword = lazyRoute(() => import("./pages/Auth/ResetPassword"))
 const AuthCallback = lazyRoute(() => import("./pages/Auth/AuthCallback"))
 const AcceptInvite = lazyRoute(() => import("./pages/Invite/AcceptInvite"))
-const DashboardPage = lazyRoute(() => import("./pages/Dashboard/DashboardPage"))
+// The public landing is its own chunk (it carries the animation library a
+// signed-in dashboard never uses). For a visitor with no stored session it is
+// requested together with the dashboard chunk, so the landing costs no extra
+// round trip; a signed-in reader never downloads it.
+const DashboardPage = lazyRoute(() => {
+  if (!hasStoredSupabaseSession()) void import("./pages/Dashboard/PublicLanding")
+  return import("./pages/Dashboard/DashboardPage")
+})
 const CoursesPage = lazyRoute(() => import("./pages/Courses/CoursesPage"))
 const VerifyCertificatePage = lazyRoute(() => import("./pages/Verify/VerifyCertificatePage"))
 const UnsubscribePage = lazyRoute(() => import("./pages/Unsubscribe/UnsubscribePage"))

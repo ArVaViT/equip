@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
@@ -21,8 +21,10 @@ import { TeacherAtRiskCard } from "@/components/dashboard/TeacherAtRiskCard"
 import { useUserTour } from "@/hooks/useUserTour"
 import { studentDashboardSteps } from "@/lib/tourSteps"
 import { firstNameOf } from "@/lib/names"
-import { PublicLanding } from "./PublicLanding"
+// Its own chunk: see the DashboardPage route in App.tsx.
+const PublicLanding = lazyRoute(() => import("./PublicLanding"))
 import { cn } from "@/lib/utils"
+import { lazyRoute } from "@/lib/lazyRoute"
 import { enrollmentsVersion, subscribeEnrollments } from "@/lib/enrollmentsChanged"
 import { isNewcomer, visibleEnrollments } from "./myCourses"
 import { useRailFit } from "./railFit"
@@ -313,7 +315,11 @@ export default function DashboardPage() {
   useRailFit(railRef, Boolean(user))
 
   if (!user) {
-    return <PublicLanding />
+    return (
+      <Suspense fallback={null}>
+        <PublicLanding />
+      </Suspense>
+    )
   }
 
   return (

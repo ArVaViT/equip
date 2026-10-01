@@ -19,7 +19,6 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { EmptyState } from "@/components/patterns"
-import { StaggerChildren } from "@/components/motion"
 import ChapterTypeBadge from "@/components/course/ChapterTypeBadge"
 import { isGradableChapterType } from "@/lib/chapterTypes"
 import { ReadingMinutes } from "@/components/course/ReadingMinutes"
@@ -164,7 +163,9 @@ export function CourseOutline({ courseId, structure, completedChapterIds }: Prop
       </h2>
 
       {rows.length > 0 ? (
-        <StaggerChildren className="space-y-2">
+        // CSS, not the animation library: the course page no longer pays
+        // 38 KB (gzip) of JavaScript for a 45 ms stagger.
+        <div className="stagger-fade-in space-y-2">
           {rows.map((row) =>
             row.kind === "module" ? (
               <ModuleRow
@@ -192,7 +193,7 @@ export function CourseOutline({ courseId, structure, completedChapterIds }: Prop
               />
             ),
           )}
-        </StaggerChildren>
+        </div>
       ) : (
         <EmptyState
           icon={<BookOpen strokeWidth={1.75} aria-hidden />}
