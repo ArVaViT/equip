@@ -14,6 +14,7 @@ from app.core.sanitize import sanitize_multiline_text, sanitize_plain_text
 from app.models.course import Course, CourseStatus
 from app.models.course_event import CourseEvent
 from app.models.enrollment import Enrollment
+from app.models.notification import Notification
 from app.models.user import User, UserRole
 from app.schemas.calendar import (
     CalendarEvent,
@@ -55,6 +56,30 @@ def _event_link(course_id: str) -> str:
     reader's own zone — which is why the notification text itself names
     neither: the server does not know where the reader is."""
     return f"/calendar?course={course_id}"
+
+
+def _follow_recording_in_notices(db: Session, *, course_id: str, event: CourseEvent) -> None:
+    """Keep the "recording is ready" notices pointing at the recording.
+
+    A link is usually corrected because the first one was wrong: the notice
+    must not keep the broken one. A recording taken off takes its notices
+    with it, so adding one again later is one notice, not a second.
+    """
+    if not event.recording_url:
+        delete_notifications_about(
+            db,
+            types=("recording_ready",),
+            link=_event_link(course_id),
+            meta_key="event_id",
+            target_id=event.id,
+        )
+    else:
+        for notice in db.query(Notification).filter(
+            Notification.type == "recording_ready", Notification.link == _event_link(course_id)
+        ):
+            if isinstance(notice.meta, dict) and notice.meta.get("event_id") == str(event.id):
+                notice.meta = {**notice.meta, "recording_url": event.recording_url}
+    db.commit()
 
 
 def _notify_students_about_event(
@@ -108,7 +133,7 @@ def _notify_students_about_event(
             metadata["meeting_url"] = event.meeting_url
         # A recording is watched from where the news is read, like a meeting
         # is joined: the bell draws a "Recording" button from this key.
-        if recording and event.recording_url:
+        if event.recording_url:
             metadata["recording_url"] = event.recording_url
         i18n = notification_text(key, **params)
         # Two literal call sites rather than one with a computed kind:
@@ -442,6 +467,8 @@ def update_course_event(
         _notify_students_about_event(db, course=course, event=event, author=teacher, rescheduled=True)
     if recording_added:
         _notify_students_about_event(db, course=course, event=event, author=teacher, rescheduled=False, recording=True)
+    elif "recording_url" in updates:
+        _follow_recording_in_notices(db, course_id=course.id, event=event)
     return _course_event_to_response(db, event, source_locale=source_locale or "en")
 
 
