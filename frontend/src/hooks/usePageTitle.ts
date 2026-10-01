@@ -83,6 +83,33 @@ export function useGuestHome(pathname: string): boolean {
   return pathname === "/" && auth !== null && !auth.loading && !auth.user
 }
 
+/**
+ * Names a page asked to be called by, keyed by the path they belong to.
+ *
+ * A course page titled «Курс — Equip» named nothing in the tab strip, the
+ * history list or a bookmark, and a screen reader announced the same word on
+ * every course. The page knows its own name only after it loads, so it hands
+ * the name over here; a module-level map rather than state, because the
+ * route-wide hook below runs after the page's own effect in the same commit
+ * and must read it then, not a render later.
+ */
+const namedTitles = new Map<string, string>()
+
+/** Title this page by its own name ("Деяния — Equip") once it has one. */
+export function useNamedPageTitle(name: string | null | undefined) {
+  const { pathname } = useLocation()
+  const { t } = useTranslation()
+  useEffect(() => {
+    const trimmed = name?.trim()
+    if (!trimmed) return
+    namedTitles.set(pathname, trimmed)
+    document.title = `${trimmed} — ${t("common.appName")}`
+    return () => {
+      namedTitles.delete(pathname)
+    }
+  }, [name, pathname, t])
+}
+
 export function usePageTitle() {
   const { pathname } = useLocation()
   const { t } = useTranslation()
@@ -99,6 +126,11 @@ export function usePageTitle() {
     // claim is on the share card instead.
     if (guestHome) {
       document.title = t("meta.documentTitle")
+      return
+    }
+    const named = namedTitles.get(pathname)
+    if (named) {
+      document.title = `${named} — ${t("common.appName")}`
       return
     }
     // A 404 that said only "Equip" was indistinguishable from a working page

@@ -50,6 +50,7 @@ import { chapterViewSteps } from "@/lib/tourSteps"
 import { recordCourseView } from "@/lib/recentlyViewed"
 import { ReadingSkeleton } from "@/components/chapter/ReadingSkeleton"
 import { orNotTranslated } from "@/lib/untranslated"
+import { useNamedPageTitle } from "@/hooks/usePageTitle"
 
 /**
  * Renders a sanitised text-block via ``dangerouslySetInnerHTML`` and
@@ -593,6 +594,8 @@ export default function ChapterView() {
   const placement = findChapter(structure, chapterId)
 
   const chapter = placement?.chapter ?? null
+  // Named by the lesson, as the course page is by the course.
+  useNamedPageTitle(chapter?.title)
   const currentIdx = placement?.index ?? -1
   const prevChapter = placement?.prev ?? null
   const nextChapter = placement?.next ?? null

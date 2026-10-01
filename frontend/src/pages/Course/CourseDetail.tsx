@@ -25,12 +25,15 @@ import {
   NotEnrolledView,
   type CourseMaterial,
 } from "./detail"
+import { useNamedPageTitle } from "@/hooks/usePageTitle"
 
 export default function CourseDetail() {
   const { t, i18n } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const [course, setCourse] = useState<Course | null>(null)
+  // The tab, the history list and a screen reader name the course, not «Курс».
+  useNamedPageTitle(course?.title)
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null)
   const [certificate, setCertificate] = useState<Certificate | null>(null)
   /**

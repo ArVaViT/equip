@@ -107,3 +107,44 @@ describe("page titles", () => {
     expect(matchTitleKey("/teacher/courses/c-1/gradebook")).toBe("pageTitle.gradebook")
   })
 })
+
+describe("a page titled by its own name", () => {
+  it("names the tab after the course, keeps it through a language switch, and lets go on leaving", async () => {
+    const { render, act } = await import("@testing-library/react")
+    const { MemoryRouter, Route, Routes, useNavigate } = await import("react-router-dom")
+    const { I18nextProvider } = await import("react-i18next")
+    const { default: i18n } = await import("@/i18n/config")
+    const { usePageTitle, useNamedPageTitle } = await import("../usePageTitle")
+    await i18n.changeLanguage("ru")
+    let go: (path: string) => void = () => {}
+    function Course() {
+      useNamedPageTitle("Деяния")
+      return null
+    }
+    function Shell() {
+      usePageTitle()
+      go = useNavigate()
+      return (
+        <Routes>
+          <Route path="/courses/:id" element={<Course />} />
+          <Route path="/courses" element={null} />
+        </Routes>
+      )
+    }
+    render(
+      <I18nextProvider i18n={i18n}>
+        <MemoryRouter initialEntries={["/courses/c1"]}>
+          <Shell />
+        </MemoryRouter>
+      </I18nextProvider>,
+    )
+    expect(document.title).toBe(`Деяния — ${i18n.t("common.appName")}`)
+    await act(async () => {
+      await i18n.changeLanguage("en")
+    })
+    expect(document.title).toBe(`Деяния — ${i18n.t("common.appName")}`)
+    act(() => go("/courses"))
+    expect(document.title).not.toContain("Деяния")
+    await i18n.changeLanguage("ru")
+  })
+})
