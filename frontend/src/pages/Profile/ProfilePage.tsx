@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
@@ -25,7 +24,7 @@ import {
 } from "lucide-react"
 import { useUserTour } from "@/hooks/useUserTour"
 import { profileSteps } from "@/lib/tourSteps"
-import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
 import { initialsOf } from "@/lib/names"
 import { PersonalDetailsCard } from "./PersonalDetailsCard"
 import { TimeZoneSetting } from "./TimeZoneSetting"
@@ -33,7 +32,7 @@ import { EmailSetting } from "./EmailSetting"
 import { MyDataSetting } from "./MyDataSetting"
 
 function useCountUp(target: number, durationMs = 800) {
-  const prefersReducedMotion = useReducedMotion()
+  const prefersReducedMotion = usePrefersReducedMotion()
   // Initialize to ``target`` (not 0) so the first render — and StrictMode's
   // double-mount — never flashes through the animation. The effect only
   // fires the count-up when the target genuinely changes from the last
@@ -74,7 +73,6 @@ function useCountUp(target: number, durationMs = 800) {
 export default function ProfilePage() {
   const { user, refreshUser, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
-  const prefersReducedMotion = useReducedMotion()
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [error, setError] = useState("")
@@ -391,30 +389,16 @@ export default function ProfilePage() {
                     </div>
                   </div>
                   <Button variant="outline" size="sm" onClick={toggleTheme}>
-                    {prefersReducedMotion ? (
-                      theme === "dark" ? (
-                        <Sun className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                    {/* Keyed by the theme, so the icon turns in when it
+                        changes — CSS (`.animate-icon-in`), not the animation
+                        library; reduced motion makes it a plain swap. */}
+                    <span key={theme} className="animate-icon-in mr-1.5 inline-flex">
+                      {theme === "dark" ? (
+                        <Sun className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                       ) : (
-                        <Moon className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-                      )
-                    ) : (
-                      <AnimatePresence mode="wait" initial={false}>
-                        <motion.span
-                          key={theme}
-                          className="mr-1.5 inline-flex"
-                          initial={{ rotate: -45, opacity: 0 }}
-                          animate={{ rotate: 0, opacity: 1 }}
-                          exit={{ rotate: 45, opacity: 0 }}
-                          transition={{ duration: MOTION_DURATION.base, ease: EDITORIAL_EASE }}
-                        >
-                          {theme === "dark" ? (
-                            <Sun className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                          ) : (
-                            <Moon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                          )}
-                        </motion.span>
-                      </AnimatePresence>
-                    )}
+                        <Moon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                      )}
+                    </span>
                     {theme === "dark" ? t("profile.switchToLight") : t("profile.switchToDark")}
                   </Button>
                 </div>
