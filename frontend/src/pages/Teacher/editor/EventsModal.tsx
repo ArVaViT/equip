@@ -17,6 +17,7 @@ import { EventTypeBadge } from "./badges"
 import type { EventFormState } from "./types"
 import type { CourseEvent } from "@/types"
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
+import { RecordingLink } from "@/components/calendar/RecordingLink"
 import { isAbsoluteHttpUrl } from "@/lib/url"
 import { formatDateLong, formatDateTime } from "@/i18n/format"
 
@@ -64,7 +65,9 @@ export function EventsModal({
   // the teacher is not told about it by a toast after the fact.
   const meetingUrlTyped = form.meeting_url.trim()
   const meetingUrlBroken = meetingUrlTyped !== "" && !isAbsoluteHttpUrl(meetingUrlTyped)
-  const canSubmit = form.title.trim() && form.event_date && !meetingUrlBroken && !saving
+  const recordingTyped = form.recording_url.trim()
+  const recordingBroken = recordingTyped !== "" && !isAbsoluteHttpUrl(recordingTyped)
+  const canSubmit = form.title.trim() && form.event_date && !meetingUrlBroken && !recordingBroken && !saving
 
   return (
     <Modal open={open} onClose={onClose} title={t("teacherEditor.modals.events.title")}>
@@ -151,6 +154,36 @@ export function EventsModal({
               </p>
             )}
           </div>
+          {/* Added after the session, when there is a recording — so it is
+              only offered on an event being edited, not one being created. */}
+          {editingId && (
+            <div className="space-y-1">
+              <Label className="text-xs" htmlFor="event-recording-url">
+                {t("meeting.recordingLabel")}
+              </Label>
+              <Input
+                id="event-recording-url"
+                type="url"
+                inputMode="url"
+                value={form.recording_url}
+                maxLength={MEETING_URL_MAX}
+                onChange={(e) => patch({ recording_url: e.target.value })}
+                placeholder={t("meeting.recordingPlaceholder")}
+                aria-invalid={recordingBroken || undefined}
+                aria-describedby={recordingBroken ? "event-recording-url-error" : "event-recording-url-hint"}
+              />
+              {recordingBroken ? (
+                <p id="event-recording-url-error" role="alert" className="text-xs text-destructive">
+                  {t("errors.fields.recording_url")}:{" "}
+                  {t("errors.validation.meeting_url_not_a_web_address")}
+                </p>
+              ) : (
+                <p id="event-recording-url-hint" className="text-xs text-ink-muted">
+                  {t("meeting.recordingHint")}
+                </p>
+              )}
+            </div>
+          )}
           <div className="flex gap-2">
             <Button size="sm" onClick={onSave} disabled={!canSubmit}>
               <Save className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
@@ -223,7 +256,10 @@ function EventRow({
         {/* The teacher sees the same button her students will, in the
             same list she edits — which is how she finds out that the
             link she pasted opens the room she meant, before Saturday. */}
-        <JoinMeetingLink url={event.meeting_url} title={event.title} className="mt-1.5" />
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          <JoinMeetingLink url={event.meeting_url} title={event.title} />
+          <RecordingLink url={event.recording_url} title={event.title} />
+        </div>
       </div>
       <div className="flex flex-col gap-1 shrink-0">
         <Button

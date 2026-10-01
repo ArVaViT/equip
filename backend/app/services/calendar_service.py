@@ -236,6 +236,7 @@ def build_calendar_events(
                 # two deadline kinds above leave it at its default
                 # ``None``: a module's due date is a moment, not a room.
                 meeting_url=ce.meeting_url,
+                recording_url=ce.recording_url,
                 course_id=ce.course_id,
                 course_title=course_titles.get(ce.course_id),
                 source="course_event",

@@ -1236,6 +1236,7 @@ def localize_course_event_rows(
                     # address of a Zoom room is the same address for a
                     # German reader as for a Russian one.
                     "meeting_url": e.meeting_url,
+                    "recording_url": e.recording_url,
                     "created_by": e.created_by,
                     "created_at": e.created_at,
                 }

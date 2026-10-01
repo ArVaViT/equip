@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/patterns";
 import type { CalendarEvent } from "@/types";
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
+import { RecordingLink } from "@/components/calendar/RecordingLink"
 import { AddToCalendarButton } from "@/components/calendar/AddToCalendarButton"
 import { LinkifiedText } from "@/components/calendar/LinkifiedText";
 import { getEventColor } from "./constants";
@@ -94,6 +95,7 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
                           take belongs after what the event is. */}
                       <div className="mt-2 flex flex-wrap items-center gap-2">
                         <JoinMeetingLink url={evt.meeting_url} title={evt.title} />
+                        <RecordingLink url={evt.recording_url} title={evt.title} />
                         <AddToCalendarButton event={evt} />
                       </div>
                     </div>

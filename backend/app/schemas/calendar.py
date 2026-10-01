@@ -58,9 +58,11 @@ class CourseEventCreate(RequestModel):
     #: with the same translated sentence as every other bad link,
     #: instead of pydantic's generic ``string_too_long``.
     meeting_url: str | None = None
+    #: The recording, once there is one. Same rule as the meeting link.
+    recording_url: str | None = None
 
     _event_date_utc = field_validator("event_date")(_as_utc_instant)
-    _meeting_url = field_validator("meeting_url")(_validated_meeting_url)
+    _meeting_url = field_validator("meeting_url", "recording_url")(_validated_meeting_url)
 
 
 class CourseEventUpdate(RequestModel):
@@ -72,9 +74,11 @@ class CourseEventUpdate(RequestModel):
     #: separates "clear it" from "leave it alone" — a patch that omits
     #: the key never touches the column.
     meeting_url: str | None = None
+    #: The recording, once there is one. Same rule as the meeting link.
+    recording_url: str | None = None
 
     _event_date_utc = field_validator("event_date")(_as_utc_instant)
-    _meeting_url = field_validator("meeting_url")(_validated_meeting_url)
+    _meeting_url = field_validator("meeting_url", "recording_url")(_validated_meeting_url)
 
 
 class CourseEventResponse(BaseModel):
@@ -87,6 +91,7 @@ class CourseEventResponse(BaseModel):
     event_type: str
     event_date: datetime
     meeting_url: str | None = None
+    recording_url: str | None = None
     created_by: UUID
     created_at: datetime
 
@@ -102,6 +107,9 @@ class CalendarEvent(BaseModel):
     #: both — and the clients render the join button on its presence,
     #: never on the event type.
     meeting_url: str | None = None
+    #: Where to watch it afterwards. Like the meeting link, only a
+    #: ``course_event`` can carry one.
+    recording_url: str | None = None
     course_id: str
     course_title: str | None = None
     source: Literal["module_deadline", "assignment_deadline", "course_event"]

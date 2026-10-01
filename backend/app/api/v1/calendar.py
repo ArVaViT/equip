@@ -163,6 +163,7 @@ def _course_event_to_response(db: Session, event: CourseEvent, *, source_locale:
             "event_type": event.event_type,
             "event_date": event.event_date,
             "meeting_url": event.meeting_url,
+            "recording_url": event.recording_url,
             "created_by": event.created_by,
             "created_at": event.created_at,
         }
@@ -235,6 +236,7 @@ def create_course_event(
         # no meeting on it, so no student ever saw a Join button. He had
         # entered the link; the product had swallowed it.
         meeting_url=data.meeting_url or find_meeting_url(description),
+        recording_url=data.recording_url,
         created_by=teacher.id,
     )
     db.add(event)

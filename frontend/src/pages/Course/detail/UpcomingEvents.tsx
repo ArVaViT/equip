@@ -3,6 +3,7 @@ import { AlertTriangle, CalendarDays, ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { CalendarEvent } from "@/types"
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
+import { RecordingLink } from "@/components/calendar/RecordingLink"
 import { formatDateLong, formatDateTime } from "@/i18n/format"
 
 interface Props {
@@ -75,6 +76,7 @@ export function UpcomingEvents({ events }: Props) {
                   with the time — the thing a student scans this list
                   for. Renders nothing when the event has no meeting. */}
               <JoinMeetingLink url={evt.meeting_url} title={evt.title} />
+              <RecordingLink url={evt.recording_url} title={evt.title} />
               {/* Date AND time, in the reader's zone. This row used to say
                   «23 апр.» and nothing more — a live session at 19:00 and a
                   deadline at midnight looked the same, and a student in

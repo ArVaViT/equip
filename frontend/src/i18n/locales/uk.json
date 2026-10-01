@@ -883,7 +883,8 @@
       "option_text": "текст варіанта",
       "is_correct": "правильна відповідь",
       "order_index": "порядок",
-      "meeting_url": "посилання на зустріч"
+      "meeting_url": "посилання на зустріч",
+      "recording_url": "посилання на запис"
     },
     "validation": {
       "less_than_equal": "не більше {{le}}",
@@ -3251,6 +3252,11 @@
     "errorDescription": "Це збій зв'язку, а не вирок сертифікату. Спробуйте ще раз."
   },
   "meeting": {
+    "recordingPlaceholder": "https://youtu.be/…",
+    "recording": "Запис заняття",
+    "recordingAria": "Дивитися запис — {{title}}",
+    "recordingLabel": "Посилання на запис",
+    "recordingHint": "Коли запис готовий: YouTube, Vimeo, Google Диск — будь-яке посилання. Студенти побачать кнопку «Запис заняття».",
     "join": "Приєднатися",
     "joinAria": "Приєднатися до зустрічі — {{title}}",
     "linkLabel": "Посилання на зустріч",

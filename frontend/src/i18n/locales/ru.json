@@ -449,7 +449,8 @@
       "option_text": "текст варианта",
       "is_correct": "правильный ответ",
       "order_index": "порядок",
-      "meeting_url": "ссылка на встречу"
+      "meeting_url": "ссылка на встречу",
+      "recording_url": "ссылка на запись"
     },
     "validation": {
       "less_than_equal": "не больше {{le}}",
@@ -3251,6 +3252,11 @@
     "errorDescription": "Это сбой связи, а не приговор сертификату. Попробуйте ещё раз."
   },
   "meeting": {
+    "recordingPlaceholder": "https://youtu.be/…",
+    "recording": "Запись занятия",
+    "recordingAria": "Смотреть запись — {{title}}",
+    "recordingLabel": "Ссылка на запись",
+    "recordingHint": "Когда запись готова: YouTube, Vimeo, Google Диск — любая ссылка. Студенты увидят кнопку «Запись занятия».",
     "join": "Присоединиться",
     "joinAria": "Присоединиться к встрече — {{title}}",
     "linkLabel": "Ссылка на встречу",

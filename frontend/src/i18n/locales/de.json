@@ -857,7 +857,8 @@
       "option_text": "Optionstext",
       "is_correct": "richtige Antwort",
       "order_index": "Reihenfolge",
-      "meeting_url": "Link zum Meeting"
+      "meeting_url": "Link zum Meeting",
+      "recording_url": "Link zur Aufzeichnung"
     },
     "validation": {
       "less_than_equal": "höchstens {{le}}",
@@ -3135,6 +3136,11 @@
     "errorDescription": "Das ist ein Verbindungsproblem und kein Urteil über das Zertifikat. Bitte erneut versuchen."
   },
   "meeting": {
+    "recordingPlaceholder": "https://youtu.be/…",
+    "recording": "Aufzeichnung",
+    "recordingAria": "Aufzeichnung ansehen — {{title}}",
+    "recordingLabel": "Link zur Aufzeichnung",
+    "recordingHint": "Sobald die Aufzeichnung bereit ist: YouTube, Vimeo, Google Drive — jeder Link. Die Studierenden sehen einen Button „Aufzeichnung“.",
     "join": "Beitreten",
     "joinAria": "Dem Meeting beitreten — {{title}}",
     "linkLabel": "Link zum Meeting",

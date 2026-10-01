@@ -29,5 +29,8 @@ class CourseEvent(Base):
     # would invite a model to "fix" a URL. Validated to http(s) before it
     # is written — see app/core/meeting_url.py.
     meeting_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    # Where to watch it afterwards, once the teacher has a recording. The
+    # same kind of value as ``meeting_url`` and validated by the same rule.
+    recording_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     created_by: Mapped[uuid.UUID] = mapped_column()
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())

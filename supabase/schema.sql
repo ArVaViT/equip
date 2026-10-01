@@ -622,7 +622,8 @@ CREATE TABLE public.course_events (
     event_date timestamp with time zone NOT NULL,
     created_by uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
-    meeting_url character varying(2048)
+    meeting_url character varying(2048),
+    recording_url character varying(2048)
 );
 
 

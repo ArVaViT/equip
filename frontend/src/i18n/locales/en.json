@@ -857,7 +857,8 @@
       "option_text": "option text",
       "is_correct": "correct answer",
       "order_index": "order",
-      "meeting_url": "meeting link"
+      "meeting_url": "meeting link",
+      "recording_url": "recording link"
     },
     "validation": {
       "less_than_equal": "must be no more than {{le}}",
@@ -3135,6 +3136,11 @@
     "errorDescription": "That is a connection problem, not a verdict on the certificate. Please try again."
   },
   "meeting": {
+    "recordingPlaceholder": "https://youtu.be/…",
+    "recording": "Recording",
+    "recordingAria": "Watch the recording — {{title}}",
+    "recordingLabel": "Recording link",
+    "recordingHint": "Once the recording is ready: YouTube, Vimeo, Google Drive — any link. Students will see a “Recording” button.",
     "join": "Join",
     "joinAria": "Join the meeting for {{title}}",
     "linkLabel": "Meeting link",
