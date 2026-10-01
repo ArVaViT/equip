@@ -363,8 +363,11 @@ jobs:
           # about a change — deliberately weaker than a row in
           # `legal_acceptances`) and `dmca_complaints` (what § 512(i)(1)(A)
           # asks a platform to keep about each complaint).
-          if [ "$COUNT" -ne 49 ]; then
-            echo "::error::Expected 49 public tables after replay, got $COUNT — schema.sql may be stale or partial." >&2
+          # 50 since 2026-10-01: `worker_leases` (background work that must
+          # not run twice at once; a transaction lock did not survive the
+          # sweep's own commits).
+          if [ "$COUNT" -ne 50 ]; then
+            echo "::error::Expected 50 public tables after replay, got $COUNT — schema.sql may be stale or partial." >&2
             exit 1
           fi
           echo "OK: prod schema replays cleanly from supabase/schema.sql"

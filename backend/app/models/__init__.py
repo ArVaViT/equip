@@ -39,6 +39,7 @@ from app.models.staged_content_version import StagedContentVersion
 from app.models.student_grade import StudentGrade
 from app.models.submission_declaration import SubmissionDeclaration
 from app.models.user import User, UserRole
+from app.models.worker_lease import WorkerLease
 
 __all__ = [
     "DEFAULT_GRADE_BANDS",
@@ -87,4 +88,5 @@ __all__ = [
     "SubmissionDeclaration",
     "User",
     "UserRole",
+    "WorkerLease",
 ]

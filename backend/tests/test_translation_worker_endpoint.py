@@ -429,23 +429,31 @@ class TestTwoOverlappingTicksDoNotSweepThePoolTogether:
     The sweep now runs under a transaction-scoped advisory lock.
     """
 
-    def test_a_tick_that_cannot_take_the_lock_skips_the_sweep(self, client: TestClient, configured_worker, db) -> None:
+    def test_a_tick_that_cannot_take_the_lease_skips_the_sweep(self, client: TestClient, configured_worker, db) -> None:
         from app.api.v1 import internal_translation_worker as worker
 
         with (
-            patch.object(worker, "_claim_pool_sweep", return_value=False),
+            patch.object(worker.worker_lease, "claim", return_value=None),
+            patch.object(worker.worker_lease, "release") as released,
             patch.object(worker, "translate_pending_questions") as swept,
         ):
             resp = client.get(_WORKER_PATH, headers={"Authorization": f"Bearer {_GOOD_SECRET}"})
 
         assert resp.status_code == 200, resp.text
         swept.assert_not_called()
+        released.assert_not_called()
 
-    def test_a_tick_that_takes_the_lock_sweeps(self, client: TestClient, configured_worker, db) -> None:
+    def test_a_tick_that_takes_the_lease_sweeps_and_gives_it_back(
+        self, client: TestClient, configured_worker, db
+    ) -> None:
+        import uuid
+
         from app.api.v1 import internal_translation_worker as worker
 
+        holder = uuid.uuid4()
         with (
-            patch.object(worker, "_claim_pool_sweep", return_value=True),
+            patch.object(worker.worker_lease, "claim", return_value=holder),
+            patch.object(worker.worker_lease, "release") as released,
             patch.object(worker, "translate_pending_questions") as swept,
         ):
             swept.return_value = worker.PoolSweepReport(questions=0, rows=OrchestratorReport())
@@ -453,9 +461,20 @@ class TestTwoOverlappingTicksDoNotSweepThePoolTogether:
 
         assert resp.status_code == 200, resp.text
         swept.assert_called_once()
+        released.assert_called_once()
+        assert released.call_args.args[2] == holder
 
-    def test_sqlite_always_gets_the_lock(self, db) -> None:
-        """The test database has no advisory locks and no concurrency either."""
-        from app.api.v1.internal_translation_worker import _claim_pool_sweep
+    def test_a_sweep_that_fails_still_gives_the_lease_back(self, client: TestClient, configured_worker, db) -> None:
+        import uuid
 
-        assert _claim_pool_sweep(db) is True
+        from app.api.v1 import internal_translation_worker as worker
+
+        with (
+            patch.object(worker.worker_lease, "claim", return_value=uuid.uuid4()),
+            patch.object(worker.worker_lease, "release") as released,
+            patch.object(worker, "translate_pending_questions", side_effect=RuntimeError("provider down")),
+        ):
+            resp = client.get(_WORKER_PATH, headers={"Authorization": f"Bearer {_GOOD_SECRET}"})
+
+        assert resp.status_code == 200, resp.text
+        released.assert_called_once()

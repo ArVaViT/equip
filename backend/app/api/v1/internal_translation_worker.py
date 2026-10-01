@@ -36,6 +36,7 @@ from app.api.dependencies import require_worker_secret
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.metrics import emit, gauge, timing
+from app.services import worker_lease
 from app.services.content_versions.prune import PruneReport, prune_superseded_machine_translations
 from app.services.course_service import get_course
 from app.services.daily_challenge.translate import SweepReport as PoolSweepReport
@@ -70,10 +71,8 @@ logger = logging.getLogger(__name__)
 # ever runs on a tick that had nothing else to do.
 _IDLE_POOL_SWEEP_LIMIT = 5
 
-#: Advisory-lock key for the idle pool sweep. Any stable 64-bit constant
-#: will do; this one is arbitrary and must simply never collide with
-#: another advisory lock in this database.
-_POOL_SWEEP_LOCK_KEY = 0x5FA17E51
+#: Lease name for the idle pool sweep (``services/worker_lease.py``).
+_POOL_SWEEP_LEASE = "daily_challenge_pool_sweep"
 
 #: Groups of superseded machine translations the idle tick prunes per
 #: call. A group is one text in one language, typically a handful of
@@ -92,44 +91,16 @@ _PRUNE_LOCK_KEY = 0x5FA17E52
 def _claim_prune(db: Session) -> bool:
     """Whether this tick may prune translation history, or another is.
 
-    Same reasoning as ``_claim_pool_sweep`` below, different key: the
-    cron fires every minute against a function allowed to run for five,
-    so ticks overlap by design.
+    The cron fires every minute against a function allowed to run for
+    five, so ticks overlap by design. A transaction-scoped advisory lock is
+    enough here, unlike for the pool sweep (which holds a lease, see
+    ``services/worker_lease.py``): the prune commits once, at the end, so the
+    lock lasts as long as the work.
     """
     bind = db.get_bind()
     if bind is not None and bind.dialect.name != "postgresql":
         return True
     return bool(db.execute(select(func.pg_try_advisory_xact_lock(_PRUNE_LOCK_KEY))).scalar())
-
-
-def _claim_pool_sweep(db: Session) -> bool:
-    """Whether this tick may sweep the question pool, or another already is.
-
-    The cron fires every minute and ``vercel.json`` gives the function
-    ``maxDuration: 300``, so up to five ticks legitimately overlap. The
-    queue survives that because ``claim_next_job`` takes the row
-    ``FOR UPDATE SKIP LOCKED``; the pool sweep had no such guard. It
-    selects its work by reading state — "questions missing a language" —
-    so two overlapping ticks read the same answer, translated the same
-    question, and both inserted the row. The second one met
-    ``uniq_content_versions_active`` and raised ``UniqueViolation``,
-    which unwound the whole sweep and discarded the work the tick had
-    already done. Production logged seven of those between 04:29 and
-    05:16 UTC on 2026-09-18.
-
-    A transaction-scoped advisory lock serialises the sweep without
-    holding a row lock: the loser skips the sweep entirely and the cron
-    comes back in sixty seconds. Postgres releases the lock when the
-    transaction ends, including when it ends by crashing, so a tick that
-    dies mid-sweep cannot wedge the next one.
-
-    SQLite (the test database) has no advisory locks and no concurrent
-    ticks either, so it always gets the lock.
-    """
-    bind = db.get_bind()
-    if bind is not None and bind.dialect.name != "postgresql":
-        return True
-    return bool(db.execute(select(func.pg_try_advisory_xact_lock(_POOL_SWEEP_LOCK_KEY))).scalar())
 
 
 router = APIRouter(prefix="/internal", tags=["internal"])
@@ -339,14 +310,26 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
         # This tick is idle and paid for either way. Sweeping the pool
         # here costs nothing extra and leaves the nightly budget alone,
         # and the time budget keeps it inside one invocation.
+        #
+        # One tick at a time. The cron fires every minute against a function
+        # allowed five, so ticks overlap; two sweeping at once read the same
+        # "questions missing a language", translated the same question, and
+        # the second met ``uniq_content_versions_active`` (seven times on
+        # 2026-09-18). A transaction lock did not hold — the sweep commits
+        # after each question, which releases it — so this is a lease: a row
+        # held for the whole sweep and given back after, which a tick that
+        # dies leaves to expire.
         pool = PoolSweepReport(questions=0, rows=OrchestratorReport())
-        if _claim_pool_sweep(db):
+        holder = worker_lease.claim(db, _POOL_SWEEP_LEASE)
+        if holder is not None:
             try:
                 pool = translate_pending_questions(db, limit=_IDLE_POOL_SWEEP_LIMIT, budget=idle_budget)
             except Exception as exc:
                 db.rollback()
                 logger.warning("worker: idle pool sweep failed: %s", exc)
                 pool = PoolSweepReport(questions=0, rows=OrchestratorReport())
+            finally:
+                worker_lease.release(db, _POOL_SWEEP_LEASE, holder)
         else:
             # Another overlapping tick holds the sweep. Not a failure and
             # not worth a warning: the cron returns in a minute.

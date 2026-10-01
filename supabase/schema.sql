@@ -1358,6 +1358,17 @@ CREATE TABLE public.translation_jobs (
 
 
 --
+-- Name: worker_leases; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.worker_leases (
+    name text NOT NULL,
+    holder uuid NOT NULL,
+    expires_at timestamp with time zone NOT NULL
+);
+
+
+--
 -- Name: announcements announcements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1811,6 +1822,14 @@ ALTER TABLE ONLY public.submission_declarations
 
 ALTER TABLE ONLY public.translation_jobs
     ADD CONSTRAINT translation_jobs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: worker_leases worker_leases_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.worker_leases
+    ADD CONSTRAINT worker_leases_pkey PRIMARY KEY (name);
 
 
 --
@@ -4172,6 +4191,12 @@ CREATE POLICY submissions_select_own_or_teacher ON public.assignment_submissions
 --
 
 ALTER TABLE public.translation_jobs ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: worker_leases; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.worker_leases ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: translation_jobs translation_jobs_no_client_access; Type: POLICY; Schema: public; Owner: -

@@ -121,3 +121,4 @@ GRANT ALL ON TABLE public.student_grades TO service_role;
 GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.translation_jobs TO anon;
 GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.translation_jobs TO authenticated;
 GRANT ALL ON TABLE public.translation_jobs TO service_role;
+GRANT ALL ON TABLE public.worker_leases TO service_role;
