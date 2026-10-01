@@ -683,7 +683,10 @@
       "hint": "Konto-E-Mails — Anmeldung, Passwort, Einladungen — kommen immer: ohne sie lässt sich das Konto nicht nutzen.",
       "kinds": {
         "work_returned": "Arbeit bewertet oder zurückgegeben",
-        "certificate_decided": "Entscheidung über das Zertifikat"
+        "certificate_decided": "Entscheidung über das Zertifikat",
+        "session_starting": "Eine Live-Sitzung beginnt gleich",
+        "deadline_moved": "Eine Frist wurde verschoben",
+        "announcement": "Kursankündigungen"
       }
     },
     "fullName": "Vollständiger Name",
@@ -1063,6 +1066,7 @@
       "private": "Nur Sie sehen das. Es speichert sich selbst."
     },
     "page": {
+      "courseUnavailable": "Dieser Kurs ist derzeit nicht verfügbar",
       "deleteConfirmTitle": "Diese Notiz löschen?",
       "deleteConfirmDescription": "Sie kann nicht wiederhergestellt werden.",
       "deleteFailed": "Notiz konnte nicht gelöscht werden",

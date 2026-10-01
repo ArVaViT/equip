@@ -26,6 +26,8 @@ of mail off for one person.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
 from dataclasses import replace
 from typing import TYPE_CHECKING, Final, Literal, get_args
@@ -60,6 +62,18 @@ def wants(person: User, kind: MailKind) -> bool:
     return kind not in (person.email_off or [])
 
 
+def _link_key() -> bytes:
+    """A key of the link's own, derived from the server secret.
+
+    Signing with the secret itself made the link a token every Supabase
+    service trusts the signature of — harmless only because each of them
+    rejected its audience or role. A derived key is accepted by nothing but
+    this module, and keeps working if Supabase moves to asymmetric keys.
+    """
+    secret = settings.JWT_SECRET_KEY or ""
+    return hmac.new(secret.encode(), b"equip-unsubscribe-link", hashlib.sha256).digest()
+
+
 def unsubscribe_token(person_id: str, kind: MailKind) -> str:
     """A token that turns ``kind`` off for ``person_id`` and can do nothing else."""
     if not settings.JWT_SECRET_KEY:
@@ -69,8 +83,8 @@ def unsubscribe_token(person_id: str, kind: MailKind) -> str:
         # same secret — refuses this token outright instead of reading it as
         # an anonymous request on behalf of ``sub``.
         {"sub": person_id, "kind": kind, "aud": _AUDIENCE, "role": "equip_unsubscribe_link"},
-        settings.JWT_SECRET_KEY,
-        algorithm=settings.JWT_ALGORITHM,
+        _link_key(),
+        algorithm="HS256",
     )
 
 
@@ -79,12 +93,7 @@ def read_unsubscribe_token(token: str) -> tuple[str, MailKind] | None:
     if not settings.JWT_SECRET_KEY or not token:
         return None
     try:
-        payload = jwt.decode(
-            token,
-            settings.JWT_SECRET_KEY,
-            algorithms=[settings.JWT_ALGORITHM],
-            audience=_AUDIENCE,
-        )
+        payload = jwt.decode(token, _link_key(), algorithms=["HS256"], audience=_AUDIENCE)
     except jwt.PyJWTError as exc:
         logger.info("unsubscribe token rejected: %s", type(exc).__name__)
         return None

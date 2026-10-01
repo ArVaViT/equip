@@ -190,10 +190,16 @@ _USFM_ORDER: tuple[str, ...] = (
 
 SLUG_TO_USFM: dict[str, str] = {slug: code for (slug, _aliases), code in zip(_BOOKS, _USFM_ORDER, strict=True)}
 
-#: Process-local, unbounded, never invalidated — Scripture does not change.
-#: The pipeline quotes the same handful of verses across a course, so this
-#: turns a per-verse network call into a per-verse-per-process one.
+#: Process-local, never invalidated — Scripture does not change. The pipeline
+#: quotes the same handful of verses across a course, so this turns a
+#: per-verse network call into a per-verse-per-process one.
+#:
+#: Bounded since readers' lessons reach it too (the verse card): a cap on
+#: entries, oldest out first, so no stream of distinct references can grow
+#: it without limit. Generous for real use — a course cites hundreds of
+#: verses, not tens of thousands.
 _cache: dict[tuple[str, str], str | None] = {}
+_CACHE_MAX = 20_000
 _lock = threading.Lock()
 
 
@@ -400,6 +406,8 @@ def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
         return None  # Not cached: a transient outage must not poison the verse.
 
     with _lock:
+        if len(_cache) >= _CACHE_MAX:
+            _cache.pop(next(iter(_cache)), None)
         _cache[key] = text
     return text
 

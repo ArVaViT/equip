@@ -115,3 +115,22 @@ def test_a_lesson_is_one_request_and_each_block_gets_its_own(
 def test_too_much_text_is_refused(student_client: TestClient) -> None:
     r = student_client.post("/api/v1/scripture/passages", json={"texts": ["x" * (scripture.MAX_TEXT + 1)]})
     assert r.status_code == 422
+
+
+def test_a_reference_no_bible_has_costs_nothing_upstream(
+    student_client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[str] = []
+
+    def fetch(ref: BibleRef, locale: str) -> str:
+        calls.append(str(ref))
+        return "text"
+
+    monkeypatch.setattr(scripture, "fetch_verse", fetch)
+    r = student_client.post(
+        "/api/v1/scripture/passages",
+        json={"texts": ["Acts 100:1, Acts 1:999, Psalm 119:1-176 and Acts 1:8"]},
+        headers={"Accept-Language": "ru"},
+    )
+    assert r.status_code == 200
+    assert calls == ["acts 1:8"]

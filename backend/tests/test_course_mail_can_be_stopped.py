@@ -257,3 +257,17 @@ def test_an_empty_allowlist_lets_nobody_through(monkeypatch: pytest.MonkeyPatch)
     with patch("app.services.email.send.httpx.post") as post:
         assert send_email(to="me@example.com", subject="s", html="h", kind="work_returned").reason == "not_allowed"
     post.assert_not_called()
+
+
+def test_the_link_is_signed_with_a_key_of_its_own() -> None:
+    """Not with the server secret: a token every Supabase service would accept
+    the signature of is one rejected audience or role away from trouble."""
+    import jwt as pyjwt
+    import pytest as pt
+
+    from app.core.config import settings as cfg
+
+    token = course_mail.unsubscribe_token("11111111-1111-1111-1111-111111111111", "work_returned")
+    with pt.raises(pyjwt.PyJWTError):
+        pyjwt.decode(token, cfg.JWT_SECRET_KEY, algorithms=["HS256"], audience="equip-unsubscribe")
+    assert course_mail.read_unsubscribe_token(token) == ("11111111-1111-1111-1111-111111111111", "work_returned")

@@ -683,7 +683,10 @@
       "hint": "Account email — sign-in, password, invitations — always arrives: an account cannot be used without it.",
       "kinds": {
         "work_returned": "Work marked or returned",
-        "certificate_decided": "Certificate decision"
+        "certificate_decided": "Certificate decision",
+        "session_starting": "A live session is about to start",
+        "deadline_moved": "A deadline moved",
+        "announcement": "Course announcements"
       }
     },
     "fullName": "Full Name",
@@ -1063,6 +1066,7 @@
       "private": "Only you can see this. It saves itself."
     },
     "page": {
+      "courseUnavailable": "This course is not available now",
       "deleteConfirmTitle": "Delete this note?",
       "deleteConfirmDescription": "It cannot be brought back.",
       "deleteFailed": "Could not delete the note",

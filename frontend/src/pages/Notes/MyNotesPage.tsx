@@ -69,12 +69,15 @@ export default function MyNotesPage() {
           {groupNotes(notes).map((course) => (
             <section key={course.courseId} aria-labelledby={`notes-${course.courseId}`}>
               <h2 id={`notes-${course.courseId}`} className="mb-4 font-serif text-xl font-semibold">
-                {orNotTranslated(t, course.courseTitle ?? "")}
+                {course.courseTitle ??
+                  (course.modules.every((m) => m.notes.every((n) => !n.available))
+                    ? t("notes.page.courseUnavailable")
+                    : orNotTranslated(t, ""))}
               </h2>
               <div className="space-y-6">
                 {course.modules.map((mod) => (
                   <div key={mod.moduleId ?? "loose"}>
-                    {mod.moduleId && (
+                    {mod.moduleId && mod.notes.some((n) => n.available) && (
                       <h3 className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-ink-muted">
                         {orNotTranslated(t, mod.moduleTitle ?? "")}
                       </h3>
@@ -93,10 +96,7 @@ export default function MyNotesPage() {
                             ) : (
                               // A course since unpublished or left: the words
                               // stay, the link that would 404 does not.
-                              <span className="text-sm font-medium">
-                                {orNotTranslated(t, note.chapter_title ?? "")}{" "}
-                                <span className="text-xs font-normal text-ink-muted">({t("notes.page.unavailable")})</span>
-                              </span>
+                              <span className="text-sm font-medium text-ink-muted">{t("notes.page.unavailable")}</span>
                             )}
                             <span className="flex items-center gap-2">
                               <time dateTime={note.updated_at} className="text-xs text-ink-muted">

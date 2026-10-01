@@ -31,7 +31,7 @@ from app.models.user import User  # noqa: TC001
 from app.schemas.locale import normalize_locale
 from app.services.bible.api_source import API_BIBLE_IDS, fetch_verse
 from app.services.bible.references import BibleRef, parse_references
-from app.services.bible.store import lookup
+from app.services.bible.store import chapters_in, lookup
 
 router = APIRouter(prefix="/scripture", tags=["scripture"])
 
@@ -41,6 +41,11 @@ MAX_TEXTS = 100
 #: Distinct references answered per request. A block citing more than this
 #: is a reference list, and the rest stay plain text.
 MAX_REFERENCES = 40
+
+#: No chapter of the Bible has more verses (Psalm 119: 176), and no card
+#: needs a passage longer than this; anything outside is not looked up.
+MAX_VERSE = 176
+MAX_PASSAGE = 40
 
 #: Verses fetched at once. Each is one short HTTPS call, cached for the
 #: life of the process once answered.
@@ -68,6 +73,19 @@ class Passage(BaseModel):
     edition: str = Field(..., description="Edition key: bsb, kjv, nrt, elberfelder, kulish")
 
 
+def _plausible(ref: BibleRef) -> bool:
+    """Whether ``ref`` could name real verses — checked before any network call,
+    so "Acts 100:1" costs nothing upstream."""
+    chapters = chapters_in(ref.book)
+    end = ref.verse_end or ref.verse_start
+    return (
+        chapters is not None
+        and 1 <= ref.chapter <= chapters
+        and 1 <= ref.verse_start <= MAX_VERSE
+        and end - ref.verse_start < MAX_PASSAGE
+    )
+
+
 def _verse(ref: BibleRef, locale: str) -> tuple[str | None, str]:
     """Same choice as ``canonical_for_display``, spelled out so the card can
     name the edition: the API's, then the King James file for English only.
@@ -89,7 +107,7 @@ def find_passages(
     response.headers["Vary"] = "Accept-Language"
     locale = normalize_locale(accept_language, fallback="en")
 
-    found = [parse_references(text, locale) for text in body.texts]
+    found = [[p for p in parse_references(text, locale) if _plausible(p.ref)] for text in body.texts]
     refs: dict[str, BibleRef] = {}
     for parsed in (p for block in found for p in block):
         if len(refs) >= MAX_REFERENCES:

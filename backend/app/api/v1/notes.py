@@ -173,23 +173,35 @@ def my_notes(
             for (entity_id, _field), text in texts.items():
                 titles[(entity_type, entity_id, "title")] = text
 
-    out = [
-        NoteInList(
-            chapter_id=chapter.id,
-            chapter_title=titles.get(("chapter", chapter.id, "title")),
-            module_id=module.id if module else None,
-            module_title=titles.get(("module", module.id, "title")) if module else None,
-            course_id=course.id,
-            course_title=titles.get(("course", course.id, "title")),
-            body=note.body,
-            updated_at=note.updated_at,
-            # The same rule as reading the lesson (``verify_chapter_access``).
-            available=current_user.role == UserRole.ADMIN.value
+    def opens(course: Course) -> bool:
+        # The publication and enrolment half of reading the lesson
+        # (``verify_chapter_access``); a lesson's own lock is not counted,
+        # so a locked lesson's link can still answer 403.
+        return (
+            current_user.role == UserRole.ADMIN.value
             or str(course.created_by) == str(current_user.id)
-            or (course.status == CourseStatus.PUBLISHED and course.id in enrolled),
+            or (course.status == CourseStatus.PUBLISHED and course.id in enrolled)
         )
-        for note, chapter, module, course in rows
-    ]
+
+    out: list[NoteInList] = []
+    for note, chapter, module, course in rows:
+        available = opens(course)
+        # A course since unpublished or left keeps the student's words, but
+        # not its current titles: a draft renamed after they left is not
+        # theirs to read.
+        out.append(
+            NoteInList(
+                chapter_id=chapter.id,
+                chapter_title=titles.get(("chapter", chapter.id, "title")) if available else None,
+                module_id=module.id if module else None,
+                module_title=titles.get(("module", module.id, "title")) if module and available else None,
+                course_id=course.id,
+                course_title=titles.get(("course", course.id, "title")) if available else None,
+                body=note.body,
+                updated_at=note.updated_at,
+                available=available,
+            )
+        )
     order = {(c.id): (m.order_index if m else 10_000, c.order_index) for _, c, m, _ in rows}
     out.sort(key=lambda n: (n.course_title or "", n.course_id, order[n.chapter_id]))
     return out

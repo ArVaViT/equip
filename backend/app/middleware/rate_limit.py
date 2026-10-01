@@ -64,6 +64,11 @@ ENDPOINT_LIMITS: dict[str, tuple[int, int]] = {
     # case and prevents trivial cost-amplification attacks against the
     # upstream quota.
     "/api/v1/verse-of-the-day": (60, 60),
+    # The verse card: one request per lesson opened, each fanning out to the
+    # same upstream Bible API on a cache miss. A class on one church Wi-Fi
+    # shares an IP, so the ceiling stays close to the global one: 30 readers
+    # each opening three lessons a minute still fit.
+    "/api/v1/scripture/": (90, 60),
     # Admin-mutation buckets. A compromised admin token falls under the
     # global 100/60s default otherwise, which is enough for an attacker
     # to script delete-100-users-per-minute. These per-prefix ceilings

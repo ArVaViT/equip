@@ -123,5 +123,10 @@ def test_the_notes_page_leaves_out_the_bin_and_unlinks_what_cannot_be_opened(
     db.get(Course, db.get(Chapter, drafted).course_id).status = "draft"
     db.commit()
 
-    rows = {n["chapter_id"]: n["available"] for n in student_client.get(f"{NOTES}/me").json()}
+    listed = student_client.get(f"{NOTES}/me").json()
+    rows = {n["chapter_id"]: n["available"] for n in listed}
     assert rows == {kept: True, drafted: False}
+    # The words stay; the draft's current titles do not.
+    [gone] = [n for n in listed if n["chapter_id"] == drafted]
+    assert gone["body"] == f"note {drafted}"
+    assert gone["course_title"] is None and gone["chapter_title"] is None
