@@ -20,6 +20,7 @@ import {
   type QuizEditorMode,
 } from "./editor"
 import type { DraftQuestion } from "./editor/types"
+import { draftsFromImport } from "./editor/types"
 
 interface QuizEditorProps {
   chapterId: string
@@ -271,6 +272,9 @@ export default function QuizEditor({
           chapterType={chapterType}
           questions={draft.questions}
           onAddQuestion={draft.addQuestion}
+          onImportQuestions={(imported) =>
+            draft.setQuestions((prev) => [...prev, ...draftsFromImport(imported, prev.length)])
+          }
           onRemoveQuestion={draft.removeQuestion}
           onMoveQuestion={draft.moveQuestion}
           onUpdateQuestion={draft.updateQuestion}

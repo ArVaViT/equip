@@ -1030,6 +1030,23 @@
     "yourAnswer": "Your answer:"
   },
   "quizEditor": {
+    "import": {
+      "open": "Paste from text",
+      "title": "Paste questions from text",
+      "howTo": "Paste questions, from Word for example. Separate questions with a blank line; start options with a letter; mark the right one with an “ANSWER:” line or a star.",
+      "example": "Who wrote the book of Acts?\nA. Peter\nB. Luke\nC. Paul\nANSWER: B",
+      "found_one": "{{count}} question found",
+      "found_other": "{{count}} questions found",
+      "add_one": "Add {{count}} question",
+      "add_other": "Add {{count}} questions",
+      "problem": {
+        "no_options": "no options",
+        "one_option": "only one option",
+        "no_answer": "the right answer is not marked",
+        "answer_not_an_option": "the answer names a letter that is not an option",
+        "two_answers": "two right answers are marked"
+      }
+    },
     "validation": {
       "titleRequired": "Quiz title is required",
       "addAtLeastOneQuestion": "Add at least one question",

@@ -1030,6 +1030,23 @@
     "yourAnswer": "Ihre Antwort:"
   },
   "quizEditor": {
+    "import": {
+      "open": "Aus Text einfügen",
+      "title": "Fragen aus Text einfügen",
+      "howTo": "Fügen Sie Fragen ein, zum Beispiel aus Word. Fragen durch eine Leerzeile trennen; Antworten mit einem Buchstaben beginnen; die richtige mit einer Zeile „ANTWORT:“ oder einem Stern markieren.",
+      "example": "Wer schrieb die Apostelgeschichte?\nA. Petrus\nB. Lukas\nC. Paulus\nANTWORT: B",
+      "found_one": "{{count}} Frage gefunden",
+      "found_other": "{{count}} Fragen gefunden",
+      "add_one": "{{count}} Frage hinzufügen",
+      "add_other": "{{count}} Fragen hinzufügen",
+      "problem": {
+        "no_options": "keine Antworten",
+        "one_option": "nur eine Antwort",
+        "no_answer": "die richtige Antwort ist nicht markiert",
+        "answer_not_an_option": "die Antwort nennt einen Buchstaben, der fehlt",
+        "two_answers": "zwei richtige Antworten markiert"
+      }
+    },
     "validation": {
       "titleRequired": "Der Titel des Tests ist erforderlich",
       "addAtLeastOneQuestion": "Fügen Sie mindestens eine Frage hinzu",
