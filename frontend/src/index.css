@@ -515,20 +515,21 @@
       width: 100%;
     }
   }
-  /* A progress bar that fills from empty on arrival. Transform, not width:
-     the compositor moves it without laying the row out again. Was a
+  /* A progress bar that fills from empty on arrival. A clip, not width:
+     the row is not laid out again as it grows. Was a
      motion.div on the dashboard, which made the whole animation library part
      of the first screen a student opens every day. */
   @keyframes fill-in {
     from {
-      transform: scaleX(0);
+      clip-path: inset(0 100% 0 0 round 9999px);
     }
     to {
-      transform: scaleX(1);
+      clip-path: inset(0 0 0 0 round 9999px);
     }
   }
+  /* A clip, not scaleX: scaling squashed the bar's rounded end for the
+     length of the animation (review, 2026-10-01). */
   .animate-fill-in {
-    transform-origin: left center;
     animation: fill-in var(--motion-panel) cubic-bezier(0.22, 1, 0.36, 1) both;
   }
   @media (prefers-reduced-motion: reduce) {

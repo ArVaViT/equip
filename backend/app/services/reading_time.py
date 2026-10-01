@@ -33,8 +33,9 @@ _TAG = re.compile(r"<[^>]+>")
 _ENTITY = re.compile(r"&[a-zA-Z#0-9]+;")
 #: A word as the lesson page counts one (``wordsIn`` in ``lib/readingTime.ts``):
 #: a letter, then letters, combining marks, apostrophes and hyphens. "3:16"
-#: is not a word; "Иоанна-Крестителя" is one.
-_WORD = re.compile(r"[^\W\d_](?:[^\W\d_]|[\u0300-\u036f'\u2019-])*")
+#: is not a word; "Иоанна-Крестителя" is one, and so is a Slavonic word
+#: under a titlo (U+0483 to U+0489 are marks, not breaks).
+_WORD = re.compile(r"[^\W\d_](?:[^\W\d_]|[\u0300-\u036f\u0483-\u0489'\u2019-])*")
 
 
 def count_words(html: str) -> int:
@@ -49,14 +50,28 @@ def minutes_for(words: int, locale: str) -> int:
 
 def course_reading_minutes(db: Session, course: Course, display_locale: str) -> dict[str, int]:
     """``{chapter_id: minutes}`` for every live lesson of ``course``; 0 for one with under half a minute of text."""
-    chapters = db.query(Chapter.id).filter(Chapter.course_id == course.id, Chapter.deleted_at.is_(None)).all()
+    chapters = (
+        db.query(Chapter.id, Chapter.chapter_type)
+        .filter(Chapter.course_id == course.id, Chapter.deleted_at.is_(None))
+        .all()
+    )
     chapter_ids = [c.id for c in chapters]
     if not chapter_ids:
         return {}
+    # Only reading lessons count, as on the lesson page, which shows minutes
+    # for nothing else: a test's or an assignment's introduction added time to
+    # the course that the lesson itself never claimed (review, 2026-10-01).
+    # Anything that is not a test, an exam or an assignment is reading — the
+    # frontend's normalizeChapterType folds legacy types into it the same way.
+    reading = [c.id for c in chapters if c.chapter_type not in ("quiz", "exam", "assignment")]
     blocks = (
-        db.query(ChapterBlock.id, ChapterBlock.chapter_id)
-        .filter(ChapterBlock.chapter_id.in_(chapter_ids), ChapterBlock.block_type == "text")
-        .all()
+        (
+            db.query(ChapterBlock.id, ChapterBlock.chapter_id)
+            .filter(ChapterBlock.chapter_id.in_(reading), ChapterBlock.block_type == "text")
+            .all()
+        )
+        if reading
+        else []
     )
     # Only the text this reader will be served (the default fallback): a
     # lesson still waiting for its translation counts as no minutes rather

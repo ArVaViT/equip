@@ -329,7 +329,13 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
                 logger.warning("worker: idle pool sweep failed: %s", exc)
                 pool = PoolSweepReport(questions=0, rows=OrchestratorReport())
             finally:
-                worker_lease.release(db, _POOL_SWEEP_LEASE, holder)
+                # A lease that cannot be given back expires on its own; that is
+                # no reason to fail the tick that did the work.
+                try:
+                    worker_lease.release(db, _POOL_SWEEP_LEASE, holder)
+                except Exception as exc:
+                    db.rollback()
+                    logger.warning("worker: pool sweep lease not released (it will expire): %s", exc)
         else:
             # Another overlapping tick holds the sweep. Not a failure and
             # not worth a warning: the cron returns in a minute.

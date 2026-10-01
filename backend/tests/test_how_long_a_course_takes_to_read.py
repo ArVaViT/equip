@@ -44,8 +44,10 @@ def _course(db: Session, *, status: str = "published", access_mode: str = "publi
     # 320 words in two text blocks: two minutes in Russian (160 a minute).
     make_chapter_block_with_content(db, chapter_id=reading.id, content=_words(200), locale="ru")
     make_chapter_block_with_content(db, chapter_id=reading.id, order_index=1, content=_words(120), locale="ru")
-    # A quiz block's text is not reading.
+    # A quiz block's text is not reading, and neither is a test lesson's own
+    # introduction: the lesson page shows no minutes for it, so neither may the course.
     make_chapter_block_with_content(db, chapter_id=quiz.id, block_type="quiz", content=_words(500), locale="ru")
+    make_chapter_block_with_content(db, chapter_id=quiz.id, order_index=1, content=_words(400), locale="ru")
     db.commit()
     return course.id, reading.id, quiz.id
 
@@ -54,6 +56,8 @@ class TestCounting:
     def test_words_are_counted_as_the_lesson_page_counts_them(self) -> None:
         # Tags, entities and a verse number are not words; a hyphenated name is one.
         assert count_words("<p>Ин&nbsp;3:16 <strong>так</strong> возлюбил Иоанна-Крестителя</p>") == 4
+        # A Slavonic abbreviation under a titlo is one word, not two.
+        assert count_words("\u0411\u0433\u0483\u044a") == 1
 
     def test_minutes_round_as_the_lesson_page_rounds(self) -> None:
         assert minutes_for(0, "ru") == 0
