@@ -125,6 +125,16 @@
     }
   },
   "dashboard": {
+    "atRisk": {
+      "title": "Who to write to",
+      "hint": "A week without any activity, or two deadlines missed",
+      "quiet_one": "{{count}} day without activity",
+      "quiet_other": "{{count}} days without activity",
+      "missed_one": "{{count}} deadline missed",
+      "missed_other": "{{count}} deadlines missed",
+      "more_one": "and {{count}} more",
+      "more_other": "and {{count}} more"
+    },
     "continue": {
       "eyebrow": "Continue",
       "position": "lesson {{current}} of {{total}}",

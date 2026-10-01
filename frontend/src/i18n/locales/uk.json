@@ -125,6 +125,22 @@
     }
   },
   "dashboard": {
+    "atRisk": {
+      "title": "Кому варто написати",
+      "hint": "Тиждень без жодної дії або два пропущені терміни",
+      "quiet_one": "{{count}} день без активності",
+      "quiet_few": "{{count}} дні без активності",
+      "quiet_many": "{{count}} днів без активності",
+      "quiet_other": "{{count}} дня без активності",
+      "missed_one": "пропущено {{count}} термін",
+      "missed_few": "пропущено {{count}} терміни",
+      "missed_many": "пропущено {{count}} термінів",
+      "missed_other": "пропущено {{count}} терміну",
+      "more_one": "і ще {{count}}",
+      "more_few": "і ще {{count}}",
+      "more_many": "і ще {{count}}",
+      "more_other": "і ще {{count}}"
+    },
     "continue": {
       "eyebrow": "Продовжити",
       "position": "урок {{current}} з {{total}}",

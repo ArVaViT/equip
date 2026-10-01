@@ -17,6 +17,7 @@ import { RecentlyViewedRow } from "@/components/dashboard/RecentlyViewedRow"
 import { ContinueCard } from "@/components/dashboard/ContinueCard"
 import { CourseThumb } from "@/components/course/CourseThumb"
 import { TeacherCoursesCard } from "@/components/dashboard/TeacherCoursesCard"
+import { TeacherAtRiskCard } from "@/components/dashboard/TeacherAtRiskCard"
 import { useUserTour } from "@/hooks/useUserTour"
 import { studentDashboardSteps } from "@/lib/tourSteps"
 import { firstNameOf } from "@/lib/names"
@@ -333,6 +334,8 @@ export default function DashboardPage() {
           {/* Teachers first see the courses they teach — the reason most
               of them signed in. Renders nothing for students. */}
           <TeacherCoursesCard />
+          {/* Who to write to this week — teachers only, nothing when nobody. */}
+          <TeacherAtRiskCard />
           <ContinueCard />
           <RecentlyViewedRow />
           <div className="min-h-0 flex-1">

@@ -411,6 +411,21 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/analytics/at-risk",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/analytics/course/{course_id}",
     "params": [
       [

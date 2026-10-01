@@ -2438,6 +2438,22 @@
     }
   },
   "dashboard": {
+    "atRisk": {
+      "title": "Кому стоит написать",
+      "hint": "Неделю без единого действия или два пропущенных срока",
+      "quiet_one": "{{count}} день без активности",
+      "quiet_few": "{{count}} дня без активности",
+      "quiet_many": "{{count}} дней без активности",
+      "quiet_other": "{{count}} дня без активности",
+      "missed_one": "пропущен {{count}} срок",
+      "missed_few": "пропущено {{count}} срока",
+      "missed_many": "пропущено {{count}} сроков",
+      "missed_other": "пропущено {{count}} срока",
+      "more_one": "и ещё {{count}}",
+      "more_few": "и ещё {{count}}",
+      "more_many": "и ещё {{count}}",
+      "more_other": "и ещё {{count}}"
+    },
     "continue": {
       "eyebrow": "Продолжить",
       "position": "урок {{current}} из {{total}}",

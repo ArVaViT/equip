@@ -125,6 +125,16 @@
     }
   },
   "dashboard": {
+    "atRisk": {
+      "title": "Wem Sie schreiben sollten",
+      "hint": "Eine Woche ohne Aktivität oder zwei verpasste Fristen",
+      "quiet_one": "{{count}} Tag ohne Aktivität",
+      "quiet_other": "{{count}} Tage ohne Aktivität",
+      "missed_one": "{{count}} Frist verpasst",
+      "missed_other": "{{count}} Fristen verpasst",
+      "more_one": "und {{count}} weitere",
+      "more_other": "und {{count}} weitere"
+    },
     "continue": {
       "eyebrow": "Weiterlernen",
       "position": "Lektion {{current}} von {{total}}",
