@@ -339,23 +339,25 @@ export default function ProfilePage() {
                 <CardTitle>{t("profile.accountDetails")}</CardTitle>
               </CardHeader>
               <CardContent>
+                {/* Each group is a `div` holding its `dt` and `dd` directly, as
+                    a description list requires; the icon sits inside the term,
+                    placed in the gutter. A wrapper between the group and its
+                    term was what axe flagged. */}
                 <dl className="divide-y divide-border rounded-md ">
-                  <div className="flex items-start gap-3 px-4 py-3">
-                    <Mail className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-                    <div className="min-w-0">
-                      <dt className="text-xs text-ink-muted">{t("auth.email")}</dt>
-                      <dd className="text-sm font-medium">{user.email}</dd>
-                    </div>
+                  <div className="relative px-4 py-3 pl-11">
+                    <dt className="text-xs text-ink-muted">
+                      <Mail className="absolute left-4 top-3.5 h-4 w-4 text-ink-muted" strokeWidth={1.75} aria-hidden />
+                      {t("auth.email")}
+                    </dt>
+                    <dd className="min-w-0 text-sm font-medium">{user.email}</dd>
                   </div>
                   {user.created_at && (
-                    <div className="flex items-start gap-3 px-4 py-3">
-                      <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-                      <div>
-                        <dt className="text-xs text-ink-muted">{t("profile.memberSince")}</dt>
-                        <dd className="text-sm font-medium">
-                          {formatDateLong(user.created_at)}
-                        </dd>
-                      </div>
+                    <div className="relative px-4 py-3 pl-11">
+                      <dt className="text-xs text-ink-muted">
+                        <Calendar className="absolute left-4 top-3.5 h-4 w-4 text-ink-muted" strokeWidth={1.75} aria-hidden />
+                        {t("profile.memberSince")}
+                      </dt>
+                      <dd className="text-sm font-medium">{formatDateLong(user.created_at)}</dd>
                     </div>
                   )}
                 </dl>
