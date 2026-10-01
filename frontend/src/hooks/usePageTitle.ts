@@ -32,6 +32,7 @@ export function matchTitleKey(pathname: string): string | null {
     // twins: these are already translated into all four languages, and a
     // second copy is a second thing to keep in step.
     "/verify": "verify.title",
+    "/unsubscribe": "unsubscribe.title",
     "/invite/accept": "invite.heading",
     "/teach/grading": "grading.title",
     "/daily-challenge/archive": "dailyChallenge.archive.title",

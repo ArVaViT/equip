@@ -1,4 +1,13 @@
 {
+  "unsubscribe": {
+    "title": "Equip email",
+    "ask": "Stop sending “{{kind}}” emails?",
+    "button": "Unsubscribe",
+    "done": "Done: “{{kind}}” emails will no longer arrive.",
+    "again": "You can turn them back on in your profile, under Settings.",
+    "invalid": "This link does not work. You can turn email off in your profile, under Settings.",
+    "toProfile": "Open profile"
+  },
   "common": {
     "appName": "Equip",
     "cancel": "Cancel",
@@ -652,6 +661,13 @@
     "signInLinkBackToPassword": "Use a password"
   },
   "profile": {
+    "emails": {
+      "label": "Course email",
+      "hint": "Account email — sign-in, password, invitations — always arrives: an account cannot be used without it.",
+      "kinds": {
+        "work_returned": "Work marked or returned"
+      }
+    },
     "fullName": "Full Name",
     "changeAvatar": "Change avatar",
     "uploadFailed": "Failed to upload avatar",

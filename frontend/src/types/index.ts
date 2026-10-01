@@ -77,7 +77,17 @@ export interface User {
   region?: string | null
   city?: string | null
   church?: string | null
+  /** Kinds of course mail this person turned off. Empty or absent: all of it. */
+  email_off?: MailKind[]
 }
+
+/**
+ * Course mail a person can turn off — the kinds the privacy policy names,
+ * the same list `profiles_email_off_check` holds. Account mail (sign-in,
+ * password, invitations) is not one of them: it cannot be turned off.
+ */
+export const MAIL_KINDS = ["work_returned", "certificate_decided", "session_starting", "deadline_moved", "announcement"] as const
+export type MailKind = (typeof MAIL_KINDS)[number]
 
 export interface Course {
   id: string
@@ -567,6 +577,7 @@ export interface Profile {
   region?: string | null
   city?: string | null
   church?: string | null
+  email_off?: MailKind[]
 }
 
 type CalendarEventType = 'deadline' | 'live_session' | 'exam' | 'other'

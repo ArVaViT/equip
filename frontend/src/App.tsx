@@ -58,6 +58,7 @@ const AcceptInvite = lazyRoute(() => import("./pages/Invite/AcceptInvite"))
 const DashboardPage = lazyRoute(() => import("./pages/Dashboard/DashboardPage"))
 const CoursesPage = lazyRoute(() => import("./pages/Courses/CoursesPage"))
 const VerifyCertificatePage = lazyRoute(() => import("./pages/Verify/VerifyCertificatePage"))
+const UnsubscribePage = lazyRoute(() => import("./pages/Unsubscribe/UnsubscribePage"))
 const LegalDocumentPage = lazyRoute(() => import("./pages/Legal/LegalDocumentPage"))
 const DmcaPage = lazyRoute(() => import("./pages/Legal/DmcaPage"))
 const ProfilePage = lazyRoute(() => import("./pages/Profile/ProfilePage"))
@@ -281,6 +282,9 @@ function AppRoutes() {
                   certificate points here. */}
               <Route path="/verify" element={<VerifyCertificatePage />} />
               <Route path="/verify/:certificateNumber" element={<VerifyCertificatePage />} />
+              {/* Public: the link at the foot of a course mail lands here,
+                  often on a phone that has never signed in. */}
+              <Route path="/unsubscribe" element={<UnsubscribePage />} />
               <Route path="/privacy" element={<LegalDocumentPage slug="privacy" />} />
               <Route path="/terms" element={<LegalDocumentPage slug="terms" />} />
               {/* Public like the other two: somebody deciding whether to accept

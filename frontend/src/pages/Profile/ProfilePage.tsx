@@ -29,6 +29,7 @@ import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
 import { initialsOf } from "@/lib/names"
 import { PersonalDetailsCard } from "./PersonalDetailsCard"
 import { TimeZoneSetting } from "./TimeZoneSetting"
+import { EmailSetting } from "./EmailSetting"
 
 function useCountUp(target: number, durationMs = 800) {
   const prefersReducedMotion = useReducedMotion()
@@ -412,6 +413,7 @@ export default function ProfilePage() {
                   <LanguageSwitcher />
                 </div>
                 <TimeZoneSetting />
+                <EmailSetting />
               </CardContent>
             </Card>
           </div>

@@ -1,4 +1,13 @@
 {
+  "unsubscribe": {
+    "title": "E-Mails von Equip",
+    "ask": "Keine E-Mails „{{kind}}“ mehr senden?",
+    "button": "Abbestellen",
+    "done": "Erledigt: E-Mails „{{kind}}“ kommen nicht mehr.",
+    "again": "Sie können sie in Ihrem Profil unter „Einstellungen“ wieder einschalten.",
+    "invalid": "Dieser Link funktioniert nicht. E-Mails lassen sich in Ihrem Profil unter „Einstellungen“ abschalten.",
+    "toProfile": "Profil öffnen"
+  },
   "common": {
     "appName": "Equip",
     "cancel": "Abbrechen",
@@ -652,6 +661,13 @@
     "signInLinkBackToPassword": "Mit Passwort anmelden"
   },
   "profile": {
+    "emails": {
+      "label": "E-Mails zu Kursen",
+      "hint": "Konto-E-Mails — Anmeldung, Passwort, Einladungen — kommen immer: ohne sie lässt sich das Konto nicht nutzen.",
+      "kinds": {
+        "work_returned": "Arbeit bewertet oder zurückgegeben"
+      }
+    },
     "fullName": "Vollständiger Name",
     "changeAvatar": "Profilbild ändern",
     "uploadFailed": "Profilbild konnte nicht hochgeladen werden",

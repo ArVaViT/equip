@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase"
-import type { Profile } from "@/types"
+import type { MailKind, Profile } from "@/types"
 
 export interface ProfileUpdate {
   full_name?: string
@@ -11,6 +11,8 @@ export interface ProfileUpdate {
   region?: string | null
   city?: string | null
   church?: string | null
+  /** Kinds of course mail turned off; see `MAIL_KINDS`. */
+  email_off?: MailKind[]
 }
 
 export const usersService = {

@@ -125,6 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             region: data.region ?? null,
             city: data.city ?? null,
             church: data.church ?? null,
+            email_off: data.email_off ?? [],
           }
           // Before the first render with this user: every formatter reads
           // the zone at render time. A zone the person chose wins; anything
