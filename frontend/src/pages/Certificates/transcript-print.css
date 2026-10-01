@@ -1,9 +1,8 @@
 /* The transcript as paper: portrait A4, black on white, no app chrome.
  *
- * A named page, not a bare `@page`: the certificate's and the ведомость's
- * stylesheets set the unnamed one (landscape, punched margin), and in a
- * single-page app whichever chunk loaded last would otherwise decide how
- * this sheet prints. */
+ * A named page, like the certificate's and the ведомость's: in a single-page
+ * app every visited page's stylesheet stays loaded, and an unnamed @page
+ * would let whichever loaded last decide how this sheet prints. */
 
 @page transcript {
   size: A4;
@@ -15,9 +14,9 @@
 }
 
 @media print {
-  header:not(.transcript-sheet header),
-  footer:not(.transcript-sheet footer),
-  nav {
+  body:has(.transcript-sheet) header:not(.transcript-sheet header),
+  body:has(.transcript-sheet) footer:not(.transcript-sheet footer),
+  body:has(.transcript-sheet) nav {
     display: none !important;
   }
 

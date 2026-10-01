@@ -14,17 +14,23 @@
  * it was displayed.
  */
 
-@page {
+/* A named page, so that this sheet's size cannot be decided by another
+   document's stylesheet: in a single-page app every visited page's CSS stays
+   loaded, and an unnamed @page from the certificate (landscape) declared after
+   this one won — measured in Chromium's own PDF output. */
+@page vedomost {
   size: A4;
   /* Wide enough on the left for a two-hole punch — these get filed. */
   margin: 18mm 15mm 18mm 22mm;
 }
 
 @media print {
-  /* The application chrome is not part of the document. */
-  header,
-  nav,
-  footer,
+  /* The application chrome is not part of the document — on this page only:
+     a bare `header, footer` here also emptied a certificate printed later in
+     the same session of its school name and its verification number. */
+  body:has(.vedomost) header:not(.vedomost header),
+  body:has(.vedomost) nav,
+  body:has(.vedomost) footer:not(.vedomost footer),
   .no-print {
     display: none !important;
   }
@@ -36,6 +42,7 @@
   }
 
   .vedomost {
+    page: vedomost;
     /* Overriding the app's container: the page IS the container now. */
     max-width: none;
     margin: 0;
