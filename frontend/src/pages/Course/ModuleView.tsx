@@ -21,6 +21,8 @@ import {
 } from "lucide-react"
 import { isGradableChapterType } from "@/lib/chapterTypes"
 import ChapterTypeBadge from "@/components/course/ChapterTypeBadge"
+import { ReadingMinutes } from "@/components/course/ReadingMinutes"
+import { useReadingMinutes } from "@/hooks/useReadingMinutes"
 import { EmptyState, ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
 import { isChapterComplete, isChapterLocked, isChapterRead } from "./moduleProgress"
@@ -39,6 +41,7 @@ interface ModuleFetchResult {
 export default function ModuleView() {
   const { t, i18n } = useTranslation()
   const { courseId, moduleId } = useParams<{ courseId: string; moduleId: string }>()
+  const minutes = useReadingMinutes(courseId)
   const { user } = useAuth()
 
   const { data, loading, error: fetchError } = useAsyncData<ModuleFetchResult>(
@@ -263,6 +266,7 @@ export default function ModuleView() {
                         <span className="min-w-0 flex-1 truncate text-ink-muted">
                           {orNotTranslated(t, chapter.title)}
                         </span>
+                        <ReadingMinutes minutes={minutes?.[chapter.id]} />
                         {chapter.chapter_type && (
                           <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
                         )}
@@ -311,6 +315,7 @@ export default function ModuleView() {
                         <span className={`min-w-0 flex-1 truncate ${isCompleted ? "text-ink-muted" : ""}`}>
                           {orNotTranslated(t, chapter.title)}
                         </span>
+                        <ReadingMinutes minutes={minutes?.[chapter.id]} />
                         {chapter.chapter_type && (
                           <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
                         )}

@@ -2038,6 +2038,7 @@
     }
   },
   "courseDetail": {
+    "minutesShort": "{{minutes}} Min.",
     "readingHours": "≈ {{hours}} Std. Lesezeit",
     "allCourses": "Alle Kurse",
     "manageCourse": "Kurs verwalten",

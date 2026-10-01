@@ -22,6 +22,8 @@ import { EmptyState } from "@/components/patterns"
 import { StaggerChildren } from "@/components/motion"
 import ChapterTypeBadge from "@/components/course/ChapterTypeBadge"
 import { isGradableChapterType } from "@/lib/chapterTypes"
+import { ReadingMinutes } from "@/components/course/ReadingMinutes"
+import { useReadingMinutes } from "@/hooks/useReadingMinutes"
 import { chapterHref, type CourseOutlineGroup, type CourseStructure } from "@/lib/courseStructure"
 import type { Chapter, Module } from "@/types"
 import { formatDate } from "./types"
@@ -137,6 +139,7 @@ function buildRows(structure: CourseStructure, completed: Set<string> | null): O
 export function CourseOutline({ courseId, structure, completedChapterIds }: Props) {
   const { t } = useTranslation()
   const rows = buildRows(structure, completedChapterIds)
+  const minutes = useReadingMinutes(courseId)
   const firstLockedKey = rows.find((row) => row.locked)?.key ?? null
 
   const moduleCount = structure.groups.filter((g) => g.module !== null).length
@@ -173,6 +176,7 @@ export function CourseOutline({ courseId, structure, completedChapterIds }: Prop
                 isLocked={row.locked}
                 isFirstLocked={row.key === firstLockedKey}
                 completedChapterIds={completedChapterIds}
+                minutes={minutes ? row.group.chapters.reduce((sum, ch) => sum + (minutes[ch.id] ?? 0), 0) : undefined}
               />
             ) : (
               <LessonRow
@@ -184,6 +188,7 @@ export function CourseOutline({ courseId, structure, completedChapterIds }: Prop
                 lockReason={row.lockReason}
                 isFirstLocked={row.key === firstLockedKey}
                 completedChapterIds={completedChapterIds}
+                minutes={minutes?.[row.chapter.id]}
               />
             ),
           )}
@@ -248,6 +253,8 @@ interface ModuleRowProps {
   isFirstLocked: boolean
   /** `null` when the progress request failed. See `moduleProgress.ts`. */
   completedChapterIds: Set<string> | null
+  /** Minutes of reading in the module's lessons, once known. */
+  minutes?: number
 }
 
 const ModuleRow = memo(function ModuleRow({
@@ -258,6 +265,7 @@ const ModuleRow = memo(function ModuleRow({
   isLocked,
   isFirstLocked,
   completedChapterIds,
+  minutes,
 }: ModuleRowProps) {
   const { t } = useTranslation()
   const gradable = chapters.filter((ch) => isGradableChapterType(ch.chapter_type))
@@ -279,6 +287,7 @@ const ModuleRow = memo(function ModuleRow({
           <CardTitle className="flex min-w-0 items-center gap-2 text-sm">
             <RowMarker locked={isLocked} complete={allComplete} ordinal={ordinal} />
             <span className="min-w-0 flex-1 truncate">{orNotTranslated(t, module.title)}</span>
+            <ReadingMinutes minutes={minutes} />
             <span className="shrink-0 whitespace-nowrap text-xs font-normal text-ink-muted">
               {gradableCount > 0
                 ? `${completedInModule}/${gradableCount}`
@@ -350,6 +359,8 @@ interface LessonRowProps {
   isFirstLocked: boolean
   /** `null` when the progress request failed. See `moduleProgress.ts`. */
   completedChapterIds: Set<string> | null
+  /** Minutes of reading in the module's lessons, once known. */
+  minutes?: number
 }
 
 /**
@@ -366,6 +377,7 @@ const LessonRow = memo(function LessonRow({
   lockReason,
   isFirstLocked,
   completedChapterIds,
+  minutes,
 }: LessonRowProps) {
   const { t } = useTranslation()
   const isGradable = isGradableChapterType(chapter.chapter_type)
@@ -390,6 +402,7 @@ const LessonRow = memo(function LessonRow({
             <span className={`min-w-0 flex-1 truncate ${isLocked || complete ? "text-ink-muted" : ""}`}>
               {orNotTranslated(t, chapter.title)}
             </span>
+            <ReadingMinutes minutes={minutes} />
             {chapter.chapter_type && <ChapterTypeBadge type={chapter.chapter_type} size="sm" />}
           </CardTitle>
           {isLocked ? (
