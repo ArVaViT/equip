@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Clock,
   Lock,
+  NotebookPen,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -23,6 +24,7 @@ import ChapterTypeBadge from "@/components/course/ChapterTypeBadge"
 import { isGradableChapterType } from "@/lib/chapterTypes"
 import { ReadingMinutes } from "@/components/course/ReadingMinutes"
 import { useReadingMinutes } from "@/hooks/useReadingMinutes"
+import { useNotedChapters } from "@/hooks/useNotedChapters"
 import { chapterHref, type CourseOutlineGroup, type CourseStructure } from "@/lib/courseStructure"
 import type { Chapter, Module } from "@/types"
 import { formatDate } from "./types"
@@ -139,6 +141,7 @@ export function CourseOutline({ courseId, structure, completedChapterIds }: Prop
   const { t } = useTranslation()
   const rows = buildRows(structure, completedChapterIds)
   const minutes = useReadingMinutes(courseId)
+  const noted = useNotedChapters()
   const firstLockedKey = rows.find((row) => row.locked)?.key ?? null
 
   const moduleCount = structure.groups.filter((g) => g.module !== null).length
@@ -191,6 +194,7 @@ export function CourseOutline({ courseId, structure, completedChapterIds }: Prop
                   isFirstLocked={row.key === firstLockedKey}
                   completedChapterIds={completedChapterIds}
                   minutes={minutes?.[row.chapter.id]}
+                  hasNote={noted.has(row.chapter.id)}
                 />
               )}
             </div>
@@ -362,8 +366,10 @@ interface LessonRowProps {
   isFirstLocked: boolean
   /** `null` when the progress request failed. See `moduleProgress.ts`. */
   completedChapterIds: Set<string> | null
-  /** Minutes of reading in the module's lessons, once known. */
+  /** Minutes of reading, once known. */
   minutes?: number
+  /** The reader has written a note on this lesson. */
+  hasNote?: boolean
 }
 
 /**
@@ -381,6 +387,7 @@ const LessonRow = memo(function LessonRow({
   isFirstLocked,
   completedChapterIds,
   minutes,
+  hasNote,
 }: LessonRowProps) {
   const { t } = useTranslation()
   const isGradable = isGradableChapterType(chapter.chapter_type)
@@ -405,6 +412,14 @@ const LessonRow = memo(function LessonRow({
             <span className={`min-w-0 flex-1 truncate ${isLocked || complete ? "text-ink-muted" : ""}`}>
               {orNotTranslated(t, chapter.title)}
             </span>
+            {hasNote && (
+              <NotebookPen
+                role="img"
+                aria-label={t("notes.lesson.hasNote")}
+                className="h-3.5 w-3.5 shrink-0 text-ink-muted"
+                strokeWidth={1.75}
+              />
+            )}
             <ReadingMinutes minutes={minutes} />
             {chapter.chapter_type && <ChapterTypeBadge type={chapter.chapter_type} size="sm" />}
           </CardTitle>

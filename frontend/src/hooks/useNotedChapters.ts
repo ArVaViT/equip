@@ -1,4 +1,6 @@
-import { useAuth } from "@/context/useAuth"
+import { useContext } from "react"
+
+import { AuthContext } from "@/context/auth-context"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import { notesService } from "@/services/notes"
 
@@ -7,7 +9,9 @@ import { notesService } from "@/services/notes"
  * mark them. Empty until known, for a visitor, or when the request fails.
  */
 export function useNotedChapters(): Set<string> {
-  const { user } = useAuth()
+  // Read without requiring a provider: an outline rendered on its own (its
+  // tests, a preview) has no reader and nothing to mark.
+  const user = useContext(AuthContext)?.user
   const { data } = useAsyncData(
     async () => (user ? new Set(await notesService.notedChapters().catch(() => [])) : new Set<string>()),
     [user?.id],
