@@ -70,9 +70,14 @@ def _enforce_gate(db: Session, course: Course, enrollment: Enrollment, student_i
 
     The old check was `progress == 100`, and an assignment chapter completes on
     *submission* — so a student could finish a course with every essay unread
-    and be handed a certificate certifying it. That loophole closes without any
-    "all items graded" machinery of its own: unmarked work holds итоговая under
-    the pass line, and under D2 unaccepted work is not зачёт.
+    and be handed a certificate certifying it. What closes that loophole is an
+    explicit blocker, ``work_not_graded``, among the ones below — not the grade.
+    The grade does not hold the line on its own: with the course's only
+    assignment unmarked, its category is not live and the whole weight moves
+    onto the quizzes, so the final can read 100 / A before the essay is read
+    (`grade_calculator.category_is_live`; seen in
+    `test_a_student_walks_to_a_certificate.py`). Under D2 unaccepted work is
+    not зачёт either.
 
     The reasons travel in the error's context as codes, so the card that
     already renders them renders this too, in whatever language the reader
