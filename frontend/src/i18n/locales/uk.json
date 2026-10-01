@@ -771,6 +771,7 @@
     "progressLabel": "{{percent}}% завершено"
   },
   "pageTitle": {
+    "transcript": "Виписка",
     "login": "Вхід",
     "register": "Створення облікового запису",
     "forgotPassword": "Забули пароль",
@@ -1419,6 +1420,20 @@
     "draftRestored": "Чернетку відновлено з цього пристрою"
   },
   "certificates": {
+    "transcript": {
+      "kind": "Academic transcript",
+      "asOf": "As of {{date}}",
+      "empty": "No certificates have been issued yet.",
+      "course": "Course",
+      "school": "School",
+      "completed": "Completed",
+      "number": "Certificate no.",
+      "verify_one": "The certificate can be verified at equipbible.com/verify by its number.",
+      "verify_other": "Each certificate can be verified at equipbible.com/verify by its number.",
+      "open": "Виписка",
+      "verify_few": "Each certificate can be verified at equipbible.com/verify by its number.",
+      "verify_many": "Each certificate can be verified at equipbible.com/verify by its number."
+    },
     "share": {
       "share": "Поділитися",
       "linkedIn": "Додати в LinkedIn",

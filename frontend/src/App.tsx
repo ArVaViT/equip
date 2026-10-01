@@ -72,6 +72,7 @@ const VedomostPage = lazyRoute(() => import("./pages/Teacher/vedomost/VedomostPa
 const TeacherGradebook = lazyRoute(() => import("./pages/Teacher/TeacherGradebook"))
 const GradingQueue = lazyRoute(() => import("./pages/Teacher/GradingQueue"))
 const CertificateDocument = lazyRoute(() => import("./pages/Certificates/CertificateDocument"))
+const TranscriptPage = lazyRoute(() => import("./pages/Certificates/TranscriptPage"))
 const TeacherAnalytics = lazyRoute(() => import("./pages/Teacher/TeacherAnalytics"))
 const StudentProgress = lazyRoute(() => import("./pages/Teacher/StudentProgress"))
 const ChapterView = lazyRoute(() => import("./pages/Course/ChapterView"))
@@ -324,6 +325,7 @@ function AppRoutes() {
               <Route path="/teacher/courses/:courseId/chapters/:chapterId/edit" element={<Gate mode="teacher"><ChapterEditor /></Gate>} />
               <Route path="/teacher/courses/:courseId/modules/:moduleId/chapters/:chapterId/edit" element={<Gate mode="teacher"><ChapterEditor /></Gate>} />
               <Route path="/teacher/courses/:courseId/analytics" element={<Gate mode="teacher"><TeacherAnalytics /></Gate>} />
+              <Route path="/certificates/transcript" element={<Gate mode="private"><TranscriptPage /></Gate>} />
               <Route path="/certificates/:certificateId" element={<Gate mode="private"><CertificateDocument /></Gate>} />
               <Route path="/teach/grading" element={<Gate mode="teacher"><GradingQueue /></Gate>} />
               <Route path="/teacher/courses/:courseId/gradebook" element={<Gate mode="teacher"><TeacherGradebook /></Gate>} />

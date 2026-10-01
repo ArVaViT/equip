@@ -747,6 +747,7 @@
     "progressLabel": "{{percent}}% complete"
   },
   "pageTitle": {
+    "transcript": "Transcript",
     "login": "Sign In",
     "register": "Create Account",
     "forgotPassword": "Forgot Password",
@@ -1369,6 +1370,18 @@
     "draftRestored": "Draft restored from this device"
   },
   "certificates": {
+    "transcript": {
+      "kind": "Academic transcript",
+      "asOf": "As of {{date}}",
+      "empty": "No certificates have been issued yet.",
+      "course": "Course",
+      "school": "School",
+      "completed": "Completed",
+      "number": "Certificate no.",
+      "verify_one": "The certificate can be verified at equipbible.com/verify by its number.",
+      "verify_other": "Each certificate can be verified at equipbible.com/verify by its number.",
+      "open": "Transcript"
+    },
     "share": {
       "share": "Share",
       "linkedIn": "Add to LinkedIn",

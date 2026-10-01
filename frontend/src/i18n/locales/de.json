@@ -747,6 +747,7 @@
     "progressLabel": "{{percent}} % abgeschlossen"
   },
   "pageTitle": {
+    "transcript": "Leistungsnachweis",
     "login": "Anmelden",
     "register": "Konto erstellen",
     "forgotPassword": "Passwort vergessen",
@@ -1369,6 +1370,18 @@
     "draftRestored": "Entwurf von diesem Gerät wiederhergestellt"
   },
   "certificates": {
+    "transcript": {
+      "kind": "Academic transcript",
+      "asOf": "As of {{date}}",
+      "empty": "No certificates have been issued yet.",
+      "course": "Course",
+      "school": "School",
+      "completed": "Completed",
+      "number": "Certificate no.",
+      "verify_one": "The certificate can be verified at equipbible.com/verify by its number.",
+      "verify_other": "Each certificate can be verified at equipbible.com/verify by its number.",
+      "open": "Leistungsnachweis"
+    },
     "share": {
       "share": "Teilen",
       "linkedIn": "Zu LinkedIn hinzufügen",
