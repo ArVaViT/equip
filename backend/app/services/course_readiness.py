@@ -134,6 +134,25 @@ def _has_unlabelled_image(html: str) -> bool:
     return False
 
 
+_HEADING = re.compile(r"<h([1-6])\b", re.IGNORECASE)
+
+
+def _headings_out_of_order(html: str) -> bool:
+    """Whether a lesson's headings would mislead a screen reader.
+
+    The page already has the lesson title as its one ``h1``; a heading in
+    the text starts at ``h2``. An ``h1`` in the text, or a level skipped on
+    the way down (``h2`` straight to ``h4``), is a list of contents with
+    holes in it for someone navigating by headings.
+    """
+    previous = 1
+    for level in (int(m) for m in _HEADING.findall(html)):
+        if level == 1 or level > previous + 1:
+            return True
+        previous = level
+    return False
+
+
 def _has_meaningful_content(block: ChapterBlock, blocks_with_cv_content: set[str]) -> bool:
     """A reading block 'has content' if its body isn't blank. Quiz /
     assignment blocks aren't counted here — those chapters are validated
@@ -340,6 +359,7 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
     all_block_ids = [str(b.id) for blocks in blocks_by_chapter.values() for b in blocks]
     blocks_with_cv_content: set[str] = set()
     blocks_with_images: set[str] = set()
+    source_text_by_block: dict[str, str] = {}
     blocks_with_unlabelled_images: set[str] = set()
     if all_block_ids:
         from app.models.content_version import ContentVersion, ContentVersionStatus
@@ -367,6 +387,9 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
             eid
             for (eid, text, locale) in block_rows
             if text and locale == (course.source_locale or locale) and _IMG.search(text)
+        }
+        source_text_by_block = {
+            eid: text for (eid, text, locale) in block_rows if text and locale == (course.source_locale or locale)
         }
         blocks_with_unlabelled_images = {
             eid
@@ -427,6 +450,24 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
             # Only for lessons with pictures: a student who cannot see them
             # hears the description or nothing at all.
             unlabelled = [b for b in blocks if str(b.id) in blocks_with_unlabelled_images]
+            # Only when it fails: a lesson with no headings, or tidy ones,
+            # needs no line in the checklist.
+            # Read across the lesson's blocks in order: a second block that
+            # opens with h3 under the first block's h2 skips nothing.
+            lesson_html = "".join(
+                source_text_by_block.get(str(b.id), "") for b in sorted(blocks, key=lambda b: b.order_index)
+            )
+            if _headings_out_of_order(lesson_html):
+                checks.append(
+                    ReadinessCheck(
+                        id=f"headings_in_order:{chapter.id}",
+                        severity="polish",
+                        passed=False,
+                        message_key="courseReadiness.checks.headingsInOrder",
+                        subject=_make_chapter_subject(chapter),
+                        action=_open_chapter_action(chapter),
+                    )
+                )
             if any(str(b.id) in blocks_with_images for b in blocks):
                 checks.append(
                     ReadinessCheck(

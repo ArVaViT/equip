@@ -2870,6 +2870,7 @@
       "confirm": "Publish anyway"
     },
     "checks": {
+      "headingsInOrder": "The lesson's headings are in order: no H1 (that is the lesson title) and no skipped level — screen readers move by them.",
       "imagesHaveAlt": "Every picture in the lesson has a description (alt text) — for those who cannot see it.",
       "hasDescription": "The course has a description for the catalog.",
       "hasCoverImage": "The course has a cover image.",

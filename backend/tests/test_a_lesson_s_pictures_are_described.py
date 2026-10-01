@@ -47,3 +47,21 @@ def test_pictures_without_a_description_are_flagged(db: Session, teacher: User) 
     assert checks[f"images_have_alt:{described}"].passed is True
     assert f"images_have_alt:{text_only}" not in checks
     assert {c.severity for c in checks.values()} == {"recommended"}
+
+
+def test_headings_out_of_order_are_flagged_across_the_lesson(db: Session, teacher: User) -> None:
+    course = make_course_with_text(db, title="Acts", status="draft", created_by=TEACHER_ID, source_locale="en")
+    db.add(Module(id=f"m-{course.id}", course_id=course.id, title="M", order_index=0))
+    db.flush()
+    jump = _lesson(db, course.id, "jump", "<h2>Part</h2><h4>Detail</h4>")
+    page_title = _lesson(db, course.id, "h1", "<h1>Again the title</h1>")
+    # Two blocks: h2 in the first, h3 opening the second — nothing skipped.
+    tidy = Chapter(id=f"tidy-{course.id}", course_id=course.id, module_id=f"m-{course.id}", title="t", order_index=0)
+    db.add(tidy)
+    db.flush()
+    make_chapter_block_with_content(db, chapter_id=tidy.id, content="<h2>Part</h2><p>x</p>", order_index=0)
+    make_chapter_block_with_content(db, chapter_id=tidy.id, content="<h3>Sub</h3><p>y</p>", order_index=1)
+    db.commit()
+
+    flagged = {c.id for c in compute_readiness(db, course).checks if c.id.startswith("headings_in_order:")}
+    assert flagged == {f"headings_in_order:{jump}", f"headings_in_order:{page_title}"}

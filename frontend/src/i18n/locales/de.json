@@ -2870,6 +2870,7 @@
       "confirm": "Trotzdem veröffentlichen"
     },
     "checks": {
+      "headingsInOrder": "Die Überschriften der Lektion sind geordnet: kein H1 (das ist der Lektionstitel) und keine übersprungene Ebene — Screenreader navigieren daran.",
       "imagesHaveAlt": "Jedes Bild der Lektion hat eine Beschreibung (Alt-Text) — für alle, die es nicht sehen.",
       "hasDescription": "Der Kurs hat eine Beschreibung für den Katalog.",
       "hasCoverImage": "Der Kurs hat ein Titelbild.",
