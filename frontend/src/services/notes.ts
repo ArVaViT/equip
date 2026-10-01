@@ -15,6 +15,8 @@ export interface NoteInList {
   course_title: string | null
   body: string
   updated_at: string
+  /** Whether the lesson can still be opened (published, still enrolled). */
+  available: boolean
 }
 
 /** Mirrors ``NOTE_MAX_LENGTH`` in ``app/api/v1/notes.py``. */
@@ -28,6 +30,9 @@ export const notesService = {
   /** An empty body deletes the note. */
   async save(chapterId: string, body: string): Promise<LessonNote> {
     return (await api.put<LessonNote>(`/notes/chapters/${encodeURIComponent(chapterId)}`, { body })).data
+  },
+  async remove(chapterId: string): Promise<void> {
+    await api.delete(`/notes/chapters/${encodeURIComponent(chapterId)}`)
   },
   async mine(): Promise<NoteInList[]> {
     return (await api.get<NoteInList[]>("/notes/me")).data

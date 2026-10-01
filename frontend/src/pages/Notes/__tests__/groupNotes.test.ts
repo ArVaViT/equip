@@ -11,6 +11,7 @@ const note = (course: string, module: string | null, chapter: string) => ({
   course_title: course,
   body: "b",
   updated_at: "2026-10-01T10:00:00Z",
+  available: true,
 })
 
 describe("groupNotes", () => {

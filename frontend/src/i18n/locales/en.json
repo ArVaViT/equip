@@ -1051,6 +1051,7 @@
   },
   "notes": {
     "lesson": {
+      "loadFailed": "Could not load your note on this lesson.",
       "title": "My notes on this lesson",
       "add": "Add a note to this lesson",
       "all": "All notes",
@@ -1061,6 +1062,9 @@
       "private": "Only you can see this. It saves itself."
     },
     "page": {
+      "deleteFailed": "Could not delete the note",
+      "delete": "Delete note",
+      "unavailable": "This lesson is not available now",
       "eyebrow": "Learning",
       "title": "My notes",
       "description": "Everything you have written on lessons, by course and module.",

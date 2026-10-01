@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { NotebookPen } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { NOTE_MAX_LENGTH, notesService } from "@/services/notes"
 
@@ -14,25 +15,36 @@ const SAVE_AFTER_MS = 1200
  * The reader's own note on this lesson — the margin of their Bible, beside
  * the text it belongs to.
  *
- * Saves itself a moment after typing stops, and again when the box loses
- * focus, so nothing is lost to a closed tab; says so quietly. Collapsed to
- * one line until opened, unless there is a note already.
+ * Saves itself a moment after typing stops, on blur, and when the lesson is
+ * left, so nothing is lost to a closed tab; says so quietly. Collapsed to one
+ * line until opened, unless there is a note already.
+ *
+ * Rendered with `key={chapterId}` by the lesson page: a different lesson is a
+ * different note, never this one's state carried over. Saves go one at a
+ * time, each skipped if what it would send is already saved, so a blur and
+ * leaving the lesson never send the same note twice, and an older save can
+ * never land after a newer one. Until the note has loaded the box is not
+ * offered at all — typing into an empty box over a note that failed to load
+ * would replace it.
  */
 export function LessonNote({ chapterId }: { chapterId: string }) {
   const { t } = useTranslation()
   const [body, setBody] = useState("")
-  const [loaded, setLoaded] = useState(false)
+  const [loaded, setLoaded] = useState<"pending" | "ok" | "failed">("pending")
   const [open, setOpen] = useState(false)
   const [state, setState] = useState<SaveState>("idle")
   // Focus goes to the box only when the reader opened it themselves.
   const [openedByReader, setOpenedByReader] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   const saved = useRef("")
   const latest = useRef("")
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const queue = useRef<Promise<void>>(Promise.resolve())
+  const mounted = useRef(true)
 
   useEffect(() => {
+    mounted.current = true
     let live = true
-    setLoaded(false)
     notesService
       .get(chapterId)
       .then((note) => {
@@ -41,25 +53,29 @@ export function LessonNote({ chapterId }: { chapterId: string }) {
         latest.current = note.body ?? ""
         setBody(note.body ?? "")
         setOpen(Boolean(note.body))
+        setLoaded("ok")
       })
-      .catch(() => undefined)
-      .finally(() => live && setLoaded(true))
+      .catch(() => live && setLoaded("failed"))
     return () => {
       live = false
     }
-  }, [chapterId])
+  }, [chapterId, attempt])
 
-  const save = async (text: string) => {
+  /** Queue a save of whatever is latest; runs after the one in flight. */
+  const save = () => {
     if (timer.current) clearTimeout(timer.current)
-    if (text.trim() === saved.current.trim()) return
-    setState("saving")
-    try {
-      const note = await notesService.save(chapterId, text)
-      saved.current = note.body ?? ""
-      setState("saved")
-    } catch {
-      setState("failed")
-    }
+    queue.current = queue.current.then(async () => {
+      const text = latest.current
+      if (text.trim() === saved.current.trim()) return
+      if (mounted.current) setState("saving")
+      try {
+        const note = await notesService.save(chapterId, text)
+        saved.current = note.body ?? ""
+        if (mounted.current) setState(latest.current.trim() === saved.current.trim() ? "saved" : "idle")
+      } catch {
+        if (mounted.current) setState("failed")
+      }
+    })
   }
 
   const change = (text: string) => {
@@ -67,22 +83,43 @@ export function LessonNote({ chapterId }: { chapterId: string }) {
     latest.current = text
     setState("idle")
     if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(() => void save(text), SAVE_AFTER_MS)
+    timer.current = setTimeout(save, SAVE_AFTER_MS)
   }
 
-  // Whatever was typed and not yet saved goes when the lesson is left —
-  // next lesson, back button — not only when the timer fires.
+  // Whatever was typed and not yet saved goes when the lesson is left.
   useEffect(
     () => () => {
+      mounted.current = false
       if (timer.current) clearTimeout(timer.current)
-      if (latest.current.trim() !== saved.current.trim()) {
-        void notesService.save(chapterId, latest.current).catch(() => undefined)
-      }
+      save()
     },
-    [chapterId],
+    // `save` reads refs only; the cleanup must run once, on leaving.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   )
 
-  if (!loaded) return null
+  if (loaded === "pending") return null
+
+  if (loaded === "failed") {
+    return (
+      <section className="mb-8 flex flex-wrap items-center justify-between gap-2 rounded-md border border-edge p-4 text-sm">
+        <span className="flex items-center gap-2 text-ink-muted">
+          <NotebookPen className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          {t("notes.lesson.loadFailed")}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setLoaded("pending")
+            setAttempt((n) => n + 1)
+          }}
+        >
+          {t("common.tryAgain")}
+        </Button>
+      </section>
+    )
+  }
 
   return (
     <section aria-labelledby="lesson-note-heading" className="mb-8 rounded-md border border-edge p-4">
@@ -97,7 +134,9 @@ export function LessonNote({ chapterId }: { chapterId: string }) {
               onClick={() => {
                 setOpen(true)
                 setOpenedByReader(true)
-              }} className="underline-offset-4 hover:underline">
+              }}
+              className="underline-offset-4 hover:underline"
+            >
               {t("notes.lesson.add")}
             </button>
           )}
@@ -111,7 +150,7 @@ export function LessonNote({ chapterId }: { chapterId: string }) {
           <Textarea
             value={body}
             onChange={(e) => change(e.target.value)}
-            onBlur={() => void save(body)}
+            onBlur={save}
             maxLength={NOTE_MAX_LENGTH}
             aria-labelledby="lesson-note-heading"
             aria-describedby="lesson-note-state"

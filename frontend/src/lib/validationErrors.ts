@@ -48,6 +48,7 @@ const FIELD_KEYS = new Set([
   "is_correct",
   "order_index",
   "meeting_url",
+  "recording_url",
 ])
 
 /** Error types the catalogue has a sentence for. */

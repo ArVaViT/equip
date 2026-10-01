@@ -910,7 +910,7 @@ export default function ChapterView() {
 
       {/* The reader's own margin, under the lesson it belongs to. Only for
           lessons to read: a test or an assignment has its own box to write in. */}
-      {chapterType === "reading" && <LessonNote chapterId={chapter.id} />}
+      {chapterType === "reading" && <LessonNote key={chapter.id} chapterId={chapter.id} />}
 
       {/* Reading chapters get an act of their own.
           Until now a chapter of pure text could not be finished by the person

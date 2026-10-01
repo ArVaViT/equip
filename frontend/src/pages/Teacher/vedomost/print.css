@@ -30,7 +30,12 @@
      the same session of its school name and its verification number. */
   body:has(.vedomost) header:not(.vedomost header),
   body:has(.vedomost) nav,
-  body:has(.vedomost) footer:not(.vedomost footer),
+  body:has(.vedomost) footer:not(.vedomost footer) {
+    display: none !important;
+  }
+
+  /* Its own rule: a browser without `:has` drops a whole selector list it
+     cannot parse, and the print button must still stay off the paper. */
   .no-print {
     display: none !important;
   }

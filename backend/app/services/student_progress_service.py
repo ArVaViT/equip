@@ -581,7 +581,14 @@ def _build_chapter_infos(
                 # themselves, not from ``completed_by``: an exemption granted
                 # after a teacher had ticked the chapter leaves the tick as
                 # it was, and the student must still not be chased for it.
-                "excused": gradable_item is not None and gradable_item["id"] in (excused_items or set()),
+                # Every piece of work in the chapter, as ``_every_item_excused``
+                # decides it: a chapter with a test and an essay is not
+                # excused because the test was.
+                "excused": bool(chapter_quizzes or chapter_assignments)
+                and all(
+                    work_id in (excused_items or set())
+                    for work_id in [*(str(q.id) for q in chapter_quizzes), *(str(a.id) for a in chapter_assignments)]
+                ),
             }
         )
     return chapter_infos

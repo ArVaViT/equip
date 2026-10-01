@@ -11,12 +11,14 @@ from datetime import datetime  # noqa: TC003
 
 from fastapi import APIRouter, Depends, Header, Response, status
 from pydantic import BaseModel, Field
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session  # noqa: TC002
 
 from app.api.dependencies import get_current_user, verify_chapter_access
 from app.core.database import get_db
 from app.models.chapter_note import ChapterNote
-from app.models.course import Chapter, Course, Module
+from app.models.course import Chapter, Course, CourseStatus, Module
+from app.models.enrollment import Enrollment
 from app.models.user import User  # noqa: TC001
 from app.schemas.locale import normalize_locale
 from app.services.content_versions import fetch_cv_entity_texts_with_fallback
@@ -45,6 +47,10 @@ class NoteInList(BaseModel):
     course_title: str | None
     body: str
     updated_at: datetime
+    #: Whether the lesson can still be opened by the caller. A course since
+    #: unpublished or left keeps the student's words on the page, without a
+    #: link that would lead to a 404.
+    available: bool
 
 
 @router.get("/chapters/{chapter_id}", response_model=Note)
@@ -77,7 +83,16 @@ def write_note(
         return Note(chapter_id=chapter_id, body=None)
     if note is None:
         note = ChapterNote(user_id=current_user.id, chapter_id=chapter_id, body=body)
-        db.add(note)
+        try:
+            # Two saves of a new note can cross (a blur and leaving the
+            # lesson); the second insert must update, not answer 500.
+            with db.begin_nested():
+                db.add(note)
+                db.flush()
+        except IntegrityError:
+            note = db.get(ChapterNote, (current_user.id, chapter_id), populate_existing=True)
+            assert note is not None
+            note.body = body
     else:
         note.body = body
     db.commit()
@@ -118,9 +133,22 @@ def my_notes(
         .join(Chapter, Chapter.id == ChapterNote.chapter_id)
         .join(Course, Course.id == Chapter.course_id)
         .outerjoin(Module, Module.id == Chapter.module_id)
-        .filter(ChapterNote.user_id == current_user.id)
+        .filter(
+            ChapterNote.user_id == current_user.id,
+            # In the bin is gone for the reader too; the note returns with
+            # the lesson if it is restored.
+            Chapter.deleted_at.is_(None),
+            Course.deleted_at.is_(None),
+        )
         .all()
     )
+    enrolled = {
+        course_id
+        for (course_id,) in db.query(Enrollment.course_id).filter(
+            Enrollment.user_id == current_user.id,
+            Enrollment.course_id.in_({course.id for _, _, _, course in rows}),
+        )
+    }
     titles: dict[tuple[str, str, str], str | None] = {}
     by_source: dict[str, list[tuple[Chapter, Module | None, Course]]] = {}
     for _note, chapter, module, course in rows:
@@ -155,6 +183,9 @@ def my_notes(
             course_title=titles.get(("course", course.id, "title")),
             body=note.body,
             updated_at=note.updated_at,
+            # The same rule as reading the lesson (``verify_chapter_access``).
+            available=str(course.created_by) == str(current_user.id)
+            or (course.status == CourseStatus.PUBLISHED and course.id in enrolled),
         )
         for note, chapter, module, course in rows
     ]

@@ -50,6 +50,37 @@ describe("LessonNote", () => {
     expect(box).toHaveFocus()
     await user.type(box, "Спросить про Пятидесятницу")
     view.unmount()
-    expect(save).toHaveBeenCalledWith("c1", "Спросить про Пятидесятницу")
+    await waitFor(() => expect(save).toHaveBeenCalledWith("c1", "Спросить про Пятидесятницу"))
+  })
+
+  it("offers no box over a note that failed to load, only a retry", async () => {
+    const user = userEvent.setup()
+    const get = vi.spyOn(notesService, "get").mockRejectedValueOnce(new Error("offline"))
+    const save = vi.spyOn(notesService, "save")
+    show()
+    expect(await screen.findByText("Не удалось загрузить заметку к уроку.")).toBeInTheDocument()
+    expect(screen.queryByRole("textbox")).toBeNull()
+    get.mockResolvedValueOnce({ chapter_id: "c1", body: "Существующая", updated_at: null })
+    await user.click(screen.getByRole("button", { name: "Повторить" }))
+    expect(await screen.findByRole("textbox")).toHaveValue("Существующая")
+    expect(save).not.toHaveBeenCalled()
+  })
+
+  it("sends one save at a time, and never the same note twice", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(notesService, "get").mockResolvedValue({ chapter_id: "c1", body: null, updated_at: null })
+    let release: () => void = () => {}
+    const save = vi.spyOn(notesService, "save").mockImplementation(
+      (_id, body) => new Promise((resolve) => (release = () => resolve({ chapter_id: "c1", body, updated_at: null }))),
+    )
+    const view = show()
+    await user.click(await screen.findByRole("button", { name: "Добавить заметку к уроку" }))
+    await user.type(screen.getByRole("textbox"), "hello")
+    await user.tab() // blur: a save starts and hangs
+    view.unmount() // leaving: queued behind it
+    expect(save).toHaveBeenCalledTimes(1)
+    release()
+    await new Promise((r) => setTimeout(r, 0))
+    expect(save).toHaveBeenCalledTimes(1)
   })
 })

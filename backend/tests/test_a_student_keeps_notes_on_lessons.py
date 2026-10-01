@@ -79,3 +79,49 @@ def test_the_notes_page_lists_mine_only_and_the_export_has_them(
 def test_too_long_a_note_is_refused(student_client: TestClient, db: Session, student: User) -> None:
     chapter = _lesson(db)
     assert student_client.put(f"{NOTES}/chapters/{chapter}", json={"body": "x" * 10_001}).status_code == 422
+
+
+def test_two_saves_of_a_new_note_that_cross_do_not_fail(
+    student_client: TestClient, db: Session, student: User, monkeypatch
+) -> None:
+    """A blur and leaving the lesson can send the same new note twice; the
+    second insert collides and must update instead of answering 500."""
+    chapter = _lesson(db)
+    from app.api.v1 import notes as notes_api
+
+    real_get = db.get
+    calls = {"n": 0}
+
+    def get_missing_once(model, key, **kw):  # type: ignore[no-untyped-def]
+        # The other request's row lands between this one's read and insert.
+        if model is ChapterNote and calls["n"] == 0:
+            calls["n"] += 1
+            db.add(ChapterNote(user_id=STUDENT_ID, chapter_id=chapter, body="first"))
+            db.commit()
+            return None
+        return real_get(model, key, **kw)
+
+    monkeypatch.setattr(db, "get", get_missing_once)
+    r = student_client.put(f"{NOTES}/chapters/{chapter}", json={"body": "second"})
+    assert r.status_code == 200, r.text
+    assert notes_api  # imported for the route under test
+    monkeypatch.undo()
+    assert student_client.get(f"{NOTES}/chapters/{chapter}").json()["body"] == "second"
+
+
+def test_the_notes_page_leaves_out_the_bin_and_unlinks_what_cannot_be_opened(
+    student_client: TestClient, db: Session, student: User
+) -> None:
+    from datetime import UTC, datetime
+
+    from app.models.course import Course
+
+    kept, binned, drafted = _lesson(db), _lesson(db), _lesson(db)
+    for chapter in (kept, binned, drafted):
+        student_client.put(f"{NOTES}/chapters/{chapter}", json={"body": f"note {chapter}"})
+    db.get(Chapter, binned).deleted_at = datetime.now(UTC)
+    db.get(Course, db.get(Chapter, drafted).course_id).status = "draft"
+    db.commit()
+
+    rows = {n["chapter_id"]: n["available"] for n in student_client.get(f"{NOTES}/me").json()}
+    assert rows == {kept: True, drafted: False}

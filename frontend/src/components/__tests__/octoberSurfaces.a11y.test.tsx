@@ -147,6 +147,7 @@ describe("today's surfaces have no axe violations", () => {
         course_title: "Деяния",
         body: "Заметка",
         updated_at: "2026-10-01T10:00:00Z",
+        available: true,
       },
     ])
     const { container } = wrap(<MyNotesPage />)

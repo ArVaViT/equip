@@ -1051,6 +1051,7 @@
   },
   "notes": {
     "lesson": {
+      "loadFailed": "Ihre Notiz zu dieser Lektion konnte nicht geladen werden.",
       "title": "Meine Notizen zur Lektion",
       "add": "Notiz zur Lektion hinzufügen",
       "all": "Alle Notizen",
@@ -1061,6 +1062,9 @@
       "private": "Nur Sie sehen das. Es speichert sich selbst."
     },
     "page": {
+      "deleteFailed": "Notiz konnte nicht gelöscht werden",
+      "delete": "Notiz löschen",
+      "unavailable": "Diese Lektion ist derzeit nicht verfügbar",
       "eyebrow": "Lernen",
       "title": "Meine Notizen",
       "description": "Alles, was Sie zu Lektionen notiert haben, nach Kurs und Modul.",

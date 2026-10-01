@@ -64,3 +64,38 @@ def test_excused_after_a_teachers_tick_is_still_excused(client: TestClient, db: 
     assert by_id[essay.id]["completed_by"] == "teacher"
     assert by_id[essay.id]["excused"] is True
     assert by_id[other.id]["excused"] is False
+
+
+def test_a_chapter_is_excused_only_when_all_its_work_is(client: TestClient, db: Session, student: User) -> None:
+    from app.models.quiz import Quiz
+
+    course = make_course_with_text(db, title="Acts", status="published", created_by=TEACHER_ID)
+    module = Module(id=f"m-{course.id}", course_id=course.id, title="M", order_index=0)
+    both = Chapter(
+        id=f"q-{course.id}", course_id=course.id, module_id=module.id, title="Q", order_index=0, chapter_type="quiz"
+    )
+    db.add_all([module, both])
+    db.flush()
+    quiz = Quiz(id=uuid.uuid4(), chapter_id=both.id)
+    essay = Assignment(id=uuid.uuid4(), chapter_id=both.id, max_score=10)
+    db.add_all([quiz, essay])
+    db.add(Enrollment(id=str(uuid.uuid4()), user_id=STUDENT_ID, course_id=course.id, progress=0))
+    db.add(
+        GradeExemption(
+            student_id=STUDENT_ID, course_id=course.id, item_type="quiz", item_id=quiz.id, chapter_id=both.id
+        )
+    )
+    db.commit()
+
+    def excused() -> bool:
+        me = next(s for s in client.get(f"/api/v1/progress/course/{course.id}/gradebook").json()["students"])
+        return next(c for c in me["chapters"] if c["id"] == both.id)["excused"]
+
+    assert excused() is False  # the essay is still owed
+    db.add(
+        GradeExemption(
+            student_id=STUDENT_ID, course_id=course.id, item_type="assignment", item_id=essay.id, chapter_id=both.id
+        )
+    )
+    db.commit()
+    assert excused() is True
