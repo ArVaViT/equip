@@ -2132,6 +2132,7 @@
   },
   "gradebook": {
     "write": {
+      "tooMany": "Zu viele Adressen für einen E-Mail-Link — kopieren Sie sie und fügen Sie sie in Bcc ein.",
       "open": "Schreiben an…",
       "title": "An Studierende schreiben",
       "who": "An",

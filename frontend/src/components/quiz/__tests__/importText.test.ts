@@ -82,12 +82,35 @@ describe("parseQuestionsText", () => {
   })
 
   it("never moves the answer to a neighbour in the same alphabet", () => {
+    // Options that start at B are not taken as a list at all: the block is
+    // named as a problem rather than keyed to a neighbour.
     const [b] = parseQuestionsText("Q?\nB. Luke\nC. Paul\nANSWER: A")
-    expect(b!.problem).toBe("answer_not_an_option")
+    expect(b!.question).toBeUndefined()
+    const [c] = parseQuestionsText("Q?\nA. Peter\nB. Luke\nANSWER: C")
+    expect(c!.problem).toBe("answer_not_an_option")
   })
 
   it("refuses to choose between two answers, or a star and an answer that disagree", () => {
     const problems = parseQuestionsText("Q\nA. a\nB. b\nC. c\nANSWER: B, C\n\nQ\n*A. a\nB. b\nANSWER: B").map((b) => b.problem)
     expect(problems).toEqual(["two_answers", "two_answers"])
+  })
+
+  it("keeps abbreviations and out-of-order letters as text, as before", () => {
+    const [a] = parseQuestionsText("Кто автор?\nА. Реформатор\nЖ.Кальвин\nБ. Лютер\nОтвет: А")
+    expect(a!.question!.options.map((o) => o.option_text)).toEqual(["Реформатор Ж.Кальвин", "Лютер"])
+    const [b] = parseQuestionsText("Что значит покаяние?\nА. Сожаление\nБ. Перемена,\nт.е. перемена ума\nОтвет: Б")
+    expect(b!.question!.options[1]!.option_text).toBe("Перемена, т.е. перемена ума")
+    const [c] = parseQuestionsText("A.D. 70 — what fell?\nA. Rome\nB. Jerusalem\nANSWER: B")
+    expect(c!.question!.question_text).toBe("A.D. 70 — what fell?")
+  })
+
+  it("takes an answer line written before the options", () => {
+    const [b] = parseQuestionsText("Q?\nANSWER: B\nA. one\nB. two")
+    expect(b!.question!.options.map((o) => o.is_correct)).toEqual([false, true])
+  })
+
+  it("reads an answer with a remark as one answer", () => {
+    const blocks = parseQuestionsText("Q\nА) а\nБ) б\nВ) в\nОтвет: Б, а не В\n\nQ\nА) а\nБ) б\nОтвет: А, т.к. так")
+    expect(blocks.map((b) => b.problem)).toEqual([undefined, undefined])
   })
 })

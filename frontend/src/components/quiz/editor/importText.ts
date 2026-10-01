@@ -38,12 +38,15 @@ export interface ImportBlock {
   problem?: ImportProblem
 }
 
-const OPTION = /^\s*\*?\s*([A-Za-zА-ЯЁа-яёІіЇїЄєҐґ])[.)]\s*(\S.*?)\s*$/u
+const OPTION = /^\s*\*?\s*([A-Za-zА-ЯЁа-яёІіЇїЄєҐґ])[.)](\s*)(\S.*?)\s*$/u
 // `(?!\p{L})`, not `\b`: in JavaScript `\b` knows only ASCII letters, even
 // with the `u` flag, so "Ответ: Б" never ended in a word boundary.
 const ANSWER = /^\s*(?:ANSWER|ОТВЕТ|ВІДПОВІДЬ|ANTWORT|ПРАВИЛЬНО|ПРАВИЛЬНЫЙ ОТВЕТ|ПРАВИЛЬНА ВІДПОВІДЬ)\s*[:\-–—]\s*([A-Za-zА-ЯЁа-яёІіЇїЄєҐґ])(?!\p{L})(.*)$/iu
 /** "ANSWER: B, C" — a second letter after the first: two answers, not one. */
-const ANOTHER_LETTER = /^\s*(?:[,;/&+]|и|і|and|und)\s*[A-Za-zА-ЯЁа-яёІіЇїЄєҐґ](?!\p{L})/iu
+// Only a list of letters and nothing else: «Б, а не В» and «А, т.к. …» are
+// an answer with a remark, not two answers.
+const ANOTHER_LETTER =
+  /^\s*(?:(?:[,;/&+]|и|і|and|und)\s*[A-Za-zА-ЯЁа-яёІіЇїЄєҐґ](?!\p{L})\s*)+[.)]?\s*$/iu
 const FIRST_LETTERS = new Set(["A", "А"])
 const CYRILLIC = /[А-ЯЁа-яёІіЇїЄєҐґ]/u
 
@@ -56,6 +59,8 @@ function letterKey(letter: string): string {
 }
 
 const CYRILLIC_ORDER = "АБВГДЕЖЗИКЛМН"
+/** Ukrainian lists run А Б В Г Ґ Д Е Є Ж: the same position by either count. */
+const UKRAINIAN_ORDER = "АБВГҐДЕЄЖЗИІЇЙК"
 const LATIN_ORDER = "ABCDEFGHIJKLM"
 
 /** The letters of a block, in order, so "Б" can be found whether the options were written А Б В or A B C. */
@@ -130,6 +135,28 @@ function settle(d: Draft): ImportBlock | null {
   }
 }
 
+/** Where `letter` sits in its own alphabet's option order, or -1. */
+function orderOf(letter: string): number[] {
+  const upper = letter.toUpperCase()
+  return [LATIN_ORDER.indexOf(upper), CYRILLIC_ORDER.indexOf(upper), UKRAINIAN_ORDER.indexOf(upper)].filter((i) => i >= 0)
+}
+
+/**
+ * Whether a line that looks like an option is one: its letter must be the
+ * next in order (or A again, which starts a new question). «Ж.Кальвин» after
+ * option А, «т.е.» or «A.D. 70» inside a wrapped line, are text.
+ */
+function isNextOption(letter: string, spaced: boolean, body: string, d: Draft): boolean {
+  const positions = orderOf(letter)
+  const expected = d.options.length
+  const inOrder = positions.includes(expected) || (expected > 0 && positions.includes(0))
+  if (!inOrder) return false
+  if (spaced) return true
+  // No space after the letter: only a capital, and not an abbreviation
+  // («A.D.», «Ж.Б.») whose next character is another letter and a dot.
+  return letter === letter.toUpperCase() && !/^\p{L}[.]/u.test(body)
+}
+
 export function parseQuestionsText(text: string): ImportBlock[] {
   const out: ImportBlock[] = []
   let d = fresh()
@@ -146,15 +173,17 @@ export function parseQuestionsText(text: string): ImportBlock[] {
       continue
     }
     const answer = line.match(ANSWER)
-    if (answer && d.options.length > 0) {
+    if (answer && d.lines.length > 0) {
       d.lines.push(line)
       d.answer = answer[1]!
       d.twoAnswers = ANOTHER_LETTER.test(answer[2] ?? "")
-      // The answer line ends the question, blank line or not.
-      close()
+      // After the options the answer line ends the question, blank line or
+      // not; before them (some write it first) it waits for them.
+      if (d.options.length > 0) close()
       continue
     }
-    const option = d.lines.length > 0 ? line.match(OPTION) : null
+    const matched = d.lines.length > 0 ? line.match(OPTION) : null
+    const option = matched && isNextOption(matched[1]!, matched[2] !== "", matched[3]!, d) ? matched : null
     if (option) {
       const letter = option[1]!
       if (d.options.length > 0 && FIRST_LETTERS.has(letter.toUpperCase())) {
@@ -176,7 +205,7 @@ export function parseQuestionsText(text: string): ImportBlock[] {
         d.options[d.options.length - 1]!.option_text += ` ${d.trailing.join(" ")}`
       }
       d.trailing = []
-      const body = option[2]!
+      const body = option[3]!
       const starred = /^\*/.test(line) || /\*\s*$/.test(body)
       d.lines.push(line)
       d.letters.push(letter)

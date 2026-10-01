@@ -30,6 +30,9 @@ export interface ChapterInfo {
   chapter_type: string
   completed: boolean
   completed_by: "self" | "teacher" | "quiz" | "excused" | null
+  /** Excused from this chapter's work, from the exemptions themselves —
+   *  `completed_by` keeps an earlier teacher's tick when one was granted later. */
+  excused?: boolean
   /** `awaiting_grading` — submitted, but its open answers are still unread, so
    *  `score` is a running total and not a result. */
   quiz_result: {

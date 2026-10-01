@@ -32,4 +32,15 @@ describe("scriptureService.passagesIn", () => {
     await scriptureService.passagesIn("Деян 1:8 fail")
     expect(post).toHaveBeenCalledTimes(2)
   })
+
+  it("splits a long lesson into requests the server accepts", async () => {
+    const post = vi.spyOn(api, "post").mockImplementation(async (_url, body) => ({
+      data: (body as { texts: string[] }).texts.map(() => []),
+    }))
+    const block = (i: number) => `Ин 3:16 long ${i} ${"x".repeat(20_000)}`
+    await Promise.all([0, 1, 2, 3].map((i) => scriptureService.passagesIn(block(i))))
+    const sizes = post.mock.calls.map(([, body]) => (body as { texts: string[] }).texts.join("").length)
+    expect(post.mock.calls.length).toBeGreaterThan(1)
+    expect(Math.max(...sizes)).toBeLessThanOrEqual(50_000)
+  })
 })

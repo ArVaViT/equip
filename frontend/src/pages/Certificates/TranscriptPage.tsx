@@ -95,7 +95,7 @@ export default function TranscriptPage() {
               {issued.map((c) => (
                 <tr key={c.id} className="border-b border-edge align-top">
                   <td className="py-2.5 pr-3 font-medium">{c.course_title ?? c.archived_course_title ?? "—"}</td>
-                  <td className="py-2.5 pr-3">{c.school_name ?? "Equip"}</td>
+                  <td className="py-2.5 pr-3">{c.school_name || "Equip"}</td>
                   <td className="whitespace-nowrap py-2.5 pr-3">{date(c.issued_at)}</td>
                   <td className="whitespace-nowrap py-2.5 font-mono text-xs">{c.certificate_number}</td>
                 </tr>

@@ -57,4 +57,23 @@ describe("WriteToStudents", () => {
     expect(screen.getByText("3 студента")).toBeInTheDocument()
     expect(screen.queryByRole("combobox")).toBeNull()
   })
+
+  it("offers to copy instead of a mail link too long for some mail programs", async () => {
+    const user = userEvent.setup()
+    const many = Array.from({ length: 80 }, (_, i) => ({
+      ...STUDENTS[0]!,
+      id: String(i),
+      full_name: `Студент ${i}`,
+      email: `student-number-${i}@example.com`,
+    }))
+    render(
+      <I18nextProvider i18n={i18n}>
+        <WriteToStudents courseTitle="Деяния" students={many} />
+      </I18nextProvider>,
+    )
+    await user.click(screen.getByRole("button", { name: "Написать…" }))
+    expect(screen.queryByRole("link", { name: "Открыть письмо" })).toBeNull()
+    expect(screen.getByText(/Слишком много адресов/)).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Скопировать адреса" })).toBeEnabled()
+  })
 })

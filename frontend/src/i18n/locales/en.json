@@ -2132,6 +2132,7 @@
   },
   "gradebook": {
     "write": {
+      "tooMany": "Too many addresses for one email link — copy them and paste them into Bcc.",
       "open": "Write to…",
       "title": "Write to students",
       "who": "To",

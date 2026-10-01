@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "@/lib/toast"
 import { orNotTranslated } from "@/lib/untranslated"
-import { isWork, mailtoFor, pickRecipients, type Audience } from "./recipients"
+import { isWork, MAILTO_MAX, mailtoFor, pickRecipients, type Audience } from "./recipients"
 import type { StudentProgressData } from "./types"
 
 const AUDIENCES: Audience[] = ["not_submitted", "not_passed", "everyone"]
@@ -28,6 +28,8 @@ export function WriteToStudents({ courseTitle, students }: { courseTitle: string
   const recipients = pickRecipients(students, selected, audience)
   const emails = recipients.map((s) => s.email)
   const subject = work && audience !== "everyone" ? `${courseTitle}: ${orNotTranslated(t, work.title)}` : courseTitle
+  const mailto = mailtoFor(emails, subject)
+  const tooLong = mailto.length > MAILTO_MAX
 
   const copy = async () => {
     try {
@@ -89,14 +91,15 @@ export function WriteToStudents({ courseTitle, students }: { courseTitle: string
               </p>
             )}
           </div>
+          {tooLong && <p className="text-xs text-ink-muted">{t("gradebook.write.tooMany")}</p>}
           <div className="flex flex-wrap justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => void copy()} disabled={emails.length === 0}>
               <Copy className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
               {t("gradebook.write.copy")}
             </Button>
-            {emails.length > 0 ? (
+            {emails.length > 0 && !tooLong ? (
               <Button asChild size="sm">
-                <a href={mailtoFor(emails, subject)}>
+                <a href={mailto}>
                   <Mail className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
                   {t("gradebook.write.compose")}
                 </a>

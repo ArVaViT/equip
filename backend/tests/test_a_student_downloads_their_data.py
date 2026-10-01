@@ -16,7 +16,9 @@ from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Module
 from app.models.enrollment import Enrollment
+from app.models.grade_exemption import GradeExemption
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt, QuizQuestion
+from app.models.student_grade import StudentGrade
 from app.models.user import User
 from tests._cv_helpers import make_course_with_text
 from tests.conftest import STUDENT_ID, TEACHER_ID
@@ -88,3 +90,38 @@ def test_the_file_holds_my_rows_and_none_of_my_classmates(
 
 def test_a_stranger_gets_nothing(anon_client: TestClient) -> None:
     assert anon_client.get("/api/v1/users/me/export").status_code == 401
+
+
+def test_the_institutions_notes_about_me_stay_with_the_institution(
+    student_client: TestClient, db: Session, student: User
+) -> None:
+    """A hand-set grade's reason and an exemption's reason are written for
+    the director, and the student's own screens never show them."""
+    _class(db)
+    course_id = db.query(Enrollment.course_id).filter(Enrollment.user_id == STUDENT_ID).scalar()
+    db.add(
+        StudentGrade(
+            student_id=STUDENT_ID,
+            course_id=course_id,
+            override_code="5",
+            reason="PASTOR-ASKED-NOTE",
+            graded_by=TEACHER_ID,
+        )
+    )
+    db.add(
+        GradeExemption(
+            student_id=STUDENT_ID,
+            course_id=course_id,
+            item_type="assignment",
+            item_id=uuid.uuid4(),
+            chapter_id=f"a-{course_id}",
+            reason="EXEMPT-NOTE",
+        )
+    )
+    db.commit()
+    r = student_client.get("/api/v1/users/me/export")
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert len(data["grades"]) == 1 and len(data["grade_exemptions"]) == 1
+    assert "reason" not in data["grades"][0] and "reason" not in data["grade_exemptions"][0]
+    assert "PASTOR-ASKED-NOTE" not in r.text and "EXEMPT-NOTE" not in r.text

@@ -19,9 +19,13 @@ const MIGHT_CITE = /\d[:,]\s?\d/
 // Every block of a lesson asks in the same tick; they go as one request.
 let queue: { text: string; key: string; resolve: (p: Passage[]) => void }[] = []
 
-function flush() {
-  const batch = queue
-  queue = []
+/** The server's limits per request (`app/api/v1/scripture.py`), with room to spare. */
+const MAX_TEXTS = 80
+const MAX_CHARS = 50_000
+
+type Pending = (typeof queue)[number]
+
+function send(batch: Pending[]) {
   api
     .post<Passage[][]>("/scripture/passages", { texts: batch.map((b) => b.text) })
     .then((r) => batch.forEach((b, i) => b.resolve(r.data[i] ?? [])))
@@ -32,6 +36,30 @@ function flush() {
         b.resolve([])
       }),
     )
+}
+
+function flush() {
+  const all = queue
+  queue = []
+  // A long lesson goes in as many requests as the limits need — one over
+  // them was refused whole, and every reference in the lesson went unlinked.
+  let batch: Pending[] = []
+  let chars = 0
+  for (const p of all) {
+    if (p.text.length > MAX_CHARS) {
+      // A single block longer than a request may carry: left unlinked.
+      p.resolve([])
+      continue
+    }
+    if (batch.length === MAX_TEXTS || chars + p.text.length > MAX_CHARS) {
+      send(batch)
+      batch = []
+      chars = 0
+    }
+    batch.push(p)
+    chars += p.text.length
+  }
+  if (batch.length > 0) send(batch)
 }
 
 export const scriptureService = {

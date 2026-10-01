@@ -19,7 +19,7 @@ export function isWork(chapter: Pick<ChapterInfo, "chapter_type">): boolean {
 
 function standing(chapter: ChapterInfo | undefined, audience: Audience): boolean {
   if (audience === "everyone") return true
-  if (!chapter || chapter.completed_by === "excused") return false
+  if (!chapter || chapter.excused || chapter.completed_by === "excused") return false
   if (audience === "not_submitted") return chapter.quiz_result === null && chapter.assignment_result === null
   const quiz = chapter.quiz_result
   if (quiz) return !quiz.passed && !quiz.awaiting_grading
@@ -43,6 +43,13 @@ export function pickRecipients(
  * nobody sees anybody else's address — and the subject filled in. Equip
  * sends nothing: the note is the teacher's, from the teacher.
  */
+/**
+ * Past this, some mail programs (Outlook, the Windows handler) cut the link
+ * or refuse it, and recipients silently drop off the note. The dialog then
+ * offers the addresses to copy instead.
+ */
+export const MAILTO_MAX = 1800
+
 export function mailtoFor(emails: string[], subject: string): string {
   // `@` stays as it is (RFC 6068 allows it, and some clients mishandle %40).
   const bcc = emails.map((e) => encodeURIComponent(e).replace(/%40/g, "@")).join(",")

@@ -63,9 +63,23 @@ def _plain(value: Any) -> Any:
     return value
 
 
+#: Columns on the caller's own rows that the product deliberately keeps from
+#: them, and so does this file. A hand-set grade's ``reason`` is the teacher's
+#: note to the institution (``StudentGradeResponse`` leaves it out; D7 scopes
+#: it to directors), and an exemption's ``reason`` is director-visible — the
+#: student's own exemptions route answers them 403.
+_NOT_THE_STUDENTS: dict[type, frozenset[str]] = {
+    StudentGrade: frozenset({"reason"}),
+    GradeExemption: frozenset({"reason"}),
+}
+
+
 def _row(obj: Any) -> dict[str, Any]:
-    """Every mapped column of a row, as JSON-ready values."""
-    return {attr.key: _plain(getattr(obj, attr.key)) for attr in inspect(obj).mapper.column_attrs}
+    """Every mapped column of a row the caller may see, as JSON-ready values."""
+    hidden = _NOT_THE_STUDENTS.get(type(obj), frozenset())
+    return {
+        attr.key: _plain(getattr(obj, attr.key)) for attr in inspect(obj).mapper.column_attrs if attr.key not in hidden
+    }
 
 
 def _rows(objs: list[Any]) -> list[dict[str, Any]]:

@@ -38,6 +38,8 @@ const CLASS = [
   student("passed", { quiz_result: { score: 9, max_score: 10, passed: true } }),
   student("returned", { id: "q1", chapter_type: "assignment", assignment_result: { status: "returned", grade: null } }),
   student("noemail", {}, ""),
+  // Ticked by a teacher, then excused: the tick stays, the exemption is real.
+  student("excusedAfterTick", { completed_by: "teacher", excused: true, quiz_result: { score: 1, max_score: 10, passed: false } }),
 ]
 
 const names = (r: StudentProgressData[]) => r.map((s) => s.full_name)
@@ -52,7 +54,7 @@ describe("pickRecipients", () => {
   })
 
   it("everyone with an address", () => {
-    expect(pickRecipients(CLASS, null, "everyone")).toHaveLength(6)
+    expect(pickRecipients(CLASS, null, "everyone")).toHaveLength(7)
   })
 })
 

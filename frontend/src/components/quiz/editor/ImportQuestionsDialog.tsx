@@ -46,12 +46,13 @@ export function ImportQuestionsDialog({ onImport }: { onImport: (questions: Impo
             aria-label={t("quizEditor.import.title")}
             className="min-h-[200px] font-mono text-xs"
           />
-          {/* Always rendered: a live region that appears with its content is
-              often not announced the first time. */}
-          <div className="space-y-1 text-sm" aria-live="polite">
+          <div className="space-y-1 text-sm">
+            {/* The live region is the count alone, and always rendered: one
+                that appears with its content is often not announced, and
+                one holding the whole list re-reads it on every keystroke. */}
+            <p aria-live="polite">{text.trim() !== "" ? t("quizEditor.import.found", { count: good.length }) : ""}</p>
             {text.trim() !== "" && (
               <>
-                <p>{t("quizEditor.import.found", { count: good.length })}</p>
                 {/* Which option each question will count as right — the one
                     thing a misread letter would get wrong silently. */}
                 {good.length > 0 && (
