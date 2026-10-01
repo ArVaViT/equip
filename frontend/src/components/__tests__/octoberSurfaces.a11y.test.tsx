@@ -16,6 +16,9 @@ import { AuthContext } from "@/context/auth-context"
 import { CommentLibrary } from "@/components/grading/CommentLibrary"
 import { ReadingControls } from "@/components/chapter/ReadingControls"
 import { VerseCard } from "@/components/chapter/VerseCard"
+import { LessonNote } from "@/components/chapter/LessonNote"
+import MyNotesPage from "@/pages/Notes/MyNotesPage"
+import { notesService } from "@/services/notes"
 import { ImportQuestionsDialog } from "@/components/quiz/editor/ImportQuestionsDialog"
 import { AddToCalendarButton } from "@/components/calendar/AddToCalendarButton"
 import TranscriptPage from "@/pages/Certificates/TranscriptPage"
@@ -123,6 +126,31 @@ describe("today's surfaces have no axe violations", () => {
       </AuthContext.Provider>,
     )
     await screen.findByRole("heading", { name: "Anna" })
+    expect(await axe(container)).toHaveNoViolations()
+  })
+
+  it("the lesson note, open", async () => {
+    vi.spyOn(notesService, "get").mockResolvedValue({ chapter_id: "c", body: "Заметка", updated_at: null })
+    const { container } = wrap(<LessonNote chapterId="c" />)
+    await screen.findByRole("textbox")
+    expect(await axe(container)).toHaveNoViolations()
+  })
+
+  it("my notes", async () => {
+    vi.spyOn(notesService, "mine").mockResolvedValue([
+      {
+        chapter_id: "c",
+        chapter_title: "Пятидесятница",
+        module_id: "m",
+        module_title: "Начало",
+        course_id: "k",
+        course_title: "Деяния",
+        body: "Заметка",
+        updated_at: "2026-10-01T10:00:00Z",
+      },
+    ])
+    const { container } = wrap(<MyNotesPage />)
+    await screen.findByText("Пятидесятница")
     expect(await axe(container)).toHaveNoViolations()
   })
 })

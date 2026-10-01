@@ -35,6 +35,7 @@ GRANT ALL ON TABLE public.certificates TO service_role;
 GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.chapter_blocks TO anon;
 GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.chapter_blocks TO authenticated;
 GRANT ALL ON TABLE public.chapter_blocks TO service_role;
+GRANT ALL ON TABLE public.chapter_notes TO service_role;
 GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.chapter_progress TO anon;
 GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.chapter_progress TO authenticated;
 GRANT ALL ON TABLE public.chapter_progress TO service_role;

@@ -61,6 +61,7 @@ import { useReadingPrefs } from "@/lib/readingPrefs"
 import { linkScriptureIn, textForScripture } from "@/lib/scriptureLinks"
 import { scriptureService, type Passage } from "@/services/scripture"
 import { VerseCard } from "@/components/chapter/VerseCard"
+import { LessonNote } from "@/components/chapter/LessonNote"
 
 /**
  * Renders a sanitised text-block via ``dangerouslySetInnerHTML`` and
@@ -906,6 +907,10 @@ export default function ChapterView() {
           />
         )}
       </div>
+
+      {/* The reader's own margin, under the lesson it belongs to. Only for
+          lessons to read: a test or an assignment has its own box to write in. */}
+      {chapterType === "reading" && <LessonNote chapterId={chapter.id} />}
 
       {/* Reading chapters get an act of their own.
           Until now a chapter of pure text could not be finished by the person

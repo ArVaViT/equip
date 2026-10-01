@@ -4,7 +4,7 @@ A reader in Germany has the right to a copy of their data (GDPR Art. 15 and
 20), and any reader is owed the plain answer to "what do you have on me?".
 This gathers the rows that are *about* the caller — their profile, where
 they enrolled, what they read, every test and answer, every piece of work
-with its marks and feedback, certificates, reviews, the daily question,
+with its marks and feedback, their notes on lessons, certificates, reviews, the daily question,
 notifications, and which legal documents they accepted — into one JSON
 document.
 
@@ -29,6 +29,7 @@ from sqlalchemy import inspect
 
 from app.models.assignment import AssignmentSubmission
 from app.models.certificate import Certificate
+from app.models.chapter_note import ChapterNote
 from app.models.chapter_progress import ChapterProgress
 from app.models.daily_challenge import DailyChallengeAttempt, DailyChallengeStreak
 from app.models.enrollment import Enrollment
@@ -98,6 +99,7 @@ def export_my_data(db: Session, user: User, *, now: datetime | None = None) -> d
         "exported_at": _plain(now or datetime.now(UTC)),
         "profile": _row(user),
         "enrollments": _rows(db.query(Enrollment).filter(Enrollment.user_id == uid).all()),
+        "lesson_notes": _rows(db.query(ChapterNote).filter(ChapterNote.user_id == uid).all()),
         "lessons_completed": _rows(db.query(ChapterProgress).filter(ChapterProgress.user_id == uid).all()),
         "quiz_attempts": _rows(attempts),
         "quiz_answers": _rows(db.query(QuizAnswer).filter(QuizAnswer.attempt_id.in_(attempt_ids)).all())

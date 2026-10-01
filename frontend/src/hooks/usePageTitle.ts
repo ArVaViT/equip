@@ -24,6 +24,7 @@ export function matchTitleKey(pathname: string): string | null {
     "/courses": "pageTitle.courses",
     "/profile": "pageTitle.profile",
     "/certificates": "pageTitle.certificates",
+    "/notes": "pageTitle.notes",
     "/certificates/transcript": "pageTitle.transcript",
     "/calendar": "pageTitle.calendar",
     "/teacher": "pageTitle.teacher",

@@ -516,6 +516,20 @@ CREATE TABLE public.chapter_blocks (
 
 
 --
+-- Name: chapter_notes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.chapter_notes (
+    user_id uuid NOT NULL,
+    chapter_id character varying NOT NULL,
+    body text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT chapter_notes_body_check CHECK (((char_length(body) >= 1) AND (char_length(body) <= 10000)))
+);
+
+
+--
 -- Name: chapter_progress; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1444,6 +1458,14 @@ ALTER TABLE ONLY public.chapter_blocks
 
 
 --
+-- Name: chapter_notes chapter_notes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chapter_notes
+    ADD CONSTRAINT chapter_notes_pkey PRIMARY KEY (user_id, chapter_id);
+
+
+--
 -- Name: chapter_progress chapter_progress_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2040,6 +2062,13 @@ CREATE INDEX ix_chapter_blocks_chapter_id_order ON public.chapter_blocks USING b
 --
 
 CREATE INDEX ix_chapter_blocks_quiz_id ON public.chapter_blocks USING btree (quiz_id);
+
+
+--
+-- Name: ix_chapter_notes_chapter_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_chapter_notes_chapter_id ON public.chapter_notes USING btree (chapter_id);
 
 
 --
@@ -2922,6 +2951,22 @@ ALTER TABLE ONLY public.chapter_blocks
 
 
 --
+-- Name: chapter_notes chapter_notes_chapter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chapter_notes
+    ADD CONSTRAINT chapter_notes_chapter_id_fkey FOREIGN KEY (chapter_id) REFERENCES public.chapters(id) ON DELETE CASCADE;
+
+
+--
+-- Name: chapter_notes chapter_notes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chapter_notes
+    ADD CONSTRAINT chapter_notes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+
+--
 -- Name: chapter_progress chapter_progress_chapter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3705,6 +3750,13 @@ CREATE POLICY certificates_select_own_or_reviewer ON public.certificates FOR SEL
 --
 
 ALTER TABLE public.chapter_blocks ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: chapter_notes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.chapter_notes ENABLE ROW LEVEL SECURITY;
+
 
 --
 -- Name: chapter_progress; Type: ROW SECURITY; Schema: public; Owner: -

@@ -21,7 +21,7 @@ import { DEFAULT_LOCALE, LANGUAGE_NAME_KEYS } from "@/i18n/config"
 import { toast } from "@/lib/toast"
 import {
   User as UserIcon, Mail, Calendar, Camera, Globe,
-  Loader2, Award, BookOpen, ArrowRight, LogOut, Moon, Sun,
+  Loader2, Award, BookOpen, ArrowRight, LogOut, Moon, NotebookPen, Sun,
 } from "lucide-react"
 import { useUserTour } from "@/hooks/useUserTour"
 import { profileSteps } from "@/lib/tourSteps"
@@ -305,6 +305,23 @@ export default function ProfilePage() {
                         {certificateCount === null ? "—" : animatedCertificates}
                       </p>
                       <p className="mt-1 text-xs text-ink-muted">{t("profile.certificatesEarned")}</p>
+                    </div>
+                    <ArrowRight
+                      className="h-4 w-4 shrink-0 text-ink-muted transition-transform duration-base group-hover:translate-x-0.5 group-hover:text-ink"
+                      strokeWidth={1.75}
+                      aria-hidden
+                    />
+                  </Link>
+                  <Link
+                    to="/notes"
+                    className="lift group flex items-center gap-3 rounded-lg bg-muted/15 p-4 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:col-span-2"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+                      <NotebookPen className="h-5 w-5 text-ink-muted" strokeWidth={1.75} aria-hidden />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">{t("notes.page.title")}</p>
+                      <p className="mt-0.5 text-xs text-ink-muted">{t("notes.page.profileHint")}</p>
                     </div>
                     <ArrowRight
                       className="h-4 w-4 shrink-0 text-ink-muted transition-transform duration-base group-hover:translate-x-0.5 group-hover:text-ink"

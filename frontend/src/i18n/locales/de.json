@@ -747,6 +747,7 @@
     "progressLabel": "{{percent}} % abgeschlossen"
   },
   "pageTitle": {
+    "notes": "Meine Notizen",
     "transcript": "Leistungsnachweis",
     "login": "Anmelden",
     "register": "Konto erstellen",
@@ -1046,6 +1047,27 @@
       "nrt": "Новый русский перевод",
       "elberfelder": "Elberfelder Bibel",
       "kulish": "Переклад Куліша, 1905"
+    }
+  },
+  "notes": {
+    "lesson": {
+      "title": "Meine Notizen zur Lektion",
+      "add": "Notiz zur Lektion hinzufügen",
+      "all": "Alle Notizen",
+      "placeholder": "Was Sie verstanden haben, sich merken oder fragen möchten…",
+      "saving": "Wird gespeichert…",
+      "saved": "Gespeichert",
+      "failed": "Speichern fehlgeschlagen — prüfen Sie die Verbindung; Ihr Text bleibt hier.",
+      "private": "Nur Sie sehen das. Es speichert sich selbst."
+    },
+    "page": {
+      "eyebrow": "Lernen",
+      "title": "Meine Notizen",
+      "description": "Alles, was Sie zu Lektionen notiert haben, nach Kurs und Modul.",
+      "emptyTitle": "Noch keine Notizen",
+      "emptyDescription": "Unter jeder Leselektion ist Platz für Ihre Notiz — sie erscheint dann hier.",
+      "loadFailed": "Notizen konnten nicht geladen werden.",
+      "profileHint": "Ihre Notizen zu Lektionen, nach Kurs"
     }
   },
   "quizEditor": {

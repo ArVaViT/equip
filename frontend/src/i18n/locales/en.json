@@ -747,6 +747,7 @@
     "progressLabel": "{{percent}}% complete"
   },
   "pageTitle": {
+    "notes": "My notes",
     "transcript": "Transcript",
     "login": "Sign In",
     "register": "Create Account",
@@ -1046,6 +1047,27 @@
       "nrt": "Новый русский перевод",
       "elberfelder": "Elberfelder Bibel",
       "kulish": "Переклад Куліша, 1905"
+    }
+  },
+  "notes": {
+    "lesson": {
+      "title": "My notes on this lesson",
+      "add": "Add a note to this lesson",
+      "all": "All notes",
+      "placeholder": "What you understood, what to remember or ask…",
+      "saving": "Saving…",
+      "saved": "Saved",
+      "failed": "Could not save — check your connection; your text stays here.",
+      "private": "Only you can see this. It saves itself."
+    },
+    "page": {
+      "eyebrow": "Learning",
+      "title": "My notes",
+      "description": "Everything you have written on lessons, by course and module.",
+      "emptyTitle": "No notes yet",
+      "emptyDescription": "Under every lesson to read there is room for your note — it will appear here.",
+      "loadFailed": "Could not load your notes.",
+      "profileHint": "Your notes on lessons, by course"
     }
   },
   "quizEditor": {

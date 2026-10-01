@@ -3,6 +3,7 @@ from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.audit_log import AuditLog
 from app.models.certificate import Certificate
 from app.models.chapter_block import ChapterBlock
+from app.models.chapter_note import ChapterNote
 from app.models.chapter_progress import ChapterProgress
 from app.models.cohort import Cohort
 from app.models.content_version import ContentVersion
@@ -51,6 +52,7 @@ __all__ = [
     "Certificate",
     "Chapter",
     "ChapterBlock",
+    "ChapterNote",
     "ChapterProgress",
     "Cohort",
     "ContentVersion",

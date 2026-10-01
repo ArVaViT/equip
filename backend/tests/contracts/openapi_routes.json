@@ -2768,6 +2768,66 @@
     "body": true
   },
   {
+    "method": "DELETE",
+    "path": "/api/v1/notes/chapters/{chapter_id}",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notes/chapters/{chapter_id}",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/notes/chapters/{chapter_id}",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notes/me",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
     "method": "GET",
     "path": "/api/v1/notifications",
     "params": [

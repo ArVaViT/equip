@@ -80,6 +80,7 @@ const ChapterEditor = lazyRoute(() => import("./pages/Teacher/ChapterEditor"))
 const AdminDashboard = lazyRoute(() => import("./pages/Admin/AdminDashboard"))
 const CohortDetailPage = lazyRoute(() => import("./pages/Admin/cohorts/CohortDetailPage"))
 const CalendarPage = lazyRoute(() => import("./pages/Calendar/CalendarPage"))
+const MyNotesPage = lazyRoute(() => import("./pages/Notes/MyNotesPage"))
 const DailyChallengeArchivePage = lazyRoute(() => import("./pages/DailyChallengeArchive/DailyChallengeArchivePage"))
 const DailyChallengeReviewPage = lazyRoute(() => import("./pages/Admin/dailyChallenge/DailyChallengeReviewPage"))
 const DailyChallengeReviewDetailPage = lazyRoute(() => import("./pages/Admin/dailyChallenge/DailyChallengeReviewDetailPage"))
@@ -304,6 +305,7 @@ function AppRoutes() {
               <Route path="/dmca" element={<DmcaPage />} />
               <Route path="/profile" element={<Gate mode="private"><ProfilePage /></Gate>} />
               <Route path="/calendar" element={<Gate mode="private"><CalendarPage /></Gate>} />
+              <Route path="/notes" element={<Gate mode="private"><MyNotesPage /></Gate>} />
               <Route path="/daily-challenge/archive" element={<Gate mode="private"><DailyChallengeArchivePage /></Gate>} />
               <Route path="/certificates" element={<Gate mode="private"><CertificatesPage /></Gate>} />
               {/* No <Gate>: a course page is open to anyone, as the landing FAQ
