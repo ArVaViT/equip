@@ -14,8 +14,13 @@ import { describe, expect, it } from "vitest"
 
 const APP = readFileSync(join(__dirname, "..", "App.tsx"), "utf8")
 
+/** `path` as a literal inside a RegExp: every metacharacter escaped, the backslash too. */
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")
+}
+
 function elementFor(path: string): string {
-  const m = APP.match(new RegExp(`<Route\\s+path="${path.replace(/[/:]/g, "\\$&")}"\\s+element=\\{(.+?)\\}\\s*/>`))
+  const m = APP.match(new RegExp(`<Route\\s+path="${escapeRegExp(path)}"\\s+element=\\{(.+?)\\}\\s*/>`))
   if (!m) throw new Error(`no route ${path}`)
   return m[1]!
 }
