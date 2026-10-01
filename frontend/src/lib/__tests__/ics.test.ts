@@ -53,3 +53,25 @@ describe("one event as an .ics file", () => {
     expect(icsFileName(event({ title: "!!!" }))).toBe("event.ics")
   })
 })
+
+describe("a recording on the event", () => {
+  it("goes into the description, under its label", () => {
+    const ics = eventToIcs(
+      {
+        id: "e1",
+        title: "Live class",
+        description: null,
+        event_type: "live_session",
+        event_date: "2026-09-28T18:00:00Z",
+        meeting_url: null,
+        recording_url: "https://youtu.be/abc",
+        course_id: "c1",
+        course_title: "Acts",
+        source: "course_event",
+      },
+      new Date("2026-10-01T00:00:00Z"),
+      "Запись занятия",
+    )
+    expect(ics.replace(/\r\n /g, "")).toContain("DESCRIPTION:Acts\\nЗапись занятия: https://youtu.be/abc")
+  })
+})

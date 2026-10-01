@@ -56,9 +56,10 @@ export function formatUtc(date: Date): string {
   return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z")
 }
 
-export function eventToIcs(event: CalendarEvent, now: Date = new Date()): string {
+export function eventToIcs(event: CalendarEvent, now: Date = new Date(), recordingLabel?: string): string {
   const start = new Date(event.event_date)
-  const description = [event.course_title, event.description].filter(Boolean).join("\n")
+  const recording = event.recording_url ? `${recordingLabel ?? "Recording"}: ${event.recording_url}` : null
+  const description = [event.course_title, event.description, recording].filter(Boolean).join("\n")
   const lines = [
     "BEGIN:VCALENDAR",
     `PRODID:${PRODID}`,

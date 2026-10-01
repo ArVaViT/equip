@@ -29,7 +29,7 @@ export function AddToCalendarButton({ event, className }: Props) {
   const download = (e: MouseEvent) => {
     // The calendar cell and the notification row are buttons themselves.
     e.stopPropagation()
-    const blob = new Blob([eventToIcs(event)], { type: "text/calendar;charset=utf-8" })
+    const blob = new Blob([eventToIcs(event, new Date(), t("meeting.recording"))], { type: "text/calendar;charset=utf-8" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
