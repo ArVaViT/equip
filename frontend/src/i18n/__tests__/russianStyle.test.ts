@@ -61,4 +61,19 @@ describe("the Russian catalog", () => {
       "The product says «вы» everywhere else; a screen on «ты» reads as a different product.",
     ).toEqual([])
   })
+
+  it("says it in Russian where Russian has the word", () => {
+    // Office slang a Bible-school reader should not have to decode. Each has
+    // a plain word that reads better: «срок», «главная», «живое занятие»,
+    // «блоки». «Аккаунт» and «онлайн» are not here: they are the words
+    // Russian uses now.
+    const slang = /(?<!\p{L})(дедлайн\p{L}*|дашборд\p{L}*|контент-блок\p{L}*|челлендж\p{L}*|фидб[еэ]к\p{L}*|апдейт\p{L}*|прям(ая|ой|ую) сесси\p{L}*)(?!\p{L})/iu
+
+    const offenders = ENTRIES.filter(([, value]) => slang.test(value))
+
+    expect(
+      offenders.map(([k, v]) => `${k}: ${v}`),
+      "Use the Russian word: «срок», «главная», «живое занятие», «блоки».",
+    ).toEqual([])
+  })
 })

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "@/i18n/config"
 import { axe } from "@/test/a11y"
 import CourseCard from "../CourseCard"
-import type { Course } from "@/types"
+import type { Chapter, Course } from "@/types"
 
 function makeCourse(overrides: Partial<Course> = {}): Course {
   return {
@@ -52,6 +52,19 @@ describe("CourseCard", () => {
     renderCard(makeCourse({ title: "Genesis", description: "Intro course" }))
     expect(screen.getByText("Genesis")).toBeInTheDocument()
     expect(screen.getByText("Intro course")).toBeInTheDocument()
+  })
+
+  it("counts lessons, not modules: four lessons and no module is not \"0 modules\"", async () => {
+    await i18n.changeLanguage("en")
+    renderCard(makeCourse({ modules: [], chapter_count: 4, module_count: 0 }))
+    expect(screen.getByText("4 lessons")).toBeInTheDocument()
+    expect(screen.queryByText(/modules?/i)).toBeNull()
+  })
+
+  it("says nothing rather than \"0 lessons\" for an empty course", async () => {
+    await i18n.changeLanguage("en")
+    renderCard(makeCourse({ modules: [], chapter_count: 0 }))
+    expect(screen.queryByText(/lessons?$/)).toBeNull()
   })
 
   it("renders a placeholder icon when there is no image", () => {
@@ -117,16 +130,18 @@ describe("CourseCard", () => {
     expect(screen.getByText(/enrolling now/i)).toBeInTheDocument()
   })
 
-  it("shows the module count", () => {
+  it("falls back to the lessons nested under modules when the list did not count", async () => {
+    await i18n.changeLanguage("en")
+    const lessons = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `ch-${i}` })) as unknown as Chapter[]
     renderCard(
       makeCourse({
         modules: [
-          { id: "m1", course_id: "c-1", title: "A", description: null, order_index: 0, due_date: null },
-          { id: "m2", course_id: "c-1", title: "B", description: null, order_index: 1, due_date: null },
+          { id: "m1", course_id: "c-1", title: "A", description: null, order_index: 0, due_date: null, chapters: lessons(2) },
+          { id: "m2", course_id: "c-1", title: "B", description: null, order_index: 1, due_date: null, chapters: lessons(1) },
         ],
       }),
     )
-    expect(screen.getByText(/2 modules/i)).toBeInTheDocument()
+    expect(screen.getByText("3 lessons")).toBeInTheDocument()
   })
 
   it('shows the "By invitation" badge on institute courses instead of the enrollment-window badge', () => {

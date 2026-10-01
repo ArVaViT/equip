@@ -126,7 +126,7 @@ function Wrapper({
   children: ReactNode
   user?: User | null
   route?: string
-  apply?: (next: User) => void
+  apply?: (next: Pick<User, "id"> & Partial<User>) => void
 }) {
   return (
     <MemoryRouter initialEntries={[route]}>
@@ -172,7 +172,8 @@ function StatefulWrapper({ children, initial }: { children: ReactNode; initial: 
       user={user}
       apply={(next) => {
         applyUser(next)
-        setUser(next)
+        // Merges, as AuthContext.applyUser does.
+        setUser((prev) => ({ ...prev, ...next }))
       }}
     >
       {children}

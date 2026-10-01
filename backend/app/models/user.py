@@ -1,9 +1,9 @@
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, func
+from sqlalchemy import BigInteger, CheckConstraint, Date, DateTime, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -84,6 +84,19 @@ class User(Base):
             "locale_source IN ('default', 'detected', 'chosen')",
             name="profiles_locale_source_check",
         ),
+        CheckConstraint(
+            "time_zone_source IN ('default', 'detected', 'chosen')",
+            name="profiles_time_zone_source_check",
+        ),
+        CheckConstraint(
+            "birth_date IS NULL OR birth_date >= '1900-01-01'",
+            name="profiles_birth_date_floor_check",
+        ),
+        # Not mirrored, like ``organizations.slug``: ``profiles_country_code_check``
+        # is a regex (SQLite has no ``~``) and ``profiles_personal_text_lengths_check``
+        # uses ``char_length`` (SQLite has ``length``). A constraint the test
+        # database cannot build is worse than the two places that enforce it:
+        # Postgres, and the profile form. The backend never writes these fields.
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True)
@@ -123,6 +136,25 @@ class User(Base):
     # moment their profile loaded. See
     # ``supabase/migrations/20260817131500_a_language_nobody_chose_is_not_a_choice.sql``.
     locale_source: Mapped[str] = mapped_column(default="default", server_default="default")
+    # The zone this person reads times in — an IANA name such as
+    # "America/Indiana/Indianapolis". Every instant is stored and served in
+    # UTC; this only decides how it is shown (and how a wall-clock time a
+    # teacher types is turned back into an instant). Set from the browser
+    # ('detected') until the person picks one ('chosen'); see
+    # supabase/migrations/20260930132351_a_profile_knows_where_and_when_you_are.sql,
+    # which also validates the name against pg_timezone_names.
+    time_zone: Mapped[str | None] = mapped_column()
+    time_zone_source: Mapped[str] = mapped_column(default="default", server_default="default")
+    # Reserved: a client may not write it until a number can be verified
+    # (guarded by trg_profiles_protect_immutable_fields).
+    phone: Mapped[str | None] = mapped_column()
+    # Optional details a person may give about themselves.
+    birth_date: Mapped[date | None] = mapped_column(Date)
+    #: ISO 3166-1 alpha-2, upper case.
+    country_code: Mapped[str | None] = mapped_column()
+    region: Mapped[str | None] = mapped_column()
+    city: Mapped[str | None] = mapped_column()
+    church: Mapped[str | None] = mapped_column()
     # Floor for iCal token ``iat`` claims. When a user rotates their
     # subscription token via ``POST /calendar/ical/token``, we stamp
     # this to the new ``iat``; the feed verifier refuses tokens whose

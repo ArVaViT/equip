@@ -93,6 +93,12 @@ export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOver
         coursesService.getAdminPendingCerts().catch(() => []),
       ])
       if (isCancelled()) return undefined
+      // A count query that failed answers ``count: null`` beside an
+      // ``error``; read as ``?? 0`` it put "0 courses" on the overview
+      // with nothing to say the number was missing. Fail the load instead,
+      // so the page shows its error state and a retry.
+      if (coursesCount.error) throw coursesCount.error
+      if (enrollmentsCount.error) throw enrollmentsCount.error
       return { allUsers, coursesCount, enrollmentsCount, certs }
     },
     [reloadKey, enabled],

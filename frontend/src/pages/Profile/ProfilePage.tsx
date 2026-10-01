@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,6 +27,8 @@ import { useUserTour } from "@/hooks/useUserTour"
 import { profileSteps } from "@/lib/tourSteps"
 import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
 import { initialsOf } from "@/lib/names"
+import { PersonalDetailsCard } from "./PersonalDetailsCard"
+import { TimeZoneSetting } from "./TimeZoneSetting"
 
 function useCountUp(target: number, durationMs = 800) {
   const prefersReducedMotion = useReducedMotion()
@@ -85,6 +87,17 @@ export default function ProfilePage() {
   const animatedCompleted = useCountUp(completedCount ?? 0)
   const animatedCertificates = useCountUp(certificateCount ?? 0)
   const fileRef = useRef<HTMLInputElement>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab: ProfileTab = PROFILE_TABS.includes(searchParams.get("tab") as ProfileTab)
+    ? (searchParams.get("tab") as ProfileTab)
+    : "overview"
+  const selectTab = (next: ProfileTab) =>
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (next === "overview") params.delete("tab")
+      else params.set("tab", next)
+      return params
+    }, { replace: true })
   useUserTour({
     tourId: "profile-v1",
     steps: profileSteps(t),
@@ -251,141 +264,158 @@ export default function ProfilePage() {
           )}
         </Card>
 
-        <Card className="transition-[border-color] duration-200 hover:border-brand/25">
-          <CardHeader className="space-y-1">
-            <CardTitle>
-              {t("profile.learningProgress")}
-            </CardTitle>
-            <CardDescription>{t("profile.learningProgressDescription")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="flex items-center gap-3 rounded-md bg-muted/15 p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
-                  <BookOpen className="h-5 w-5 text-ink-muted" strokeWidth={1.75} aria-hidden />
-                </div>
-                <div>
-                  <p className="text-2xl font-semibold leading-none tabular-nums">
-                    {completedCount === null ? "—" : animatedCompleted}
-                  </p>
-                  <p className="mt-1 text-xs text-ink-muted">{t("profile.coursesCompleted")}</p>
-                </div>
-              </div>
-              {/* The way to the certificates page since it left the header
-                  (2026-09-28): the tile that counts them opens them. */}
-              <Link
-                to="/certificates"
-                data-testid="profile-certificates-link"
-                className="lift group flex items-center gap-3 rounded-lg bg-muted/15 p-4 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
-                  <Award className="h-5 w-5 text-ink-muted" strokeWidth={1.75} aria-hidden />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-2xl font-semibold leading-none tabular-nums">
-                    {certificateCount === null ? "—" : animatedCertificates}
-                  </p>
-                  <p className="mt-1 text-xs text-ink-muted">{t("profile.certificatesEarned")}</p>
-                </div>
-                <ArrowRight
-                  className="h-4 w-4 shrink-0 text-ink-muted transition-transform duration-base group-hover:translate-x-0.5 group-hover:text-ink"
-                  strokeWidth={1.75}
-                  aria-hidden
-                />
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+        <ProfileTabs active={tab} onSelect={selectTab} />
 
-        <Card className="transition-[border-color] duration-200 hover:border-brand/25">
-          <CardHeader>
-            <CardTitle>{t("profile.accountDetails")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <dl className="divide-y divide-border rounded-md ">
-              <div className="flex items-start gap-3 px-4 py-3">
-                <Mail className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-                <div className="min-w-0">
-                  <dt className="text-xs text-ink-muted">{t("auth.email")}</dt>
-                  <dd className="text-sm font-medium">{user.email}</dd>
-                </div>
-              </div>
-              {user.created_at && (
-                <div className="flex items-start gap-3 px-4 py-3">
-                  <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-                  <div>
-                    <dt className="text-xs text-ink-muted">{t("profile.memberSince")}</dt>
-                    <dd className="text-sm font-medium">
-                      {formatDateLong(user.created_at)}
-                    </dd>
+        {tab === "overview" && (
+          <div id="profile-panel-overview" role="tabpanel" aria-labelledby="profile-tab-overview" className="space-y-6">
+            <Card className="transition-[border-color] duration-200 hover:border-brand/25">
+              <CardHeader className="space-y-1">
+                <CardTitle>
+                  {t("profile.learningProgress")}
+                </CardTitle>
+                <CardDescription>{t("profile.learningProgressDescription")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="flex items-center gap-3 rounded-md bg-muted/15 p-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+                      <BookOpen className="h-5 w-5 text-ink-muted" strokeWidth={1.75} aria-hidden />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-semibold leading-none tabular-nums">
+                        {completedCount === null ? "—" : animatedCompleted}
+                      </p>
+                      <p className="mt-1 text-xs text-ink-muted">{t("profile.coursesCompleted")}</p>
+                    </div>
                   </div>
+                  {/* The way to the certificates page since it left the header
+                      (2026-09-28): the tile that counts them opens them. */}
+                  <Link
+                    to="/certificates"
+                    data-testid="profile-certificates-link"
+                    className="lift group flex items-center gap-3 rounded-lg bg-muted/15 p-4 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+                      <Award className="h-5 w-5 text-ink-muted" strokeWidth={1.75} aria-hidden />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-2xl font-semibold leading-none tabular-nums">
+                        {certificateCount === null ? "—" : animatedCertificates}
+                      </p>
+                      <p className="mt-1 text-xs text-ink-muted">{t("profile.certificatesEarned")}</p>
+                    </div>
+                    <ArrowRight
+                      className="h-4 w-4 shrink-0 text-ink-muted transition-transform duration-base group-hover:translate-x-0.5 group-hover:text-ink"
+                      strokeWidth={1.75}
+                      aria-hidden
+                    />
+                  </Link>
                 </div>
-              )}
-            </dl>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        <Card className="transition-[border-color] duration-200 hover:border-brand/25">
-          <CardHeader>
-            <CardTitle>{t("profile.preferences")}</CardTitle>
-          </CardHeader>
-          <CardContent className="divide-y divide-border rounded-md px-0">
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4">
-              <div className="flex min-w-0 items-center gap-3">
-                {theme === "dark" ? (
-                  <Moon className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-                ) : (
-                  <Sun className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-                )}
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">{t("profile.theme")}</p>
-                  <p className="text-xs text-ink-muted">
-                    {theme === "dark" ? t("profile.themeDark") : t("profile.themeLight")}
-                  </p>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" onClick={toggleTheme}>
-                {prefersReducedMotion ? (
-                  theme === "dark" ? (
-                    <Sun className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-                  ) : (
-                    <Moon className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-                  )
-                ) : (
-                  <AnimatePresence mode="wait" initial={false}>
-                    <motion.span
-                      key={theme}
-                      className="mr-1.5 inline-flex"
-                      initial={{ rotate: -45, opacity: 0 }}
-                      animate={{ rotate: 0, opacity: 1 }}
-                      exit={{ rotate: 45, opacity: 0 }}
-                      transition={{ duration: MOTION_DURATION.base, ease: EDITORIAL_EASE }}
-                    >
-                      {theme === "dark" ? (
-                        <Sun className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            <Card className="transition-[border-color] duration-200 hover:border-brand/25">
+              <CardHeader>
+                <CardTitle>{t("profile.accountDetails")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <dl className="divide-y divide-border rounded-md ">
+                  <div className="flex items-start gap-3 px-4 py-3">
+                    <Mail className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
+                    <div className="min-w-0">
+                      <dt className="text-xs text-ink-muted">{t("auth.email")}</dt>
+                      <dd className="text-sm font-medium">{user.email}</dd>
+                    </div>
+                  </div>
+                  {user.created_at && (
+                    <div className="flex items-start gap-3 px-4 py-3">
+                      <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
+                      <div>
+                        <dt className="text-xs text-ink-muted">{t("profile.memberSince")}</dt>
+                        <dd className="text-sm font-medium">
+                          {formatDateLong(user.created_at)}
+                        </dd>
+                      </div>
+                    </div>
+                  )}
+                </dl>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {tab === "personal" && (
+          <div id="profile-panel-personal" role="tabpanel" aria-labelledby="profile-tab-personal">
+            <PersonalDetailsCard />
+          </div>
+        )}
+
+        {tab === "settings" && (
+          <div id="profile-panel-settings" role="tabpanel" aria-labelledby="profile-tab-settings">
+            <Card className="transition-[border-color] duration-200 hover:border-brand/25">
+              <CardHeader>
+                <CardTitle>{t("profile.preferences")}</CardTitle>
+              </CardHeader>
+              <CardContent className="divide-y divide-border rounded-md px-0">
+                <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    {theme === "dark" ? (
+                      <Moon className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
+                    ) : (
+                      <Sun className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{t("profile.theme")}</p>
+                      <p className="text-xs text-ink-muted">
+                        {theme === "dark" ? t("profile.themeDark") : t("profile.themeLight")}
+                      </p>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={toggleTheme}>
+                    {prefersReducedMotion ? (
+                      theme === "dark" ? (
+                        <Sun className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
                       ) : (
-                        <Moon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                      )}
-                    </motion.span>
-                  </AnimatePresence>
-                )}
-                {theme === "dark" ? t("profile.switchToLight") : t("profile.switchToDark")}
-              </Button>
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <Globe className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">{t("language.label")}</p>
-                  <p className="text-xs text-ink-muted">
-                    {t(LANGUAGE_NAME_KEYS[user.preferred_locale] ?? LANGUAGE_NAME_KEYS[DEFAULT_LOCALE])}
-                  </p>
+                        <Moon className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                      )
+                    ) : (
+                      <AnimatePresence mode="wait" initial={false}>
+                        <motion.span
+                          key={theme}
+                          className="mr-1.5 inline-flex"
+                          initial={{ rotate: -45, opacity: 0 }}
+                          animate={{ rotate: 0, opacity: 1 }}
+                          exit={{ rotate: 45, opacity: 0 }}
+                          transition={{ duration: MOTION_DURATION.base, ease: EDITORIAL_EASE }}
+                        >
+                          {theme === "dark" ? (
+                            <Sun className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                          ) : (
+                            <Moon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                          )}
+                        </motion.span>
+                      </AnimatePresence>
+                    )}
+                    {theme === "dark" ? t("profile.switchToLight") : t("profile.switchToDark")}
+                  </Button>
                 </div>
-              </div>
-              <LanguageSwitcher />
-            </div>
-          </CardContent>
-        </Card>
+                <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Globe className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{t("language.label")}</p>
+                      <p className="text-xs text-ink-muted">
+                        {t(LANGUAGE_NAME_KEYS[user.preferred_locale] ?? LANGUAGE_NAME_KEYS[DEFAULT_LOCALE])}
+                      </p>
+                    </div>
+                  </div>
+                  <LanguageSwitcher />
+                </div>
+                <TimeZoneSetting />
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* The two documents used to hang off the app-shell footer. That
             footer is gone — an application does not have one — so they live
@@ -418,6 +448,57 @@ export default function ProfilePage() {
           </Button>
         </div>
       </div>
+    </div>
+  )
+}
+
+type ProfileTab = "overview" | "personal" | "settings"
+const PROFILE_TABS: ProfileTab[] = ["overview", "personal", "settings"]
+const TAB_LABEL_KEYS: Record<ProfileTab, string> = {
+  overview: "profile.tabs.overview",
+  personal: "profile.tabs.personal",
+  settings: "profile.tabs.settings",
+}
+
+/**
+ * Three tabs, not more: what you have done, what you have told us, how the
+ * app behaves for you. WAI-ARIA tabs — arrow keys move between them, the
+ * choice lives in the address (`?tab=`) so a link can open one.
+ */
+function ProfileTabs({ active, onSelect }: { active: ProfileTab; onSelect: (tab: ProfileTab) => void }) {
+  const { t } = useTranslation()
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const i = PROFILE_TABS.indexOf(active)
+    const next =
+      e.key === "ArrowRight" ? PROFILE_TABS[(i + 1) % PROFILE_TABS.length]
+      : e.key === "ArrowLeft" ? PROFILE_TABS[(i - 1 + PROFILE_TABS.length) % PROFILE_TABS.length]
+      : e.key === "Home" ? PROFILE_TABS[0]
+      : e.key === "End" ? PROFILE_TABS[PROFILE_TABS.length - 1]
+      : undefined
+    if (!next) return
+    e.preventDefault()
+    onSelect(next)
+    document.getElementById(`profile-tab-${next}`)?.focus()
+  }
+  return (
+    <div role="tablist" aria-label={t("profile.tabs.label")} onKeyDown={onKeyDown} className="flex gap-1 overflow-x-auto border-b border-edge">
+      {PROFILE_TABS.map((tab) => (
+        <button
+          key={tab}
+          id={`profile-tab-${tab}`}
+          type="button"
+          role="tab"
+          aria-selected={active === tab}
+          aria-controls={`profile-panel-${tab}`}
+          tabIndex={active === tab ? 0 : -1}
+          onClick={() => onSelect(tab)}
+          className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+            active === tab ? "border-brand text-ink" : "border-transparent text-ink-muted hover:text-ink"
+          }`}
+        >
+          {t(TAB_LABEL_KEYS[tab])}
+        </button>
+      ))}
     </div>
   )
 }

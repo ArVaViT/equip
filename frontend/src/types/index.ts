@@ -65,6 +65,18 @@ export interface User {
    * reads as `null`.
    */
   onboarding_completed_at?: string | null
+  /** IANA zone the person reads times in; `null` until one is known. */
+  time_zone?: string | null
+  /** As `locale_source`: `chosen` is never overwritten by the browser's zone. */
+  time_zone_source?: 'default' | 'detected' | 'chosen'
+  /** Reserved until phone verification exists; the client cannot write it. */
+  phone?: string | null
+  /** Optional personal details, written by the person themselves. */
+  birth_date?: string | null
+  country_code?: string | null
+  region?: string | null
+  city?: string | null
+  church?: string | null
 }
 
 export interface Course {
@@ -547,6 +559,14 @@ export interface Profile {
   created_at: string
   updated_at: string | null
   onboarding_completed_at?: string | null
+  time_zone?: string | null
+  time_zone_source?: 'default' | 'detected' | 'chosen'
+  phone?: string | null
+  birth_date?: string | null
+  country_code?: string | null
+  region?: string | null
+  city?: string | null
+  church?: string | null
 }
 
 type CalendarEventType = 'deadline' | 'live_session' | 'exam' | 'other'

@@ -18,6 +18,7 @@ import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { EmptyState, ErrorState } from "@/components/patterns"
 import { cohortsService } from "@/services/cohorts"
 import { formatDate } from "@/i18n/format"
+import { zonedDayKey } from "@/i18n/timeZone"
 import type { Cohort } from "@/types"
 import { CreateCohortDialog } from "./CreateCohortDialog"
 import { FilterField } from "../dashboard/FilterField"
@@ -50,10 +51,6 @@ const STATUS_VALUES = ["", "upcoming", "active", "completed"] as const
 
 function isPageSize(n: number): n is PageSize {
   return (PAGE_SIZE_OPTIONS as readonly number[]).includes(n)
-}
-
-function ymdKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 }
 
 /**
@@ -159,7 +156,8 @@ export function CohortsTab() {
     const q = search.trim().toLowerCase()
     return cohorts.filter((c) => {
       if (q && !c.name.toLowerCase().includes(q)) return false
-      const startKey = ymdKey(new Date(c.start_date))
+      // The day the list shows (the reader's zone), not the browser's.
+      const startKey = zonedDayKey(new Date(c.start_date))
       if (startFrom && startKey < startFrom) return false
       if (startTo && startKey > startTo) return false
       return true

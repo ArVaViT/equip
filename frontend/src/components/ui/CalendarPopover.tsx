@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Eyebrow } from "@/components/patterns"
 import { addMonths, buildMonthMatrix, ymdKey } from "@/lib/calendar"
+import { zonedDayKey } from "@/i18n/timeZone"
 import { cn } from "@/lib/utils"
 
 /** Per-day presentation the host picker computes from its own selection. */
@@ -65,7 +66,8 @@ export function CalendarPopover({
   const [anchor, setAnchor] = useState<Date>(initialMonth)
 
   const days = useMemo(() => buildMonthMatrix(anchor), [anchor])
-  const todayKey = ymdKey(new Date())
+  // The reader's today (profile zone), like the day a picked date lands on.
+  const todayKey = zonedDayKey(new Date())
   const anchorMonth = anchor.getMonth()
 
   const weekdayHeads = [

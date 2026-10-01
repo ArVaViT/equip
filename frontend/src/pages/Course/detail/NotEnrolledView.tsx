@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { ArrowLeft, CalendarDays, Clock, Layers, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -49,6 +49,7 @@ export function NotEnrolledView({
   onEnroll,
 }: Props) {
   const { t } = useTranslation()
+  const location = useLocation()
   const [cohortSelectModal, setCohortSelectModal] = useState(false)
   const [selectedCohortId, setSelectedCohortId] = useState<string | null>(null)
 
@@ -284,11 +285,14 @@ export function NotEnrolledView({
             )}
           </div>
         ) : (
-          <Link to="/login">
-            <Button size="lg">
+          // Back to this course after signing in — a visitor who came by a
+          // pastor's link otherwise lands on the home screen (`Gate` reads
+          // `state.from`, see lib/authRedirect).
+          <Button asChild size="lg">
+            <Link to="/login" state={{ from: `${location.pathname}${location.search}` }}>
               {t("courseDetail.signInToEnroll")}
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         )}
       </div>
 

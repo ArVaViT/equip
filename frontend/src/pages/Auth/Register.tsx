@@ -1,3 +1,6 @@
+import { useEffect } from "react"
+import { useLocation } from "react-router-dom"
+import { rememberReturnPath } from "@/lib/authRedirect"
 import { DuplicateEmailView } from "./register/DuplicateEmailView"
 import { RegisterForm } from "./register/RegisterForm"
 import { SuccessView } from "./register/SuccessView"
@@ -9,6 +12,9 @@ import { useRegister } from "./register/useRegister"
  * error handling) lives inside the hook and the sibling view components.
  */
 export default function Register() {
+  const location = useLocation()
+  // A confirmation link and Google both come back through /auth/callback.
+  useEffect(() => rememberReturnPath(location.state), [location.state])
   const {
     form,
     errors,

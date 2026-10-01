@@ -237,6 +237,7 @@ Consequences for queries:
 | `equip.invitations.time_to_accept_ms` | `scope` | yes | invitation created → accepted. The tail is what says whether a seven-day life is too short |
 | `equip.email.attempts_total` | `kind`, `outcome` (`sent`/`rejected`/`http_error`/`not_configured`), `status_code`, `error` | — | `app/services/email/send.py`, once per message handed to Resend. `not_configured` is a preview deployment without the key, not a failure. Bounces are NOT here — the provider accepts a message it later cannot deliver, and seeing that needs the webhook (ADR-012 step 4) |
 | `equip.email.provider_ms` | `kind` | yes | how long the provider held a request a person was waiting on |
+| `equip.daily_challenge.replenish_total` | `status` (`scheduled`/`no_survivors`/`error`/`no_actor`) | — | `app/api/v1/internal_daily_challenge_worker.py::_run_one_tick`, once per nightly tick that had a Gemini key. Added 2026-09-30; **its rule and a no-data monitor are not created yet** — do both when this ships |
 | `equip.gemini.calls_total` | `model`, `outcome` (`success`/`retry`/`rate_limited`/`unavailable`/`rejected`/`transport`/`review`/`review_failed`) | — | `app/services/translation/gemini.py`, once per Gemini API call — the review call included |
 
 ### The `status_code` tag on `equip.gemini.calls_total` is a lie

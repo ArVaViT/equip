@@ -16,7 +16,7 @@ import { RubricGrid } from "@/components/rubric/RubricGrid"
 import { toast } from "@/lib/toast"
 import type { AiPolicy, Assignment, AssignmentSubmission, SubmissionRubric } from "@/types"
 import PageSpinner from "@/components/ui/PageSpinner"
-import { formatDate } from "@/i18n/format"
+import { formatDateTimeZoned } from "@/i18n/format"
 import { orNotTranslated } from "@/lib/untranslated"
 import {
   FileText,
@@ -318,7 +318,7 @@ function SingleAssignment({
               <span className={`flex items-center gap-1 tabular-nums ${isOverdue ? "font-medium text-destructive" : ""}`}>
                 <Calendar className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
                 {t("assignment.due")}{" "}
-                {formatDate(assignment.due_date)}
+                {formatDateTimeZoned(assignment.due_date)}
                 {isOverdue && (
                   <span className="ml-1 rounded bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive-ink">
                     {t("assignment.overdue")}

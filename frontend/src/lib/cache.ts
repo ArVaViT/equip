@@ -41,6 +41,8 @@ interface CacheEntry<T = unknown> {
 }
 
 const store = new Map<string, CacheEntry>()
+/** Requests on their way, by locale-scoped key, so concurrent readers share one. */
+const inflight = new Map<string, Promise<unknown>>()
 
 function evictExpired(): void {
   const now = Date.now()
@@ -84,12 +86,12 @@ export function cacheInvalidate(key: string): void {
   // locale must clear the cached overlay in the other too. Cheap: the
   // store is bounded at MAX_ENTRIES.
   const tail = `::`
-  for (const stored of store.keys()) {
+  const matches = (stored: string) => {
     const sepIdx = stored.lastIndexOf(tail)
-    if (sepIdx > 0 && stored.slice(0, sepIdx) === key) {
-      store.delete(stored)
-    }
+    return sepIdx > 0 && stored.slice(0, sepIdx) === key
   }
+  for (const stored of store.keys()) if (matches(stored)) store.delete(stored)
+  for (const pending of inflight.keys()) if (matches(pending)) inflight.delete(pending)
 }
 
 /**
@@ -103,6 +105,7 @@ export function cacheInvalidate(key: string): void {
  */
 export function cacheClear(): void {
   store.clear()
+  inflight.clear()
 }
 
 export function cacheInvalidatePrefix(prefix: string): void {
@@ -111,6 +114,9 @@ export function cacheInvalidatePrefix(prefix: string): void {
   // is still sound — the locale tail comes after the original key.
   for (const key of store.keys()) {
     if (key.startsWith(prefix)) store.delete(key)
+  }
+  for (const key of inflight.keys()) {
+    if (key.startsWith(prefix)) inflight.delete(key)
   }
 }
 
@@ -142,8 +148,24 @@ export async function cached<T>(
   // `await`, a response still in flight when the reader switched language
   // was stored under the new one and served as it for up to the TTL.
   const scoped = localeScoped(key)
-  const fresh = await fetcher()
-  store.set(scoped, { value: fresh, expiresAt: Date.now() + ttlMs })
-  evictIfNeeded()
-  return fresh
+  // Two readers of the same key at once share one request: the dashboard
+  // asked for /users/me/courses twice on every load (2026-09-30 audit).
+  const pending = inflight.get(scoped) as Promise<T> | undefined
+  if (pending) return pending
+  const request = fetcher().then(
+    (fresh) => {
+      // Stored only if nothing invalidated the key while it was in flight
+      // — a write that landed meanwhile must not be undone by an answer
+      // sent before it. The caller still gets the answer it asked for.
+      if (inflight.get(scoped) === request) {
+        store.set(scoped, { value: fresh, expiresAt: Date.now() + ttlMs })
+        evictIfNeeded()
+      }
+      return fresh
+    },
+  ).finally(() => {
+    if (inflight.get(scoped) === request) inflight.delete(scoped)
+  })
+  inflight.set(scoped, request)
+  return request
 }

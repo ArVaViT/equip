@@ -1,6 +1,7 @@
 # Design Guide
 
 Single source of truth for how this app looks and behaves. Short on purpose.
+How it sounds — tone, address, words — is `docs/VOICE.md`.
 
 ## Aesthetic
 

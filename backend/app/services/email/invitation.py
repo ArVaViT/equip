@@ -89,6 +89,18 @@ def _next_session(db: Session, course_id: str) -> datetime | None:
     )
 
 
+def _expiry_day(moment: datetime, locale: LocaleCode) -> str:
+    """The link's last day on the school's clock, like the lesson time beside it.
+
+    ``expires_at`` is UTC; its bare ``.date()`` named the next day for a
+    link sent in the evening, so a reader in Indiana was told it lasted
+    until a day on which it had already died the night before.
+    """
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=UTC)
+    return _day(moment.astimezone(_SCHOOL_TIMEZONE), locale)
+
+
 def _session_text(moment: datetime, locale: LocaleCode) -> str:
     """ "12 сентября, 20:00 по восточному (17:00 по тихоокеанскому)"."""
     if moment.tzinfo is None:
@@ -175,7 +187,7 @@ def build_invitation_message(
         cta_url=accept_url,
         preview=t(locale, "email.invitation.preview", title=title),
         notes=(
-            t(locale, "email.invitation.expires", date=_day(invitation.expires_at, locale)),
+            t(locale, "email.invitation.expires", date=_expiry_day(invitation.expires_at, locale)),
             t(locale, "email.invitation.ignore"),
         ),
     )

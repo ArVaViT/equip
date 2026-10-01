@@ -31,8 +31,13 @@ export interface AuthContextValue {
    * Ignores a profile for anybody but the currently signed-in user, so a
    * response that lands after a logout or an account switch cannot resurrect
    * the previous session.
+   *
+   * Merges: the fields given win, the rest keep the value the profile
+   * already has. So a caller passes only what changed (`{ id, city }`), and
+   * a backend `UserResponse`, which carries no zone or personal details,
+   * cannot blank them.
    */
-  applyUser: (user: User) => void
+  applyUser: (user: Pick<User, "id"> & Partial<User>) => void
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)

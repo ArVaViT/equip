@@ -57,6 +57,26 @@ $$;
 
 
 --
+-- Name: courses_touch_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.courses_touch_updated_at() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+  IF (to_jsonb(NEW) - 'translations_checked_at' - 'updated_at')
+     IS NOT DISTINCT FROM (to_jsonb(OLD) - 'translations_checked_at' - 'updated_at') THEN
+    NEW.updated_at = OLD.updated_at;
+  ELSE
+    NEW.updated_at = now();
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: current_organization_id(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -268,6 +288,9 @@ CREATE FUNCTION public.profiles_protect_immutable_fields() RETURNS trigger
     SET search_path TO 'pg_catalog', 'public'
     AS $$
 BEGIN
+  -- Only enforce for client-side writes. FastAPI connects as
+  -- ``postgres`` and the service_role JWT becomes ``service_role`` --
+  -- both bypass this guard so legitimate server mutations keep working.
   IF current_user <> 'authenticated' THEN
     RETURN NEW;
   END IF;
@@ -297,6 +320,36 @@ BEGIN
   END IF;
   IF NEW.onboarding_completed_at IS DISTINCT FROM OLD.onboarding_completed_at THEN
     RAISE EXCEPTION 'profiles.onboarding_completed_at is recorded by the server'
+      USING ERRCODE = 'check_violation';
+  END IF;
+  -- Reserved until a number can be verified: an unverified phone written
+  -- from the browser would later look like a confirmed one.
+  IF NEW.phone IS DISTINCT FROM OLD.phone THEN
+    RAISE EXCEPTION 'profiles.phone cannot be set until phone verification exists'
+      USING ERRCODE = 'check_violation';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: profiles_validate_personal_fields(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.profiles_validate_personal_fields() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+  IF NEW.time_zone IS NOT NULL
+     AND (TG_OP = 'INSERT' OR NEW.time_zone IS DISTINCT FROM OLD.time_zone)
+     AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_timezone_names WHERE name = NEW.time_zone) THEN
+    RAISE EXCEPTION 'profiles.time_zone must be an IANA time zone name'
+      USING ERRCODE = 'check_violation';
+  END IF;
+  IF NEW.birth_date IS NOT NULL AND NEW.birth_date > current_date THEN
+    RAISE EXCEPTION 'profiles.birth_date cannot be in the future'
       USING ERRCODE = 'check_violation';
   END IF;
   RETURN NEW;
@@ -1028,9 +1081,21 @@ CREATE TABLE public.profiles (
     locale_source text DEFAULT 'default'::text NOT NULL,
     organization_id uuid,
     onboarding_completed_at timestamp with time zone,
+    time_zone text,
+    time_zone_source text DEFAULT 'default'::text NOT NULL,
+    phone text,
+    birth_date date,
+    country_code text,
+    region text,
+    city text,
+    church text,
     CONSTRAINT chk_profiles_role CHECK ((role = ANY (ARRAY['admin'::text, 'director'::text, 'teacher'::text, 'student'::text]))),
+    CONSTRAINT profiles_birth_date_floor_check CHECK (((birth_date IS NULL) OR (birth_date >= '1900-01-01'::date))),
+    CONSTRAINT profiles_country_code_check CHECK (((country_code IS NULL) OR (country_code ~ '^[A-Z]{2}$'::text))),
     CONSTRAINT profiles_locale_source_check CHECK ((locale_source = ANY (ARRAY['default'::text, 'detected'::text, 'chosen'::text]))),
-    CONSTRAINT profiles_preferred_locale_check CHECK (((preferred_locale)::text = ANY (ARRAY['ru'::text, 'en'::text, 'de'::text, 'uk'::text])))
+    CONSTRAINT profiles_personal_text_lengths_check CHECK ((((time_zone IS NULL) OR ((char_length(time_zone) >= 1) AND (char_length(time_zone) <= 64))) AND ((phone IS NULL) OR ((char_length(phone) >= 4) AND (char_length(phone) <= 32))) AND ((region IS NULL) OR ((char_length(region) >= 1) AND (char_length(region) <= 100))) AND ((city IS NULL) OR ((char_length(city) >= 1) AND (char_length(city) <= 100))) AND ((church IS NULL) OR ((char_length(church) >= 1) AND (char_length(church) <= 200))))),
+    CONSTRAINT profiles_preferred_locale_check CHECK (((preferred_locale)::text = ANY (ARRAY['ru'::text, 'en'::text, 'de'::text, 'uk'::text]))),
+    CONSTRAINT profiles_time_zone_source_check CHECK ((time_zone_source = ANY (ARRAY['default'::text, 'detected'::text, 'chosen'::text])))
 )
 WITH (autovacuum_vacuum_threshold='25', autovacuum_analyze_threshold='25');
 
@@ -2363,7 +2428,7 @@ CREATE INDEX ix_profiles_organization_id ON public.profiles USING btree (organiz
 -- Name: ix_quiz_answers_attempt_question; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX ix_quiz_answers_attempt_question ON public.quiz_answers USING btree (attempt_id, question_id);
+CREATE UNIQUE INDEX ix_quiz_answers_attempt_question ON public.quiz_answers USING btree (attempt_id, question_id);
 
 
 --
@@ -2608,7 +2673,7 @@ CREATE TRIGGER trg_cohorts_updated_at BEFORE UPDATE ON public.cohorts FOR EACH R
 -- Name: courses trg_courses_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER trg_courses_updated_at BEFORE UPDATE ON public.courses FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+CREATE TRIGGER trg_courses_updated_at BEFORE UPDATE ON public.courses FOR EACH ROW EXECUTE FUNCTION public.courses_touch_updated_at();
 
 
 --
@@ -2658,6 +2723,13 @@ CREATE TRIGGER trg_profiles_protect_immutable_fields BEFORE UPDATE ON public.pro
 --
 
 CREATE TRIGGER trg_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
+
+--
+-- Name: profiles trg_profiles_validate_personal_fields; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_profiles_validate_personal_fields BEFORE INSERT OR UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.profiles_validate_personal_fields();
 
 
 --

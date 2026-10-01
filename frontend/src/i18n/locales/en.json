@@ -116,6 +116,11 @@
     }
   },
   "dashboard": {
+    "continue": {
+      "eyebrow": "Continue",
+      "position": "lesson {{current}} of {{total}}",
+      "cta": "Continue"
+    },
     "myCourses": "My Courses",
     "loadCoursesError": "Could not load your courses. Please try refreshing the page.",
     "course": "Course",
@@ -501,7 +506,7 @@
     "loadError": "Couldn't load today's challenge",
     "notScheduled": {
       "title": "No question today",
-      "body": "Tomorrow's challenge unlocks at midnight UTC."
+      "body": "Tomorrow’s challenge unlocks at {{time}} your time."
     },
     "notTranslated": {
       "title": "Not in your language yet",
@@ -618,7 +623,7 @@
       "submitting": "Updating...",
       "successHeading": "Password updated",
       "successSubheading": "You're all set",
-      "successBody": "Your password has been updated successfully.",
+      "successBody": "Your password has been updated.",
       "redirecting": "Redirecting to dashboard...",
       "errors": {
         "passwordsDoNotMatch": "Passwords do not match",
@@ -666,7 +671,35 @@
     "switchToDark": "Dark",
     "invalidInput": "Invalid input",
     "editName": "Edit name",
-    "avatarAlt": "{{name}} avatar"
+    "avatarAlt": "{{name}} avatar",
+    "tabs": {
+      "label": "Profile sections",
+      "overview": "Overview",
+      "personal": "Personal details",
+      "settings": "Settings"
+    },
+    "personal": {
+      "title": "Personal details",
+      "description": "Everything here is optional. Only you can see it.",
+      "birthDate": "Date of birth",
+      "birthDateInvalid": "Enter a date between 1900 and today.",
+      "country": "Country",
+      "notGiven": "Not given",
+      "region": "State, province or region",
+      "city": "City",
+      "church": "Church or congregation",
+      "churchPlaceholder": "e.g. Grace Church, Indianapolis",
+      "phone": "Phone",
+      "phoneSoon": "Coming soon: you’ll be able to add a number once it can be confirmed by SMS.",
+      "saved": "Personal details saved"
+    },
+    "timeZone": {
+      "label": "Time zone",
+      "deviceHint": "Taken from this device. All dates and times are shown in it.",
+      "chosenHint": "Chosen by you. All dates and times are shown in it.",
+      "useDevice": "Use this device’s zone",
+      "saved": "Time zone: {{zone}}"
+    }
   },
   "courseCard": {
     "opensOn": "Opens {{date}}",
@@ -674,8 +707,8 @@
     "enrollingNow": "Enrolling now",
     "byInvitation": "By invitation",
     "openCourse": "Open",
-    "modulesLabel_one": "{{count}} module",
-    "modulesLabel_other": "{{count}} modules",
+    "lessonsLabel_one": "{{count}} lesson",
+    "lessonsLabel_other": "{{count}} lessons",
     "inProgress": "In progress",
     "completed": "Completed",
     "progressLabel": "{{percent}}% complete"
@@ -833,7 +866,7 @@
     }
   },
   "toast": {
-    "enrolledSuccess": "Enrolled successfully",
+    "enrolledSuccess": "You're enrolled",
     "enrolledFailed": "Failed to enroll. Please try again.",
     "courseNotFound": "Course not found",
     "chapterNotFound": "Lesson not found",
@@ -850,7 +883,7 @@
     "courseCreateFailed": "Failed to create course",
     "courseMovedToTrash": "Course moved to trash",
     "deleteCourseFailed": "Failed to delete course",
-    "courseCloned": "Course cloned successfully",
+    "courseCloned": "Course copied",
     "cloneFailed": "Failed to clone course",
     "gradingWeightsSaved": "Grading weights saved",
     "gradingConfigSaveFailed": "Failed to save grading config",
@@ -865,7 +898,7 @@
   "module": {
     "overdue": "Overdue",
     "due": "Due",
-    "moduleComplete": "Module complete — well done!",
+    "moduleComplete": "Module complete",
     "completedProgress": "{{done}} of {{total}} assessments done",
     "chaptersHeading": "Lessons",
     "noChaptersYet": "No lessons added yet",
@@ -902,6 +935,7 @@
     "nextChapter": "Next lesson",
     "nextEyebrow": "Next",
     "notTranslated": "This lesson is not available in your language yet. It will appear here as soon as it is ready.",
+    "readingTime": "≈ {{count}} min read",
     "positionEyebrow": "Lesson {{current}} of {{total}}",
     "prevChapter": "Previous lesson",
     "prevEyebrow": "Previous",
@@ -927,7 +961,7 @@
     "nQuestions_other": "{{count}} questions",
     "notPassedTitle": "Not Quite",
     "notTranslated": "This quiz is not available in your language yet. It will appear here as soon as it is ready.",
-    "passedTitle": "You Passed!",
+    "passedTitle": "You passed",
     "passingScoreLine": "{{percent}}% — Passing score: {{passing}}%",
     "passingShort": "Passing: {{score}}%",
     "pendingTeacherReview": "Open-ended answers are pending teacher review",
@@ -1263,7 +1297,7 @@
     "subtitle_one": "{{count}} certificate earned",
     "subtitle_other": "{{count}} certificates earned",
     "emptyTitle": "No certificates yet",
-    "emptyDescription": "Complete a course to earn your first certificate. Keep learning and collecting achievements!",
+    "emptyDescription": "Complete a course and your first certificate will appear here.",
     "loadErrorDescription": "We couldn't load your certificates. This is usually a temporary issue — try again.",
     "browseCourses": "Browse Courses",
     "badge": "Certificate",
@@ -1280,7 +1314,7 @@
       "completedDescription": "Request your certificate of completion for review.",
       "requesting": "Requesting...",
       "request": "Request Certificate",
-      "requestSuccess": "Certificate requested!",
+      "requestSuccess": "Certificate requested",
       "requestFailed": "Failed to request certificate",
       "pendingTitle": "Awaiting teacher approval",
       "pendingDescription": "Your certificate request has been submitted. Your instructor will review it shortly.",
@@ -1304,9 +1338,9 @@
         "commentPlaceholder": "Share your thoughts about this course... (optional)",
         "submitting": "Submitting...",
         "submit": "Submit Review",
-        "thanks": "Thank you for your review!",
+        "thanks": "Thank you for your review",
         "missingRating": "Please select a rating",
-        "submitted": "Review submitted!",
+        "submitted": "Review submitted",
         "submitFailed": "Failed to submit review"
       },
       "blocked": "The certificate opens once the points above are cleared"
@@ -1499,6 +1533,20 @@
     "deleteAria": "Delete review"
   },
   "calendar": {
+    "subscribe": {
+      "open": "Subscribe",
+      "title": "Your course schedule in your own calendar",
+      "description": "Lessons and deadlines from your courses appear in your phone or computer calendar and update on their own. Times show in your calendar's time zone.",
+      "replaces": "The link is personal. If you subscribed before, the old link stops working.",
+      "create": "Create link",
+      "apple": "Apple and Outlook",
+      "google": "Google Calendar",
+      "copy": "Copy link",
+      "copied": "Copied",
+      "private": "Don't forward the link: it shows your schedule.",
+      "failed": "Couldn't create the link. Please try again.",
+      "copyFailed": "Couldn't copy the link."
+    },
     "title": "Calendar",
     "eyebrow": "Schedule",
     "filterByCourse": "Filter by course",

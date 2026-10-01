@@ -2,9 +2,10 @@ import type { ReactNode } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { I18nextProvider } from "react-i18next"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import i18n from "@/i18n/config"
+import { setDisplayTimeZone } from "@/i18n/timeZone"
 import { DatePicker } from "../date-picker"
 
 function Wrapper({ children }: { children: ReactNode }) {
@@ -69,5 +70,30 @@ describe("DatePicker", () => {
     await user.click(screen.getByRole("button"))
     await user.click(await screen.findByRole("button", { name: /^(clear|очистить)$/i }))
     expect(onChange).toHaveBeenCalledWith("")
+  })
+})
+
+describe("DatePicker's today", () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    setDisplayTimeZone(null)
+  })
+
+  it("is the reader's today, not the browser's", async () => {
+    // 20:00 UTC on 30 September: already 1 October in Tokyo (the profile),
+    // still the 30th on the test machine's clock (UTC or Indiana).
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-09-30T20:00:00Z"))
+    setDisplayTimeZone("Asia/Tokyo")
+    const user = userEvent.setup()
+    render(<DatePicker value="" onChange={() => {}} />, { wrapper: Wrapper })
+    await user.click(screen.getByRole("button"))
+    // The grid opens on October, and its ring is on the 1st.
+    const ringed = await waitFor(() => {
+      const el = screen.getAllByRole("button").find((b) => b.className.includes("ring-1"))
+      expect(el).toBeDefined()
+      return el!
+    })
+    expect(ringed.textContent).toBe("1")
   })
 })

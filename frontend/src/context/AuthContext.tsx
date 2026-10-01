@@ -6,6 +6,7 @@ import type { User } from "@/types"
 import { AuthContext } from "./auth-context"
 import { setDatadogUser, clearDatadogUser } from "@/lib/datadog"
 import { cacheClear } from "@/lib/cache"
+import { setDisplayTimeZone } from "@/i18n/timeZone"
 
 // ``reconcileFreshOAuthLocale`` lived here previously — a silent
 // post-signup PATCH that fired whenever ``profile.preferred_locale``
@@ -116,7 +117,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Null until the first-run flow has been finished once, on any
             // device. ``FirstRunFlow`` reads this, not its own storage flag.
             onboarding_completed_at: data.onboarding_completed_at ?? null,
+            time_zone: data.time_zone ?? null,
+            time_zone_source: data.time_zone_source ?? "default",
+            phone: data.phone ?? null,
+            birth_date: data.birth_date ?? null,
+            country_code: data.country_code ?? null,
+            region: data.region ?? null,
+            city: data.city ?? null,
+            church: data.church ?? null,
           }
+          // Before the first render with this user: every formatter reads
+          // the zone at render time. A zone the person chose wins; anything
+          // else follows the device (useTimeZoneSync records it).
+          setDisplayTimeZone(nextUser.time_zone_source === "chosen" ? nextUser.time_zone : null)
           setUser(nextUser)
           // Attach the authenticated user to the current RUM session so
           // every downstream view/action/error/replay is tagged with
@@ -201,6 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (event === "SIGNED_OUT") {
           activeUserId.current = null
+          setDisplayTimeZone(null)
           setUser(null)
           clearDatadogUser()
           // Drop the signed-out user's cached API payloads so the next
@@ -266,14 +280,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // See ``AuthContextValue.applyUser``. Same two guards ``enrichProfile``
   // applies to its own result: don't write after unmount, and don't write a
   // profile that belongs to a session we have already left.
-  const applyUser = useCallback((next: User) => {
+  const applyUser = useCallback((next: Pick<User, "id"> & Partial<User>) => {
     if (!mounted.current) return
-    if (activeUserId.current !== null && activeUserId.current !== next.id) return
-    setUser(next)
+    // Only for the person signed in now. `null` means nobody is — a reply
+    // that lands after a logout must not sign a half-profile back in.
+    if (activeUserId.current !== next.id) return
+    setUser((prev) => {
+      // Laid over the profile we hold, not in place of it. Several callers
+      // hand in a backend `UserResponse` (the language report, the end of
+      // first run), and that shape carries only the account fields: taken
+      // whole, it dropped the time zone and the personal details, so the
+      // display fell back to the browser's zone, the zone sync overwrote a
+      // chosen one, and the details form showed empty and saved nulls over
+      // what was there. A field the response does not carry keeps its
+      // value; one it carries — null included — wins.
+      // Partial updates are laid over the profile held for this person;
+      // with none held there is nothing to lay them over.
+      if (!prev || prev.id !== next.id) return prev
+      const merged: User = { ...prev, ...next }
+      // A zone chosen on the profile page applies at once, everywhere.
+      // Idempotent, so safe in an updater React may run twice.
+      setDisplayTimeZone(merged.time_zone_source === "chosen" ? merged.time_zone : null)
+      return merged
+    })
   }, [])
 
   const logout = useCallback(async () => {
     try { await authService.logout() } catch { /* ignore */ }
+    setDisplayTimeZone(null)
     setUser(null)
     clearDatadogUser()
   }, [])

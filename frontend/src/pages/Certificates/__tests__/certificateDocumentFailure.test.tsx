@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react"
 import { I18nextProvider } from "react-i18next"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "@/i18n/config"
+import { setDisplayTimeZone } from "@/i18n/timeZone"
 import { coursesService } from "@/services/courses"
 import CertificateDocument from "../CertificateDocument"
 
@@ -42,5 +43,22 @@ describe("CertificateDocument when the list cannot be fetched", () => {
     vi.spyOn(coursesService, "getMyCertificates").mockResolvedValue([])
     renderPage()
     expect(await screen.findByText(i18n.t("certificates.document.notIssued"))).toBeInTheDocument()
+  })
+})
+
+describe("the date on the certificate", () => {
+  beforeEach(() => vi.restoreAllMocks())
+  afterEach(() => setDisplayTimeZone(null))
+
+  it("is the reader's day, as on the certificate list", async () => {
+    // 20:00 UTC on 30 September is already 1 October in Tokyo, while the
+    // test machine's own clock (UTC, Indiana) still says the 30th.
+    setDisplayTimeZone("Asia/Tokyo")
+    vi.spyOn(coursesService, "getMyCertificates").mockResolvedValue([
+      { id: "cert-1", course_id: "c1", user_id: "u1", issued_at: "2026-09-30T20:00:00Z", certificate_number: "EQ-1", status: "approved" },
+    ] as never)
+    renderPage()
+    expect(await screen.findByText(/1 October 2026/)).toBeInTheDocument()
+    expect(screen.queryByText(/30 September 2026/)).toBeNull()
   })
 })

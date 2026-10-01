@@ -41,7 +41,7 @@ export function OptionButton({ option, reveal, disabled, onClick }: OptionButton
       disabled={disabled}
       aria-pressed={isSelected}
       className={cn(
-        "group flex w-full items-center gap-2.5 rounded-md border px-3 py-2 text-left text-xs transition-colors",
+        "group flex w-full items-start gap-2.5 rounded-md border px-3 py-2 text-left text-xs transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
         reveal === null && "border-edge bg-surface hover:border-brand/30 hover:bg-muted/30",
         showAsCorrect && "border-success/40 bg-success/10 text-ink",
@@ -68,7 +68,10 @@ export function OptionButton({ option, reveal, disabled, onClick }: OptionButton
           String.fromCharCode(65 + option.order_index)
         )}
       </span>
-      <span className="min-w-0 flex-1 truncate">{option.option_text}</span>
+      {/* Wraps instead of cutting off: an answer hidden behind "…" cannot be
+          chosen fairly. The 2px top padding centres a one-line answer on the
+          20px letter chip. */}
+      <span className="min-w-0 flex-1 break-words pt-0.5 leading-4">{option.option_text}</span>
     </button>
   )
 }

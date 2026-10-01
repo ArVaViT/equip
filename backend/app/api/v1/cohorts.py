@@ -434,6 +434,21 @@ def attach_course(
     all sharing the same ``cohort_id``)."""
     cohort = _get_or_404(db, cohort_id, director)
     course = _course_or_404(db, body.course_id)
+    # An institute course belongs to its organization. Attaching it to a
+    # cohort of another one would enrol that cohort's students in it and
+    # step round its invitations. 404, as the catalog answers, so a course
+    # id is not confirmed to a director who may not see it.
+    if (
+        course.access_mode == "institute"
+        and director.role != UserRole.ADMIN.value
+        and course.organization_id != organization_of(director)
+    ):
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message=f"Course '{body.course_id}' not found",
+            context={"resource_type": "course", "resource_id": body.course_id},
+        )
 
     # Already attached? Idempotent.
     existing = (
@@ -664,7 +679,13 @@ def add_student(
     # add_student calls — without this, two admins seeing
     # ``current_count == max_students - 1`` can both succeed and overshoot.
     # SQLite (test path) treats ``with_for_update`` as a no-op.
-    cohort = db.query(Cohort).filter(Cohort.id == cohort_id).with_for_update().first()
+    # ``_visible_to`` as every other cohort route: without it a director of
+    # one organization could add anyone to another's cohort — and so to its
+    # institute courses. It does not stop a director learning whether an
+    # email is registered: the lookup below is platform-wide, so their own
+    # cohort still answers 404 for an unknown address and 201 for a known
+    # one. Closing that is a product decision (invite by email instead).
+    cohort = _visible_to(db.query(Cohort), director).filter(Cohort.id == cohort_id).with_for_update().first()
     if not cohort:
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
@@ -824,6 +845,26 @@ def list_cohorts_for_course(
     if course.status != CourseStatus.PUBLISHED and not is_owner_or_admin(course, current_user):
         # Unpublished course leaks 404 to non-owners by design so the
         # response is indistinguishable from a missing course id.
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
+
+    # The same rule as ``GET /courses/{id}``: an institute course belongs to
+    # its organization, and to anyone else it does not exist. Without this
+    # its cohort names were readable by id to anybody, signed in or not —
+    # and the course page is open to visitors now (2026-09-30 review).
+    if (
+        course.access_mode == "institute"
+        and not is_owner_or_admin(course, current_user)
+        and not (
+            current_user is not None
+            and current_user.organization_id is not None
+            and current_user.organization_id == course.organization_id
+        )
+    ):
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,

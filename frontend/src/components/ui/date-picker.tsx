@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next"
 import { CalendarPopover } from "@/components/ui/CalendarPopover"
 import { parseYmd, startOfMonth, ymdKey } from "@/lib/calendar"
+import { zonedToday } from "@/i18n/timeZone"
 import { cn } from "@/lib/utils"
 
 interface Props {
@@ -55,7 +56,7 @@ export function DatePicker({
       className={className}
       triggerLabel={value ? formatLong(value, i18n.language) : placeholder ?? t("datePicker.placeholder")}
       triggerMuted={!value}
-      initialMonth={startOfMonth(parseYmd(value) ?? new Date())}
+      initialMonth={startOfMonth(parseYmd(value) ?? zonedToday())}
       renderDay={(date, { isToday }) => {
         const selected = !!value && ymdKey(date) === value
         return {

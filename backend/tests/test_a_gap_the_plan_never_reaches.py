@@ -57,6 +57,7 @@ worse than this one.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -71,7 +72,7 @@ from app.services.course_service import get_course
 from app.services.translation.completeness import course_translation_completeness, promote_if_complete
 from app.services.translation.course_pipeline import plan_course_tasks
 from app.services.translation.hash import compute_source_hash
-from app.services.translation.reconciler import sweep_courses
+from app.services.translation.reconciler import RECHECK_AFTER, sweep_courses
 from app.services.translation.registry import entity_field_specs
 from app.services.translation.service import reset_translation_provider_cache
 
@@ -79,6 +80,13 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 TEACHER_ID = uuid.UUID("00000000-0000-0000-0000-0000000000d7")
+
+
+def _next_look(db: Session, course: Course) -> None:
+    """The sweep rests a course it has just checked (``RECHECK_AFTER``);
+    move its last look back so the next sweep is the next real look."""
+    course.translations_checked_at = datetime.now(UTC) - RECHECK_AFTER - timedelta(minutes=1)
+    db.commit()
 
 
 @pytest.fixture(autouse=True)
@@ -410,6 +418,7 @@ class TestTheGuardDoesNotSwallowRealWork:
                 source_hash=compute_source_hash(text, locale="ru"),
             )
         db.commit()
+        _next_look(db, course)
 
         report = sweep_courses(db, limit=5)
         assert report.queued == 1, "uk is still missing and the plan can still close it"

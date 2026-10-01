@@ -22,9 +22,11 @@ from sqlalchemy.orm import Session  # noqa: TC002 — used by FastAPI Depends at
 from app.api.dependencies import require_worker_secret
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.metrics import increment
 from app.services.daily_challenge.llm import GeminiPromptClient
 from app.services.daily_challenge.replenish import replenish_one_question
 from app.services.daily_challenge.translate import translate_pending_questions
+from app.services.translation.budget import worker_budget
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +73,16 @@ def _run_one_tick(db: Session) -> ReplenishResponse:
 
     model = settings.GEMINI_MODEL or "gemini-2.5-flash-lite"
 
+    # One clock for the whole tick, started before generation. Generation
+    # takes 65 to 135 s of a 300 s function, and the sweep below used to run
+    # with no clock at all: it could start a question with seconds left
+    # and be killed mid-write. Now it starts a question only while one
+    # more call still fits in what generation left over.
+    budget = worker_budget(
+        seconds=settings.TRANSLATION_WORKER_BUDGET_SECONDS,
+        gemini_timeout_seconds=settings.GEMINI_TIMEOUT_SECONDS,
+    )
+
     with GeminiPromptClient(
         api_key=api_key,
         default_model=model,
@@ -95,12 +107,18 @@ def _run_one_tick(db: Session) -> ReplenishResponse:
     swept = 0
     translated = 0
     try:
-        sweep = translate_pending_questions(db, limit=_TRANSLATION_SWEEP_LIMIT)
+        sweep = translate_pending_questions(db, limit=_TRANSLATION_SWEEP_LIMIT, budget=budget)
         translated = sweep.rows.translated
         swept = sweep.questions
     except Exception as exc:
         db.rollback()
         logger.warning("daily-challenge worker: translation sweep failed: %s", exc)
+
+    # The only trace of a bad night used to be a WARNING and a 200: ``error``
+    # and ``no_survivors`` looked like any other tick, and the one monitor
+    # was "the schedule ran dry", days late. One count per tick, by
+    # outcome, is what a no-data or error-rate monitor can sit on.
+    increment("equip.daily_challenge.replenish_total", status=outcome.status)
 
     return ReplenishResponse(
         status=outcome.status,

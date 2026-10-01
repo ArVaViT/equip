@@ -1,3 +1,7 @@
+import { activeIntlTag } from "@/i18n/config"
+import { getDisplayTimeZone, zonedDayKey, zonedToday } from "@/i18n/timeZone"
+import { useZonedTodayKey } from "@/i18n/useZonedToday"
+import { parseYmd } from "@/lib/calendar"
 import { useMemo } from "react"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import { useTranslation } from "react-i18next"
@@ -56,19 +60,21 @@ export function TodayCard() {
     [user?.id, i18n.language],
   )
 
-  const today = useMemo(() => new Date(), [])
+  // Today on the reader's calendar (profile zone, else the browser's),
+  // moving on at the reader's midnight in a tab left open.
+  const dayKey = useZonedTodayKey()
+  const today = useMemo(() => parseYmd(dayKey) ?? zonedToday(), [dayKey])
   const todayKey = ymdKey(today)
 
-  // Only the events that fall on the local calendar day. The
-  // backend may ship full ISO timestamps; convert each to the
-  // browser's local day before bucketing so a 23:30Z event lands on
-  // the same date a student sees in the calendar page.
+  // Only the events that fall on the reader's calendar day: each instant
+  // is placed on its day in the reader's zone, as the calendar page does,
+  // so a 23:30Z event lands on the same date in both.
   const todayEvents = useMemo(
     () =>
       events
         .filter((e) => {
           const d = new Date(e.event_date)
-          return !Number.isNaN(d.getTime()) && ymdKey(d) === todayKey
+          return !Number.isNaN(d.getTime()) && zonedDayKey(d) === todayKey
         })
         .slice(0, MAX_EVENTS_SHOWN),
     [events, todayKey],
@@ -81,26 +87,28 @@ export function TodayCard() {
   // работает». The calendar already knows the answer to the next question.
   const aheadEvents = useMemo(() => {
     if (todayEvents.length > 0) return []
-    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
     return events
       .filter((e) => {
         const d = new Date(e.event_date)
-        return !Number.isNaN(d.getTime()) && d >= tomorrow
+        return !Number.isNaN(d.getTime()) && zonedDayKey(d) > todayKey
       })
       .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
       .slice(0, MAX_AHEAD_SHOWN)
-  }, [events, today, todayEvents.length])
+  }, [events, todayKey, todayEvents.length])
 
   const shortDate = (iso: string) =>
-    new Date(iso).toLocaleDateString(i18n.language, {
+    new Date(iso).toLocaleDateString(activeIntlTag(i18n.resolvedLanguage ?? i18n.language), {
       weekday: "short",
       day: "numeric",
       month: "short",
+      timeZone: getDisplayTimeZone(),
     })
 
   // Rendered with `first-letter:uppercase`, never CSS `capitalize`: the
   // latter raises every word, and Russian read "Понедельник, 31 Августа".
-  const dateLabel = today.toLocaleDateString(i18n.language, {
+  // `today` is already the reader's calendar date (a local midnight), so
+  // it is formatted without a zone.
+  const dateLabel = today.toLocaleDateString(activeIntlTag(i18n.resolvedLanguage ?? i18n.language), {
     weekday: "long",
     day: "numeric",
     month: "long",

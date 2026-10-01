@@ -1,3 +1,4 @@
+import { takeReturnPath } from "@/lib/authRedirect"
 import { useEffect, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
@@ -43,7 +44,7 @@ export default function AuthCallback() {
     void completeAuthLanding().then(async (result) => {
       if (cancelled) return
       if (result.status === "signed-in") {
-        go(result.recovery ? "/auth/reset-password" : "/")
+        go(result.recovery ? "/auth/reset-password" : (takeReturnPath() ?? "/"))
         return
       }
       if (result.status === "failed") {
@@ -56,7 +57,7 @@ export default function AuthCallback() {
       const { data } = await supabase.auth.getSession()
       if (cancelled) return
       if (data.session) {
-        go("/")
+        go(takeReturnPath() ?? "/")
         return
       }
       setTimedOut(true)

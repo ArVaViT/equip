@@ -8,6 +8,7 @@ import { ThemeProvider } from "./context/ThemeContext"
 import { useAuth } from "./context/useAuth"
 import { usePageTitle } from "./hooks/usePageTitle"
 import { useLocaleSync } from "./i18n/useLocaleSync"
+import { useTimeZoneSync } from "./i18n/useTimeZoneSync"
 import ErrorBoundary from "./components/ErrorBoundary"
 import { Toaster } from "./components/ui/sonner"
 import { cn } from "@/lib/utils"
@@ -29,9 +30,8 @@ import { getTeacherAgreementOwed, subscribeTeacherAgreement } from "@/components
 // Lazy: FirstRunFlow renders null until a brand-new user's privacy/setup gate
 // activates, so it never needs to be on the critical path — its component code
 // is dead weight in the eager entry chunk for the 99% of loads that are
-// returning/anonymous users. (Note: this does NOT keep framer-motion itself
-// out of the entry chunk — the bundler hoists motion into `index` because
-// several lazy routes share it; see PressFeedback/CourseCard/DashboardPage.)
+// returning/anonymous users. (Motion itself is kept out of the entry by the
+// `codeSplitting` groups in vite.config.ts, not by this.)
 // Suspense fallback is null because "not loaded yet" is visually identical to
 // its own inactive state.
 const FirstRunFlow = lazyRoute(() =>
@@ -191,6 +191,7 @@ function AppRoutes() {
   const isAuthPage = AUTH_PATHS.some((p) => location.pathname.startsWith(p))
   usePageTitle()
   useLocaleSync()
+  useTimeZoneSync()
   useRouteFocus()
   useResumePendingInvite()
   // Grand tour lives here so it has access to React Router (for
@@ -300,7 +301,11 @@ function AppRoutes() {
               <Route path="/calendar" element={<Gate mode="private"><CalendarPage /></Gate>} />
               <Route path="/daily-challenge/archive" element={<Gate mode="private"><DailyChallengeArchivePage /></Gate>} />
               <Route path="/certificates" element={<Gate mode="private"><CertificatesPage /></Gate>} />
-              <Route path="/courses/:id" element={<Gate mode="private"><CourseDetail /></Gate>} />
+              {/* No <Gate>: a course page is open to anyone, as the landing FAQ
+                  promises; enrolling, lessons and progress still need an
+                  account (the lesson routes below are private). CourseDetail
+                  has its signed-out path — NotEnrolledView asks to sign in. */}
+              <Route path="/courses/:id" element={<CourseDetail />} />
               <Route path="/courses/:courseId/modules/:moduleId" element={<Gate mode="private"><ModuleView /></Gate>} />
               {/* A lesson is addressed by its course, because that is what it
                   belongs to — a module is only a grouping, and one a teacher

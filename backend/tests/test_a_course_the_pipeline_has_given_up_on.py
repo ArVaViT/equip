@@ -22,6 +22,7 @@ must not queue.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -34,13 +35,20 @@ from app.models.user import User
 from app.services.content_versions.write import record_human_version, record_mt_version
 from app.services.translation.completeness import course_translation_completeness
 from app.services.translation.hash import compute_source_hash
-from app.services.translation.reconciler import sweep_courses
+from app.services.translation.reconciler import RECHECK_AFTER, sweep_courses
 from app.services.translation.service import reset_translation_provider_cache
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 TEACHER_ID = uuid.UUID("00000000-0000-0000-0000-0000000000d4")
+
+
+def _next_look(db: Session, course: Course) -> None:
+    """The sweep rests a course it has just checked (``RECHECK_AFTER``);
+    move its last look back so the next sweep is the next real look."""
+    course.translations_checked_at = datetime.now(UTC) - RECHECK_AFTER - timedelta(minutes=1)
+    db.commit()
 
 
 @pytest.fixture(autouse=True)
@@ -120,7 +128,9 @@ class TestACourseWithATerminalRow:
         assert sweep_courses(db, limit=5).queued == 0, "the fixture should start settled"
         _park_one_row(db, course, ContentVersionStatus.FAILED_PERMANENT)
 
+        _next_look(db, course)
         first = sweep_courses(db, limit=5)
+        _next_look(db, course)
         second = sweep_courses(db, limit=5)
 
         assert first.queued == 0

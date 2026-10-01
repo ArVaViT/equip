@@ -1,9 +1,11 @@
 import type { Assignment } from "@/types"
+import { isoToLocalInput, localInputToIso } from "@/i18n/format"
 
 export interface AssignmentFormState {
   title: string
   description: string
   maxScore: number
+  /** ``YYYY-MM-DDTHH:MM`` in the teacher's zone; ``""`` for no deadline. */
   dueDate: string
 }
 
@@ -19,7 +21,10 @@ export function assignmentToFormState(a: Assignment): AssignmentFormState {
     title: a.title,
     description: a.description ?? "",
     maxScore: a.max_score,
-    dueDate: a.due_date?.slice(0, 10) ?? "",
+    // The stored instant, shown on the teacher's clock. ``slice(0, 10)``
+    // took the UTC date, and a deadline saved as a bare date became UTC
+    // midnight — the evening before, in Indiana.
+    dueDate: isoToLocalInput(a.due_date),
   }
 }
 
@@ -32,6 +37,6 @@ export function formStateToPayload(form: AssignmentFormState) {
     title: form.title.trim(),
     description: form.description.trim() || null,
     max_score: form.maxScore,
-    due_date: form.dueDate || null,
+    due_date: localInputToIso(form.dueDate),
   }
 }

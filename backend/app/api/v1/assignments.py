@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import (
     get_current_user,
     lookup_enrollment,
+    refuse_if_chapter_locked,
     require_teacher,
     resolve_chapter_course_id,
     verify_chapter_access,
@@ -319,6 +320,7 @@ def submit_assignment(
             message="You must be enrolled in this course to submit assignments",
             context={"resource_type": "assignment", "assignment_id": str(assignment_id), "course_id": course_id},
         )
+    refuse_if_chapter_locked(db, assignment.chapter_id, current_user)
 
     _refuse_if_already_marked(db, assignment_id, current_user.id)
 

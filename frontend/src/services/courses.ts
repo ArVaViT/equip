@@ -324,37 +324,6 @@ const courseCrud = {
     invalidateCourseScope(courseId)
     return response.data
   },
-
-  async updateChapter(
-    courseId: string,
-    moduleId: string,
-    chapterId: string,
-    data: {
-      title?: string
-      order_index?: number
-      chapter_type?: string
-      requires_completion?: boolean
-      is_locked?: boolean
-    },
-  ): Promise<Chapter> {
-    const response = await api.put<Chapter>(
-      `/courses/${courseId}/modules/${moduleId}/chapters/${chapterId}`,
-      data,
-    )
-    invalidateCourseScope(courseId)
-    return response.data
-  },
-
-  async deleteChapter(
-    courseId: string,
-    moduleId: string,
-    chapterId: string,
-  ): Promise<void> {
-    await api.delete(
-      `/courses/${courseId}/modules/${moduleId}/chapters/${chapterId}`,
-    )
-    invalidateCourseScope(courseId)
-  },
 }
 
 /**

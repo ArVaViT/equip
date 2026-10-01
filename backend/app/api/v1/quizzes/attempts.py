@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.dependencies import (
     get_current_user,
+    refuse_if_chapter_locked,
     require_teacher,
     resolve_chapter_course_id,
     verify_chapter_access,
@@ -92,6 +93,7 @@ def submit_quiz(
             message="You must be enrolled in this course to submit quizzes",
             context={"resource_type": "quiz", "quiz_id": str(quiz_id), "course_id": course_id},
         )
+    refuse_if_chapter_locked(db, pre_quiz.chapter_id, current_user)
 
     # Lost-race fallback inside the helper: someone deleting the quiz
     # between the pre-check and the lock gets the same 404 the original

@@ -234,3 +234,41 @@ describe("NotEnrolledView — the author on an unpublished course", () => {
     expect(screen.getByRole("button", { name: /Enroll in Course/i })).toBeInTheDocument()
   })
 })
+
+describe("NotEnrolledView — a visitor who is not signed in", () => {
+  it("sends them to sign in and brings them back to this course", async () => {
+    const { MemoryRouter: Router, Routes, Route, useLocation } = await import("react-router-dom")
+    const { default: userEvent } = await import("@testing-library/user-event")
+    function LoginProbe() {
+      const state = useLocation().state as { from?: string } | null
+      return <p>login, back to {state?.from ?? "nowhere"}</p>
+    }
+    render(
+      <I18nextProvider i18n={i18n}>
+        <Router initialEntries={["/courses/c-1?ref=pastor"]}>
+          <Routes>
+            <Route
+              path="/courses/:id"
+              element={
+                <NotEnrolledView
+                  course={makeCourse({ status: "published" })}
+                  cohorts={[]}
+                  isOwner={false}
+                  isSignedIn={false}
+                  enrolling={false}
+                  onEnroll={() => {}}
+                />
+              }
+            />
+            <Route path="/login" element={<LoginProbe />} />
+          </Routes>
+        </Router>
+      </I18nextProvider>,
+    )
+    // One link, not a button inside a link.
+    const signIn = screen.getByRole("link", { name: /sign in to enroll/i })
+    expect(signIn.querySelector("button")).toBeNull()
+    await userEvent.setup().click(signIn)
+    expect(screen.getByText("login, back to /courses/c-1?ref=pastor")).toBeInTheDocument()
+  })
+})

@@ -198,33 +198,23 @@ describe("deleteCourseChapter", () => {
   })
 })
 
-describe("the module-shaped calls the screens still make", () => {
-  it("still address a lesson through its module", () => {
-    return coursesService
-      .createChapter("c-1", "m-1", { title: "Урок" })
-      .then(() => coursesService.updateChapter("c-1", "m-1", "ch-1", { title: "Урок" }))
-      .then(() => coursesService.deleteChapter("c-1", "m-1", "ch-1"))
-      .then(() => {
-        expect(mockApi.post).toHaveBeenCalledWith("/courses/c-1/modules/m-1/chapters", {
-          title: "Урок",
-        })
-        expect(mockApi.put).toHaveBeenCalledWith(
-          "/courses/c-1/modules/m-1/chapters/ch-1",
-          { title: "Урок" },
-        )
-        expect(mockApi.delete).toHaveBeenCalledWith("/courses/c-1/modules/m-1/chapters/ch-1")
+describe("the module-shaped call the screens still make", () => {
+  // Only creating a lesson inside a module is still addressed through the
+  // module; the module-shaped update and delete had no callers left and
+  // were removed (2026-09-30 audit).
+  it("still addresses a new lesson through its module", () => {
+    return coursesService.createChapter("c-1", "m-1", { title: "Урок" }).then(() => {
+      expect(mockApi.post).toHaveBeenCalledWith("/courses/c-1/modules/m-1/chapters", {
+        title: "Урок",
       })
+    })
   })
 
-  it("clear the course too, so an old screen cannot leave a new one stale", () => {
-    // Both kinds of call reach the same lessons. If the module-shaped ones
-    // kept clearing only their own pair, a course detail read right after
-    // one of them would still be holding the lesson as it was.
+  it("clears the course too, so an old screen cannot leave a new one stale", () => {
     primeCourseCache()
-    return coursesService.updateChapter("c-1", "m-1", "ch-1", { title: "Урок" }).then(() => {
+    return coursesService.createChapter("c-1", "m-1", { title: "Урок" }).then(() => {
       expect(cacheGet("courses:detail:c-1")).toBeUndefined()
       expect(cacheGet("courses:module:c-1:m-1")).toBeUndefined()
-      expect(cacheGet("courses:module:c-1:m-2")).toBeUndefined()
       expect(cacheGet("courses:detail:c-2")).toBeDefined()
     })
   })

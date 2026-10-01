@@ -15,6 +15,7 @@ import { DailyChallengeCard } from "@/components/dashboard/DailyChallengeCard"
 import { TodayCard } from "@/components/dashboard/TodayCard"
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard"
 import { RecentlyViewedRow } from "@/components/dashboard/RecentlyViewedRow"
+import { ContinueCard } from "@/components/dashboard/ContinueCard"
 import { CourseThumb } from "@/components/course/CourseThumb"
 import { TeacherCoursesCard } from "@/components/dashboard/TeacherCoursesCard"
 import { useUserTour } from "@/hooks/useUserTour"
@@ -347,6 +348,7 @@ export default function DashboardPage() {
           {/* Teachers first see the courses they teach — the reason most
               of them signed in. Renders nothing for students. */}
           <TeacherCoursesCard />
+          <ContinueCard />
           <RecentlyViewedRow />
           <div className="min-h-0 flex-1">
             <MyCoursesSection onTourStart={startTour} />

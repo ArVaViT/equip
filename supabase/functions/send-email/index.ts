@@ -40,6 +40,7 @@ async function logToDatadog(level: "info" | "warn" | "error", message: string, e
   if (!DD_API_KEY) return;
   try {
     await fetch(`https://http-intake.logs.${DD_SITE}/api/v2/logs`, {
+      signal: AbortSignal.timeout(2000),
       method: "POST",
       headers: { "DD-API-KEY": DD_API_KEY, "Content-Type": "application/json" },
       body: JSON.stringify([{
@@ -111,7 +112,11 @@ Deno.serve(async (req: Request) => {
       emailType,
     });
 
+    // Bounded: Supabase Auth gives the hook about five seconds, and a
+    // Resend call that hangs would fail the signup it was meant not to
+    // block. An abort lands in the catch below like any other failure.
     const res = await fetch("https://api.resend.com/emails", {
+      signal: AbortSignal.timeout(4000),
       method: "POST",
       headers: {
         "Authorization": `Bearer ${RESEND_API_KEY}`,

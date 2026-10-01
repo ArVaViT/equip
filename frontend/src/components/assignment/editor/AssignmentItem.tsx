@@ -14,7 +14,7 @@ import {
   formStateToPayload,
   type AssignmentFormState,
 } from "./types"
-import { formatDate } from "@/i18n/format"
+import { formatDateTimeZoned } from "@/i18n/format"
 
 interface Props {
   assignment: Assignment
@@ -103,7 +103,7 @@ export function AssignmentItem({ assignment, courseId, onDelete, onUpdate }: Pro
             <span>{t("assignmentEditor.item.maxPts", { max: assignment.max_score })}</span>
             {assignment.due_date && (
               <span>
-                {t("assignmentEditor.item.due", { date: formatDate(assignment.due_date) })}
+                {t("assignmentEditor.item.due", { date: formatDateTimeZoned(assignment.due_date) })}
               </span>
             )}
           </div>

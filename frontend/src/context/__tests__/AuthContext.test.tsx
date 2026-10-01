@@ -48,16 +48,33 @@ vi.mock("@/services/auth", () => ({
 }))
 
 import { AuthProvider } from "../AuthContext"
+import { getDisplayTimeZone } from "@/i18n/timeZone"
 import { useAuth } from "../useAuth"
 
+/** What the language report hands back: a backend UserResponse, no zone, no details. */
+const BACKEND_USER_RESPONSE = {
+  id: "user-1",
+  email: "a@b.com",
+  full_name: "A",
+  avatar_url: null,
+  role: "student",
+  preferred_locale: "de",
+  locale_source: "detected",
+  created_at: "2024-01-01T00:00:00Z",
+  updated_at: "2026-09-30T00:00:00Z",
+} as const
+
 function AuthProbe() {
-  const { user, loading, logout: doLogout } = useAuth()
+  const { user, loading, logout: doLogout, applyUser } = useAuth()
   return (
     <div>
       <span data-testid="loading">{String(loading)}</span>
       <span data-testid="user">{user ? user.email : "anon"}</span>
       <span data-testid="role">{user?.role ?? "-"}</span>
+      <span data-testid="zone">{user?.time_zone ?? "-"}/{user?.time_zone_source ?? "-"}</span>
+      <span data-testid="city">{user?.city ?? "-"}</span>
       <button onClick={() => doLogout()}>sign out</button>
+      <button onClick={() => applyUser(BACKEND_USER_RESPONSE)}>apply backend response</button>
     </div>
   )
 }
@@ -298,6 +315,65 @@ describe("AuthContext", () => {
     await waitFor(() => {
       expect(screen.getByTestId("user").textContent).toBe("anon")
     })
+  })
+
+  it("lays a backend response over the profile instead of dropping the fields it does not carry", async () => {
+    // The language report and the end of first run hand in a backend
+    // UserResponse, which has no time zone and no personal details. Taken
+    // whole it reset a chosen zone to the browser's and emptied the details
+    // form, which then saved nulls over them (2026-09-30 review).
+    mockProfileFetch({
+      id: "user-1",
+      email: "a@b.com",
+      full_name: "A",
+      role: "student",
+      created_at: "2024-01-01T00:00:00Z",
+      time_zone: "America/Indiana/Indianapolis",
+      time_zone_source: "chosen",
+      city: "Anderson",
+    })
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>,
+    )
+    await act(async () => {
+      authHandler!("INITIAL_SESSION", makeSession(makeSupabaseUser()))
+    })
+    await waitFor(() => expect(screen.getByTestId("city").textContent).toBe("Anderson"))
+
+    await act(async () => {
+      screen.getByRole("button", { name: "apply backend response" }).click()
+    })
+
+    expect(screen.getByTestId("zone").textContent).toBe("America/Indiana/Indianapolis/chosen")
+    expect(screen.getByTestId("city").textContent).toBe("Anderson")
+    expect(getDisplayTimeZone()).toBe("America/Indiana/Indianapolis")
+  })
+
+  it("does not sign a reply that lands after logout back in", async () => {
+    // The zone report can still be in flight when the person signs out; its
+    // reply carried only {id, time_zone}, and with nobody signed in it was
+    // taken as a whole profile — a user with no role and no email.
+    mockProfileFetch({ id: "user-1", email: "a@b.com", full_name: "A", role: "student", created_at: "2024-01-01T00:00:00Z" })
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>,
+    )
+    await act(async () => {
+      authHandler!("INITIAL_SESSION", makeSession(makeSupabaseUser()))
+    })
+    await waitFor(() => expect(screen.getByTestId("user").textContent).toBe("a@b.com"))
+    await act(async () => {
+      authHandler!("SIGNED_OUT", null)
+    })
+    expect(screen.getByTestId("user").textContent).toBe("anon")
+
+    await act(async () => {
+      screen.getByRole("button", { name: "apply backend response" }).click()
+    })
+    expect(screen.getByTestId("user").textContent).toBe("anon")
   })
 
   it("ignores a stale profile response if the user has since changed", async () => {

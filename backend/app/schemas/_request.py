@@ -21,10 +21,29 @@ objects, where an unexpected attribute means the model grew a column, not
 that a caller made a mistake.
 """
 
-from pydantic import BaseModel, ConfigDict
+from datetime import UTC, datetime
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class RequestModel(BaseModel):
-    """A schema parsed from a client-supplied body. Unknown keys are errors."""
+    """A schema parsed from a client-supplied body. Unknown keys are errors.
+
+    Every datetime a client sends is an instant, and UTC is the one truth:
+    a value that carries no zone is read as UTC, here, for every request
+    model — not only for course events, which were the one place that said
+    so. Before, a bare ``2026-10-01T18:00:00`` went on to Postgres to be read
+    in the session's zone, and a cohort sent one bound with an offset and
+    one without failed with a 500 comparing them (``TypeError``). The model
+    validators that compare bounds run after this, on aware values.
+    """
 
     model_config = ConfigDict(extra="forbid")
+
+    @field_validator("*", mode="after")
+    @classmethod
+    def _naive_datetime_is_utc(cls, value: Any) -> Any:
+        if isinstance(value, datetime) and value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value

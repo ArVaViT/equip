@@ -192,6 +192,26 @@ def _verses_the_text_cites(candidate: dict[str, Any], book: str, chapter: int) -
     return {**candidate, "verse_start": first, "verse_end": last if last != first else None}
 
 
+#: Rule 13 of the rubric, checked rather than trusted. An option is read
+#: on a phone beside three others; past this it stops being an answer to
+#: pick and becomes a paragraph to study (2026-09-30: 10% of options in
+#: production ran past 64 characters, the longest 214).
+MAX_OPTION_CHARS = 60
+MAX_QUESTION_CHARS = 150
+
+
+def _too_long_to_read(candidate: dict[str, Any]) -> str | None:
+    """The reason a draft is too long for the card, or ``None``."""
+    question = candidate.get("question_text")
+    if isinstance(question, str) and len(question) > MAX_QUESTION_CHARS:
+        return f"question is {len(question)} characters (limit {MAX_QUESTION_CHARS})"
+    for option in candidate.get("options") or []:
+        text = option.get("text") if isinstance(option, dict) else None
+        if isinstance(text, str) and len(text) > MAX_OPTION_CHARS:
+            return f"an option is {len(text)} characters (limit {MAX_OPTION_CHARS})"
+    return None
+
+
 def _validate_candidate_scripture(candidate: dict[str, Any], book: str, chapter: int) -> tuple[bool, str | None]:
     """Stage 2 — scripture validation. The cited verse must exist in
     BOTH KJV and Synodal. Returns ``(passed, reason)``."""
@@ -439,7 +459,12 @@ def run_generation(
     survivors_after_scripture: list[dict[str, Any]] = []
     for s in survivors:
         s = _verses_the_text_cites(s, request.book, request.chapter)
-        passed, reason = _validate_candidate_scripture(s, request.book, request.chapter)
+        # The automated stage also holds the length limit (rule 13): it is
+        # as mechanical as a verse lookup, and logged the same way.
+        too_long = _too_long_to_read(s)
+        passed, reason = (
+            (False, too_long) if too_long else _validate_candidate_scripture(s, request.book, request.chapter)
+        )
         if passed:
             survivors_after_scripture.append(s)
         else:

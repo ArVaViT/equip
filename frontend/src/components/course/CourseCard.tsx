@@ -67,7 +67,12 @@ function CourseCard({ course, style, progress }: CourseCardProps) {
   const prefersReducedMotion = useReducedMotion()
   const [imgError, setImgError] = useState(false)
   const coverSrc = toProxyImage(course.image_url)
-  const moduleCount = course.modules?.length ?? 0
+  // Lessons, not modules: a course can be four finished lessons and no
+  // module at all, and the card said "0 modules" on a live course. The list
+  // endpoints count chapters in SQL (`chapter_count`); `null` means "not
+  // counted here", so fall back to the lessons nested under the modules.
+  const lessonCount =
+    course.chapter_count ?? (course.modules ?? []).reduce((n, m) => n + (m.chapters?.length ?? 0), 0)
   const isEnrolled = typeof progress === "number"
   const progressPct = isEnrolled ? Math.max(0, Math.min(100, Math.round(progress!))) : 0
   const isComplete = isEnrolled && progressPct >= 100
@@ -110,7 +115,9 @@ function CourseCard({ course, style, progress }: CourseCardProps) {
         )}
       </CardHeader>
       <CardContent className="mt-auto flex items-center justify-between pt-2 text-xs text-ink-muted">
-        <span className="uppercase tracking-wide">{t("courseCard.modulesLabel", { count: moduleCount })}</span>
+        <span className="uppercase tracking-wide">
+          {lessonCount > 0 ? t("courseCard.lessonsLabel", { count: lessonCount }) : null}
+        </span>
         <span className="inline-flex items-center gap-1 text-ink/80 transition-colors group-hover:text-brand">
           {t("courseCard.openCourse")}
           <ArrowRight

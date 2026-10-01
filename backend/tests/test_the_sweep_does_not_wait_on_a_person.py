@@ -19,6 +19,7 @@ to do.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
@@ -111,6 +112,9 @@ class TestASweepThatFindsOnlyReviewWork:
         assert row is not None
         row.status = ContentVersionStatus.NEEDS_REVIEW
         row.review_reason = "[markup_mismatch] tags changed"
+        # The sweep rests a course it has just checked (RECHECK_AFTER);
+        # this is the next look, an hour on.
+        course.translations_checked_at = datetime.now(UTC) - timedelta(hours=1)
         db.commit()
 
         report = sweep_courses(db, limit=5)

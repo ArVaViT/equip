@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { isAxiosError } from "axios"
 import { sanitizeHtml as sanitize } from "@/lib/sanitize"
+import { tieTypographyIn } from "@/lib/typography"
+import { readingMinutes } from "@/lib/readingTime"
 import { renderMathIn } from "@/lib/katex-render"
 import { renderToggleCalloutsIn } from "@/lib/callout-toggle"
 import { attachCopyButtonsIn } from "@/lib/codeblock-copy"
@@ -57,7 +59,7 @@ import { orNotTranslated } from "@/lib/untranslated"
  * a stable host element to anchor against.
  */
 function TextBlockRender({ html }: { html: string }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const ref = useRef<HTMLDivElement>(null)
   // Image-lightbox state — the rendered chapter HTML is injected via
   // ``dangerouslySetInnerHTML`` so we can't attach React onClick to
@@ -72,6 +74,9 @@ function TextBlockRender({ html }: { html: string }) {
     // ``<summary>`` and the rendered spans go along intact — but
     // toggle-first avoids extra DOM churn.
     renderToggleCalloutsIn(ref.current)
+    // Before KaTeX, which skips the text it has not rendered yet anyway:
+    // «Ин 3:16» on one line, no «в» left hanging (lib/typography).
+    tieTypographyIn(ref.current, i18n.resolvedLanguage ?? i18n.language)
     // Async fire-and-forget: KaTeX (and its stylesheet) load lazily and
     // only when the chapter actually contains math markers. Copy-button
     // wiring below doesn't depend on math rendering, so no need to await.
@@ -81,7 +86,7 @@ function TextBlockRender({ html }: { html: string }) {
       copied: t("blockEditor.codeBlock.copied"),
       ariaLabel: t("blockEditor.codeBlock.copyAriaLabel"),
     })
-  }, [html, t])
+  }, [html, t, i18n.resolvedLanguage, i18n.language])
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement
@@ -763,6 +768,14 @@ export default function ChapterView() {
   }
 
   const chapterType = normalizeChapterType(chapter.chapter_type)
+  // Minutes to read the lesson's text, once its blocks are here (lib/readingTime).
+  const readingTime =
+    chapterType === "reading" && !loadingBlocks
+      ? readingMinutes(
+          chapterBlocks.filter((b) => b.block_type === "text").map((b) => b.content ?? ""),
+          i18n.resolvedLanguage ?? i18n.language,
+        )
+      : 0
   const chapterTypeMeta = getChapterTypeMeta(chapterType)
   const ChapterTypeIcon = chapterTypeMeta.icon
 
@@ -791,6 +804,14 @@ export default function ChapterView() {
                 they were at the start of something they were halfway through. */}
             {t("chapter.positionEyebrow", { current: currentIdx + 1, total: structure.chapters.length })}
           </span>
+          {readingTime > 0 && (
+            <>
+              <span aria-hidden className="text-ink-muted">·</span>
+              <span className="normal-case tracking-normal tabular-nums">
+                {t("chapter.readingTime", { count: readingTime })}
+              </span>
+            </>
+          )}
           {parentModule?.title && (
             <>
               <span aria-hidden className="text-ink-muted">·</span>

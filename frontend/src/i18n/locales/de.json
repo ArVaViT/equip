@@ -116,6 +116,11 @@
     }
   },
   "dashboard": {
+    "continue": {
+      "eyebrow": "Weiterlernen",
+      "position": "Lektion {{current}} von {{total}}",
+      "cta": "Weiter"
+    },
     "myCourses": "Meine Kurse",
     "loadCoursesError": "Ihre Kurse konnten nicht geladen werden. Bitte laden Sie die Seite neu.",
     "course": "Kurs",
@@ -501,7 +506,7 @@
     "loadError": "Die heutige Aufgabe konnte nicht geladen werden",
     "notScheduled": {
       "title": "Heute keine Frage",
-      "body": "Die Aufgabe von morgen öffnet um Mitternacht UTC."
+      "body": "Die Aufgabe von morgen öffnet um {{time}} Ihrer Zeit."
     },
     "notTranslated": {
       "title": "Noch nicht in Ihrer Sprache",
@@ -618,7 +623,7 @@
       "submitting": "Wird geändert …",
       "successHeading": "Passwort geändert",
       "successSubheading": "Alles erledigt",
-      "successBody": "Ihr Passwort wurde erfolgreich geändert.",
+      "successBody": "Ihr Passwort wurde geändert.",
       "redirecting": "Weiterleitung zur Startseite …",
       "errors": {
         "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein",
@@ -666,7 +671,35 @@
     "switchToDark": "Dunkel",
     "invalidInput": "Ungültige Eingabe",
     "editName": "Namen bearbeiten",
-    "avatarAlt": "Profilbild von {{name}}"
+    "avatarAlt": "Profilbild von {{name}}",
+    "tabs": {
+      "label": "Profilbereiche",
+      "overview": "Überblick",
+      "personal": "Persönliche Angaben",
+      "settings": "Einstellungen"
+    },
+    "personal": {
+      "title": "Persönliche Angaben",
+      "description": "Alles ist freiwillig. Nur Sie können es sehen.",
+      "birthDate": "Geburtsdatum",
+      "birthDateInvalid": "Geben Sie ein Datum zwischen 1900 und heute ein.",
+      "country": "Land",
+      "notGiven": "Keine Angabe",
+      "region": "Bundesland, Region oder Staat",
+      "city": "Stadt",
+      "church": "Kirche oder Gemeinde",
+      "churchPlaceholder": "z. B. Gnadenkirche, Berlin",
+      "phone": "Telefon",
+      "phoneSoon": "Bald verfügbar: Eine Nummer kann hinzugefügt werden, sobald sie per SMS bestätigt werden kann.",
+      "saved": "Persönliche Angaben gespeichert"
+    },
+    "timeZone": {
+      "label": "Zeitzone",
+      "deviceHint": "Von diesem Gerät übernommen. Alle Daten und Zeiten werden darin angezeigt.",
+      "chosenHint": "Von Ihnen gewählt. Alle Daten und Zeiten werden darin angezeigt.",
+      "useDevice": "Zeitzone dieses Geräts",
+      "saved": "Zeitzone: {{zone}}"
+    }
   },
   "courseCard": {
     "opensOn": "Öffnet am {{date}}",
@@ -674,8 +707,8 @@
     "enrollingNow": "Einschreibung läuft",
     "byInvitation": "Auf Einladung",
     "openCourse": "Öffnen",
-    "modulesLabel_one": "{{count}} Modul",
-    "modulesLabel_other": "{{count}} Module",
+    "lessonsLabel_one": "{{count}} Lektion",
+    "lessonsLabel_other": "{{count}} Lektionen",
     "inProgress": "Läuft",
     "completed": "Abgeschlossen",
     "progressLabel": "{{percent}} % abgeschlossen"
@@ -833,7 +866,7 @@
     }
   },
   "toast": {
-    "enrolledSuccess": "Einschreibung erfolgreich",
+    "enrolledSuccess": "Sie sind eingeschrieben",
     "enrolledFailed": "Einschreibung fehlgeschlagen. Bitte erneut versuchen.",
     "courseNotFound": "Kurs nicht gefunden",
     "chapterNotFound": "Lektion nicht gefunden",
@@ -850,7 +883,7 @@
     "courseCreateFailed": "Kurs konnte nicht erstellt werden",
     "courseMovedToTrash": "Kurs in den Papierkorb verschoben",
     "deleteCourseFailed": "Kurs konnte nicht gelöscht werden",
-    "courseCloned": "Kurs erfolgreich kopiert",
+    "courseCloned": "Kurs kopiert",
     "cloneFailed": "Kurs konnte nicht kopiert werden",
     "gradingWeightsSaved": "Gewichtung gespeichert",
     "gradingConfigSaveFailed": "Bewertungseinstellungen konnten nicht gespeichert werden",
@@ -865,7 +898,7 @@
   "module": {
     "overdue": "Überfällig",
     "due": "Fällig",
-    "moduleComplete": "Modul abgeschlossen — gut gemacht!",
+    "moduleComplete": "Modul abgeschlossen",
     "completedProgress": "{{done}} von {{total}} Leistungen erbracht",
     "chaptersHeading": "Lektionen",
     "noChaptersYet": "Noch keine Lektionen angelegt",
@@ -902,6 +935,7 @@
     "nextChapter": "Nächste Lektion",
     "nextEyebrow": "Weiter",
     "notTranslated": "Diese Lektion ist noch nicht in Ihrer Sprache verfügbar. Sie erscheint hier, sobald sie fertig ist.",
+    "readingTime": "≈ {{count}} Min. Lesezeit",
     "positionEyebrow": "Lektion {{current}} von {{total}}",
     "prevChapter": "Vorige Lektion",
     "prevEyebrow": "Zurück",
@@ -927,7 +961,7 @@
     "nQuestions_other": "{{count}} Fragen",
     "notPassedTitle": "Nicht ganz",
     "notTranslated": "Dieser Test ist noch nicht in Ihrer Sprache verfügbar. Er erscheint hier, sobald er fertig ist.",
-    "passedTitle": "Bestanden!",
+    "passedTitle": "Sie haben bestanden",
     "passingScoreLine": "{{percent}} % — Bestehensgrenze: {{passing}} %",
     "passingShort": "Bestehensgrenze: {{score}} %",
     "pendingTeacherReview": "Offene Antworten warten auf die Bewertung durch den Dozenten",
@@ -1263,7 +1297,7 @@
     "subtitle_one": "{{count}} Zertifikat erhalten",
     "subtitle_other": "{{count}} Zertifikate erhalten",
     "emptyTitle": "Noch keine Zertifikate",
-    "emptyDescription": "Schließen Sie einen Kurs ab, um Ihr erstes Zertifikat zu erhalten. Bleiben Sie dran!",
+    "emptyDescription": "Schließen Sie einen Kurs ab, und Ihr erstes Zertifikat erscheint hier.",
     "loadErrorDescription": "Ihre Zertifikate konnten nicht geladen werden. Meist ist das vorübergehend — versuchen Sie es erneut.",
     "browseCourses": "Kurse ansehen",
     "badge": "Zertifikat",
@@ -1280,7 +1314,7 @@
       "completedDescription": "Fordern Sie Ihr Abschlusszertifikat zur Prüfung an.",
       "requesting": "Wird angefordert …",
       "request": "Zertifikat anfordern",
-      "requestSuccess": "Zertifikat angefordert!",
+      "requestSuccess": "Zertifikat angefordert",
       "requestFailed": "Zertifikat konnte nicht angefordert werden",
       "pendingTitle": "Wartet auf die Bestätigung des Dozenten",
       "pendingDescription": "Ihr Antrag wurde eingereicht. Ihr Dozent prüft ihn in Kürze.",
@@ -1304,9 +1338,9 @@
         "commentPlaceholder": "Teilen Sie Ihre Gedanken zu diesem Kurs … (optional)",
         "submitting": "Wird gesendet …",
         "submit": "Bewertung senden",
-        "thanks": "Danke für Ihre Bewertung!",
+        "thanks": "Danke für Ihre Bewertung",
         "missingRating": "Bitte wählen Sie eine Bewertung",
-        "submitted": "Bewertung gesendet!",
+        "submitted": "Bewertung gesendet",
         "submitFailed": "Bewertung konnte nicht gesendet werden"
       },
       "blocked": "Das Zertifikat öffnet sich, sobald die Punkte oben erledigt sind"
@@ -1499,6 +1533,20 @@
     "deleteAria": "Bewertung löschen"
   },
   "calendar": {
+    "subscribe": {
+      "open": "Abonnieren",
+      "title": "Ihr Kursplan in Ihrem eigenen Kalender",
+      "description": "Termine und Fristen Ihrer Kurse erscheinen im Kalender Ihres Telefons oder Computers und aktualisieren sich selbst. Zeiten stehen in der Zeitzone Ihres Kalenders.",
+      "replaces": "Der Link ist persönlich. Wenn Sie schon abonniert haben, funktioniert der alte Link nicht mehr.",
+      "create": "Link erstellen",
+      "apple": "Apple und Outlook",
+      "google": "Google Kalender",
+      "copy": "Link kopieren",
+      "copied": "Kopiert",
+      "private": "Leiten Sie den Link nicht weiter: Er zeigt Ihren Stundenplan.",
+      "failed": "Der Link konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
+      "copyFailed": "Der Link konnte nicht kopiert werden."
+    },
     "title": "Kalender",
     "eyebrow": "Termine",
     "filterByCourse": "Nach Kurs filtern",

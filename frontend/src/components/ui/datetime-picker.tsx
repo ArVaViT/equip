@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input"
 import { CalendarPopover } from "@/components/ui/CalendarPopover"
 import { startOfMonth, ymdKey } from "@/lib/calendar"
 import { cn } from "@/lib/utils"
+import { getDisplayTimeZone, timeZoneLabel, zonedToday, zonedWallTimeToUtc } from "@/i18n/timeZone"
 
 interface Props {
   /** ``"YYYY-MM-DDTHH:MM"`` string — identical contract to the native
@@ -16,6 +17,9 @@ interface Props {
   className?: string
   id?: string
   "aria-label"?: string
+  /** Time a freshly picked day starts at. 09:00 by default; a deadline
+   *  wants 23:59, the end of the day it names. */
+  defaultTime?: { hh: number; mm: number }
 }
 
 function parseLocal(s: string): { date: Date; hh: number; mm: number } | null {
@@ -33,6 +37,15 @@ function compose(date: Date, hh: number, mm: number): string {
   return `${ymdKey(date)}T${hhs}:${mms}`
 }
 
+/** The reader's zone as it is named on that date (EDT in October, EST in January). */
+function zoneLabelAt(parsed: ReturnType<typeof parseLocal>, locale: string): string {
+  const tz = getDisplayTimeZone()
+  const at = parsed
+    ? zonedWallTimeToUtc(parsed.date.getFullYear(), parsed.date.getMonth() + 1, parsed.date.getDate(), parsed.hh, parsed.mm, 0, tz)
+    : new Date()
+  return timeZoneLabel(locale, tz, at)
+}
+
 function formatLong(value: string, locale: string): string {
   const parsed = parseLocal(value)
   if (!parsed) return value
@@ -43,7 +56,9 @@ function formatLong(value: string, locale: string): string {
   })
   const hh = String(parsed.hh).padStart(2, "0")
   const mm = String(parsed.mm).padStart(2, "0")
-  return `${datePart} · ${hh}:${mm}`
+  // The zone is named: a teacher sees they are setting 08:00 in *their*
+  // time, and students see the same instant in theirs.
+  return `${datePart} · ${hh}:${mm} ${zoneLabelAt(parsed, locale)}`
 }
 
 const clampHH = (n: number) => Math.min(23, Math.max(0, Number.isFinite(n) ? Math.round(n) : 0))
@@ -68,6 +83,7 @@ export function DateTimePicker({
   className,
   id,
   "aria-label": ariaLabel,
+  defaultTime = { hh: 9, mm: 0 },
 }: Props) {
   const { t, i18n } = useTranslation()
 
@@ -75,11 +91,11 @@ export function DateTimePicker({
   const selectedYmd = parsed ? ymdKey(parsed.date) : ""
   // Clamp on the read side too, not just the <input> onChange — a malformed
   // stored value (e.g. "...T99:99") would otherwise round-trip into the field.
-  const hh = clampHH(parsed?.hh ?? 9)
-  const mm = clampMM(parsed?.mm ?? 0)
+  const hh = clampHH(parsed?.hh ?? defaultTime.hh)
+  const mm = clampMM(parsed?.mm ?? defaultTime.mm)
 
-  const setHH = (next: number) => onChange(compose(parsed?.date ?? new Date(), next, mm))
-  const setMM = (next: number) => onChange(compose(parsed?.date ?? new Date(), hh, next))
+  const setHH = (next: number) => onChange(compose(parsed?.date ?? zonedToday(), next, mm))
+  const setMM = (next: number) => onChange(compose(parsed?.date ?? zonedToday(), hh, next))
 
   return (
     <CalendarPopover
@@ -90,7 +106,7 @@ export function DateTimePicker({
       className={className}
       triggerLabel={value ? formatLong(value, i18n.language) : placeholder ?? t("dateTimePicker.placeholder")}
       triggerMuted={!value}
-      initialMonth={startOfMonth(parsed?.date ?? new Date())}
+      initialMonth={startOfMonth(parsed?.date ?? zonedToday())}
       renderDay={(date, { isToday }) => {
         const selected = !!selectedYmd && ymdKey(date) === selectedYmd
         return {
@@ -125,6 +141,9 @@ export function DateTimePicker({
             className="h-7 w-12 px-1 text-center tabular-nums"
             aria-label={t("dateTimePicker.minuteAria")}
           />
+          <span className="ml-1 text-ink-muted" title={getDisplayTimeZone()}>
+            {zoneLabelAt(parsed, i18n.language)}
+          </span>
         </div>
       }
     />

@@ -26,9 +26,9 @@ from __future__ import annotations
 
 ROUND_1_SYSTEM = """You are a Bible-school question writer for the Equip Daily Challenge.
 Your job is to draft multiple-choice questions that pass a brutal
-12-point rubric.
+13-point rubric.
 
-THE RUBRIC (a question must pass ALL TWELVE):
+THE RUBRIC (a question must pass ALL THIRTEEN):
 1. Single correct answer — exactly one option defensible.
 2. Anchored to a specific verse range (≤ 3 verses).
 3. Translation-invariant — correct under KJV, ESV, NIV, NASB, Synodal,
@@ -61,6 +61,13 @@ THE RUBRIC (a question must pass ALL TWELVE):
     not quote — name the reference and say what it says in your own
     words, without quotation marks. A quotation that is not a whole
     verse of the reference text rejects the question.
+13. Short and plain — read on a phone, in a minute, by someone who
+    is not a theologian. Each option at most 60 characters: a name, a
+    phrase, a short clause, never a sentence with its own reasons.
+    The question at most 150 characters. Everyday words; no
+    theological or academic terms unless the passage itself uses them.
+    All four options about the same length, so length does not give
+    the answer away.
 
 Output JSON ONLY — no prose, no markdown fence."""
 

@@ -1,3 +1,4 @@
+import { zonedCalendarDate, zonedToday } from "@/i18n/timeZone";
 import { useMemo, useState } from "react";
 
 import type { CalendarEvent } from "@/types";
@@ -18,8 +19,9 @@ interface DayCell {
  * the grid or the bucket.
  */
 export function useMonthGrid(events: CalendarEvent[]) {
-  const [currentDate, setCurrentDate] = useState(() => new Date());
-  const [selectedDay, setSelectedDay] = useState<Date | null>(() => new Date());
+  // Today on the reader's calendar (profile zone), not the browser's.
+  const [currentDate, setCurrentDate] = useState(() => zonedToday());
+  const [selectedDay, setSelectedDay] = useState<Date | null>(() => zonedToday());
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -51,7 +53,8 @@ export function useMonthGrid(events: CalendarEvent[]) {
       if (!evt.event_date) continue;
       const d = new Date(evt.event_date);
       if (Number.isNaN(d.getTime())) continue;
-      const key = calendarDayKey(d);
+      // The day the event falls on in the reader's zone.
+      const key = calendarDayKey(zonedCalendarDate(d));
       const bucket = map.get(key);
       if (bucket) bucket.push(evt);
       else map.set(key, [evt]);
@@ -102,7 +105,7 @@ export function useMonthGrid(events: CalendarEvent[]) {
       setSelectedDay(nextMonthStart)
     },
     goToday: () => {
-      const today = new Date()
+      const today = zonedToday()
       setCurrentDate(today)
       setSelectedDay(today)
     },

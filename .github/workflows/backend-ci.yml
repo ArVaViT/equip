@@ -392,6 +392,16 @@ jobs:
           psql -v ON_ERROR_STOP=1 -h localhost -p 5432 -U ci -d ci \
             -f supabase/ci/consent_survives_deletion_assertions.sql
 
+      # Same reason: whether a sweep's look moves courses.updated_at is decided
+      # by the BEFORE UPDATE trigger on courses (migration 20260930150000).
+      - name: A sweep looking at a course is not an edit of it
+        env:
+          PGPASSWORD: ci
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -h localhost -p 5432 -U ci -d ci \
+            -f supabase/ci/course_updated_at_assertions.sql
+
   # ---------------------------------------------------------------------------
   # RLS policy + privilege test. Recreates the prod schema + RLS policies +
   # GRANTs on a clean Postgres, then probes it AS the `authenticated` role to

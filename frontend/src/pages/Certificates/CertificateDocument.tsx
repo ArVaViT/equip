@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/patterns"
 import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { useAsyncData } from "@/hooks/useAsyncData"
+import { getDisplayTimeZone } from "@/i18n/timeZone"
 import type { Certificate } from "@/types"
 import "./certificate-print.css"
 
@@ -87,8 +88,15 @@ export default function CertificateDocument() {
   }
 
   const issued = cert.issued_at ? new Date(cert.issued_at) : null
+  // The reader's zone, as on the certificate list — the paper must not
+  // carry the next day's date because the laptop is abroad.
   const issuedLong = issued
-    ? issued.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+    ? issued.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: getDisplayTimeZone(),
+      })
     : "—"
 
   return (
