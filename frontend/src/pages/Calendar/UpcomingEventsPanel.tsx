@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/patterns";
 import type { CalendarEvent } from "@/types";
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink";
+import { AddToCalendarButton } from "@/components/calendar/AddToCalendarButton";
 import { getEventColor } from "./constants";
 import { formatShortDate, formatTime, isOverdue } from "./utils";
 
@@ -73,11 +74,10 @@ export function UpcomingEventsPanel({ events }: UpcomingEventsPanelProps) {
                         {evt.course_title}
                       </p>
                     )}
-                    <JoinMeetingLink
-                      url={evt.meeting_url}
-                      title={evt.title}
-                      className="mt-1.5"
-                    />
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <JoinMeetingLink url={evt.meeting_url} title={evt.title} />
+                      <AddToCalendarButton event={evt} />
+                    </div>
                   </div>
                 </div>
               );

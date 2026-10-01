@@ -1533,6 +1533,10 @@
     "deleteAria": "Bewertung löschen"
   },
   "calendar": {
+    "addOne": {
+      "label": "In den Kalender",
+      "aria": "„{{title}}“ in den Kalender eintragen"
+    },
     "subscribe": {
       "open": "Abonnieren",
       "title": "Ihr Kursplan in Ihrem eigenen Kalender",

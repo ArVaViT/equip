@@ -1533,6 +1533,10 @@
     "deleteAria": "Delete review"
   },
   "calendar": {
+    "addOne": {
+      "label": "Add to calendar",
+      "aria": "Add “{{title}}” to your calendar"
+    },
     "subscribe": {
       "open": "Subscribe",
       "title": "Your course schedule in your own calendar",
