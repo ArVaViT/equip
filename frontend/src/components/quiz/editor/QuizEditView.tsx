@@ -87,11 +87,12 @@ export function QuizEditView({
       />
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        {/* Wraps on a phone: the heading and two buttons are wider than 360px. */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-sm font-medium">
             {t("quizEditor.questions.heading", { count: questions.length })}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <ImportQuestionsDialog onImport={onImportQuestions} />
             <Button variant="outline" size="sm" onClick={onAddQuestion} className="h-7 text-xs">
               <Plus className="h-3 w-3 mr-1" strokeWidth={1.75} />
