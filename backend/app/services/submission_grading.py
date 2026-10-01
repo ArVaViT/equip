@@ -21,6 +21,7 @@ from fastapi import status as http_status
 from app.core.errors import ErrorCode, equip_error
 from app.core.i18n import t
 from app.services.audit_service import log_action
+from app.services.email.graded import send_graded_email
 from app.services.notification_service import create_notification, notification_text
 from app.services.translation.resolve_for_display import fetch_cv_entity_texts_with_fallback
 from app.services.user_locale import preferred_locale_of
@@ -65,6 +66,8 @@ def apply_grade(
             },
         )
 
+    # Read before it changes: the mail below goes out once per decision.
+    previous_status = submission.status
     submission.grade = grade
     submission.feedback = feedback
     submission.status = new_status
@@ -121,3 +124,21 @@ def apply_grade(
         str(submission.id),
         details={"grade": grade, "status": new_status, "source": source},
     )
+    # The bell is read only by someone already in the app; the mail reaches
+    # a student who is not. Once per decision — when the work's status
+    # changes (handed in -> marked, marked -> returned for a draft, a
+    # resubmission marked again) — never on a re-save: a rubric re-scores
+    # the work every time a level is clicked after the grid is full, which
+    # would be a mail per click. After the commit and never
+    # raising: the mark is saved whether or not the mail gets out.
+    if new_status in ("graded", "returned") and new_status != previous_status:
+        send_graded_email(
+            db,
+            submission=submission,
+            assignment=assignment,
+            assignment_title=title,
+            locale=reader_locale,
+            teacher_id=teacher_id,
+            grade=grade,
+            returned=new_status == "returned",
+        )

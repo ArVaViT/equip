@@ -18,6 +18,7 @@ from app.api.v1 import (
     courses,
     daily_challenge,
     daily_challenge_archive,
+    email_unsubscribe,
     grades,
     health,
     internal_daily_challenge_worker,
@@ -60,6 +61,7 @@ api_router.include_router(legal.router)
 api_router.include_router(calendar_mod.router)
 api_router.include_router(calendar_mod.event_router)
 api_router.include_router(calendar_ical.router)
+api_router.include_router(email_unsubscribe.router)
 api_router.include_router(verse_of_the_day.router)
 api_router.include_router(admin_org_settings.router)
 api_router.include_router(admin_organizations.router)

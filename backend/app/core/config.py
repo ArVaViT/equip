@@ -149,6 +149,16 @@ class Settings(BaseSettings):
     # calendar_ical.py). Kept as a real setting (not another hardcode) so
     # a local or preview deployment can point invite links at itself.
     FRONTEND_URL: str = Field(default="https://equipbible.com", description="Public frontend origin for email links")
+    # The API's own public origin, for the one place a mail client calls the
+    # API directly: the one-click unsubscribe (RFC 8058) in a course mail's
+    # List-Unsubscribe header. A person clicking "unsubscribe" in Gmail never
+    # sees this address; their mail client POSTs to it.
+    API_PUBLIC_URL: str = Field(default="https://api.equipbible.com", description="Public API origin for mail headers")
+    # Comma-separated addresses. When set, mail to any other address is not
+    # sent (logged and counted as ``outcome=not_allowed``). For local and
+    # preview work against real data: a test run then cannot reach a student.
+    # Unset in production.
+    EMAIL_ALLOWLIST: str | None = Field(default=None, description="If set, only these recipients get mail")
     # ``gemini-2.5-flash-lite``, measured rather than assumed. Numbers
     # from 2026-08-17, twelve real production strings translated into
     # German and judged by our own ``validation.py``:
