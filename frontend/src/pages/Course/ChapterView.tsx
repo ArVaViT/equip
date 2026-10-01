@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo, memo } from "react"
+import { useEffect, useRef, useState, useCallback, useMemo, memo, lazy, Suspense } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { isAxiosError } from "axios"
@@ -35,9 +35,14 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react"
-import QuizTaker from "@/components/quiz/QuizTaker"
+// Loaded only when a lesson has a test: most lessons are reading. Together
+// with importing PressFeedback from its own file (the `@/components/motion`
+// barrel shares a chunk with Reveal and StaggerChildren, which bring the
+// animation library), a reading lesson's own load went from 85 KB to 41 KB
+// gzip on 2026-10-01. A test adds its 8 KB, and the library, when it is shown.
+const QuizTaker = lazy(() => import("@/components/quiz/QuizTaker"))
 import AssignmentPanel from "@/components/assignment/AssignmentPanel"
-import { PressFeedback } from "@/components/motion"
+import { PressFeedback } from "@/components/motion/PressFeedback"
 import {
   CHAPTER_TYPE_LABEL_KEYS,
   getChapterTypeMeta,
@@ -159,7 +164,9 @@ const BlockRenderer = memo(function BlockRenderer({
 
     case "quiz":
       return block.quiz_id ? (
-        <QuizTaker chapterId={block.chapter_id} quizId={block.quiz_id} onSubmitted={onProgressChanged} />
+        <Suspense fallback={<PageSpinner variant="section" />}>
+          <QuizTaker chapterId={block.chapter_id} quizId={block.quiz_id} onSubmitted={onProgressChanged} />
+        </Suspense>
       ) : null
 
     case "assignment":
@@ -842,7 +849,9 @@ export default function ChapterView() {
         )}
 
         {(chapterType === "quiz" || chapterType === "exam") && (
-          <QuizTaker chapterId={chapter.id} onSubmitted={refreshCompletion} />
+          <Suspense fallback={<PageSpinner variant="section" />}>
+            <QuizTaker chapterId={chapter.id} onSubmitted={refreshCompletion} />
+          </Suspense>
         )}
 
         {chapterType === "assignment" && (
