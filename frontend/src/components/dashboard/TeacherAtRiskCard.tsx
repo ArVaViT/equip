@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { ArrowRight, UserRoundX } from "lucide-react"
+import { ArrowRight, Mail, UserRoundX } from "lucide-react"
 
 import { useAuth } from "@/context/useAuth"
 import { useAsyncData } from "@/hooks/useAsyncData"
@@ -52,10 +52,10 @@ export function TeacherAtRiskCard() {
       </header>
       <ul className="divide-y divide-edge">
         {shown.map((s) => (
-          <li key={`${s.course_id}:${s.student_id}`}>
+          <li key={`${s.course_id}:${s.student_id}`} className="flex items-center">
             <Link
               to={`/teacher/courses/${s.course_id}/progress`}
-              className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-muted/40 sm:px-5"
+              className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-muted/40 sm:px-5"
             >
               <span className="min-w-0">
                 <span className="block truncate font-medium">{s.full_name}</span>
@@ -69,6 +69,17 @@ export function TeacherAtRiskCard() {
               </span>
               <ArrowRight className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
             </Link>
+            {/* The point of the list: a word from the teacher. Beside the
+                row, not inside it — a link inside a link is not allowed. */}
+            {s.email && (
+              <a
+                href={`mailto:${encodeURIComponent(s.email).replace(/%40/g, "@")}?subject=${encodeURIComponent(s.course_title ?? "")}`}
+                aria-label={t("dashboard.atRisk.write", { name: s.full_name })}
+                className="mr-2 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-muted/40 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:mr-3"
+              >
+                <Mail className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              </a>
+            )}
           </li>
         ))}
       </ul>

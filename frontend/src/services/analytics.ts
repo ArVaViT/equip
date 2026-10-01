@@ -23,6 +23,8 @@ interface CourseAnalytics {
 export interface StudentAtRisk {
   student_id: string
   full_name: string
+  /** The address the gradebook shows, for the card's "write" button. */
+  email?: string | null
   course_id: string
   course_title: string | null
   last_activity: string

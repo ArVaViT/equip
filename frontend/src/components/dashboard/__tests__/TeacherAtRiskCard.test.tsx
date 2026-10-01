@@ -43,6 +43,15 @@ describe("TeacherAtRiskCard", () => {
     expect(screen.getByRole("link", { name: /Иван/ })).toHaveTextContent(i18n.t("dashboard.atRisk.quiet", { count: 10 }))
   })
 
+  it("puts a one-click note beside each student with an address", async () => {
+    vi.spyOn(analyticsService, "getStudentsAtRisk").mockResolvedValue([{ ...rows[1]!, email: "ivan+bible@example.com" }])
+    show()
+    const write = await screen.findByRole("link", { name: "Написать: Иван" })
+    expect(write).toHaveAttribute("href", "mailto:ivan%2Bbible@example.com?subject=%D0%94%D0%B5%D1%8F%D0%BD%D0%B8%D1%8F")
+    // Beside the row, not inside it.
+    expect(write.closest("a[href^='/teacher']")).toBeNull()
+  })
+
   it("says nothing when nobody is slipping, and nothing to a student", async () => {
     const spy = vi.spyOn(analyticsService, "getStudentsAtRisk").mockResolvedValue([])
     const { container, unmount } = show()

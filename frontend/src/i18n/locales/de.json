@@ -126,6 +126,7 @@
   },
   "dashboard": {
     "atRisk": {
+      "write": "An {{name}} schreiben",
       "title": "Wem Sie schreiben sollten",
       "hint": "Eine Woche ohne Aktivität oder zwei verpasste Fristen",
       "quiet_one": "{{count}} Tag ohne Aktivität",

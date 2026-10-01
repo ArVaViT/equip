@@ -128,6 +128,8 @@ def get_course_analytics(
 class StudentAtRisk(BaseModel):
     student_id: str
     full_name: str
+    #: The address the teacher's gradebook already shows, for a one-click note.
+    email: str | None = None
     course_id: str
     #: In the reader's language; ``None`` when the course has no title in it.
     course_title: str | None
@@ -161,6 +163,7 @@ def get_students_at_risk(
         StudentAtRisk(
             student_id=r.student_id,
             full_name=r.full_name,
+            email=r.email,
             course_id=r.course_id,
             course_title=titles.get(r.course_id) or None,
             last_activity=r.last_activity,

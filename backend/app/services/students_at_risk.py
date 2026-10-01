@@ -56,6 +56,8 @@ GONE_AFTER = timedelta(days=30)
 class AtRisk:
     student_id: str
     full_name: str
+    #: For the teacher's "write to them" — the same address their gradebook shows.
+    email: str | None
     course_id: str
     last_activity: datetime
     quiet_days: int
@@ -214,6 +216,7 @@ def students_at_risk(db: Session, teacher_id: uuid.UUID, *, now: datetime | None
                 AtRisk(
                     student_id=student,
                     full_name=full_name or email or student,
+                    email=email or None,
                     course_id=course_id,
                     last_activity=seen,
                     quiet_days=quiet.days,

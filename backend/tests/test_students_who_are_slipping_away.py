@@ -186,3 +186,5 @@ def test_the_teacher_sees_it_in_their_language(client: TestClient, db: Session, 
     assert {"quiet", "missed"} <= names
     assert "stranger" not in names and "done" not in names
     assert all(row["course_title"] == "Деяния" for row in r.json())
+    # The address the gradebook already shows, for the card's "write" button.
+    assert {row["email"] for row in r.json() if row["full_name"] == "quiet"} == {"quiet@example.com"}

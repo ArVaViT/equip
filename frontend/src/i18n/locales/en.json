@@ -126,6 +126,7 @@
   },
   "dashboard": {
     "atRisk": {
+      "write": "Write to {{name}}",
       "title": "Who to write to",
       "hint": "A week without any activity, or two deadlines missed",
       "quiet_one": "{{count}} day without activity",
