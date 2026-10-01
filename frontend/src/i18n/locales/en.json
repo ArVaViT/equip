@@ -1056,6 +1056,7 @@
   },
   "notes": {
     "lesson": {
+      "hasNote": "You have a note here",
       "loadFailed": "Could not load your note on this lesson.",
       "title": "My notes on this lesson",
       "add": "Add a note to this lesson",

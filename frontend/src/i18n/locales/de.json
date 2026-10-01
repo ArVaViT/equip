@@ -1056,6 +1056,7 @@
   },
   "notes": {
     "lesson": {
+      "hasNote": "Hier gibt es Ihre Notiz",
       "loadFailed": "Ihre Notiz zu dieser Lektion konnte nicht geladen werden.",
       "title": "Meine Notizen zur Lektion",
       "add": "Notiz zur Lektion hinzufügen",
