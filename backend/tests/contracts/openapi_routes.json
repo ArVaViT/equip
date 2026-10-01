@@ -1829,6 +1829,25 @@
     "body": false
   },
   {
+    "method": "GET",
+    "path": "/api/v1/courses/{course_id}/reading-time",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
     "method": "POST",
     "path": "/api/v1/courses/{course_id}/restore",
     "params": [

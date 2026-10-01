@@ -1,6 +1,7 @@
 """Course catalog read endpoints (listings + detail views)."""
 
 from fastapi import Depends, Header, Query, Response
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user, get_optional_user, is_owner_or_admin, require_teacher
@@ -16,6 +17,7 @@ from app.services.course_service import (
     get_module,
     get_teacher_courses,
 )
+from app.services.reading_time import course_reading_minutes
 from app.services.translation.resolve_for_display import (
     build_localized_course_response_with_tree,
     build_localized_course_summaries,
@@ -118,24 +120,12 @@ def list_my_trashed_courses(
     )
 
 
-@router.get("/{course_id}", response_model=CourseResponse)
-def get_course_detail(
-    course_id: str,
-    response: Response,
-    accept_language: str | None = Header(default=None, alias="Accept-Language"),
-    source: bool = Query(
-        False,
-        description=(
-            "Bypass the translation overlay and return source-language columns. "
-            "Owner / admin only — used by the course editor so a teacher viewing "
-            "their RU course in EN UI doesn't accidentally save the EN translation "
-            "back into the source title/description."
-        ),
-    ),
-    current_user: User | None = Depends(get_optional_user),
-    db: Session = Depends(get_db),
-) -> CourseResponse:
-    display_locale: LocaleCode = normalize_locale(accept_language)
+def _course_a_reader_may_see(db: Session, course_id: str, current_user: User | None) -> Course:
+    """The course, or the same 404 for "not there" and "not yours to see".
+
+    Shared by the course page and everything a reader asks about the course
+    from it, so the two cannot drift: what one hides the other must too.
+    """
     course = get_course(db, course_id)
     if not course:
         raise equip_error(
@@ -175,6 +165,28 @@ def get_course_detail(
             message=f"Course '{course_id}' not found",
             context={"resource_type": "course", "resource_id": course_id},
         )
+    return course
+
+
+@router.get("/{course_id}", response_model=CourseResponse)
+def get_course_detail(
+    course_id: str,
+    response: Response,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    source: bool = Query(
+        False,
+        description=(
+            "Bypass the translation overlay and return source-language columns. "
+            "Owner / admin only — used by the course editor so a teacher viewing "
+            "their RU course in EN UI doesn't accidentally save the EN translation "
+            "back into the source title/description."
+        ),
+    ),
+    current_user: User | None = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+) -> CourseResponse:
+    display_locale: LocaleCode = normalize_locale(accept_language)
+    course = _course_a_reader_may_see(db, course_id, current_user)
     if source:
         # Explicit "give me source columns" path for editor surfaces. Gated to
         # owner + admin: returning unredacted source text to a regular student
@@ -192,6 +204,33 @@ def get_course_detail(
     if not should_apply_course_translation_overlay(course=course, current_user=current_user):
         return CourseResponse.model_validate(course, from_attributes=True)
     return build_localized_course_response_with_tree(db, course, display_locale)
+
+
+class CourseReadingTime(BaseModel):
+    """Minutes of reading per lesson, and the sum, in the reader's language."""
+
+    chapters: dict[str, int]
+    total_minutes: int
+
+
+@router.get("/{course_id}/reading-time", response_model=CourseReadingTime)
+def get_course_reading_time(
+    course_id: str,
+    response: Response,
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    current_user: User | None = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+) -> CourseReadingTime:
+    """How long the course takes to read — the "about N hours" on the course page.
+
+    Visible exactly when the course page is (``_course_a_reader_may_see``).
+    Counted from the text blocks in the reader's language; see
+    ``services/reading_time.py``.
+    """
+    course = _course_a_reader_may_see(db, course_id, current_user)
+    response.headers["Vary"] = "Accept-Language"
+    minutes = course_reading_minutes(db, course, normalize_locale(accept_language))
+    return CourseReadingTime(chapters=minutes, total_minutes=sum(minutes.values()))
 
 
 @router.get("/{course_id}/modules/{module_id}", response_model=ModuleResponse)
