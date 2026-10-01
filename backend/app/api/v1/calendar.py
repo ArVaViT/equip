@@ -64,6 +64,7 @@ def _notify_students_about_event(
     event: CourseEvent,
     author: User,
     rescheduled: bool,
+    recording: bool = False,
 ) -> None:
     """Tell every enrolled student the event exists (or moved).
 
@@ -77,7 +78,7 @@ def _notify_students_about_event(
     """
     source_locale = normalize_locale(course.source_locale)
     recipients_by_locale = enrolled_recipients_by_locale(db, course_id=course.id, exclude_user_id=author.id)
-    key = "notif.event_rescheduled" if rescheduled else "notif.new_event"
+    key = "notif.recording_ready" if recording else "notif.event_rescheduled" if rescheduled else "notif.new_event"
     for locale, recipients in recipients_by_locale.items():
         params: dict[str, Any] = {
             # A catalog key, translated whenever the bell is opened.
@@ -103,12 +104,27 @@ def _notify_students_about_event(
         # line-clamped to two lines, and a 90-character Zoom URL pasted
         # into the sentence pushes out the title of the thing it is
         # about. The client draws a "Join" button from this key.
-        if event.meeting_url:
+        if event.meeting_url and not recording:
             metadata["meeting_url"] = event.meeting_url
+        # A recording is watched from where the news is read, like a meeting
+        # is joined: the bell draws a "Recording" button from this key.
+        if recording and event.recording_url:
+            metadata["recording_url"] = event.recording_url
         i18n = notification_text(key, **params)
         # Two literal call sites rather than one with a computed kind:
         # the notification-kinds test reads the kind off the source.
-        if rescheduled:
+        if recording:
+            create_notifications_bulk(
+                db,
+                recipients,
+                type="recording_ready",
+                title=title,
+                message=message,
+                link=link,
+                metadata=metadata,
+                i18n=i18n,
+            )
+        elif rescheduled:
             create_notifications_bulk(
                 db,
                 recipients,
@@ -388,6 +404,9 @@ def update_course_event(
     # the loop writes it. "Remove the meeting" arrives as an explicit
     # ``meeting_url: null``.
     meeting_url_given = "meeting_url" in updates
+    # A recording added where there was none is news for the class; editing
+    # or removing one is not.
+    recording_added = bool(updates.get("recording_url")) and not event.recording_url
     for field, value in updates.items():
         setattr(event, field, value)
     # The same rescue as on create, and deliberately no wider than the
@@ -421,6 +440,8 @@ def update_course_event(
     reconcile_entity_if_course_published(db, "course_event", event)
     if rescheduled:
         _notify_students_about_event(db, course=course, event=event, author=teacher, rescheduled=True)
+    if recording_added:
+        _notify_students_about_event(db, course=course, event=event, author=teacher, rescheduled=False, recording=True)
     return _course_event_to_response(db, event, source_locale=source_locale or "en")
 
 
@@ -455,7 +476,7 @@ def delete_course_event(
     # The bell must not keep advertising an event that no longer exists.
     delete_notifications_about(
         db,
-        types=("new_event", "event_rescheduled"),
+        types=("new_event", "event_rescheduled", "recording_ready"),
         link=_event_link(course_id),
         meta_key="event_id",
         target_id=event.id,

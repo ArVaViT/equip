@@ -52,3 +52,24 @@ def test_anything_but_a_web_address_is_refused(client: TestClient, db: Session, 
     r = _create_event(client, course_id, recording_url=value)
     assert r.status_code == 422
     assert [e["loc"][-1] for e in r.json()["detail"]] == ["recording_url"]
+
+
+def test_a_recording_added_tells_the_class_once(client: TestClient, db: Session, student: User) -> None:
+    from app.models.notification import Notification
+
+    course_id = _published_course_with_student(db, student)
+    event = _create_event(client, course_id).json()
+    before = db.query(Notification).filter(Notification.type == "recording_ready").count()
+
+    client.put(f"{COURSES}/{course_id}/events/{event['id']}", json={"recording_url": RECORDING})
+    notes = db.query(Notification).filter(Notification.type == "recording_ready").all()
+    assert len(notes) - before == 1
+    assert notes[-1].meta["recording_url"] == RECORDING
+
+    # Fixing the link is not news.
+    client.put(f"{COURSES}/{course_id}/events/{event['id']}", json={"recording_url": RECORDING + "&t=1"})
+    assert db.query(Notification).filter(Notification.type == "recording_ready").count() - before == 1
+
+    # Deleting the event takes the notice with it.
+    client.delete(f"{COURSES}/{course_id}/events/{event['id']}")
+    assert db.query(Notification).filter(Notification.type == "recording_ready").count() == before

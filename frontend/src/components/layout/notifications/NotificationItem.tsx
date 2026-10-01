@@ -2,6 +2,7 @@ import { Trash2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { Notification } from "@/types"
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
+import { RecordingLink } from "@/components/calendar/RecordingLink"
 import { cn } from "@/lib/utils"
 import { orNotTranslated } from "@/lib/untranslated"
 
@@ -12,6 +13,11 @@ import { orNotTranslated } from "@/lib/untranslated"
  *  is a link worth rendering. */
 function meetingUrlOf(notification: Notification): string | null {
   const value = notification.metadata?.meeting_url
+  return typeof value === "string" ? value : null
+}
+
+function recordingUrlOf(notification: Notification): string | null {
+  const value = notification.metadata?.recording_url
   return typeof value === "string" ? value : null
 }
 import {
@@ -82,6 +88,11 @@ export function NotificationItem({ notification, onActivate, onDelete }: Props) 
           it is worth the row it costs. */}
       <JoinMeetingLink
         url={meetingUrlOf(notification)}
+        title={orNotTranslated(t, notification.title)}
+        className="self-center"
+      />
+      <RecordingLink
+        url={recordingUrlOf(notification)}
         title={orNotTranslated(t, notification.title)}
         className="self-center"
       />

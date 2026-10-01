@@ -30,6 +30,7 @@ NOTIFICATION_TYPES: frozenset[str] = frozenset(
         "new_announcement",
         "new_event",
         "event_rescheduled",
+        "recording_ready",
         "retake_requested",
     }
 )
