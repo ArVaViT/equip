@@ -200,6 +200,7 @@ SLUG_TO_USFM: dict[str, str] = {slug: code for (slug, _aliases), code in zip(_BO
 #: verses, not tens of thousands.
 _cache: dict[tuple[str, str], str | None] = {}
 _CACHE_MAX = 20_000
+_MISS = object()
 _lock = threading.Lock()
 
 
@@ -326,8 +327,10 @@ def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
         return None
 
     key = (locale, usfm)
-    if key in _cache:
-        return _cache[key]
+    # One lookup, not "in" then "[]": another thread may evict the key between.
+    cached = _cache.get(key, _MISS)
+    if cached is not _MISS:
+        return cached  # type: ignore[return-value]
 
     api_key = os.getenv("YOUVERSION_API_KEY")
     if not api_key:

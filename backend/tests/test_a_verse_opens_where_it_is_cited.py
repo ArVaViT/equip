@@ -129,8 +129,28 @@ def test_a_reference_no_bible_has_costs_nothing_upstream(
     monkeypatch.setattr(scripture, "fetch_verse", fetch)
     r = student_client.post(
         "/api/v1/scripture/passages",
-        json={"texts": ["Acts 100:1, Acts 1:999, Psalm 119:1-176 and Acts 1:8"]},
+        json={"texts": ["Acts 100:1, Acts 1:999 and Acts 1:8"]},
         headers={"Accept-Language": "ru"},
     )
     assert r.status_code == 200
     assert calls == ["acts 1:8"]
+
+
+def test_whole_chapters_and_another_edition_s_numbering_are_still_looked_up(
+    student_client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A whole chapter is an ordinary reading, and German Joel has a fourth chapter."""
+    calls: list[str] = []
+
+    def fetch(ref: BibleRef, locale: str) -> str:
+        calls.append(str(ref))
+        return "text"
+
+    monkeypatch.setattr(scripture, "fetch_verse", fetch)
+    r = student_client.post(
+        "/api/v1/scripture/passages",
+        json={"texts": ["Apg 2,1-47 und Joel 4,1 und Ps 119,1-176"]},
+        headers={"Accept-Language": "de"},
+    )
+    assert r.status_code == 200
+    assert sorted(calls) == ["acts 2:1-47", "joel 4:1", "psalms 119:1-176"]

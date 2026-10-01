@@ -42,10 +42,12 @@ MAX_TEXTS = 100
 #: is a reference list, and the rest stay plain text.
 MAX_REFERENCES = 40
 
-#: No chapter of the Bible has more verses (Psalm 119: 176), and no card
-#: needs a passage longer than this; anything outside is not looked up.
+#: No chapter of the Bible has more verses (Psalm 119: 176). A passage may
+#: be a whole chapter — "Acts 2:1-47" is an ordinary reading — and a range
+#: is one upstream call however long it is, so its length is not limited.
 MAX_VERSE = 176
-MAX_PASSAGE = 40
+#: Editions differ by a chapter at most (German Joel has four, KJV three).
+CHAPTER_LEEWAY = 1
 
 #: Verses fetched at once. Each is one short HTTPS call, cached for the
 #: life of the process once answered.
@@ -80,9 +82,8 @@ def _plausible(ref: BibleRef) -> bool:
     end = ref.verse_end or ref.verse_start
     return (
         chapters is not None
-        and 1 <= ref.chapter <= chapters
-        and 1 <= ref.verse_start <= MAX_VERSE
-        and end - ref.verse_start < MAX_PASSAGE
+        and 1 <= ref.chapter <= chapters + CHAPTER_LEEWAY
+        and 1 <= ref.verse_start <= end <= MAX_VERSE
     )
 
 

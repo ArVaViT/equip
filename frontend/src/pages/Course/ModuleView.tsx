@@ -273,6 +273,7 @@ export default function ModuleView() {
                           <NotebookPen
                             className="h-3.5 w-3.5 shrink-0 text-ink-muted"
                             strokeWidth={1.75}
+                            role="img"
                             aria-label={t("notes.lesson.hasNote")}
                           />
                         )}
@@ -329,6 +330,7 @@ export default function ModuleView() {
                           <NotebookPen
                             className="h-3.5 w-3.5 shrink-0 text-ink-muted"
                             strokeWidth={1.75}
+                            role="img"
                             aria-label={t("notes.lesson.hasNote")}
                           />
                         )}

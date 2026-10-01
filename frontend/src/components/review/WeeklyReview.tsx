@@ -49,7 +49,11 @@ export function WeeklyReview({ courseId }: { courseId: string }) {
   // Arriving from the home page's "review is ready" link.
   const arrivedFor = (data?.length ?? 0) > 0 && window.location.hash === "#weekly-review"
   useEffect(() => {
-    if (arrivedFor) document.getElementById("weekly-review")?.scrollIntoView({ block: "start" })
+    if (!arrivedFor) return
+    // Into view and into focus: a keyboard or screen-reader user arriving
+    // from the link should start here, not at the top of the page.
+    document.getElementById("weekly-review")?.scrollIntoView({ block: "start" })
+    document.getElementById("weekly-review-heading")?.focus({ preventScroll: true })
   }, [arrivedFor])
 
   useEffect(() => {
@@ -87,7 +91,7 @@ export function WeeklyReview({ courseId }: { courseId: string }) {
     <section id="weekly-review" aria-labelledby="weekly-review-heading" className="mt-6 scroll-mt-20 rounded-md border border-edge p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 id="weekly-review-heading" className="flex items-center gap-2 font-serif text-lg font-semibold">
+          <h2 id="weekly-review-heading" tabIndex={-1} className="flex items-center gap-2 font-serif text-lg font-semibold outline-none">
             <RotateCcw className="h-4 w-4 text-ink-muted" strokeWidth={1.75} aria-hidden />
             {t("review.title")}
           </h2>
