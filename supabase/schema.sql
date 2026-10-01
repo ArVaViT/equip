@@ -1093,7 +1093,7 @@ CREATE TABLE public.profiles (
     comment_library jsonb DEFAULT '[]'::jsonb NOT NULL,
     CONSTRAINT chk_profiles_role CHECK ((role = ANY (ARRAY['admin'::text, 'director'::text, 'teacher'::text, 'student'::text]))),
     CONSTRAINT profiles_birth_date_floor_check CHECK (((birth_date IS NULL) OR (birth_date >= '1900-01-01'::date))),
-    CONSTRAINT profiles_comment_library_check CHECK (((jsonb_typeof(comment_library) = 'array'::text) AND (jsonb_array_length(comment_library) <= 50) AND (NOT jsonb_path_exists(comment_library, '$[*]?(@.type() != "string" || @ like_regex "^.{250}.{251}" flag "s")'::jsonpath)))),
+    CONSTRAINT profiles_comment_library_check CHECK (((jsonb_typeof(comment_library) = 'array'::text) AND (jsonb_array_length(comment_library) <= 50) AND (NOT jsonb_path_exists(comment_library, 'strict $[*]?(@.type() != "string" || @ like_regex "^.{250}.{251}" flag "s")'::jsonpath)))),
     CONSTRAINT profiles_country_code_check CHECK (((country_code IS NULL) OR (country_code ~ '^[A-Z]{2}$'::text))),
     CONSTRAINT profiles_email_off_check CHECK (((jsonb_typeof(email_off) = 'array'::text) AND (email_off <@ '["work_returned", "certificate_decided", "session_starting", "deadline_moved", "announcement"]'::jsonb))),
     CONSTRAINT profiles_locale_source_check CHECK ((locale_source = ANY (ARRAY['default'::text, 'detected'::text, 'chosen'::text]))),

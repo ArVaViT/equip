@@ -82,11 +82,17 @@ def students_at_risk(db: Session, teacher_id: uuid.UUID, *, now: datetime | None
         return []
 
     roster = (
-        db.query(Enrollment.user_id, Enrollment.course_id, Enrollment.enrolled_at, User.full_name, User.email)
+        db.query(
+            Enrollment.user_id,
+            Enrollment.course_id,
+            Enrollment.enrolled_at,
+            User.full_name,
+            User.email,
+            Enrollment.progress,
+        )
         .join(User, User.id == Enrollment.user_id)
         .filter(
             Enrollment.course_id.in_(course_ids),
-            Enrollment.progress < 100,
             User.deactivated_at.is_(None),
             User.role == UserRole.STUDENT.value,
         )
@@ -102,7 +108,9 @@ def students_at_risk(db: Session, teacher_id: uuid.UUID, *, now: datetime | None
         kept = latest.get(key)
         if kept is None or (row[2] is not None and (kept[2] is None or _aware(row[2]) > _aware(kept[2]))):
             latest[key] = row
-    roster = list(latest.values())
+    # Finished is judged on that latest enrolment: someone who abandoned the
+    # first run and completed the second is done, not slipping.
+    roster = [row for row in latest.values() if row[5] < 100]
 
     last: dict[tuple[str, str], datetime] = {}
 
@@ -178,7 +186,7 @@ def students_at_risk(db: Session, teacher_id: uuid.UUID, *, now: datetime | None
     }
 
     found: list[AtRisk] = []
-    for user_id, course_id, enrolled_at, full_name, email in roster:
+    for user_id, course_id, enrolled_at, full_name, email, _progress in roster:
         student = str(user_id)
         # Nothing done yet: the clock runs from enrolment, so a student who
         # joined yesterday is not "quiet".

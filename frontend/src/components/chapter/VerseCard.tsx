@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useMemo, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { X } from "lucide-react"
 
@@ -10,8 +10,9 @@ import type { Passage } from "@/services/scripture"
  *
  * Opened from a reference button inside a block's injected HTML, so there is
  * no React trigger to hang it on: the button is the anchor, by reference.
- * Closing returns focus to that button, which Radix does only for its own
- * triggers.
+ * Closing with Escape or the cross returns focus to that button, which Radix
+ * does only for its own triggers; closing by tapping elsewhere leaves focus
+ * where the reader went, as Radix does.
  */
 export function VerseCard({
   anchor,
@@ -24,6 +25,7 @@ export function VerseCard({
 }) {
   const { t } = useTranslation()
   const virtualRef = useMemo(() => ({ current: anchor }), [anchor])
+  const wentElsewhere = useRef(false)
 
   return (
     <Popover open onOpenChange={(open) => !open && onClose()}>
@@ -33,9 +35,18 @@ export function VerseCard({
         collisionPadding={16}
         className="w-[min(22rem,calc(100vw-2rem))] space-y-2"
         aria-label={passage.written}
+        onInteractOutside={(e) => {
+          // The reference itself is outside the card: its own click toggles
+          // the card, and must not first close it here.
+          if (anchor.contains(e.target as Node)) {
+            e.preventDefault()
+            return
+          }
+          wentElsewhere.current = true
+        }}
         onCloseAutoFocus={(e) => {
           e.preventDefault()
-          anchor.focus()
+          if (!wentElsewhere.current) anchor.focus()
         }}
       >
         <div className="flex items-start justify-between gap-2">

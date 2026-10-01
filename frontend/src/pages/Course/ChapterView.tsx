@@ -58,7 +58,7 @@ import { orNotTranslated } from "@/lib/untranslated"
 import { useNamedPageTitle } from "@/hooks/usePageTitle"
 import { ReadingControls } from "@/components/chapter/ReadingControls"
 import { useReadingPrefs } from "@/lib/readingPrefs"
-import { linkScriptureIn } from "@/lib/scriptureLinks"
+import { linkScriptureIn, textForScripture } from "@/lib/scriptureLinks"
 import { scriptureService, type Passage } from "@/services/scripture"
 import { VerseCard } from "@/components/chapter/VerseCard"
 
@@ -86,8 +86,8 @@ function TextBlockRender({ html }: { html: string }) {
     if (!root) return
     let live = true
     setVerse(null)
-    void scriptureService.passagesIn(root.textContent ?? "").then((found) => {
-      if (!live || found.length === 0) return
+    void scriptureService.passagesIn(textForScripture(root)).then((found) => {
+      if (!live) return
       setPassages(found)
       linkScriptureIn(
         root,
@@ -126,7 +126,9 @@ function TextBlockRender({ html }: { html: string }) {
     const cited = target.closest<HTMLElement>("[data-verse]")
     if (cited && ref.current?.contains(cited)) {
       const passage = passages[Number(cited.dataset.verse)]
-      if (passage) setVerse({ anchor: cited, passage })
+      // A second tap on the same reference closes its card.
+      if (verse?.anchor === cited) setVerse(null)
+      else if (passage) setVerse({ anchor: cited, passage })
       return
     }
     if (target.tagName !== "IMG") return

@@ -130,6 +130,22 @@ def _setup(db: Session) -> dict[str, User]:
     # Stopped in May: past the call that helps.
     read("gone", 140)
     read("again", 12)
+    # Dropped the first run, finished the second: done, not slipping.
+    finisher = _person(db, "finisher")
+    db.add(
+        Enrollment(id=str(uuid.uuid4()), user_id=finisher.id, course_id=course.id, progress=40, enrolled_at=_days(200))
+    )
+    db.add(
+        Enrollment(
+            id=str(uuid.uuid4()),
+            user_id=finisher.id,
+            course_id=course.id,
+            cohort_id=cohort.id,
+            progress=100,
+            enrolled_at=_days(20),
+        )
+    )
+    db.add(ChapterProgress(user_id=finisher.id, chapter_id=reading.id, completed=True, completed_at=_days(10)))
     hand_in("reader", late1, 9)
     hand_in("reader", late2, 2)
 

@@ -9,12 +9,30 @@ export interface Passage {
   edition: string
 }
 
-// One request per block and language for the life of the page: going back
-// and forth between lessons asks nothing twice.
+// One answer per block text and language for the life of the page: going
+// back and forth between lessons asks nothing twice.
 const cache = new Map<string, Promise<Passage[]>>()
 
 /** A reference has a chapter and a verse: `1:8`, or the German `8,28`. */
 const MIGHT_CITE = /\d[:,]\s?\d/
+
+// Every block of a lesson asks in the same tick; they go as one request.
+let queue: { text: string; key: string; resolve: (p: Passage[]) => void }[] = []
+
+function flush() {
+  const batch = queue
+  queue = []
+  api
+    .post<Passage[][]>("/scripture/passages", { texts: batch.map((b) => b.text) })
+    .then((r) => batch.forEach((b, i) => b.resolve(r.data[i] ?? [])))
+    .catch(() =>
+      batch.forEach((b) => {
+        // A failure is not remembered: the next visit asks again.
+        cache.delete(b.key)
+        b.resolve([])
+      }),
+    )
+}
 
 export const scriptureService = {
   /**
@@ -27,13 +45,10 @@ export const scriptureService = {
     const key = `${currentAcceptLanguage()}\n${text}`
     let pending = cache.get(key)
     if (!pending) {
-      pending = api
-        .post<Passage[]>("/scripture/passages", { text })
-        .then((r) => r.data)
-        .catch(() => {
-          cache.delete(key)
-          return []
-        })
+      pending = new Promise<Passage[]>((resolve) => {
+        if (queue.length === 0) setTimeout(flush, 0)
+        queue.push({ text, key, resolve })
+      })
       cache.set(key, pending)
     }
     return pending

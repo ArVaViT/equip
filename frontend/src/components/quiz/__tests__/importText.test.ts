@@ -55,4 +55,39 @@ describe("parseQuestionsText", () => {
     expect(b!.question!.question_text).toBe("А что сказал Пётр?")
     expect(b!.question!.options[0]!.is_correct).toBe(true)
   })
+
+  it("splits questions pasted from Word with no blank line between them", () => {
+    const blocks = parseQuestionsText("Q1?\nA. x\nB. y\nANSWER: A\nQ2?\nA. p\nB. q\nANSWER: B")
+    expect(blocks.map((b) => b.question?.question_text)).toEqual(["Q1?", "Q2?"])
+    expect(blocks[0]!.question!.options.map((o) => [o.option_text, o.is_correct])).toEqual([
+      ["x", true],
+      ["y", false],
+    ])
+    expect(blocks[1]!.question!.options.map((o) => o.is_correct)).toEqual([false, true])
+  })
+
+  it("splits starred questions with no blank line when the letters start again", () => {
+    const blocks = parseQuestionsText("Q1?\nA. x\n*B. y\nQ2?\n*A. p\nB. q")
+    expect(blocks.map((b) => b.question?.question_text)).toEqual(["Q1?", "Q2?"])
+    expect(blocks[0]!.question!.options[1]!.option_text).toBe("y")
+  })
+
+  it("reads an option with no space after the letter", () => {
+    const [b] = parseQuestionsText("Q?\nA.Peter\nB. Luke\nC. Paul\nANSWER: A")
+    expect(b!.question!.options.map((o) => [o.option_text, o.is_correct])).toEqual([
+      ["Peter", true],
+      ["Luke", false],
+      ["Paul", false],
+    ])
+  })
+
+  it("never moves the answer to a neighbour in the same alphabet", () => {
+    const [b] = parseQuestionsText("Q?\nB. Luke\nC. Paul\nANSWER: A")
+    expect(b!.problem).toBe("answer_not_an_option")
+  })
+
+  it("refuses to choose between two answers, or a star and an answer that disagree", () => {
+    const problems = parseQuestionsText("Q\nA. a\nB. b\nC. c\nANSWER: B, C\n\nQ\n*A. a\nB. b\nANSWER: B").map((b) => b.problem)
+    expect(problems).toEqual(["two_answers", "two_answers"])
+  })
 })

@@ -46,20 +46,38 @@ export function ImportQuestionsDialog({ onImport }: { onImport: (questions: Impo
             aria-label={t("quizEditor.import.title")}
             className="min-h-[200px] font-mono text-xs"
           />
-          {text.trim() !== "" && (
-            <div className="space-y-1 text-sm" aria-live="polite">
-              <p>{t("quizEditor.import.found", { count: good.length })}</p>
-              {bad.length > 0 && (
-                <ul className="space-y-0.5 text-xs text-destructive-ink">
-                  {bad.map((b, i) => (
-                    <li key={i}>
-                      «{b.start.slice(0, 60)}» — {t(`quizEditor.import.problem.${b.problem}`)}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+          {/* Always rendered: a live region that appears with its content is
+              often not announced the first time. */}
+          <div className="space-y-1 text-sm" aria-live="polite">
+            {text.trim() !== "" && (
+              <>
+                <p>{t("quizEditor.import.found", { count: good.length })}</p>
+                {/* Which option each question will count as right — the one
+                    thing a misread letter would get wrong silently. */}
+                {good.length > 0 && (
+                  <ol className="max-h-40 list-decimal space-y-0.5 overflow-y-auto pl-5 text-xs text-ink-muted">
+                    {good.map((q, i) => (
+                      <li key={i}>
+                        {q.question_text.split("\n")[0]!.slice(0, 60)} —{" "}
+                        <span className="text-success-ink">
+                          ✓ {q.options.find((o) => o.is_correct)?.option_text.slice(0, 40)}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+                {bad.length > 0 && (
+                  <ul className="space-y-0.5 text-xs text-destructive-ink">
+                    {bad.map((b, i) => (
+                      <li key={i}>
+                        «{b.start.slice(0, 60)}» — {t(`quizEditor.import.problem.${b.problem}`)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
+          </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
               {t("common.cancel")}

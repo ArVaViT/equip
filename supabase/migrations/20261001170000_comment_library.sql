@@ -23,6 +23,6 @@ ALTER TABLE public.profiles
     AND jsonb_array_length(comment_library) <= 50
     AND NOT jsonb_path_exists(
       comment_library,
-      '$[*] ? (@.type() != "string" || @ like_regex "^.{250}.{251}" flag "s")'
+      'strict $[*] ? (@.type() != "string" || @ like_regex "^.{250}.{251}" flag "s")'
     )
   );

@@ -10,6 +10,19 @@
  * Text inside links, buttons, code and rendered math is never touched.
  */
 
+/**
+ * The block's text as the server should read it: one line per text node.
+ * `textContent` runs the end of one paragraph or list item into the start of
+ * the next, and «Рим 8:28» + «1 Кор. 13:4» read as «Рим 8:281 Кор. 13:4» —
+ * a verse that does not exist, so neither reference opened.
+ */
+export function textForScripture(root: HTMLElement): string {
+  const parts: string[] = []
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) parts.push(n.nodeValue ?? "")
+  return parts.join("\n")
+}
+
 const SKIP = "a, button, code, pre, .katex, kbd, summary, [data-type=\"inlineMath\"]"
 
 function escape(s: string): string {
@@ -23,7 +36,15 @@ function escape(s: string): string {
  * typography pass ties «Ин 3:16» with a no-break space.
  */
 export function linkScriptureIn(root: HTMLElement | null, written: string[], label: (written: string) => string): number {
-  if (!root || written.length === 0) return 0
+  if (!root) return 0
+  // Undo an earlier pass first: its buttons index an older list, and a
+  // button kept from it would open somebody else's verse.
+  const earlier = root.querySelectorAll("button.verse-ref")
+  if (earlier.length > 0) {
+    earlier.forEach((b) => b.replaceWith(b.textContent ?? ""))
+    root.normalize()
+  }
+  if (written.length === 0) return 0
   const alternatives = written
     .map((w, i) => [w, i] as const)
     // Longest first, so «1 Кор. 13:4» is not taken as a shorter reference inside it.
