@@ -671,6 +671,13 @@
     "signInLinkBackToPassword": "Use a password"
   },
   "profile": {
+    "myData": {
+      "label": "My data",
+      "hint": "Everything Equip keeps about you: profile, courses, test answers, work with its marks, certificates — in one file.",
+      "download": "Download",
+      "preparing": "Preparing the file…",
+      "failed": "Could not prepare the file. Please try again."
+    },
     "emails": {
       "label": "Course email",
       "hint": "Account email — sign-in, password, invitations — always arrives: an account cannot be used without it.",

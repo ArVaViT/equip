@@ -671,6 +671,13 @@
     "signInLinkBackToPassword": "Mit Passwort anmelden"
   },
   "profile": {
+    "myData": {
+      "label": "Meine Daten",
+      "hint": "Alles, was Equip über Sie speichert: Profil, Kurse, Testantworten, Arbeiten mit Bewertungen, Zertifikate — in einer Datei.",
+      "download": "Herunterladen",
+      "preparing": "Datei wird vorbereitet…",
+      "failed": "Die Datei konnte nicht vorbereitet werden. Bitte versuchen Sie es erneut."
+    },
     "emails": {
       "label": "E-Mails zu Kursen",
       "hint": "Konto-E-Mails — Anmeldung, Passwort, Einladungen — kommen immer: ohne sie lässt sich das Konto nicht nutzen.",

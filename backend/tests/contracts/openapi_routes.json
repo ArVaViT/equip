@@ -3535,6 +3535,15 @@
     "body": false
   },
   {
+    "method": "GET",
+    "path": "/api/v1/users/me/export",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  },
+  {
     "method": "POST",
     "path": "/api/v1/users/me/onboarding/complete",
     "params": [],
