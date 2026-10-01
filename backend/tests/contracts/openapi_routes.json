@@ -3348,6 +3348,35 @@
     "body": true
   },
   {
+    "method": "POST",
+    "path": "/api/v1/review/check",
+    "params": [],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/review/course/{course_id}",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
     "method": "GET",
     "path": "/api/v1/reviews/course/{course_id}",
     "params": [

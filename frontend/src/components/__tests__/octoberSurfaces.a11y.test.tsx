@@ -19,6 +19,8 @@ import { VerseCard } from "@/components/chapter/VerseCard"
 import { LessonNote } from "@/components/chapter/LessonNote"
 import MyNotesPage from "@/pages/Notes/MyNotesPage"
 import { notesService } from "@/services/notes"
+import { WeeklyReview } from "@/components/review/WeeklyReview"
+import { reviewService } from "@/services/review"
 import { ImportQuestionsDialog } from "@/components/quiz/editor/ImportQuestionsDialog"
 import { AddToCalendarButton } from "@/components/calendar/AddToCalendarButton"
 import TranscriptPage from "@/pages/Certificates/TranscriptPage"
@@ -152,6 +154,19 @@ describe("today's surfaces have no axe violations", () => {
     ])
     const { container } = wrap(<MyNotesPage />)
     await screen.findByText("Пятидесятница")
+    expect(await axe(container)).toHaveNoViolations()
+  })
+
+  it("the week's review, answered", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(reviewService, "forCourse").mockResolvedValue([
+      { id: "q", question_text: "Кто?", options: [{ id: "a", option_text: "Пётр" }, { id: "b", option_text: "Павел" }] },
+    ])
+    vi.spyOn(reviewService, "check").mockResolvedValue({ correct: true, correct_option_id: "a" })
+    const { container } = wrap(<WeeklyReview courseId="k" />)
+    await user.click(await screen.findByRole("button", { name: "Начать" }))
+    await user.click(screen.getByRole("button", { name: "Пётр" }))
+    await screen.findByText("Верно")
     expect(await axe(container)).toHaveNoViolations()
   })
 })
