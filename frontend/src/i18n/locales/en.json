@@ -938,6 +938,18 @@
     "goHome": "Go Home"
   },
   "chapter": {
+    "reading": {
+      "label": "Reading settings",
+      "size": "Text size",
+      "sizes": {
+        "s": "Small text",
+        "m": "Normal text",
+        "l": "Large text",
+        "xl": "Extra large text"
+      },
+      "easy": "Easy reading",
+      "easyHint": "Looser lines and more space between words"
+    },
     "attachmentEyebrow": "Attachment",
     "blocksLoadFailed": "Couldn't load this lesson",
     "blocksLoadFailedDescription": "We couldn't load the lesson content. This is usually a temporary network issue — try again.",

@@ -56,6 +56,8 @@ import { recordCourseView } from "@/lib/recentlyViewed"
 import { ReadingSkeleton } from "@/components/chapter/ReadingSkeleton"
 import { orNotTranslated } from "@/lib/untranslated"
 import { useNamedPageTitle } from "@/hooks/usePageTitle"
+import { ReadingControls } from "@/components/chapter/ReadingControls"
+import { useReadingPrefs } from "@/lib/readingPrefs"
 
 /**
  * Renders a sanitised text-block via ``dangerouslySetInnerHTML`` and
@@ -601,6 +603,8 @@ export default function ChapterView() {
   const placement = findChapter(structure, chapterId)
 
   const chapter = placement?.chapter ?? null
+  // The reader's own text size and easy-reading mode (the "Aa" in the header).
+  const [readingPrefs, setReadingPrefs] = useReadingPrefs()
   // Named by the lesson, as the course page is by the course.
   useNamedPageTitle(chapter?.title)
   const currentIdx = placement?.index ?? -1
@@ -830,13 +834,19 @@ export default function ChapterView() {
               </span>
             </>
           )}
+          {chapterType === "reading" && <ReadingControls prefs={readingPrefs} onChange={setReadingPrefs} />}
         </p>
         <h1 className="font-serif text-3xl font-semibold tracking-tight text-wrap-safe sm:text-4xl">
           {orNotTranslated(t, chapter.title)}
         </h1>
       </header>
 
-      <div data-tour="chapter-body" className="mb-10 space-y-6">
+      <div
+        data-tour="chapter-body"
+        data-reading-size={readingPrefs.size}
+        data-reading-easy={readingPrefs.easy ? "true" : undefined}
+        className="mb-10 space-y-6"
+      >
         {chapterType === "reading" && (
           <ChapterBodyBlocks
             loading={loadingBlocks}

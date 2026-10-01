@@ -763,6 +763,23 @@
   hyphens: auto;
   text-align: left;
 }
+/* The reader's own setting (the "Aa" beside a lesson): a size either side of
+   the default, and easy reading — looser lines and a little more space between
+   letters and words. Set on the lesson body, so every text block follows. */
+[data-reading-size="s"] .prose {
+  font-size: 1rem;
+}
+[data-reading-size="l"] .prose {
+  font-size: 1.25rem;
+}
+[data-reading-size="xl"] .prose {
+  font-size: 1.4375rem;
+}
+[data-reading-easy="true"] .prose {
+  line-height: 1.95;
+  letter-spacing: 0.012em;
+  word-spacing: 0.08em;
+}
 .prose h1 {
   /* Was text-3xl and competing with the page title above it, which is also
      3xl — two h1s at the same size, one of them lying. The chapter title owns

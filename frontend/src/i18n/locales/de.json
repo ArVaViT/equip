@@ -938,6 +938,18 @@
     "goHome": "Zur Startseite"
   },
   "chapter": {
+    "reading": {
+      "label": "Leseeinstellungen",
+      "size": "Textgröße",
+      "sizes": {
+        "s": "Kleiner Text",
+        "m": "Normaler Text",
+        "l": "Großer Text",
+        "xl": "Sehr großer Text"
+      },
+      "easy": "Leicht lesen",
+      "easyHint": "Mehr Zeilen- und Wortabstand"
+    },
     "attachmentEyebrow": "Anhang",
     "blocksLoadFailed": "Diese Lektion konnte nicht geladen werden",
     "blocksLoadFailedDescription": "Der Lektionsinhalt ließ sich nicht laden. Meist ist das ein vorübergehendes Netzproblem — versuchen Sie es erneut.",
