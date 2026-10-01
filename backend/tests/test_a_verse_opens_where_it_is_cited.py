@@ -154,3 +154,19 @@ def test_whole_chapters_and_another_edition_s_numbering_are_still_looked_up(
     )
     assert r.status_code == 200
     assert sorted(calls) == ["acts 2:1-47", "joel 4:1", "psalms 119:1-176"]
+
+
+def test_the_verse_cache_stays_within_its_text_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Long passages are kept, but never past a cap on the text held."""
+    from app.services.bible import api_source
+
+    monkeypatch.setattr(api_source, "_cache", {})
+    monkeypatch.setattr(api_source, "_cache_chars", 0)
+    monkeypatch.setattr(api_source, "_CACHE_MAX_CHARS", 30)
+    for i in range(5):
+        api_source._remember(("en", f"PSA.{i}"), "x" * 10)
+    assert list(api_source._cache) == [("en", "PSA.2"), ("en", "PSA.3"), ("en", "PSA.4")]
+    assert api_source._cache_chars == 30
+    # A 404 remembered as absent costs nothing against the budget.
+    api_source._remember(("en", "JUD.2.1"), None)
+    assert api_source._cache[("en", "JUD.2.1")] is None

@@ -27,4 +27,10 @@ describe("dropPopupAttributesFromStaticElement", () => {
     dropPopupAttributesFromStaticElement(el)
     expect(el.getAttribute("aria-haspopup")).toBe("dialog")
   })
+
+  it("clears them from a focusable div with no role", () => {
+    const el = marked('<div tabindex="0">Tile</div>')
+    dropPopupAttributesFromStaticElement(el)
+    expect(el.getAttribute("aria-haspopup")).toBeNull()
+  })
 })

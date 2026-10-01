@@ -91,7 +91,9 @@ export const EDITORIAL_TOUR_BASE = {
   },
 } satisfies Partial<Config>
 
-const INTERACTIVE = "a[href], button, input, select, textarea, summary, [role=button], [role=link], [role=tab], [role=menuitem], [tabindex]:not([tabindex='-1'])"
+// Elements a popup attribute is allowed on. Not `[tabindex]`: a focusable
+// div with no role still may not carry aria-haspopup.
+const INTERACTIVE = "a[href], button, input, select, textarea, summary, [role=button], [role=link], [role=tab], [role=menuitem], [role=combobox]"
 
 /**
  * driver.js marks whatever it spotlights as a popup trigger
