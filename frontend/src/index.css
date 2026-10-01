@@ -849,7 +849,8 @@
 /* A Bible reference that opens its verse (lib/scriptureLinks). Reads as the
  * text it was — same font, same colour — with a dotted underline that says
  * "tap me" without turning every citation into a link-blue word. */
-.prose .verse-ref {
+.prose .verse-ref,
+.prose-verse .verse-ref {
   @apply cursor-pointer rounded-sm underline decoration-dotted decoration-1 underline-offset-4 decoration-ink-muted/70 hover:decoration-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand;
   font: inherit;
   color: inherit;
