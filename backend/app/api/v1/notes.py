@@ -112,6 +112,24 @@ def delete_note(
     db.commit()
 
 
+@router.get("/me/chapters", response_model=list[str])
+def my_noted_chapters(
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[str]:
+    """Only which lessons have a note — for marking them in a list, without
+    sending every note's text and looking up every title to do it."""
+    response.headers["Cache-Control"] = "no-store"
+    return [
+        chapter_id
+        for (chapter_id,) in db.query(ChapterNote.chapter_id)
+        .join(Chapter, Chapter.id == ChapterNote.chapter_id)
+        .filter(ChapterNote.user_id == current_user.id, Chapter.deleted_at.is_(None))
+        .all()
+    ]
+
+
 @router.get("/me", response_model=list[NoteInList])
 def my_notes(
     response: Response,

@@ -57,6 +57,12 @@ export const notesService = {
     await settled()
     await api.delete(`/notes/chapters/${encodeURIComponent(chapterId)}`)
   },
+  /** Only which lessons have a note — after any save still on its way, so a
+   *  note just written is marked. */
+  async notedChapters(): Promise<string[]> {
+    await settled()
+    return (await api.get<string[]>("/notes/me/chapters")).data
+  },
   /** Every note, after any save still on its way — "All notes" from a lesson
    *  must list what was just typed there. */
   async mine(): Promise<NoteInList[]> {

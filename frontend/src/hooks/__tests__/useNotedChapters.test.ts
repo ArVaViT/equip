@@ -14,16 +14,13 @@ describe("useNotedChapters", () => {
   })
 
   it("is the set of lessons with a note", async () => {
-    vi.spyOn(notesService, "mine").mockResolvedValue([
-      { chapter_id: "c1" } as never,
-      { chapter_id: "c3" } as never,
-    ])
+    vi.spyOn(notesService, "notedChapters").mockResolvedValue(["c1", "c3"])
     const { result } = renderHook(() => useNotedChapters())
     await waitFor(() => expect([...result.current]).toEqual(["c1", "c3"]))
   })
 
   it("is empty when the notes cannot be read", async () => {
-    const mine = vi.spyOn(notesService, "mine").mockRejectedValue(new Error("offline"))
+    const mine = vi.spyOn(notesService, "notedChapters").mockRejectedValue(new Error("offline"))
     const { result } = renderHook(() => useNotedChapters())
     await waitFor(() => expect(mine).toHaveBeenCalled())
     expect(result.current.size).toBe(0)

@@ -9,7 +9,7 @@ import { notesService } from "@/services/notes"
 export function useNotedChapters(): Set<string> {
   const { user } = useAuth()
   const { data } = useAsyncData(
-    async () => (user ? new Set((await notesService.mine().catch(() => [])).map((n) => n.chapter_id)) : new Set<string>()),
+    async () => (user ? new Set(await notesService.notedChapters().catch(() => [])) : new Set<string>()),
     [user?.id],
   )
   return data ?? new Set<string>()

@@ -130,3 +130,9 @@ def test_the_notes_page_leaves_out_the_bin_and_unlinks_what_cannot_be_opened(
     [gone] = [n for n in listed if n["chapter_id"] == drafted]
     assert gone["body"] == f"note {drafted}"
     assert gone["course_title"] is None and gone["chapter_title"] is None
+
+
+def test_the_lessons_with_a_note_come_without_the_notes(student_client: TestClient, db: Session, student: User) -> None:
+    chapter = _lesson(db)
+    student_client.put(f"{NOTES}/chapters/{chapter}", json={"body": "Mine"})
+    assert student_client.get(f"{NOTES}/me/chapters").json() == [chapter]

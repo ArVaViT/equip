@@ -2829,6 +2829,15 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/notes/me/chapters",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/notifications",
     "params": [
       [
