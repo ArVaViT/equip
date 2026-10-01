@@ -56,4 +56,30 @@ describe("ResultsView", () => {
     expect(screen.getAllByText(i18n.t("quiz.result.correct")).length).toBeGreaterThanOrEqual(2)
     expect(screen.getAllByText(i18n.t("quiz.result.incorrect")).length).toBeGreaterThanOrEqual(2)
   })
+
+  it("on an exam, which hides the key, still calls a right answer right", () => {
+    const exam = {
+      ...result,
+      answers: result.answers!.map((a) => ({ ...a, correct_option_id: null })),
+    } as QuizAttempt
+    render(
+      <I18nextProvider i18n={i18n}>
+        <ResultsView
+          result={exam}
+          quiz={{ passing_score: 70 } as Quiz}
+          questions={questions}
+          answers={{ q1: { selected_option_id: "a" }, q2: { selected_option_id: "c" } } as never}
+        />
+      </I18nextProvider>,
+    )
+    const right = screen.getByText("Пётр").closest("div")!
+    expect(within(right).getByText(i18n.t("quiz.result.correct"))).toBeInTheDocument()
+    expect(within(right).queryByText(i18n.t("quiz.result.incorrect"))).toBeNull()
+    expect(right.textContent).not.toContain("✗")
+
+    const wrongPick = screen.getByText("Рим").closest("div")!
+    expect(within(wrongPick).getByText(i18n.t("quiz.result.incorrect"))).toBeInTheDocument()
+    // The key stays hidden.
+    expect(screen.queryByText(i18n.t("quiz.result.rightAnswer"))).toBeNull()
+  })
 })

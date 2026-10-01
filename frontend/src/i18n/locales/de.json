@@ -2946,6 +2946,7 @@
       "open_other": "Meine Anmerkungen ({{count}})",
       "empty": "Speichern Sie eine Anmerkung, die Sie oft schreiben – sie steht dann hier, auf all Ihren Geräten.",
       "save": "Diese Rückmeldung als Anmerkung speichern",
+      "tooLong": "Speichern lässt sich Feedback bis {{max}} Zeichen.",
       "remove": "Anmerkung „{{comment}}“ entfernen"
     },
     "title": "Bewertungsliste",

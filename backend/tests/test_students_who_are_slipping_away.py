@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 
 from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
+from app.models.cohort import Cohort
 from app.models.course import Chapter, Module
 from app.models.enrollment import Enrollment
 from app.models.grade_exemption import GradeExemption
@@ -60,7 +61,9 @@ def _setup(db: Session) -> dict[str, User]:
     db.add_all([late1, late2, future])
     db.flush()
 
-    people = {n: _person(db, n) for n in ("active", "quiet", "new", "missed", "excused", "reader", "done")}
+    people = {
+        n: _person(db, n) for n in ("active", "quiet", "new", "missed", "excused", "reader", "done", "gone", "again")
+    }
     for name, enrolled, progress in (
         ("active", 30, 10),
         ("quiet", 30, 10),
@@ -69,6 +72,8 @@ def _setup(db: Session) -> dict[str, User]:
         ("excused", 30, 10),
         ("reader", 30, 10),
         ("done", 30, 100),
+        ("gone", 150, 10),
+        ("again", 200, 10),
     ):
         db.add(
             Enrollment(
@@ -79,6 +84,21 @@ def _setup(db: Session) -> dict[str, User]:
                 enrolled_at=_days(enrolled),
             )
         )
+
+    # Second time through, in a new cohort (ADR-010: a second enrolment row).
+    cohort = Cohort(start_date=_days(20), end_date=NOW + timedelta(days=60), status="active")
+    db.add(cohort)
+    db.flush()
+    db.add(
+        Enrollment(
+            id=str(uuid.uuid4()),
+            user_id=people["again"].id,
+            course_id=course.id,
+            cohort_id=cohort.id,
+            progress=10,
+            enrolled_at=_days(20),
+        )
+    )
 
     def read(name: str, ago: float) -> None:
         db.add(ChapterProgress(user_id=people[name].id, chapter_id=reading.id, completed=True, completed_at=_days(ago)))
@@ -107,6 +127,9 @@ def _setup(db: Session) -> dict[str, User]:
         )
     )
     read("reader", 2)
+    # Stopped in May: past the call that helps.
+    read("gone", 140)
+    read("again", 12)
     hand_in("reader", late1, 9)
     hand_in("reader", late2, 2)
 
@@ -123,13 +146,17 @@ def _setup(db: Session) -> dict[str, User]:
 
 def test_who_is_on_the_list_and_why(db: Session, teacher: User) -> None:
     people = _setup(db)
-    found = {r.full_name: r for r in students_at_risk(db, TEACHER_ID, now=NOW)}
+    rows = students_at_risk(db, TEACHER_ID, now=NOW)
+    found = {r.full_name: r for r in rows}
 
-    assert set(found) == {"quiet", "missed"}
+    assert set(found) == {"quiet", "missed", "again"}
+    assert len(rows) == len(found)  # two enrolments, one line
+    assert found["again"].quiet_days == 12
     assert found["quiet"].quiet_days == 10
     assert found["missed"].missed_deadlines == 2
-    # The one who missed most comes first.
-    assert next(iter(students_at_risk(db, TEACHER_ID, now=NOW))).full_name == "missed"
+    assert found["again"].missed_deadlines == 2
+    # Most deadlines missed first, then the quietest.
+    assert [r.full_name for r in rows] == ["again", "missed", "quiet"]
     assert people["reader"]  # reading two days ago kept them off it
 
 

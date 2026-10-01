@@ -11,6 +11,9 @@ fifth it is a formality. Two signals, both plain enough to act on:
   date with nothing handed in, not counting work the student was excused from
   or work that was due before they enrolled.
 
+Nobody quiet for longer than :data:`GONE_AFTER` is listed: the list is for
+the call that still helps.
+
 Reading counts as activity here. The progress board's "last seen" counts only
 tests and submissions, so a student reading every lesson looked gone; this
 list would have sent a teacher to call the wrong people.
@@ -24,7 +27,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import func
 
@@ -43,6 +46,10 @@ if TYPE_CHECKING:
 
 QUIET_AFTER = timedelta(days=7)
 MISSED_DEADLINES = 2
+# Past a month of silence the call is a formality, and those students, having
+# missed the most deadlines, would sit at the top for ever and push this
+# week's quiet ones below the fold.
+GONE_AFTER = timedelta(days=30)
 
 
 @dataclass(frozen=True)
@@ -87,6 +94,15 @@ def students_at_risk(db: Session, teacher_id: uuid.UUID, *, now: datetime | None
     )
     if not roster:
         return []
+    # Taking a course again in a new cohort is a second enrolment row (ADR-010):
+    # one person, one line, from the latest enrolment.
+    latest: dict[tuple[str, str], Any] = {}
+    for row in roster:
+        key = (str(row[0]), row[1])
+        kept = latest.get(key)
+        if kept is None or (row[2] is not None and (kept[2] is None or _aware(row[2]) > _aware(kept[2]))):
+            latest[key] = row
+    roster = list(latest.values())
 
     last: dict[tuple[str, str], datetime] = {}
 
@@ -183,6 +199,8 @@ def students_at_risk(db: Session, teacher_id: uuid.UUID, *, now: datetime | None
             and (student, assignment_id) not in excused
         )
         quiet = moment - seen
+        if quiet > GONE_AFTER:
+            continue
         if quiet >= QUIET_AFTER or missed >= MISSED_DEADLINES:
             found.append(
                 AtRisk(

@@ -2946,6 +2946,7 @@
       "open_other": "My comments ({{count}})",
       "empty": "Save a comment you write often and it will be here, on all your devices.",
       "save": "Save this feedback as a comment",
+      "tooLong": "Only feedback up to {{max}} characters can be saved.",
       "remove": "Remove the comment “{{comment}}”"
     },
     "title": "Marking queue",

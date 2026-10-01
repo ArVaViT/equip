@@ -132,7 +132,13 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                     .sort((a, b) => a.order_index - b.order_index)
                     .map((opt) => {
                       const isSelected = userAnswer?.selected_option_id === opt.id
-                      const isRight = answerResult?.correct_option_id === opt.id
+                      // An exam hides `correct_option_id` but still says whether the
+                      // reader's own answer was right: go by that for their choice,
+                      // or a right answer is read aloud as "Неверно".
+                      const isRight =
+                        answerResult?.correct_option_id === opt.id ||
+                        (isSelected && answerResult?.is_correct === true)
+                      const isWrong = isSelected && answerResult?.is_correct === false
                       const displayText =
                         q.question_type === "true_false"
                           ? getTrueFalseLabel(opt.option_text, t)
@@ -143,7 +149,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                           className={`rounded px-2 py-1 text-xs ${
                             isRight
                               ? "bg-success/15 font-medium text-success-ink"
-                              : isSelected
+                              : isWrong
                                 ? "bg-destructive/15 text-destructive-ink"
                                 : "text-ink-muted"
                           }`}
@@ -151,7 +157,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                           {/* Glyphs for the eye, words for the ear — and the
                               reader's own choice marked even when it was right,
                               which colour alone could not say. */}
-                          {isSelected && !isRight && <span aria-hidden>✗ </span>}
+                          {isWrong && <span aria-hidden>✗ </span>}
                           {isRight && <span aria-hidden>✓ </span>}
                           {displayText}
                           {(isRight || isSelected) && (
@@ -159,7 +165,7 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                               {isSelected && <span>({t("quiz.result.yourAnswer")})</span>}
                               {isRight && !isSelected && <span className="sr-only">{t("quiz.result.rightAnswer")}</span>}
                               {isRight && isSelected && <span className="sr-only">{t("quiz.result.correct")}</span>}
-                              {isSelected && !isRight && <span className="sr-only">{t("quiz.result.incorrect")}</span>}
+                              {isWrong && <span className="sr-only">{t("quiz.result.incorrect")}</span>}
                             </span>
                           )}
                         </div>

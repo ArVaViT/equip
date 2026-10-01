@@ -26,7 +26,9 @@ export function CommentLibrary({ current, onInsert }: { current: string; onInser
   const applyUser = auth?.applyUser
   if (!user || !applyUser) return null
   const library = user.comment_library ?? []
-  const draft = current.trim().slice(0, COMMENT_MAX_LENGTH)
+  // A remark too long to keep is not saved cut short: the button stays off.
+  const draft = current.trim()
+  const tooLong = draft.length > COMMENT_MAX_LENGTH
 
   const edit = async (change: { add?: string; remove?: string }) => {
     setBusy(true)
@@ -51,8 +53,8 @@ export function CommentLibrary({ current, onInsert }: { current: string; onInser
           <p className="text-xs text-ink-muted">{t("grading.library.empty")}</p>
         ) : (
           <ul className="max-h-64 space-y-1 overflow-y-auto">
-            {library.map((comment) => (
-              <li key={comment} className="flex items-start gap-1">
+            {library.map((comment, i) => (
+              <li key={`${i}:${comment}`} className="flex items-start gap-1">
                 <button
                   type="button"
                   onClick={() => onInsert(comment)}
@@ -75,13 +77,16 @@ export function CommentLibrary({ current, onInsert }: { current: string; onInser
         )}
         <button
           type="button"
-          disabled={busy || draft === "" || library.includes(draft)}
+          disabled={busy || draft === "" || tooLong || library.includes(draft)}
           onClick={() => void edit({ add: draft })}
           className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-edge px-2 py-1.5 text-xs transition-colors hover:bg-muted/40 disabled:opacity-50"
         >
           <BookmarkPlus className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
           {t("grading.library.save")}
         </button>
+        {tooLong && (
+          <p className="text-xs text-ink-muted">{t("grading.library.tooLong", { max: COMMENT_MAX_LENGTH })}</p>
+        )}
       </PopoverContent>
     </Popover>
   )
