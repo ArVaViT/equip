@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 
 from app.core.config import settings
 from app.core.i18n import t
+from app.models.course import Course
 from app.models.user import User
 from app.services.email.course_mail import send_course_mail
 from app.services.email.render import Fact, Message
@@ -78,6 +79,9 @@ def send_certificate_email(db: Session, *, cert: Certificate, locale: LocaleCode
             live_title or cert.course_title or cert.archived_course_title or t(locale, "fallback.your_course")
         )
         base = settings.FRONTEND_URL.rstrip("/")
+        # A course since moved to the bin has no page to go back to.
+        course = db.get(Course, cert.course_id) if cert.course_id else None
+        course_open = course is not None and course.deleted_at is None
         number = cert.certificate_number if issued else None
         message = build_certificate_message(
             locale=locale,
@@ -85,9 +89,13 @@ def send_certificate_email(db: Session, *, cert: Certificate, locale: LocaleCode
             issued=issued,
             certificate_number=number,
             verify_url=f"{base}/verify/{number}" if number else None,
-            action_url=f"{base}/certificates/{cert.id}"
-            if issued or not cert.course_id
-            else f"{base}/courses/{cert.course_id}",
+            action_url=(
+                f"{base}/certificates/{cert.id}"
+                if issued
+                else f"{base}/courses/{cert.course_id}"
+                if course_open
+                else f"{base}/certificates"
+            ),
         )
         subject = t(locale, f"email.cert.subject.{'issued' if issued else 'rejected'}", course=course_title)
     except Exception:

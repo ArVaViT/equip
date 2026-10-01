@@ -1063,6 +1063,8 @@
       "private": "Only you can see this. It saves itself."
     },
     "page": {
+      "deleteConfirmTitle": "Delete this note?",
+      "deleteConfirmDescription": "It cannot be brought back.",
       "deleteFailed": "Could not delete the note",
       "delete": "Delete note",
       "unavailable": "This lesson is not available now",
@@ -1074,6 +1076,16 @@
       "loadFailed": "Could not load your notes.",
       "profileHint": "Your notes on lessons, by course"
     }
+  },
+  "review": {
+    "title": "This week's review",
+    "hint_one": "{{count}} question from what you have done — for you; it does not affect grades.",
+    "hint_other": "{{count}} questions from what you have done — for you; they do not affect grades.",
+    "start": "Start",
+    "progress": "Question {{n}} of {{total}}",
+    "next": "Next",
+    "finish": "Done",
+    "result": "{{right}} of {{total}} right. New questions next week."
   },
   "quizEditor": {
     "import": {

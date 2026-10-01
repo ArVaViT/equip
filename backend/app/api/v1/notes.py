@@ -19,7 +19,7 @@ from app.core.database import get_db
 from app.models.chapter_note import ChapterNote
 from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.enrollment import Enrollment
-from app.models.user import User  # noqa: TC001
+from app.models.user import User, UserRole
 from app.schemas.locale import normalize_locale
 from app.services.content_versions import fetch_cv_entity_texts_with_fallback
 
@@ -184,7 +184,8 @@ def my_notes(
             body=note.body,
             updated_at=note.updated_at,
             # The same rule as reading the lesson (``verify_chapter_access``).
-            available=str(course.created_by) == str(current_user.id)
+            available=current_user.role == UserRole.ADMIN.value
+            or str(course.created_by) == str(current_user.id)
             or (course.status == CourseStatus.PUBLISHED and course.id in enrolled),
         )
         for note, chapter, module, course in rows

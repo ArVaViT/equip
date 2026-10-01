@@ -4,6 +4,7 @@ import { Link } from "react-router-dom"
 import { NotebookPen, RefreshCw, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { useConfirm } from "@/components/ui/alert-dialog"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { Section } from "@/components/layout/Section"
 import { EmptyState, ErrorState, PageHeader } from "@/components/patterns"
@@ -24,7 +25,15 @@ export default function MyNotesPage() {
   const { t } = useTranslation()
   const { data, loading, error, refetch } = useAsyncData(() => notesService.mine(), [])
   const [removed, setRemoved] = useState<Set<string>>(new Set())
+  const confirm = useConfirm()
   const remove = async (chapterId: string) => {
+    const ok = await confirm({
+      title: t("notes.page.deleteConfirmTitle"),
+      description: t("notes.page.deleteConfirmDescription"),
+      confirmLabel: t("notes.page.delete"),
+      tone: "destructive",
+    })
+    if (!ok) return
     try {
       await notesService.remove(chapterId)
       setRemoved((prev) => new Set(prev).add(chapterId))

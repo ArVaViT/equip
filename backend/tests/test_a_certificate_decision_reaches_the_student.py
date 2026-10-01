@@ -68,3 +68,15 @@ def test_a_student_who_stopped_it_gets_no_mail(db: Session, teacher: User, stude
         certificate_service.admin_approve(db, cert.id, admin)
     send.assert_not_called()
     assert cert.status == "approved"
+
+
+def test_the_mail_says_how_to_stop_it_in_words(db: Session, teacher: User, student: User, admin: User) -> None:
+    student.preferred_locale = "ru"
+    db.commit()
+    cert = _cert(db, "teacher_approved")
+    sent: list[dict] = []
+    with patch.object(course_mail, "send_email", side_effect=lambda **kw: sent.append(kw)):
+        certificate_service.admin_approve(db, cert.id, admin)
+    [mail] = sent
+    assert "email.unsubscribe" not in mail["html"] and "email.unsubscribe" not in mail["text"]
+    assert "Не присылать письма о решениях по свидетельствам" in mail["html"]

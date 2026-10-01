@@ -1063,6 +1063,8 @@
       "private": "Nur Sie sehen das. Es speichert sich selbst."
     },
     "page": {
+      "deleteConfirmTitle": "Diese Notiz löschen?",
+      "deleteConfirmDescription": "Sie kann nicht wiederhergestellt werden.",
       "deleteFailed": "Notiz konnte nicht gelöscht werden",
       "delete": "Notiz löschen",
       "unavailable": "Diese Lektion ist derzeit nicht verfügbar",
@@ -1074,6 +1076,16 @@
       "loadFailed": "Notizen konnten nicht geladen werden.",
       "profileHint": "Ihre Notizen zu Lektionen, nach Kurs"
     }
+  },
+  "review": {
+    "title": "Wiederholung der Woche",
+    "hint_one": "{{count}} Frage aus dem Gelernten — für Sie, ohne Einfluss auf Noten.",
+    "hint_other": "{{count}} Fragen aus dem Gelernten — für Sie, ohne Einfluss auf Noten.",
+    "start": "Beginnen",
+    "progress": "Frage {{n}} von {{total}}",
+    "next": "Weiter",
+    "finish": "Fertig",
+    "result": "{{right}} von {{total}} richtig. Neue Fragen nächste Woche."
   },
   "quizEditor": {
     "import": {
