@@ -34,6 +34,7 @@ then could not publish behind the empty ones he was left with.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Literal
@@ -118,6 +119,19 @@ class ReadinessReport:
 
 
 # ─── Internal helpers ───────────────────────────────────────────────────
+
+
+_IMG = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+_ALT = re.compile(r"""\balt\s*=\s*(["'])(.*?)\1""", re.IGNORECASE | re.DOTALL)
+
+
+def _has_unlabelled_image(html: str) -> bool:
+    """Whether ``html`` has an image with no description (no ``alt``, or a blank one)."""
+    for tag in _IMG.findall(html):
+        alt = _ALT.search(tag)
+        if alt is None or not alt.group(2).strip():
+            return True
+    return False
 
 
 def _has_meaningful_content(block: ChapterBlock, blocks_with_cv_content: set[str]) -> bool:
@@ -325,6 +339,8 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
     # in O(1) per block via ``_has_meaningful_content``.
     all_block_ids = [str(b.id) for blocks in blocks_by_chapter.values() for b in blocks]
     blocks_with_cv_content: set[str] = set()
+    blocks_with_images: set[str] = set()
+    blocks_with_unlabelled_images: set[str] = set()
     if all_block_ids:
         from app.models.content_version import ContentVersion, ContentVersionStatus
 
@@ -332,9 +348,8 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
         # portable across SQLite (tests) and Postgres (prod). Pre-5e2
         # behaviour treated whitespace-only ``content`` as missing, so
         # we preserve that semantics on top of the cv backing store.
-        blocks_with_cv_content = {
-            eid
-            for (eid, text) in db.query(ContentVersion.entity_id, ContentVersion.text)
+        block_rows = (
+            db.query(ContentVersion.entity_id, ContentVersion.text, ContentVersion.locale)
             .filter(
                 ContentVersion.entity_type == "chapter_block",
                 ContentVersion.entity_id.in_(all_block_ids),
@@ -343,7 +358,20 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
                 ContentVersion.status == ContentVersionStatus.OK,
             )
             .all()
-            if text and text.strip()
+        )
+        blocks_with_cv_content = {eid for (eid, text, _locale) in block_rows if text and text.strip()}
+        # Images without a description, read in the language the teacher
+        # writes in: that is the text they can fix, and the translations
+        # carry its attributes over.
+        blocks_with_images = {
+            eid
+            for (eid, text, locale) in block_rows
+            if text and locale == (course.source_locale or locale) and _IMG.search(text)
+        }
+        blocks_with_unlabelled_images = {
+            eid
+            for (eid, text, locale) in block_rows
+            if text and locale == (course.source_locale or locale) and _has_unlabelled_image(text)
         }
 
     # Quizzes / assignments are looked up by chapter_id; eagerly load
@@ -396,6 +424,20 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
 
         if ctype == "reading":
             blocks = blocks_by_chapter.get(chapter.id, [])
+            # Only for lessons with pictures: a student who cannot see them
+            # hears the description or nothing at all.
+            unlabelled = [b for b in blocks if str(b.id) in blocks_with_unlabelled_images]
+            if any(str(b.id) in blocks_with_images for b in blocks):
+                checks.append(
+                    ReadinessCheck(
+                        id=f"images_have_alt:{chapter.id}",
+                        severity="recommended",
+                        passed=not unlabelled,
+                        message_key="courseReadiness.checks.imagesHaveAlt",
+                        subject=_make_chapter_subject(chapter),
+                        action=_open_chapter_action(chapter),
+                    )
+                )
             checks.append(
                 ReadinessCheck(
                     id=f"reading_has_content:{chapter.id}",
