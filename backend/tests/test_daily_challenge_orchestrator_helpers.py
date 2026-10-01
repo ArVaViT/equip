@@ -213,22 +213,36 @@ class TestValidateCandidateScripture:
         assert reason is not None
         assert "KJV" in reason
 
-    def test_lookup_miss_in_russian_rejects(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        """Synodal coverage gap — same kind of explicit failure."""
+    def test_a_verse_the_russian_edition_lacks_rejects(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A verse the Russian edition numbers differently — same kind of explicit failure."""
         monkeypatch.setattr(orch, "find_book", lambda _b: "rom")
-
-        def fake_lookup(_ref: Any, locale: str) -> Any:
-            return "English text" if locale == "en" else None
-
-        monkeypatch.setattr(orch, "lookup", fake_lookup)
+        monkeypatch.setattr(orch, "lookup", lambda _r, _l: "English text")
+        monkeypatch.setattr(orch, "canonical_for_display", lambda _r, _l: None)
         passed, reason = orch._validate_candidate_scripture({"verse_start": 5}, "Romans", 8)
         assert passed is False
         assert reason is not None
-        assert "Synodal" in reason
+        assert "Russian edition" in reason
 
-    def test_both_lookups_pass_returns_true_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_both_editions_have_it_returns_true_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(orch, "find_book", lambda _b: "rom")
         monkeypatch.setattr(orch, "lookup", lambda _r, _l: "some text")
+        monkeypatch.setattr(orch, "canonical_for_display", lambda _r, _l: "Russian text")
         passed, reason = orch._validate_candidate_scripture({"verse_start": 1, "verse_end": 3}, "Romans", 8)
         assert passed is True
         assert reason is None
+
+    def test_romans_8_is_not_measured_against_james(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """The bundled Russian file holds James under ``romans`` (#990), and
+        James has five chapters: Romans 8 was rejected there. The check no
+        longer asks that file for Russian at all."""
+        asked: list[str] = []
+
+        def bundle(_ref: Any, locale: str) -> Any:
+            asked.append(locale)
+            return "text" if locale == "en" else None  # the bundle "has no" Romans 8 in Russian
+
+        monkeypatch.setattr(orch, "lookup", bundle)
+        monkeypatch.setattr(orch, "canonical_for_display", lambda _r, _l: "Russian text of Romans 8:1")
+        passed, reason = orch._validate_candidate_scripture({"verse_start": 1}, "Romans", 8)
+        assert (passed, reason) == (True, None)
+        assert "ru" not in asked
