@@ -45,4 +45,13 @@ describe("ScriptureText", () => {
     expect(container.textContent).toBe("Напишите страницу о Пятидесятнице.")
     expect(screen.queryByRole("button")).toBeNull()
   })
+
+  it("keeps the author's line break inside a reference", async () => {
+    vi.spyOn(scriptureService, "passagesIn").mockResolvedValue([
+      { written: "Деян. 2:42", ref: "acts 2:42", text: "…", edition: "nrt" },
+    ])
+    const { container } = show("Прочитайте Деян.\n2:42 дома.")
+    await screen.findByRole("button", { name: "Открыть стих Деян. 2:42" })
+    expect(container.textContent).toBe("Прочитайте Деян.\n2:42 дома.")
+  })
 })

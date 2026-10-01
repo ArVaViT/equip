@@ -1,4 +1,4 @@
-import { Fragment, useState } from "react"
+import { Fragment, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { useAsyncData } from "@/hooks/useAsyncData"
@@ -19,6 +19,9 @@ export function ScriptureText({ text }: { text: string }) {
   const { t, i18n } = useTranslation()
   const { data } = useAsyncData(() => scriptureService.passagesIn(text), [text, i18n.language])
   const [open, setOpen] = useState<{ anchor: HTMLElement; passage: Passage } | null>(null)
+  // Another text (another assignment, another language): a card open on the
+  // old one would point at a button that is gone.
+  useEffect(() => setOpen(null), [text, i18n.language])
   const passages = data ?? []
   if (passages.length === 0) return <>{text}</>
 
@@ -30,13 +33,15 @@ export function ScriptureText({ text }: { text: string }) {
       .join("|")})(?!\\d)`,
     "gu",
   )
-  const parts: (string | Passage)[] = []
+  // The button shows what the author wrote — a line break or no-break space
+  // inside the reference included — not the server's spelling of it.
+  const parts: (string | { written: string; passage: Passage })[] = []
   let at = 0
   for (const m of text.matchAll(pattern)) {
     if (m.index === undefined) continue
     const passage = byWritten.get(m[0]) ?? [...byWritten.values()].find((p) => p.written.replace(/\s+/g, " ") === m[0].replace(/\s+/g, " "))
     if (!passage) continue
-    parts.push(text.slice(at, m.index), passage)
+    parts.push(text.slice(at, m.index), { written: m[0], passage })
     at = m.index + m[0].length
   }
   parts.push(text.slice(at))
@@ -52,10 +57,10 @@ export function ScriptureText({ text }: { text: string }) {
             type="button"
             className="verse-ref"
             aria-haspopup="dialog"
-            aria-label={t("scripture.open", { ref: part.written })}
+            aria-label={t("scripture.open", { ref: part.passage.written })}
             onClick={(e) => {
               const anchor = e.currentTarget
-              setOpen((current) => (current?.anchor === anchor ? null : { anchor, passage: part }))
+              setOpen((current) => (current?.anchor === anchor ? null : { anchor, passage: part.passage }))
             }}
           >
             {part.written}
