@@ -27,11 +27,10 @@ export function EmailSetting() {
   const off = user.email_off ?? []
 
   const toggle = async (kind: MailKind, on: boolean) => {
-    const next = on ? off.filter((k) => k !== kind) : [...off.filter((k) => k !== kind), kind]
     setSaving(kind)
     try {
-      const profile = await usersService.updateProfile({ email_off: next })
-      applyUser({ id: user.id, email_off: profile.email_off ?? next })
+      const saved = await usersService.setEmailKind(kind, on)
+      applyUser({ id: user.id, email_off: saved })
     } catch {
       toast({ title: t("profile.updateFailed"), variant: "destructive" })
     } finally {

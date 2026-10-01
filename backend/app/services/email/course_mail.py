@@ -65,7 +65,10 @@ def unsubscribe_token(person_id: str, kind: MailKind) -> str:
     if not settings.JWT_SECRET_KEY:
         raise RuntimeError("JWT_SECRET_KEY is not configured")
     return jwt.encode(
-        {"sub": person_id, "kind": kind, "aud": _AUDIENCE},
+        # ``role`` names no database role, so PostgREST — which trusts the
+        # same secret — refuses this token outright instead of reading it as
+        # an anonymous request on behalf of ``sub``.
+        {"sub": person_id, "kind": kind, "aud": _AUDIENCE, "role": "equip_unsubscribe_link"},
         settings.JWT_SECRET_KEY,
         algorithm=settings.JWT_ALGORITHM,
     )

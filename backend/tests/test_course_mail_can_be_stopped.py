@@ -66,7 +66,12 @@ class TestTheLink:
 
     def test_a_token_for_something_else_unsubscribes_nobody(self) -> None:
         # An iCal feed token is signed with the same secret; it must not work here.
-        ical = jwt.encode({"sub": "person-1", "aud": "equip-ical"}, settings.JWT_SECRET_KEY, algorithm="HS256")
+        # Everything an unsubscribe token carries, except its audience.
+        ical = jwt.encode(
+            {"sub": "person-1", "kind": "work_returned", "aud": "equip-ical"},
+            settings.JWT_SECRET_KEY,
+            algorithm="HS256",
+        )
         assert read_unsubscribe_token(ical) is None
         forged = jwt.encode({"sub": "p", "kind": "work_returned", "aud": "equip-unsubscribe"}, "not-the-key")
         assert read_unsubscribe_token(forged) is None
@@ -211,3 +216,44 @@ class TestOneMailPerDecision:
         assert r.status_code == 200, r.text
         assert r.json()["grade"] == 8
         send.assert_not_called()
+
+
+class TestTheRubricAfterAReturn:
+    """Found by review: a rubric re-saved on work sent back for a draft flipped
+    it to "graded" and mailed "marked" after "rewrite this"."""
+
+    def test_editing_the_grid_of_returned_work_keeps_it_returned_and_sends_nothing(
+        self, client: TestClient, db: Session, teacher: User, student: User
+    ) -> None:
+        from tests.test_rubrics import _attach, _course_with_assignment, _rubric, _submission
+
+        course, assignment = _course_with_assignment(db, "rb-mail")
+        rubric, made = _rubric(db, course.id, criteria=[[0, 5, 10]])
+        _attach(db, assignment, rubric)
+        submission = _submission(db, assignment)
+        db.commit()
+        url = f"/api/v1/rubrics/submission/{submission.id}/marks"
+        grid = {"marks": [{"criterion_id": str(made[0][0].id), "level_id": str(made[0][1][2].id)}]}
+        sent: list[dict[str, Any]] = []
+        with patch.object(course_mail, "send_email", side_effect=lambda **kw: sent.append(kw)):
+            assert client.put(url, json=grid).status_code == 200  # full grid: marked, one mail
+            r = client.put(
+                f"/api/v1/assignments/submissions/{submission.id}/grade",
+                json={"grade": 10, "feedback": "Ещё раз", "status": "returned"},
+            )
+            assert r.status_code == 200, r.text  # sent back: a second mail
+            grid["marks"][0]["comment"] = "уточнил"
+            assert client.put(url, json=grid).status_code == 200  # a comment edited: no mail
+        db.refresh(submission)
+        assert submission.status == "returned"
+        assert len(sent) == 2
+
+
+def test_an_empty_allowlist_lets_nobody_through(monkeypatch: pytest.MonkeyPatch) -> None:
+    from pydantic import SecretStr
+
+    monkeypatch.setattr(settings, "RESEND_API_KEY", SecretStr("re_test"))
+    monkeypatch.setattr(settings, "EMAIL_ALLOWLIST", "")
+    with patch("app.services.email.send.httpx.post") as post:
+        assert send_email(to="me@example.com", subject="s", html="h", kind="work_returned").reason == "not_allowed"
+    post.assert_not_called()

@@ -80,8 +80,12 @@ def _domain_of(address: str) -> str:
 
 
 def _allowed(to: str) -> bool:
-    """False when an allowlist is set and ``to`` is not on it (local and preview work)."""
-    if not settings.EMAIL_ALLOWLIST:
+    """False when an allowlist is set and ``to`` is not on it (local and preview work).
+
+    Set but empty means nobody: a guard that opens when it is misconfigured
+    is not a guard.
+    """
+    if settings.EMAIL_ALLOWLIST is None:
         return True
     allowed = {a.strip().lower() for a in settings.EMAIL_ALLOWLIST.split(",") if a.strip()}
     return to.strip().lower() in allowed

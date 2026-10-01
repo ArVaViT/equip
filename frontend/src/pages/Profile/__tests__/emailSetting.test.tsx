@@ -7,8 +7,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "@/i18n/config"
 import type { User } from "@/types"
 
-const updateProfile = vi.fn()
-vi.mock("@/services/users", () => ({ usersService: { updateProfile: (...a: unknown[]) => updateProfile(...a) } }))
+const setEmailKind = vi.fn()
+vi.mock("@/services/users", () => ({ usersService: { setEmailKind: (...a: unknown[]) => setEmailKind(...a) } }))
 vi.mock("@/lib/toast", () => ({ toast: vi.fn() }))
 
 const applyUser = vi.fn()
@@ -35,20 +35,21 @@ describe("EmailSetting", () => {
   const box = () => screen.getByRole("checkbox", { name: i18n.t("profile.emails.kinds.work_returned") })
 
   it("is on until the person turns it off", async () => {
-    updateProfile.mockResolvedValue({ email_off: ["work_returned"] })
+    setEmailKind.mockResolvedValue(["work_returned"])
     render(<EmailSetting />, { wrapper: Wrapper })
     expect(box()).toHaveAttribute("data-state", "checked")
     await userEvent.click(box())
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledWith({ email_off: ["work_returned"] }))
+    await waitFor(() => expect(setEmailKind).toHaveBeenCalledWith("work_returned", false))
     expect(applyUser).toHaveBeenCalledWith({ id: "u1", email_off: ["work_returned"] })
   })
 
-  it("turns back on, leaving any other kind as it was", async () => {
+  it("turns back on, and shows what the server now holds", async () => {
     currentUser = { ...currentUser, email_off: ["announcement", "work_returned"] } as User
-    updateProfile.mockResolvedValue({ email_off: ["announcement"] })
+    setEmailKind.mockResolvedValue(["announcement"])
     render(<EmailSetting />, { wrapper: Wrapper })
     expect(box()).toHaveAttribute("data-state", "unchecked")
     await userEvent.click(box())
-    await waitFor(() => expect(updateProfile).toHaveBeenCalledWith({ email_off: ["announcement"] }))
+    await waitFor(() => expect(setEmailKind).toHaveBeenCalledWith("work_returned", true))
+    expect(applyUser).toHaveBeenCalledWith({ id: "u1", email_off: ["announcement"] })
   })
 })

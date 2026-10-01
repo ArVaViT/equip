@@ -17,9 +17,11 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from fastapi import status as http_status
+from sqlalchemy import select
 
 from app.core.errors import ErrorCode, equip_error
 from app.core.i18n import t
+from app.models.assignment import AssignmentSubmission
 from app.services.audit_service import log_action
 from app.services.email.graded import send_graded_email
 from app.services.notification_service import create_notification, notification_text
@@ -31,7 +33,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy.orm import Session
 
-    from app.models.assignment import Assignment, AssignmentSubmission
+    from app.models.assignment import Assignment
 
 
 def apply_grade(
@@ -66,8 +68,14 @@ def apply_grade(
             },
         )
 
-    # Read before it changes: the mail below goes out once per decision.
-    previous_status = submission.status
+    # Read before it changes, under a row lock: the mail below goes out once
+    # per decision, and two overlapping requests (a double click, the rubric
+    # autosaving as the grid fills) would otherwise both read "submitted" and
+    # both send. The lock holds to the commit, so the second one waits and
+    # then reads the first one's status. (SQLite, in tests, ignores it.)
+    previous_status = db.execute(
+        select(AssignmentSubmission.status).where(AssignmentSubmission.id == submission.id).with_for_update()
+    ).scalar_one()
     submission.grade = grade
     submission.feedback = feedback
     submission.status = new_status

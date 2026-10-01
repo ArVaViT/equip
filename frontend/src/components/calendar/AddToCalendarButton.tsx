@@ -37,8 +37,10 @@ export function AddToCalendarButton({ event, className }: Props) {
     document.body.appendChild(a)
     a.click()
     a.remove()
-    // Revoked on the next tick: Safari drops the download if the URL dies first.
-    setTimeout(() => URL.revokeObjectURL(url), 0)
+    // Revoked a second later, not on the next tick: iOS Safari hands the
+    // file to the Calendar sheet asynchronously and drops it if the URL is
+    // already gone.
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
   return (

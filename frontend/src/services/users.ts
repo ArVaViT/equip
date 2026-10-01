@@ -33,6 +33,33 @@ export const usersService = {
   },
 
   /**
+   * Turn one kind of course mail on or off, starting from what the row holds
+   * now — not from this tab's copy. The unsubscribe link in a mail writes the
+   * same list from anywhere; a switch that wrote back a list read an hour ago
+   * would quietly turn that back on.
+   */
+  async setEmailKind(kind: MailKind, on: boolean): Promise<MailKind[]> {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) throw new Error("Not authenticated")
+    const { data: row, error: readError } = await supabase
+      .from("profiles")
+      .select("email_off")
+      .eq("id", session.user.id)
+      .single()
+    if (readError) throw readError
+    const current = ((row?.email_off as MailKind[] | null) ?? []).filter((k) => k !== kind)
+    const next = on ? current : [...current, kind]
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .update({ email_off: next })
+      .eq("id", session.user.id)
+      .select("email_off")
+      .single()
+    if (error) throw error
+    return ((profile?.email_off as MailKind[] | null) ?? next)
+  },
+
+  /**
    * Record the device's zone, unless the person has chosen one.
    *
    * The condition is in the write itself, not only in the caller: a zone
