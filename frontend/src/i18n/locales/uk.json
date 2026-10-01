@@ -1065,6 +1065,16 @@
     "wordsWithMin": "{{count}} / {{min}} потрібно",
     "yourAnswer": "Ваша відповідь:"
   },
+  "scripture": {
+    "open": "Відкрити вірш {{ref}}",
+    "edition": {
+      "bsb": "Berean Standard Bible",
+      "kjv": "King James Version",
+      "nrt": "Новый русский перевод",
+      "elberfelder": "Elberfelder Bibel",
+      "kulish": "Переклад Куліша, 1905"
+    }
+  },
   "quizEditor": {
     "import": {
       "open": "Вставити з тексту",

@@ -1029,6 +1029,16 @@
     "wordsWithMin": "{{count}} / {{min}} nötig",
     "yourAnswer": "Ihre Antwort:"
   },
+  "scripture": {
+    "open": "Vers {{ref}} öffnen",
+    "edition": {
+      "bsb": "Berean Standard Bible",
+      "kjv": "King James Version",
+      "nrt": "Новый русский перевод",
+      "elberfelder": "Elberfelder Bibel",
+      "kulish": "Переклад Куліша, 1905"
+    }
+  },
   "quizEditor": {
     "import": {
       "open": "Aus Text einfügen",

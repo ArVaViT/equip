@@ -3419,6 +3419,21 @@
     "body": true
   },
   {
+    "method": "POST",
+    "path": "/api/v1/scripture/passages",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
     "method": "GET",
     "path": "/api/v1/users/admin/users",
     "params": [

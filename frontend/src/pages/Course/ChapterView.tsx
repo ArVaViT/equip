@@ -58,6 +58,9 @@ import { orNotTranslated } from "@/lib/untranslated"
 import { useNamedPageTitle } from "@/hooks/usePageTitle"
 import { ReadingControls } from "@/components/chapter/ReadingControls"
 import { useReadingPrefs } from "@/lib/readingPrefs"
+import { linkScriptureIn } from "@/lib/scriptureLinks"
+import { scriptureService, type Passage } from "@/services/scripture"
+import { VerseCard } from "@/components/chapter/VerseCard"
 
 /**
  * Renders a sanitised text-block via ``dangerouslySetInnerHTML`` and
@@ -74,6 +77,28 @@ function TextBlockRender({ html }: { html: string }) {
   // each ``<img>``. Instead, delegate clicks at the wrapper div and
   // open the lightbox with the clicked image's src + alt.
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
+  // References in the block open their verse over the lesson (VerseCard).
+  // Found by the server after the block renders; until then, plain text.
+  const [passages, setPassages] = useState<Passage[]>([])
+  const [verse, setVerse] = useState<{ anchor: HTMLElement; passage: Passage } | null>(null)
+  useEffect(() => {
+    const root = ref.current
+    if (!root) return
+    let live = true
+    setVerse(null)
+    void scriptureService.passagesIn(root.textContent ?? "").then((found) => {
+      if (!live || found.length === 0) return
+      setPassages(found)
+      linkScriptureIn(
+        root,
+        found.map((p) => p.written),
+        (written) => t("scripture.open", { ref: written }),
+      )
+    })
+    return () => {
+      live = false
+    }
+  }, [html, t])
   useEffect(() => {
     // Order matters: ``renderToggleCalloutsIn`` rewrites parent
     // elements (``div[data-callout="toggle"]`` → ``<details>``), so
@@ -98,6 +123,12 @@ function TextBlockRender({ html }: { html: string }) {
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement
+    const cited = target.closest<HTMLElement>("[data-verse]")
+    if (cited && ref.current?.contains(cited)) {
+      const passage = passages[Number(cited.dataset.verse)]
+      if (passage) setVerse({ anchor: cited, passage })
+      return
+    }
     if (target.tagName !== "IMG") return
     const img = target as HTMLImageElement
     // Skip tiny / decorative images (icons, small thumbs inside a
@@ -132,6 +163,7 @@ function TextBlockRender({ html }: { html: string }) {
         translate="yes"
         dangerouslySetInnerHTML={{ __html: html }}
       />
+      {verse && <VerseCard anchor={verse.anchor} passage={verse.passage} onClose={() => setVerse(null)} />}
       {lightbox && (
         <ImageLightbox
           src={lightbox.src}

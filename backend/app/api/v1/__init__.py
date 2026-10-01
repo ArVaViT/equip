@@ -32,6 +32,7 @@ from app.api.v1 import (
     quizzes,
     reviews,
     rubrics,
+    scripture,
     users,
     verse_of_the_day,
 )
@@ -63,6 +64,7 @@ api_router.include_router(calendar_mod.event_router)
 api_router.include_router(calendar_ical.router)
 api_router.include_router(email_unsubscribe.router)
 api_router.include_router(verse_of_the_day.router)
+api_router.include_router(scripture.router)
 api_router.include_router(admin_org_settings.router)
 api_router.include_router(admin_organizations.router)
 api_router.include_router(admin_translations.router)

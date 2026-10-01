@@ -631,6 +631,16 @@
     "wordsWithMin": "{{count}} / {{min}} требуется",
     "yourAnswer": "Ваш ответ:"
   },
+  "scripture": {
+    "open": "Открыть стих {{ref}}",
+    "edition": {
+      "bsb": "Berean Standard Bible",
+      "kjv": "King James Version",
+      "nrt": "Новый русский перевод",
+      "elberfelder": "Elberfelder Bibel",
+      "kulish": "Переклад Куліша, 1905"
+    }
+  },
   "quizEditor": {
     "import": {
       "open": "Вставить из текста",
