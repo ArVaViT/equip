@@ -17,7 +17,7 @@ import type { MailKind } from "@/types"
  * Account mail — sign-in, password, invitations — has no switch: without it
  * an account cannot be used, and the hint says so.
  */
-const SENT_TODAY: MailKind[] = ["work_returned"]
+const SENT_TODAY: MailKind[] = ["work_returned", "certificate_decided"]
 
 export function EmailSetting() {
   const { user, applyUser } = useAuth()

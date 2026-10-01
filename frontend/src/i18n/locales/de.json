@@ -682,7 +682,8 @@
       "label": "E-Mails zu Kursen",
       "hint": "Konto-E-Mails — Anmeldung, Passwort, Einladungen — kommen immer: ohne sie lässt sich das Konto nicht nutzen.",
       "kinds": {
-        "work_returned": "Arbeit bewertet oder zurückgegeben"
+        "work_returned": "Arbeit bewertet oder zurückgegeben",
+        "certificate_decided": "Entscheidung über das Zertifikat"
       }
     },
     "fullName": "Vollständiger Name",
