@@ -2924,6 +2924,13 @@
     "yourGrid": "So wurde Ihre Arbeit bewertet"
   },
   "grading": {
+    "library": {
+      "open_one": "Meine Anmerkungen ({{count}})",
+      "open_other": "Meine Anmerkungen ({{count}})",
+      "empty": "Speichern Sie eine Anmerkung, die Sie oft schreiben – sie steht dann hier, auf all Ihren Geräten.",
+      "save": "Diese Rückmeldung als Anmerkung speichern",
+      "remove": "Anmerkung „{{comment}}“ entfernen"
+    },
     "title": "Bewertungsliste",
     "subtitle": "Nach Aufgabe gruppiert: dreißig Antworten auf eine Frage hintereinander, nicht dreißig ganze Arbeiten.",
     "emptyTitle": "Nichts offen",

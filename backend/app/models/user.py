@@ -166,6 +166,10 @@ class User(Base):
     #: held by ``profiles_email_off_check`` in Postgres, not mirrored here
     #: (SQLite has no ``jsonb_typeof``).
     email_off: Mapped[list[str]] = mapped_column(_JSONVariant, default=list, server_default="[]")
+    #: A teacher's saved feedback comments, written by them from the grading
+    #: screens and read by nothing on the server. At most fifty
+    #: (``profiles_comment_library_check``, not mirrored for the same reason).
+    comment_library: Mapped[list[str]] = mapped_column(_JSONVariant, default=list, server_default="[]")
     # Floor for iCal token ``iat`` claims. When a user rotates their
     # subscription token via ``POST /calendar/ical/token``, we stamp
     # this to the new ``iat``; the feed verifier refuses tokens whose

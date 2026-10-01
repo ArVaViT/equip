@@ -13,6 +13,8 @@ import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
 import type { SubmissionRubric, WaitingSubmission } from "@/types"
+import { CommentLibrary } from "@/components/grading/CommentLibrary"
+import { appendComment } from "@/lib/feedback"
 
 /**
  * One prompt, everyone's answers, one at a time.
@@ -247,12 +249,17 @@ export function MarkOneByOne({
         </div>
       )}
 
-      <Textarea
-        value={feedback}
-        onChange={(e) => setFeedback(e.target.value)}
-        placeholder={t("grading.feedbackPlaceholder")}
-        className="min-h-[72px]"
-      />
+      <div className="space-y-1">
+        <div className="flex justify-end">
+          <CommentLibrary current={feedback} onInsert={(c) => setFeedback((f) => appendComment(f, c))} />
+        </div>
+        <Textarea
+          value={feedback}
+          onChange={(e) => setFeedback(e.target.value)}
+          placeholder={t("grading.feedbackPlaceholder")}
+          className="min-h-[72px]"
+        />
+      </div>
 
       <div className="flex items-center justify-end gap-2">
         <Button onClick={saveAndNext} disabled={saving || rubricFailed} className="min-h-11">
