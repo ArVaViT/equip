@@ -81,6 +81,16 @@ const courseCrud = {
     })
   },
 
+  /** Minutes of reading per lesson and in all, in the reader's language. */
+  async getReadingTime(id: string): Promise<{ chapters: Record<string, number>; total_minutes: number }> {
+    return cached(`courses:reading-time:${id}`, CACHE_TTL.THREE_MINUTES, async () => {
+      const response = await api.get<{ chapters: Record<string, number>; total_minutes: number }>(
+        `/courses/${id}/reading-time`,
+      )
+      return response.data
+    })
+  },
+
   async getCourse(id: string): Promise<Course> {
     return cached(`courses:detail:${id}`, CACHE_TTL.THREE_MINUTES, async () => {
       const response = await api.get<Course>(`/courses/${id}`)

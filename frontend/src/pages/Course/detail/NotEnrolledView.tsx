@@ -12,6 +12,7 @@ import { formatDate, isEnrollableCohort } from "./types"
 import { CohortSelectModal } from "./CohortSelectModal"
 import { DraftOutline } from "./DraftOutline"
 import { orNotTranslated } from "@/lib/untranslated"
+import { CourseReadingTime } from "./CourseReadingTime"
 
 interface Props {
   course: Course
@@ -150,6 +151,7 @@ export function NotEnrolledView({
             </>
           )}
           <span>{t("courseDetail.chapterCount", { count: chapterCount })}</span>
+          <CourseReadingTime courseId={course.id} />
         </p>
       )}
 

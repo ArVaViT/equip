@@ -51,12 +51,14 @@ def _course(db: Session, *, status: str = "published", access_mode: str = "publi
 
 
 class TestCounting:
-    def test_tags_and_entities_are_not_words(self) -> None:
-        assert count_words("<p>Ин&nbsp;3:16 <strong>так</strong> возлюбил</p>") == 4
+    def test_words_are_counted_as_the_lesson_page_counts_them(self) -> None:
+        # Tags, entities and a verse number are not words; a hyphenated name is one.
+        assert count_words("<p>Ин&nbsp;3:16 <strong>так</strong> возлюбил Иоанна-Крестителя</p>") == 4
 
-    def test_a_lesson_with_text_is_never_zero_minutes(self) -> None:
+    def test_minutes_round_as_the_lesson_page_rounds(self) -> None:
         assert minutes_for(0, "ru") == 0
-        assert minutes_for(1, "ru") == 1
+        assert minutes_for(79, "ru") == 0  # under half a minute
+        assert minutes_for(80, "ru") == 1
         assert minutes_for(320, "ru") == 2
         assert minutes_for(440, "en") == 2
 

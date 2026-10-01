@@ -1629,6 +1629,7 @@
     }
   },
   "courseDetail": {
+    "readingHours": "≈ {{hours}} ч чтения",
     "allCourses": "Все курсы",
     "manageCourse": "Управлять курсом",
     "enrollInCourse": "Записаться на курс",

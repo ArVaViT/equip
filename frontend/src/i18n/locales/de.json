@@ -1983,6 +1983,7 @@
     }
   },
   "courseDetail": {
+    "readingHours": "≈ {{hours}} Std. Lesezeit",
     "allCourses": "Alle Kurse",
     "manageCourse": "Kurs verwalten",
     "enrollInCourse": "In den Kurs einschreiben",

@@ -1983,6 +1983,7 @@
     }
   },
   "courseDetail": {
+    "readingHours": "≈ {{hours}} h of reading",
     "allCourses": "All Courses",
     "manageCourse": "Manage Course",
     "enrollInCourse": "Enroll in Course",

@@ -31,22 +31,24 @@ if TYPE_CHECKING:
 WORDS_PER_MINUTE: dict[str, int] = {"ru": 160, "uk": 160, "de": 180, "en": 220}
 _TAG = re.compile(r"<[^>]+>")
 _ENTITY = re.compile(r"&[a-zA-Z#0-9]+;")
+#: A word as the lesson page counts one (``wordsIn`` in ``lib/readingTime.ts``):
+#: a letter, then letters, combining marks, apostrophes and hyphens. "3:16"
+#: is not a word; "Иоанна-Крестителя" is one.
+_WORD = re.compile(r"[^\W\d_](?:[^\W\d_]|[\u0300-\u036f'\u2019-])*")
 
 
 def count_words(html: str) -> int:
-    """Words in an HTML fragment: tags and entities are not words."""
-    return len(_ENTITY.sub(" ", _TAG.sub(" ", html)).split())
+    """Words in an HTML fragment, counted exactly as the lesson page counts them."""
+    return len(_WORD.findall(_ENTITY.sub(" ", _TAG.sub(" ", html))))
 
 
 def minutes_for(words: int, locale: str) -> int:
-    """Whole minutes, never 0 for a lesson that has text."""
-    if words <= 0:
-        return 0
-    return max(1, math.ceil(words / WORDS_PER_MINUTE.get(locale, 200)))
+    """Whole minutes rounded to the nearest, as the lesson page rounds (``Math.round``); 0 under half a minute."""
+    return math.floor(words / WORDS_PER_MINUTE.get(locale, 200) + 0.5)
 
 
 def course_reading_minutes(db: Session, course: Course, display_locale: str) -> dict[str, int]:
-    """``{chapter_id: minutes}`` for every live lesson of ``course``; 0 for a lesson with no text."""
+    """``{chapter_id: minutes}`` for every live lesson of ``course``; 0 for one with under half a minute of text."""
     chapters = db.query(Chapter.id).filter(Chapter.course_id == course.id, Chapter.deleted_at.is_(None)).all()
     chapter_ids = [c.id for c in chapters]
     if not chapter_ids:
