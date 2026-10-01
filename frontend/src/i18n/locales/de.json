@@ -2103,6 +2103,24 @@
     }
   },
   "gradebook": {
+    "write": {
+      "open": "Schreiben an…",
+      "title": "An Studierende schreiben",
+      "who": "An",
+      "work": "Arbeit",
+      "audience": {
+        "not_submitted": "Alle, die nicht abgegeben haben",
+        "not_passed": "Alle, die nicht bestanden haben oder überarbeiten sollen",
+        "everyone": "Die ganze Klasse"
+      },
+      "count_one": "{{count}} Person",
+      "count_other": "{{count}} Personen",
+      "copy": "Adressen kopieren",
+      "compose": "E-Mail öffnen",
+      "copied_one": "{{count}} Adresse kopiert",
+      "copied_other": "{{count}} Adressen kopiert",
+      "copyFailed": "Adressen konnten nicht kopiert werden"
+    },
     "summaryTab": "Gesamtnoten",
     "tableTab": "Notentabelle",
     "failedLoad": "Notenbuch konnte nicht geladen werden. Bitte erneut versuchen.",

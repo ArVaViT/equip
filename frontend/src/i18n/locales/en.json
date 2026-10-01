@@ -2103,6 +2103,24 @@
     }
   },
   "gradebook": {
+    "write": {
+      "open": "Write to…",
+      "title": "Write to students",
+      "who": "To",
+      "work": "Work",
+      "audience": {
+        "not_submitted": "Those who have not handed it in",
+        "not_passed": "Those who did not pass or were asked to revise",
+        "everyone": "The whole class"
+      },
+      "count_one": "{{count}} student",
+      "count_other": "{{count}} students",
+      "copy": "Copy addresses",
+      "compose": "Open an email",
+      "copied_one": "{{count}} address copied",
+      "copied_other": "{{count}} addresses copied",
+      "copyFailed": "Could not copy the addresses"
+    },
     "summaryTab": "Summary Grades",
     "tableTab": "Grade Table",
     "failedLoad": "Failed to load gradebook. Please try again.",
