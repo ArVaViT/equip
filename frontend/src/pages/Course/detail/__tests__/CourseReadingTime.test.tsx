@@ -29,10 +29,12 @@ describe("CourseReadingTime", () => {
     expect(await screen.findByText(i18n.t("chapter.readingTime", { count: 25 }))).toBeInTheDocument()
   })
 
-  it("speaks in hours, to the nearest half, above one", async () => {
+  it("shows hours, to the nearest half, above one", async () => {
     vi.spyOn(coursesService, "getReadingTime").mockResolvedValue({ chapters: {}, total_minutes: 143 })
     show()
     expect(await screen.findByText(i18n.t("courseDetail.readingHours", { hours: "2,5" }))).toBeInTheDocument()
+    // The eye gets a clock and the short form; the phrase is for the ear.
+    expect(screen.getByText("≈ 2,5 ч")).toBeInTheDocument()
   })
 
   it("says nothing for nothing, or when the request fails", async () => {

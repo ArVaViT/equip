@@ -5,6 +5,7 @@ import { isAxiosError } from "axios"
 import { sanitizeHtml as sanitize } from "@/lib/sanitize"
 import { tieTypographyIn } from "@/lib/typography"
 import { readingMinutes } from "@/lib/readingTime"
+import { ReadingMinutes } from "@/components/course/ReadingMinutes"
 import { renderMathIn } from "@/lib/katex-render"
 import { renderToggleCalloutsIn } from "@/lib/callout-toggle"
 import { attachCopyButtonsIn } from "@/lib/codeblock-copy"
@@ -856,9 +857,10 @@ export default function ChapterView() {
           {readingTime > 0 && (
             <>
               <span aria-hidden className="text-ink-muted">·</span>
-              <span className="normal-case tracking-normal tabular-nums">
-                {t("chapter.readingTime", { count: readingTime })}
-              </span>
+              <ReadingMinutes
+                minutes={readingTime}
+                className="inline-flex items-center gap-1 normal-case tracking-normal tabular-nums"
+              />
             </>
           )}
           {parentModule?.title && (

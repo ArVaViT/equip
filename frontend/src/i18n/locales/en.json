@@ -2118,6 +2118,7 @@
   },
   "courseDetail": {
     "minutesShort": "{{minutes}} min",
+    "hoursShort": "≈ {{hours}} h",
     "readingHours": "≈ {{hours}} h of reading",
     "allCourses": "All Courses",
     "manageCourse": "Manage Course",

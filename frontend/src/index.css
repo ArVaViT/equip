@@ -783,15 +783,21 @@
 }
 /* The reader's own setting (the "Aa" beside a lesson): a size either side of
    the default, and easy reading — looser lines and a little more space between
-   letters and words. Set on the lesson body, so every text block follows. */
+   letters and words. Set on the lesson body, so every text block follows.
+   The column keeps its width: `ch` grows with the font, so 68ch at a smaller
+   size shrank the whole article instead of fitting more words on a line.
+   Each width is 68ch of the default 1.125rem, restated in the new size. */
 [data-reading-size="s"] .prose {
   font-size: 1rem;
+  max-width: 76.5ch;
 }
 [data-reading-size="l"] .prose {
   font-size: 1.25rem;
+  max-width: 61.2ch;
 }
 [data-reading-size="xl"] .prose {
   font-size: 1.4375rem;
+  max-width: 53.2ch;
 }
 [data-reading-easy="true"] .prose {
   line-height: 1.95;

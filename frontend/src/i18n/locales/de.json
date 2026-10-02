@@ -2118,6 +2118,7 @@
   },
   "courseDetail": {
     "minutesShort": "{{minutes}} Min.",
+    "hoursShort": "≈ {{hours}} Std.",
     "readingHours": "≈ {{hours}} Std. Lesezeit",
     "allCourses": "Alle Kurse",
     "manageCourse": "Kurs verwalten",

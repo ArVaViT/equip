@@ -2198,6 +2198,7 @@
   },
   "courseDetail": {
     "minutesShort": "{{minutes}} хв",
+    "hoursShort": "≈ {{hours}} год",
     "readingHours": "≈ {{hours}} год читання",
     "allCourses": "Усі курси",
     "manageCourse": "Керувати курсом",

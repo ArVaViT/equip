@@ -1763,6 +1763,7 @@
   },
   "courseDetail": {
     "minutesShort": "{{minutes}} мин",
+    "hoursShort": "≈ {{hours}} ч",
     "readingHours": "≈ {{hours}} ч чтения",
     "allCourses": "Все курсы",
     "manageCourse": "Управлять курсом",
