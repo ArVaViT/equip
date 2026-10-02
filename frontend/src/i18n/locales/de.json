@@ -4,8 +4,8 @@
     "ask": "Keine E-Mails „{{kind}}“ mehr senden?",
     "button": "Abbestellen",
     "done": "Erledigt: E-Mails „{{kind}}“ kommen nicht mehr.",
-    "again": "Sie können sie in Ihrem Profil unter „Einstellungen“ wieder einschalten.",
-    "invalid": "Dieser Link funktioniert nicht. E-Mails lassen sich in Ihrem Profil unter „Einstellungen“ abschalten.",
+    "again": "Sie können es im Profil unter „Einstellungen“ wieder einschalten.",
+    "invalid": "Dieser Link funktioniert nicht. E-Mails schalten Sie im Profil unter „Einstellungen“ ab.",
     "toProfile": "Profil öffnen"
   },
   "common": {
@@ -128,7 +128,6 @@
     "atRisk": {
       "write": "An {{name}} schreiben",
       "title": "Wem Sie schreiben sollten",
-      "hint": "Eine Woche ohne Aktivität oder zwei verpasste Fristen",
       "quiet_one": "{{count}} Tag ohne Aktivität",
       "quiet_other": "{{count}} Tage ohne Aktivität",
       "missed_one": "{{count}} Frist verpasst",
@@ -681,7 +680,6 @@
     },
     "emails": {
       "label": "E-Mails zu Kursen",
-      "hint": "Konto-E-Mails — Anmeldung, Passwort, Einladungen — kommen immer: ohne sie lässt sich das Konto nicht nutzen.",
       "kinds": {
         "work_returned": "Arbeit bewertet oder zurückgegeben",
         "certificate_decided": "Entscheidung über das Zertifikat",
@@ -962,8 +960,7 @@
         "l": "Großer Text",
         "xl": "Sehr großer Text"
       },
-      "easy": "Leicht lesen",
-      "easyHint": "Mehr Zeilen- und Wortabstand"
+      "easy": "Leicht lesen"
     },
     "attachmentEyebrow": "Anhang",
     "blocksLoadFailed": "Diese Lektion konnte nicht geladen werden",
@@ -1061,10 +1058,10 @@
       "title": "Meine Notizen zur Lektion",
       "add": "Notiz zur Lektion hinzufügen",
       "all": "Alle Notizen",
-      "placeholder": "Was Sie verstanden haben, sich merken oder fragen möchten…",
+      "placeholder": "Ihre Notiz…",
       "saving": "Wird gespeichert…",
       "saved": "Gespeichert",
-      "failed": "Speichern fehlgeschlagen — prüfen Sie die Verbindung; Ihr Text bleibt hier.",
+      "failed": "Nicht gespeichert. Ihr Text bleibt hier.",
       "private": "Nur Sie sehen das. Es speichert sich selbst."
     },
     "page": {
@@ -1076,11 +1073,9 @@
       "unavailable": "Diese Lektion ist derzeit nicht verfügbar",
       "eyebrow": "Lernen",
       "title": "Meine Notizen",
-      "description": "Alles, was Sie zu Lektionen notiert haben, nach Kurs und Modul.",
       "emptyTitle": "Noch keine Notizen",
-      "emptyDescription": "Unter jeder Leselektion ist Platz für Ihre Notiz — sie erscheint dann hier.",
-      "loadFailed": "Notizen konnten nicht geladen werden.",
-      "profileHint": "Ihre Notizen zu Lektionen, nach Kurs"
+      "emptyDescription": "Schreiben Sie unter Lektionen — Ihre Notizen sammeln sich hier.",
+      "loadFailed": "Notizen konnten nicht geladen werden."
     }
   },
   "review": {
@@ -1091,13 +1086,13 @@
     },
     "checkFailed": "Prüfung fehlgeschlagen — bitte erneut versuchen.",
     "title": "Wiederholung der Woche",
-    "hint_one": "{{count}} Frage aus dem Gelernten — für Sie, ohne Einfluss auf Noten.",
-    "hint_other": "{{count}} Fragen aus dem Gelernten — für Sie, ohne Einfluss auf Noten.",
+    "hint_one": "{{count}} Frage aus dem Gelernten, ohne Note",
+    "hint_other": "{{count}} Fragen aus dem Gelernten, ohne Note",
     "start": "Beginnen",
     "progress": "Frage {{n}} von {{total}}",
     "next": "Weiter",
     "finish": "Fertig",
-    "result": "{{right}} von {{total}} richtig. Neue Fragen nächste Woche."
+    "result": "{{right}} von {{total}} richtig"
   },
   "quizEditor": {
     "validation": {
@@ -1673,7 +1668,7 @@
     "subscribe": {
       "open": "Abonnieren",
       "title": "Ihr Kursplan in Ihrem eigenen Kalender",
-      "description": "Termine und Fristen Ihrer Kurse erscheinen im Kalender Ihres Telefons oder Computers und aktualisieren sich selbst. Zeiten stehen in der Zeitzone Ihres Kalenders.",
+      "description": "Termine und Fristen Ihrer Kurse erscheinen in Ihrem Kalender und bleiben aktuell.",
       "replaces": "Der Link ist persönlich. Wenn Sie schon abonniert haben, funktioniert der alte Link nicht mehr.",
       "create": "Link erstellen",
       "apple": "Apple und Outlook",
@@ -2167,14 +2162,14 @@
   },
   "gradebook": {
     "write": {
-      "tooMany": "Zu viele Adressen für einen E-Mail-Link — kopieren Sie sie und fügen Sie sie in Bcc ein.",
+      "tooMany": "Zu viele Adressen für eine E-Mail. Kopieren Sie sie ins Bcc.",
       "open": "Schreiben an…",
       "title": "An Studierende schreiben",
       "who": "An",
       "work": "Arbeit",
       "audience": {
-        "not_submitted": "Alle, die nicht abgegeben haben",
-        "not_passed": "Alle, die nicht bestanden haben oder überarbeiten sollen",
+        "not_submitted": "Nicht abgegeben",
+        "not_passed": "Nicht bestanden oder in Überarbeitung",
         "everyone": "Die ganze Klasse"
       },
       "count_one": "{{count}} Person",
@@ -2865,8 +2860,8 @@
       "confirm": "Trotzdem veröffentlichen"
     },
     "checks": {
-      "headingsInOrder": "Die Überschriften der Lektion sind geordnet: kein H1 (das ist der Lektionstitel) und keine übersprungene Ebene — Screenreader navigieren daran.",
-      "imagesHaveAlt": "Jedes Bild der Lektion hat eine Beschreibung (Alt-Text) — für alle, die es nicht sehen.",
+      "headingsInOrder": "Die Überschriften der Lektionen sind geordnet.",
+      "imagesHaveAlt": "Bilder in Lektionen haben eine Beschreibung.",
       "hasDescription": "Der Kurs hat eine Beschreibung für den Katalog.",
       "hasCoverImage": "Der Kurs hat ein Titelbild.",
       "translationsComplete": "Jede Sprache hat diesen Kurs. In den Katalog kommt er, sobald das für alle gilt.",
@@ -2900,7 +2895,9 @@
       "quizThresholdAboveCourse": "Ein Test verlangt eine höhere Punktzahl als der Kurs. Studierende können den Kurs auf dem Papier bestehen und die Lektion doch nie abschließen — das Zertifikat bleibt außer Reichweite.",
       "quizWeightNonzero": "Tests zählen nicht für die Endnote.",
       "assignmentWeightNonzero": "Aufgaben zählen nicht für die Endnote.",
-      "quizThresholdBelowCourse": "Manche Tests bestehen bei einer niedrigeren Punktzahl als der Kurs. Man kann jeden Test schaffen und trotzdem unter der Bestehensgrenze des Kurses landen."
+      "quizThresholdBelowCourse": "Manche Tests bestehen bei einer niedrigeren Punktzahl als der Kurs. Man kann jeden Test schaffen und trotzdem unter der Bestehensgrenze des Kurses landen.",
+      "headingsInOrder": "In „{{title}}“ sind die Überschriften nicht geordnet.",
+      "imagesHaveAlt": "In „{{title}}“ gibt es Bilder ohne Beschreibung."
     }
   },
   "dateRangePicker": {
@@ -3170,7 +3167,7 @@
     "recording": "Aufzeichnung",
     "recordingAria": "Aufzeichnung ansehen — {{title}}",
     "recordingLabel": "Link zur Aufzeichnung",
-    "recordingHint": "Sobald die Aufzeichnung bereit ist: YouTube, Vimeo, Google Drive — jeder Link. Die Studierenden sehen einen Button „Aufzeichnung“.",
+    "recordingHint": "YouTube, Vimeo, Google Drive",
     "join": "Beitreten",
     "joinAria": "Dem Meeting beitreten — {{title}}",
     "linkLabel": "Link zum Meeting",

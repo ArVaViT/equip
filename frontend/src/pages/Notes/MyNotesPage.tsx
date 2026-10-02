@@ -47,7 +47,7 @@ export default function MyNotesPage() {
 
   return (
     <Section>
-      <PageHeader eyebrow={t("notes.page.eyebrow")} title={t("notes.page.title")} description={t("notes.page.description")} />
+      <PageHeader eyebrow={t("notes.page.eyebrow")} title={t("notes.page.title")} />
       {error ? (
         <ErrorState
           description={t("notes.page.loadFailed")}

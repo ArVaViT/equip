@@ -39,15 +39,12 @@ export function EmailSetting() {
   }
 
   return (
-    <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-4">
-      <div className="flex min-w-0 items-start gap-3">
-        <Mail className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-        <div className="min-w-0">
-          <p className="text-sm font-medium">{t("profile.emails.label")}</p>
-          <p className="text-xs text-ink-muted">{t("profile.emails.hint")}</p>
-        </div>
+    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <Mail className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
+        <p className="text-sm font-medium">{t("profile.emails.label")}</p>
       </div>
-      <div className="flex w-full flex-col gap-2 sm:w-72">
+      <div className="flex w-full flex-col gap-2 pl-7 sm:w-auto sm:pl-0">
         {SENT_TODAY.map((kind) => (
           <label key={kind} className="flex cursor-pointer items-center gap-2 text-sm">
             <Checkbox

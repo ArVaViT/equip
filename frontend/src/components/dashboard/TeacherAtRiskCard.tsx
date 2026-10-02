@@ -43,12 +43,9 @@ export function TeacherAtRiskCard() {
     >
       <header className="flex items-center gap-3 border-b border-edge px-4 py-3 sm:px-5 sm:py-4">
         <UserRoundX className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-        <div className="min-w-0">
-          <h2 id="teacher-at-risk-heading" className="font-serif text-base font-semibold">
-            {t("dashboard.atRisk.title")}
-          </h2>
-          <p className="text-xs text-ink-muted">{t("dashboard.atRisk.hint")}</p>
-        </div>
+        <h2 id="teacher-at-risk-heading" className="min-w-0 font-serif text-base font-semibold">
+          {t("dashboard.atRisk.title")}
+        </h2>
       </header>
       <ul className="divide-y divide-edge">
         {shown.map((s) => (

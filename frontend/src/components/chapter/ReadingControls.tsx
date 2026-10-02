@@ -46,12 +46,9 @@ export function ReadingControls({ prefs, onChange }: { prefs: ReadingPrefs; onCh
             ))}
           </div>
         </div>
-        <label className="flex cursor-pointer items-start gap-2 text-sm">
-          <Checkbox className="mt-0.5" checked={prefs.easy} onCheckedChange={(v) => onChange({ easy: v === true })} />
-          <span>
-            {t("chapter.reading.easy")}
-            <span className="block text-xs text-ink-muted">{t("chapter.reading.easyHint")}</span>
-          </span>
+        <label className="flex cursor-pointer items-center gap-2 text-sm">
+          <Checkbox checked={prefs.easy} onCheckedChange={(v) => onChange({ easy: v === true })} />
+          {t("chapter.reading.easy")}
         </label>
       </PopoverContent>
     </Popover>

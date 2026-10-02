@@ -4,8 +4,8 @@
     "ask": "Stop sending “{{kind}}” emails?",
     "button": "Unsubscribe",
     "done": "Done: “{{kind}}” emails will no longer arrive.",
-    "again": "You can turn them back on in your profile, under Settings.",
-    "invalid": "This link does not work. You can turn email off in your profile, under Settings.",
+    "again": "You can turn it back on in your profile, under Settings.",
+    "invalid": "This link does not work. Turn email off in your profile, under Settings.",
     "toProfile": "Open profile"
   },
   "common": {
@@ -128,7 +128,6 @@
     "atRisk": {
       "write": "Write to {{name}}",
       "title": "Who to write to",
-      "hint": "A week without any activity, or two deadlines missed",
       "quiet_one": "{{count}} day without activity",
       "quiet_other": "{{count}} days without activity",
       "missed_one": "{{count}} deadline missed",
@@ -681,7 +680,6 @@
     },
     "emails": {
       "label": "Course email",
-      "hint": "Account email — sign-in, password, invitations — always arrives: an account cannot be used without it.",
       "kinds": {
         "work_returned": "Work marked or returned",
         "certificate_decided": "Certificate decision",
@@ -962,8 +960,7 @@
         "l": "Large text",
         "xl": "Extra large text"
       },
-      "easy": "Easy reading",
-      "easyHint": "Looser lines and more space between words"
+      "easy": "Easy reading"
     },
     "attachmentEyebrow": "Attachment",
     "blocksLoadFailed": "Couldn't load this lesson",
@@ -1061,10 +1058,10 @@
       "title": "My notes on this lesson",
       "add": "Add a note to this lesson",
       "all": "All notes",
-      "placeholder": "What you understood, what to remember or ask…",
+      "placeholder": "Your note…",
       "saving": "Saving…",
       "saved": "Saved",
-      "failed": "Could not save — check your connection; your text stays here.",
+      "failed": "Not saved. Your text stays here.",
       "private": "Only you can see this. It saves itself."
     },
     "page": {
@@ -1076,11 +1073,9 @@
       "unavailable": "This lesson is not available now",
       "eyebrow": "Learning",
       "title": "My notes",
-      "description": "Everything you have written on lessons, by course and module.",
       "emptyTitle": "No notes yet",
-      "emptyDescription": "Under every lesson to read there is room for your note — it will appear here.",
-      "loadFailed": "Could not load your notes.",
-      "profileHint": "Your notes on lessons, by course"
+      "emptyDescription": "Write under a lesson — your notes gather here.",
+      "loadFailed": "Could not load your notes."
     }
   },
   "review": {
@@ -1091,13 +1086,13 @@
     },
     "checkFailed": "Could not check — please try again.",
     "title": "This week's review",
-    "hint_one": "{{count}} question from what you have done — for you; it does not affect grades.",
-    "hint_other": "{{count}} questions from what you have done — for you; they do not affect grades.",
+    "hint_one": "{{count}} question from what you have done, not graded",
+    "hint_other": "{{count}} questions from what you have done, not graded",
     "start": "Start",
     "progress": "Question {{n}} of {{total}}",
     "next": "Next",
     "finish": "Done",
-    "result": "{{right}} of {{total}} right. New questions next week."
+    "result": "{{right}} of {{total}} right"
   },
   "quizEditor": {
     "validation": {
@@ -1673,7 +1668,7 @@
     "subscribe": {
       "open": "Subscribe",
       "title": "Your course schedule in your own calendar",
-      "description": "Lessons and deadlines from your courses appear in your phone or computer calendar and update on their own. Times show in your calendar's time zone.",
+      "description": "Your courses’ sessions and deadlines appear in your calendar and stay up to date.",
       "replaces": "The link is personal. If you subscribed before, the old link stops working.",
       "create": "Create link",
       "apple": "Apple and Outlook",
@@ -2167,14 +2162,14 @@
   },
   "gradebook": {
     "write": {
-      "tooMany": "Too many addresses for one email link — copy them and paste them into Bcc.",
+      "tooMany": "Too many addresses for one email. Copy them into Bcc.",
       "open": "Write to…",
       "title": "Write to students",
       "who": "To",
       "work": "Work",
       "audience": {
-        "not_submitted": "Those who have not handed it in",
-        "not_passed": "Those who did not pass or were asked to revise",
+        "not_submitted": "Not handed in",
+        "not_passed": "Not passed or revising",
         "everyone": "The whole class"
       },
       "count_one": "{{count}} student",
@@ -2865,8 +2860,8 @@
       "confirm": "Publish anyway"
     },
     "checks": {
-      "headingsInOrder": "The lesson's headings are in order: no H1 (that is the lesson title) and no skipped level — screen readers move by them.",
-      "imagesHaveAlt": "Every picture in the lesson has a description (alt text) — for those who cannot see it.",
+      "headingsInOrder": "Lesson headings are in order.",
+      "imagesHaveAlt": "Pictures in lessons have descriptions.",
       "hasDescription": "The course has a description for the catalog.",
       "hasCoverImage": "The course has a cover image.",
       "translationsComplete": "Every language has this course. It goes into the catalog once they all do.",
@@ -2900,7 +2895,9 @@
       "quizThresholdAboveCourse": "A quiz demands a higher score than the course does. Students can pass the course on paper and still never complete the lesson, so the certificate stays out of reach.",
       "quizWeightNonzero": "Quizzes do not count toward the final grade.",
       "assignmentWeightNonzero": "Assignments do not count toward the final grade.",
-      "quizThresholdBelowCourse": "Some quizzes pass at a lower score than the course does. A student can clear every quiz and still finish below the course's pass line."
+      "quizThresholdBelowCourse": "Some quizzes pass at a lower score than the course does. A student can clear every quiz and still finish below the course's pass line.",
+      "headingsInOrder": "Headings in \"{{title}}\" are out of order.",
+      "imagesHaveAlt": "\"{{title}}\" has pictures without a description."
     }
   },
   "dateRangePicker": {
@@ -3170,7 +3167,7 @@
     "recording": "Recording",
     "recordingAria": "Watch the recording — {{title}}",
     "recordingLabel": "Recording link",
-    "recordingHint": "Once the recording is ready: YouTube, Vimeo, Google Drive — any link. Students will see a “Recording” button.",
+    "recordingHint": "YouTube, Vimeo, Google Drive",
     "join": "Join",
     "joinAria": "Join the meeting for {{title}}",
     "linkLabel": "Meeting link",

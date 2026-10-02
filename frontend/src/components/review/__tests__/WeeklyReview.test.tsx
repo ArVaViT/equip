@@ -36,7 +36,7 @@ describe("WeeklyReview", () => {
       .mockResolvedValueOnce({ correct: false, correct_option_id: "b" })
       .mockResolvedValueOnce({ correct: true, correct_option_id: "c" })
     show()
-    expect(await screen.findByText("2 вопроса из пройденного — для себя, на оценки не влияет.")).toBeInTheDocument()
+    expect(await screen.findByText("2 вопроса из пройденного, без оценки")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Начать" }))
     await user.click(screen.getByRole("button", { name: "Павел" }))
     expect(await screen.findByText("Неверно")).toBeInTheDocument()
@@ -45,7 +45,7 @@ describe("WeeklyReview", () => {
     await user.click(screen.getByRole("button", { name: "По дороге в Дамаск" }))
     expect(await screen.findByText("Верно")).toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Готово" }))
-    expect(screen.getByText("Верно 1 из 2. Новые вопросы — на следующей неделе.")).toBeInTheDocument()
+    expect(screen.getByText("Верно 1 из 2")).toBeInTheDocument()
   })
 
   it("is absent when there is nothing to review", async () => {

@@ -53,7 +53,7 @@ describe("WriteToStudents", () => {
       expect.stringMatching(/^mailto:\?bcc=anna@example\.com&subject=/),
     )
 
-    await user.click(screen.getByRole("radio", { name: "Всему классу" }))
+    await user.click(screen.getByRole("radio", { name: "Весь класс" }))
     expect(screen.getByText("3 студента")).toBeInTheDocument()
     expect(screen.queryByRole("combobox")).toBeNull()
   })
@@ -73,7 +73,7 @@ describe("WriteToStudents", () => {
     )
     await user.click(screen.getByRole("button", { name: "Написать…" }))
     expect(screen.queryByRole("link", { name: "Открыть письмо" })).toBeNull()
-    expect(screen.getByText(/Слишком много адресов/)).toBeInTheDocument()
+    expect(screen.getByText(/Адресов слишком много/)).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Скопировать адреса" })).toBeEnabled()
   })
 })
