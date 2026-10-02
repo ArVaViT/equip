@@ -30,7 +30,6 @@ import { initialsOf } from "@/lib/names"
 import { PersonalDetailsCard } from "./PersonalDetailsCard"
 import { TimeZoneSetting } from "./TimeZoneSetting"
 import { EmailSetting } from "./EmailSetting"
-import { MyDataSetting } from "./MyDataSetting"
 
 function useCountUp(target: number, durationMs = 800) {
   const prefersReducedMotion = usePrefersReducedMotion()
@@ -428,7 +427,8 @@ export default function ProfilePage() {
                 </div>
                 <TimeZoneSetting />
                 <EmailSetting />
-                <MyDataSetting />
+                {/* MyDataSetting (the JSON download of one's own data) is built but
+                    held back for now; GET /users/me/export stays. */}
               </CardContent>
             </Card>
           </div>
