@@ -82,9 +82,11 @@ export default function UnsubscribePage() {
               <p className="text-xs text-ink-muted">{t("unsubscribe.again")}</p>
             </>
           )}
-          <Link to="/profile" className="inline-block text-sm text-brand underline-offset-4 hover:underline">
-            {t("unsubscribe.toProfile")}
-          </Link>
+          <div>
+            <Link to="/profile" className="text-sm text-brand underline-offset-4 hover:underline">
+              {t("unsubscribe.toProfile")}
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>

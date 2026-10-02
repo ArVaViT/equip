@@ -268,11 +268,11 @@ export default function ModuleView() {
                         <Lock className="h-5 w-5 text-ink-muted shrink-0" strokeWidth={1.75} aria-hidden />
                         {/* On a phone the title gets the whole line and wraps;
                             time, note and type sit under it. Wider, one row. */}
-                        <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-2">
-                          <span className={`block text-wrap-safe sm:min-w-0 sm:flex-1 sm:truncate ${"text-ink-muted"}`}>
+                        <span className="block min-w-0 flex-1 sm:flex sm:items-center sm:gap-2">
+                          <span className="block text-wrap-safe text-ink-muted sm:min-w-0 sm:flex-1 sm:truncate">
                             {orNotTranslated(t, chapter.title)}
                           </span>
-                          <span className="mt-1.5 flex items-center gap-2 sm:mt-0 sm:shrink-0">
+                          <span className="mt-1.5 flex items-center gap-2 empty:hidden sm:mt-0 sm:shrink-0">
                             {noted.has(chapter.id) && (
                               <NotebookPen
                                 className="h-3.5 w-3.5 shrink-0 text-ink-muted"
@@ -286,7 +286,7 @@ export default function ModuleView() {
                               <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
                             )}
                           </span>
-                        </div>
+                        </span>
                         <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
                       </CardTitle>
                     </CardHeader>
@@ -335,11 +335,11 @@ export default function ModuleView() {
                         )}
                         {/* On a phone the title gets the whole line and wraps;
                             time, note and type sit under it. Wider, one row. */}
-                        <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-2">
+                        <span className="block min-w-0 flex-1 sm:flex sm:items-center sm:gap-2">
                           <span className={`block text-wrap-safe sm:min-w-0 sm:flex-1 sm:truncate ${isCompleted ? "text-ink-muted" : ""}`}>
                             {orNotTranslated(t, chapter.title)}
                           </span>
-                          <span className="mt-1.5 flex items-center gap-2 sm:mt-0 sm:shrink-0">
+                          <span className="mt-1.5 flex items-center gap-2 empty:hidden sm:mt-0 sm:shrink-0">
                             {noted.has(chapter.id) && (
                               <NotebookPen
                                 className="h-3.5 w-3.5 shrink-0 text-ink-muted"
@@ -353,7 +353,7 @@ export default function ModuleView() {
                               <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
                             )}
                           </span>
-                        </div>
+                        </span>
                         <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
                       </CardTitle>
                     </CardHeader>

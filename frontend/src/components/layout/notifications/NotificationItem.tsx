@@ -51,7 +51,7 @@ export function NotificationItem({ notification, onActivate, onDelete }: Props) 
       <div className="min-w-0 flex-1">
         <button
           onClick={() => onActivate(notification)}
-          className="flex gap-3 flex-1 min-w-0 text-left cursor-pointer bg-transparent border-0 p-0"
+          className="flex w-full min-w-0 gap-3 text-left cursor-pointer bg-transparent border-0 p-0"
           aria-label={orNotTranslated(t, notification.title)}
         >
           <div className={cn("mt-0.5 shrink-0", color)}>

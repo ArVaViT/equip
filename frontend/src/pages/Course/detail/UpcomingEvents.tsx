@@ -3,6 +3,7 @@ import { AlertTriangle, CalendarDays, ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { CalendarEvent } from "@/types"
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
+import { isOver } from "@/lib/eventTime"
 import { RecordingLink } from "@/components/calendar/RecordingLink"
 import { formatDateLong, formatDateTime } from "@/i18n/format"
 
@@ -48,7 +49,7 @@ export function UpcomingEvents({ events }: Props) {
           return (
             <div
               key={evt.id}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md border text-sm ${
+              className={`flex flex-wrap items-center gap-x-2 gap-y-2 px-3 py-2 rounded-md border text-sm ${
                 overdue
                   ? "border-l-stripe border-l-destructive border-edge bg-destructive/5"
                   : "border-edge hover:bg-muted/40"
@@ -74,9 +75,13 @@ export function UpcomingEvents({ events }: Props) {
               </span>
               {/* Between the title and the date, so the row still ends
                   with the time — the thing a student scans this list
-                  for. Renders nothing when the event has no meeting. */}
-              <JoinMeetingLink url={evt.meeting_url} title={evt.title} />
-              <RecordingLink url={evt.recording_url} title={evt.title} />
+                  for. On a phone they take a line of their own under it:
+                  two buttons beside the title pushed the row off the
+                  screen. Renders nothing when there is nothing to open. */}
+              <span className="order-last flex basis-full flex-wrap gap-2 pl-4 empty:hidden sm:order-none sm:basis-auto sm:pl-0">
+                {!isOver(evt) && <JoinMeetingLink url={evt.meeting_url} title={evt.title} />}
+                <RecordingLink url={evt.recording_url} title={evt.title} />
+              </span>
               {/* Date AND time, in the reader's zone. This row used to say
                   «23 апр.» and nothing more — a live session at 19:00 and a
                   deadline at midnight looked the same, and a student in

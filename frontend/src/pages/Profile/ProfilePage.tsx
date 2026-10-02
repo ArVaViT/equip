@@ -510,7 +510,7 @@ function ProfileTabs({ active, onSelect }: { active: ProfileTab; onSelect: (tab:
           aria-controls={`profile-panel-${tab}`}
           tabIndex={active === tab ? 0 : -1}
           onClick={() => onSelect(tab)}
-          className={`-mb-px min-w-0 flex-auto border-b-2 px-2 py-2.5 text-center text-sm font-medium leading-tight sm:flex-none sm:whitespace-nowrap sm:px-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+          className={`-mb-px min-w-0 flex-auto border-b-2 px-2 py-2.5 text-center text-sm font-medium leading-tight sm:flex-none sm:leading-5 sm:whitespace-nowrap sm:px-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
             active === tab ? "border-brand text-ink" : "border-transparent text-ink-muted hover:text-ink"
           }`}
         >

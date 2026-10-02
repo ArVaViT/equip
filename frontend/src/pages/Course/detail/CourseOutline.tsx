@@ -291,14 +291,14 @@ const ModuleRow = memo(function ModuleRow({
     <Card className={`group transition-colors ${isLocked ? "opacity-60" : "hover:border-brand/25"}`}>
       <CardHeader className="py-3 px-4">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="flex min-w-0 flex-1 items-start gap-2 text-sm sm:items-center">
+          <CardTitle className="flex min-w-0 items-start gap-2 text-sm sm:items-center">
             <RowMarker locked={isLocked} complete={allComplete} ordinal={ordinal} />
             {/* On a phone the title wraps and the numbers sit under it. */}
-            <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-2">
+            <span className="block min-w-0 flex-1 sm:flex sm:items-center sm:gap-2">
               <span className="block text-wrap-safe sm:min-w-0 sm:flex-1 sm:truncate">
                 {orNotTranslated(t, module.title)}
               </span>
-              <span className="mt-1 flex items-center gap-2 sm:mt-0 sm:shrink-0">
+              <span className="mt-1 flex items-center gap-2 empty:hidden sm:mt-0 sm:shrink-0">
                 <ReadingMinutes minutes={minutes} />
                 <span className="shrink-0 whitespace-nowrap text-xs font-normal text-ink-muted">
                   {gradableCount > 0
@@ -306,7 +306,7 @@ const ModuleRow = memo(function ModuleRow({
                     : t("courseDetail.lessonCountShort", { count: chapters.length })}
                 </span>
               </span>
-            </div>
+            </span>
           </CardTitle>
           {!isLocked && (
             <Link
@@ -417,13 +417,13 @@ const LessonRow = memo(function LessonRow({
               readLabel={t("module.chapterRead")}
             />
             {/* On a phone the title wraps; note, time and type sit under it. */}
-            <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-2">
+            <span className="block min-w-0 flex-1 sm:flex sm:items-center sm:gap-2">
               <span
                 className={`block text-wrap-safe sm:min-w-0 sm:flex-1 sm:truncate ${isLocked || complete ? "text-ink-muted" : ""}`}
               >
                 {orNotTranslated(t, chapter.title)}
               </span>
-              <span className="mt-1 flex items-center gap-2 sm:mt-0 sm:shrink-0">
+              <span className="mt-1 flex items-center gap-2 empty:hidden sm:mt-0 sm:shrink-0">
                 {hasNote && (
                   <NotebookPen
                     role="img"
@@ -435,7 +435,7 @@ const LessonRow = memo(function LessonRow({
                 <ReadingMinutes minutes={minutes} />
                 {chapter.chapter_type && <ChapterTypeBadge type={chapter.chapter_type} size="sm" />}
               </span>
-            </div>
+            </span>
           </CardTitle>
           {isLocked ? (
             <span className="flex shrink-0 items-center gap-1 text-xs text-ink-muted">

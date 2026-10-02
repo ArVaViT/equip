@@ -8,20 +8,11 @@ import type { CalendarEvent } from "@/types";
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
 import { RecordingLink } from "@/components/calendar/RecordingLink"
 import { AddToCalendarButton } from "@/components/calendar/AddToCalendarButton"
+import { isOver } from "@/lib/eventTime"
 import { LinkifiedText } from "@/components/calendar/LinkifiedText";
 import { getEventColor } from "./constants";
 import { formatTime } from "./utils";
 import { formatCalendarDay } from "@/i18n/format";
-
-/**
- * An event carries a start and no length. Three hours after it began it is
- * over: no joining it or adding it to a calendar, only its recording.
- */
-const OVER_AFTER_MS = 3 * 60 * 60 * 1000
-function isOver(evt: CalendarEvent, now = Date.now()): boolean {
-  const start = Date.parse(evt.event_date)
-  return Number.isFinite(start) && now - start > OVER_AFTER_MS
-}
 
 interface SelectedDayPanelProps {
   selectedDay: Date;

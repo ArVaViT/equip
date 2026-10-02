@@ -145,7 +145,7 @@ export function WeeklyReview({ courseId }: { courseId: string }) {
           </ul>
           <div className="flex items-center justify-between gap-2" aria-live="polite">
             <p
-              className={`text-sm font-medium ${verdict ? (verdict.correct ? "text-success" : "text-destructive") : ""}`}
+              className={`text-sm font-medium ${verdict ? (verdict.correct ? "text-success-ink" : "text-destructive-ink") : ""}`}
             >
               {verdict
                 ? verdict.correct
