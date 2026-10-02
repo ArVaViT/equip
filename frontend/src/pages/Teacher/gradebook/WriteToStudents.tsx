@@ -99,20 +99,21 @@ export function WriteToStudents({ courseTitle, students }: { courseTitle: string
             )}
           </div>
           {tooLong && <p className="text-xs text-ink-muted">{t("gradebook.write.tooMany")}</p>}
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => void copy()} disabled={emails.length === 0}>
+          {/* A phone: full-width, the main action last, under the thumb. */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={() => void copy()} disabled={emails.length === 0}>
               <Copy className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
               {t("gradebook.write.copy")}
             </Button>
             {emails.length > 0 && !tooLong ? (
-              <Button asChild size="sm">
+              <Button asChild size="sm" className="w-full sm:w-auto">
                 <a href={mailto}>
                   <Mail className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
                   {t("gradebook.write.compose")}
                 </a>
               </Button>
             ) : (
-              <Button size="sm" disabled>
+              <Button size="sm" className="w-full sm:w-auto" disabled>
                 <Mail className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
                 {t("gradebook.write.compose")}
               </Button>

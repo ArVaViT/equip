@@ -2537,7 +2537,7 @@
       "hasAtLeastOneChapter": "В курсе есть хотя бы один урок.",
       "hasMultipleModules": "В курсе два модуля или больше.",
       "moduleHasChapters": "В «{{title}}» есть хотя бы один урок.",
-      "readingHasContent": "В \"{{title}}\" есть содержимое для чтения.",
+      "readingHasContent": "В «{{title}}» есть содержимое для чтения.",
       "quizHasQuestion": "В тесте «{{title}}» есть хотя бы один вопрос.",
       "examHasQuestion": "В экзамене «{{title}}» есть хотя бы один вопрос.",
       "quizQuestionsComplete": "Все вопросы в «{{title}}» заполнены (варианты ответа, отметка правильного).",

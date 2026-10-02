@@ -88,14 +88,21 @@ export function WeeklyReview({ courseId }: { courseId: string }) {
   }
 
   return (
-    <section id="weekly-review" aria-labelledby="weekly-review-heading" className="mt-6 scroll-mt-20 rounded-md border border-edge p-4">
+    <section
+      id="weekly-review"
+      aria-labelledby="weekly-review-heading"
+      // The course page's card, like «Ваша оценка» beside it.
+      className="mt-6 scroll-mt-20 rounded-card border border-edge bg-surface-elevated px-4 py-3 shadow-card dark:border-transparent sm:px-5"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 id="weekly-review-heading" tabIndex={-1} className="flex items-center gap-2 font-serif text-lg font-semibold outline-none">
-            <RotateCcw className="h-4 w-4 text-ink-muted" strokeWidth={1.75} aria-hidden />
+          <h2 id="weekly-review-heading" tabIndex={-1} className="flex items-center gap-2.5 font-serif text-base font-semibold outline-none">
+            <RotateCcw className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
             {t("review.title")}
           </h2>
-          <p className="text-xs text-ink-muted">{t("review.hint", { count: questions.length })}</p>
+          {!started && (
+            <p className="pl-[1.625rem] text-xs text-ink-muted">{t("review.hint", { count: questions.length })}</p>
+          )}
         </div>
         {!started && (
           <Button size="sm" variant="outline" onClick={() => setStarted(true)}>
@@ -137,7 +144,9 @@ export function WeeklyReview({ courseId }: { courseId: string }) {
             })}
           </ul>
           <div className="flex items-center justify-between gap-2" aria-live="polite">
-            <p className="text-sm">
+            <p
+              className={`text-sm font-medium ${verdict ? (verdict.correct ? "text-success" : "text-destructive") : ""}`}
+            >
               {verdict
                 ? verdict.correct
                   ? t("quiz.result.correct")
