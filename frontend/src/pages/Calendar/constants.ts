@@ -11,19 +11,19 @@ export const EVENT_COLORS: Record<string, EventColorPalette> = {
   deadline: {
     dot: "bg-destructive",
     bg: "bg-destructive/10",
-    text: "text-destructive",
+    text: "text-destructive-ink",
     border: "border-destructive/30",
   },
   live_session: {
     dot: "bg-info",
     bg: "bg-info/10",
-    text: "text-info",
+    text: "text-info-ink",
     border: "border-info/30",
   },
   exam: {
     dot: "bg-warning",
     bg: "bg-warning/10",
-    text: "text-warning",
+    text: "text-warning-ink",
     border: "border-warning/30",
   },
   other: {
