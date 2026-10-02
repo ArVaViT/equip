@@ -104,9 +104,11 @@ export default function TranscriptPage() {
           </table>
         )}
 
-        <footer className="mt-10 text-center text-xs text-ink-muted">
-          {t("certificates.transcript.verify", { count: issued.length })}
-        </footer>
+        {issued.length > 0 && (
+          <footer className="mt-10 text-center text-xs text-ink-muted">
+            {t("certificates.transcript.verify", { count: issued.length })}
+          </footer>
+        )}
       </article>
     </div>
   )
