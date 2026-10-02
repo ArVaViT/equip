@@ -9,6 +9,9 @@ import {
 } from "@/services/verseOfTheDay"
 import type { SupportedLocale } from "@/i18n/config"
 
+const ENGLISH_QUOTES: [string, string] = ["“", "”"]
+const QUOTES: Record<string, [string, string]> = { ru: ["«", "»"], uk: ["«", "»"], de: ["„", "“"] }
+
 /**
  * Daily devotional verse, fetched from the backend's curated rotation.
  *
@@ -21,6 +24,8 @@ import type { SupportedLocale } from "@/i18n/config"
  */
 export function VerseOfTheDayCard() {
   const { t, i18n } = useTranslation()
+  // Each language's own quotation marks: «…» for a Russian verse, not “…”.
+  const quotes = QUOTES[(i18n.resolvedLanguage ?? i18n.language).slice(0, 2)] ?? ENGLISH_QUOTES
   const locale = i18n.resolvedLanguage as SupportedLocale | undefined
   const [verse, setVerse] = useState<VerseOfTheDay | null>(null)
   const [loading, setLoading] = useState(true)
@@ -91,7 +96,9 @@ export function VerseOfTheDayCard() {
         ) : (
           <figure className="space-y-2.5">
             <blockquote className="font-serif text-sm leading-relaxed text-ink">
-              &ldquo;{verse.text}&rdquo;
+              {quotes[0]}
+              {verse.text}
+              {quotes[1]}
             </blockquote>
             <figcaption className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-xs text-ink-muted">
               <cite className="not-italic font-medium text-ink">{verse.reference}</cite>

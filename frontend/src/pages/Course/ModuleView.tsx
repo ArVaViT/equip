@@ -263,7 +263,7 @@ export default function ModuleView() {
                     className="animate-fade-in opacity-60 cursor-not-allowed"
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
-                    <CardHeader className="pb-2">
+                    <CardHeader className="py-4">
                       <CardTitle className="flex min-w-0 items-center gap-2 text-base">
                         <Lock className="h-5 w-5 text-ink-muted shrink-0" strokeWidth={1.75} aria-hidden />
                         <span className="min-w-0 flex-1 truncate text-ink-muted">
@@ -302,7 +302,7 @@ export default function ModuleView() {
                     className={`animate-fade-in transition-colors hover:border-brand/40 ${isCompleted ? "border-success/40 bg-success/5" : ""}`}
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
-                    <CardHeader className="pb-2">
+                    <CardHeader className="py-4">
                       <CardTitle className="flex min-w-0 items-center gap-2 text-base">
                         {isGradable ? (
                           isCompleted ? (
@@ -322,7 +322,11 @@ export default function ModuleView() {
                             strokeWidth={1.75}
                             aria-label={t("module.chapterRead")}
                           />
-                        ) : null}
+                        ) : (
+                          // Keeps an unread lesson's title in line with the
+                          // rows that have a mark.
+                          <span className="h-5 w-5 shrink-0" aria-hidden />
+                        )}
                         <span className={`min-w-0 flex-1 truncate ${isCompleted ? "text-ink-muted" : ""}`}>
                           {orNotTranslated(t, chapter.title)}
                         </span>
