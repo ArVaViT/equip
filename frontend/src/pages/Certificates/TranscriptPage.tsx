@@ -89,10 +89,18 @@ export default function TranscriptPage() {
               {issued.map((c) => (
                 <li key={c.id} className="py-3">
                   <p className="font-medium">{c.course_title ?? c.archived_course_title ?? "—"}</p>
+                  {/* The column names, for the ear: on a phone they are not on screen. */}
                   <p className="mt-0.5 text-xs text-ink-muted">
-                    {c.school_name || "Equip"} · {date(c.issued_at)}
+                    <span className="sr-only">{t("certificates.transcript.school")}: </span>
+                    {c.school_name || "Equip"}
+                    <span aria-hidden> · </span>
+                    <span className="sr-only">, {t("certificates.transcript.completed")}: </span>
+                    {date(c.issued_at)}
                   </p>
-                  <p className="mt-1 font-mono text-xs">{c.certificate_number}</p>
+                  <p className="mt-1 font-mono text-xs">
+                    <span className="sr-only">{t("certificates.transcript.number")} </span>
+                    {c.certificate_number}
+                  </p>
                 </li>
               ))}
             </ul>

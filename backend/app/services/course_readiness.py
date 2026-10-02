@@ -390,14 +390,14 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
         # readers get it, but this is the author's checklist: it judges the
         # text they just wrote, or a picture added today would pass until
         # the translations land.
-        from app.services.staged_edits.read import staged_human_rows
+        from app.services.staged_edits.read import author_texts_bulk
 
-        block_id_set = {str(b) for b in all_block_ids}
-        for row in staged_human_rows(db, course.id):
-            if row.entity_type == "chapter_block" and row.field == "content" and str(row.entity_id) in block_id_set:
-                if row.text and row.text.strip():
-                    source_text_by_block[str(row.entity_id)] = row.text
-                    blocks_with_cv_content.add(str(row.entity_id))
+        # The same «author's text» the editor shows. An emptied field never
+        # reaches staging, so every row here has text.
+        held = author_texts_bulk(db, entity_type="chapter_block", entity_ids=all_block_ids, fields=["content"])
+        for (eid, _field), text in held.items():
+            source_text_by_block[eid] = text
+            blocks_with_cv_content.add(eid)
         blocks_with_images = {eid for eid, text in source_text_by_block.items() if _IMG.search(text)}
         blocks_with_unlabelled_images = {
             eid for eid, text in source_text_by_block.items() if _has_unlabelled_image(text)

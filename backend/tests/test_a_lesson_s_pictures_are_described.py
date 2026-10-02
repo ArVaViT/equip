@@ -96,3 +96,38 @@ def test_a_published_course_is_judged_by_the_edit_still_waiting_for_translations
     checks = {c.id: c for c in compute_readiness(db, course).checks}
     assert checks[f"images_have_alt:{lesson}"].passed is False
     assert f"headings_in_order:{lesson}" in checks
+
+
+def test_a_lesson_whose_only_text_is_waiting_counts_as_written(db: Session, teacher: User) -> None:
+    """A lesson added to a published course has its text only in staging;
+    the author's checklist does not call it empty."""
+    from app.models.chapter_block import ChapterBlock
+    from app.models.staged_content_version import StagedContentVersion
+
+    course = make_course_with_text(db, title="Acts", status="published", created_by=TEACHER_ID, source_locale="en")
+    db.add(Module(id=f"m-{course.id}", course_id=course.id, title="M", order_index=0))
+    db.flush()
+    chapter = Chapter(
+        id=f"new-{course.id}", course_id=course.id, module_id=f"m-{course.id}", title="new", order_index=0
+    )
+    db.add(chapter)
+    db.flush()
+    block = ChapterBlock(chapter_id=chapter.id, block_type="text", order_index=0)
+    db.add(block)
+    db.flush()
+    db.add(
+        StagedContentVersion(
+            entity_type="chapter_block",
+            entity_id=str(block.id),
+            field="content",
+            locale="en",
+            course_id=course.id,
+            text="<p>Written today.</p>",
+            origin="human",
+            source_locale="en",
+        )
+    )
+    db.commit()
+
+    checks = {c.id: c for c in compute_readiness(db, course).checks}
+    assert checks[f"reading_has_content:{chapter.id}"].passed is True
