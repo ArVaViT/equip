@@ -4,6 +4,8 @@ import { Copy, Mail } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/lib/toast"
 import { orNotTranslated } from "@/lib/untranslated"
 import { isWork, MAILTO_MAX, mailtoFor, pickRecipients, type Audience } from "./recipients"
@@ -51,37 +53,42 @@ export function WriteToStudents({ courseTitle, students }: { courseTitle: string
           <DialogHeader>
             <DialogTitle>{t("gradebook.write.title")}</DialogTitle>
           </DialogHeader>
-          <fieldset className="space-y-1.5">
-            <legend className="mb-1 text-sm font-medium">{t("gradebook.write.who")}</legend>
-            {AUDIENCES.map((a) => (
-              <label key={a} className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name="audience"
-                  value={a}
-                  checked={audience === a}
-                  onChange={() => setAudience(a)}
-                  disabled={a !== "everyone" && works.length === 0}
-                />
-                {t(`gradebook.write.audience.${a}`)}
-              </label>
-            ))}
-          </fieldset>
+          <div className="space-y-2">
+            <p id="write-to-who" className="text-sm font-medium">
+              {t("gradebook.write.who")}
+            </p>
+            <RadioGroup
+              aria-labelledby="write-to-who"
+              className="space-y-1.5"
+              value={audience}
+              onValueChange={(v) => setAudience(v as Audience)}
+            >
+              {AUDIENCES.map((a) => (
+                <label key={a} htmlFor={`write-to-${a}`} className="flex cursor-pointer items-center gap-2 text-sm">
+                  <RadioGroupItem id={`write-to-${a}`} value={a} disabled={a !== "everyone" && works.length === 0} />
+                  {t(`gradebook.write.audience.${a}`)}
+                </label>
+              ))}
+            </RadioGroup>
+          </div>
           {audience !== "everyone" && works.length > 0 && (
-            <label className="block space-y-1 text-sm">
-              <span className="font-medium">{t("gradebook.write.work")}</span>
-              <select
-                value={selected ?? ""}
-                onChange={(e) => setChapterId(e.target.value)}
-                className="w-full rounded-md border border-edge bg-surface px-2 py-1.5 text-sm"
-              >
-                {works.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {orNotTranslated(t, w.title)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="space-y-2">
+              <p id="write-to-work" className="text-sm font-medium">
+                {t("gradebook.write.work")}
+              </p>
+              <Select value={selected ?? ""} onValueChange={setChapterId}>
+                <SelectTrigger size="sm" className="w-full" aria-labelledby="write-to-work">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {works.map((w) => (
+                    <SelectItem key={w.id} value={w.id}>
+                      {orNotTranslated(t, w.title)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
           <div className="space-y-1" aria-live="polite">
             <p className="text-sm">{t("gradebook.write.count", { count: recipients.length })}</p>

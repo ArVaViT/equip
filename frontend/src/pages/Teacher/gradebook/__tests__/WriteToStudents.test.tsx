@@ -45,7 +45,7 @@ describe("WriteToStudents", () => {
     )
     await user.click(screen.getByRole("button", { name: "Написать…" }))
     // Only work is offered, not reading.
-    expect(screen.getByRole("combobox")).toHaveDisplayValue("Тест 1")
+    expect(screen.getByRole("combobox")).toHaveTextContent("Тест 1")
     expect(screen.getByText("1 студент")).toBeInTheDocument()
     expect(screen.getByText("Анна")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "Открыть письмо" })).toHaveAttribute(
