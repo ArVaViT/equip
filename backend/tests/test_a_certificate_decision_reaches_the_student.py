@@ -45,7 +45,7 @@ def test_an_issued_certificate_mails_its_number_and_where_to_check_it(
         certificate_service.admin_approve(db, cert.id, admin)
     [mail] = sent
     assert mail["kind"] == "certificate_decided"
-    assert mail["subject"] == "Свидетельство о курсе «Деяния» выдано"
+    assert mail["subject"] == "Сертификат о курсе «Деяния» выдан"
     assert cert.certificate_number and cert.certificate_number in mail["html"]
     assert f"/verify/{cert.certificate_number}" in mail["html"]
 
@@ -79,4 +79,4 @@ def test_the_mail_says_how_to_stop_it_in_words(db: Session, teacher: User, stude
         certificate_service.admin_approve(db, cert.id, admin)
     [mail] = sent
     assert "email.unsubscribe" not in mail["html"] and "email.unsubscribe" not in mail["text"]
-    assert "Не присылать письма о решениях по свидетельствам" in mail["html"]
+    assert "Не присылать письма о решениях по сертификатам" in mail["html"]
