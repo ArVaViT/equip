@@ -93,6 +93,7 @@ export function TeacherCoursesCard() {
     }
   }
 
+  const listShown = open && !loading && !failed && shown.length > 0
   return (
     <section
       data-testid="teacher-courses-card"
@@ -123,7 +124,9 @@ export function TeacherCoursesCard() {
             onClick={toggle}
             disabled={!collapsible}
             aria-expanded={open}
-            aria-controls="teacher-courses-list"
+            // Only while the list is there: a reference to a missing id is an
+            // invalid attribute value (axe, critical).
+            aria-controls={listShown ? "teacher-courses-list" : undefined}
             className="group -mx-1 flex min-w-0 items-center gap-2.5 rounded-md px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-default"
           >
             <GraduationCap className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
@@ -176,7 +179,7 @@ export function TeacherCoursesCard() {
         </div>
       )}
 
-      {open && !loading && !failed && shown.length > 0 && (
+      {listShown && (
         <ul id="teacher-courses-list" className="divide-y divide-edge dark:divide-white/5">
           {shown.map((course) => (
             <li key={course.id}>
