@@ -842,7 +842,11 @@ export default function ChapterView() {
       </Link>
 
       <header data-tour="chapter-header" className="mb-10">
-        <p className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
+        {/* «Aa» sits in the corner, the line keeps clear of it: a longer
+            German or Ukrainian line no longer pushes it onto a row of its own. */}
+        <p
+          className={`relative mb-3 flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted ${chapterType === "reading" ? "pr-12" : ""}`}
+        >
           <span className="inline-flex items-center gap-1.5">
             <ChapterTypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
             {t(CHAPTER_TYPE_LABEL_KEYS[chapterType])}

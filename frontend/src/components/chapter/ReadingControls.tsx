@@ -18,7 +18,7 @@ export function ReadingControls({ prefs, onChange }: { prefs: ReadingPrefs; onCh
     <Popover>
       <PopoverTrigger
         aria-label={t("chapter.reading.label")}
-        className="ml-auto inline-flex h-7 items-center rounded-md border border-edge px-2 font-serif text-sm normal-case tracking-normal text-ink-muted transition-colors hover:bg-muted/40 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className="absolute right-0 top-0 inline-flex h-7 items-center rounded-md border border-edge px-2 font-serif text-sm normal-case tracking-normal text-ink-muted transition-colors hover:bg-muted/40 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         <span aria-hidden>
           A<span className="text-xs">a</span>
