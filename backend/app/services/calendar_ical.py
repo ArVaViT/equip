@@ -76,16 +76,14 @@ def _format_dt(value: datetime) -> str:
 _CALNAME = {"ru": "Календарь Equip", "uk": "Календар Equip", "en": "Equip Calendar", "de": "Equip-Kalender"}
 
 
-def render_calendar(events: list[CalendarEvent], *, user_email: str | None = None, locale: str = "en") -> str:
+def render_calendar(events: list[CalendarEvent], *, locale: str = "en") -> str:
     """Serialize ``events`` to an RFC 5545 VCALENDAR.
 
-    ``user_email`` shows up in the ``X-WR-CALNAME`` so the user sees
-    "Equip Calendar (foo@example.com)" in their client's calendar
-    list — useful when they subscribe from multiple accounts."""
+    Named «Календарь Equip» in the subscriber's language — short, as a
+    calendar list shows it. It used to carry the address too, which made
+    the name run off the edge of Google's sidebar."""
     now_stamp = _format_dt(datetime.now(UTC))
     calname = _CALNAME.get(locale, _CALNAME["en"])
-    if user_email:
-        calname = f"{calname} ({user_email})"
 
     lines: list[str] = [
         "BEGIN:VCALENDAR",

@@ -151,10 +151,16 @@ def issue_token(
     current_user.calendar_ical_min_iat = iat
     db.commit()
 
-    # Build the feed URL against the request's own scheme/host so the
-    # client always sees the same origin it just authenticated with —
-    # no need for a static "public base url" config.
-    feed_url = f"{request.url.scheme}://{request.url.netloc}{router.prefix}/feed?token={token}"
+    # The feed's own route, on the host the client just authenticated with.
+    # Pasting ``router.prefix`` dropped the ``/api/v1`` the router is mounted
+    # under, so every subscription pointed at a 404 and Google showed the URL
+    # where the calendar's name should be. Behind Vercel's proxy the app sees
+    # plain http; the scheme the caller used comes in X-Forwarded-Proto.
+    url = request.url_for("serve_feed").include_query_params(token=token)
+    forwarded = request.headers.get("x-forwarded-proto", "").split(",")[0].strip()
+    if forwarded in ("http", "https"):
+        url = url.replace(scheme=forwarded)
+    feed_url = str(url)
     return {
         "token": token,
         "feed_url": feed_url,
@@ -238,7 +244,9 @@ def serve_feed(
     # assignment deadlines + course events all come through with the
     # same cv localization, source-locale fallback, deleted-course
     # filtering, and 1000-event cap as ``GET /calendar/events``.
-    locale = normalize_locale(accept_language or user.preferred_locale)
+    # The subscriber's own language first: Google fetches the feed with its
+    # own Accept-Language, which named a Russian reader's calendar in English.
+    locale = normalize_locale(user.preferred_locale or accept_language)
     events: list[CalendarEvent] = build_calendar_events(
         db=db,
         user=user,
@@ -251,7 +259,7 @@ def serve_feed(
         # the only thing that knows better here.
         display_locale=locale,
     )
-    body = render_calendar(events, user_email=user.email, locale=locale)
+    body = render_calendar(events, locale=locale)
     response.headers["Content-Type"] = "text/calendar; charset=utf-8"
     response.headers["Cache-Control"] = "private, max-age=900"
     response.headers["Content-Disposition"] = 'inline; filename="equip-calendar.ics"'
