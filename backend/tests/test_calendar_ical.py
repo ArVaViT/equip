@@ -11,6 +11,7 @@ import datetime as dt
 import uuid
 from typing import TYPE_CHECKING
 
+import httpx
 import jwt
 import pytest
 from fastapi.testclient import TestClient
@@ -113,6 +114,17 @@ def test_post_token_returns_signed_jwt_and_feed_url(student_client: TestClient, 
     assert body["feed_url"].endswith(f"?token={body['token']}")
     decoded = jwt.decode(body["token"], secret, algorithms=["HS256"], audience="equip-ical")
     assert decoded["scope"] == "ical"
+
+
+def test_the_issued_url_is_the_feed_itself(student_client: TestClient, secret: str) -> None:
+    """The URL handed out is fetched as is — it lacked ``/api/v1`` and every
+    subscription got a 404, so Google listed the URL instead of a name."""
+    body = student_client.post("/api/v1/calendar/ical/token").json()
+    url = httpx.URL(body["feed_url"])
+    assert url.path == "/api/v1/calendar/ical/feed"
+    resp = student_client.get(url.raw_path.decode())
+    assert resp.status_code == 200, resp.text
+    assert "X-WR-CALNAME:" in resp.text
 
 
 def test_feed_with_valid_token_serves_text_calendar(

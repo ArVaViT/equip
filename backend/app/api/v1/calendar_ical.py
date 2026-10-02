@@ -151,10 +151,15 @@ def issue_token(
     current_user.calendar_ical_min_iat = iat
     db.commit()
 
-    # Build the feed URL against the request's own scheme/host so the
-    # client always sees the same origin it just authenticated with —
-    # no need for a static "public base url" config.
-    feed_url = f"{request.url.scheme}://{request.url.netloc}{router.prefix}/feed?token={token}"
+    # The feed's own route, on the host the client just authenticated with.
+    # Pasting ``router.prefix`` dropped the ``/api/v1`` the router is mounted
+    # under, so every subscription pointed at a 404 and Google showed the URL
+    # where the calendar's name should be. A calendar server fetches it from
+    # outside, so it is always https there; plain http stays for local runs.
+    url = request.url_for("serve_feed").include_query_params(token=token)
+    if url.hostname not in ("localhost", "127.0.0.1", "testserver"):
+        url = url.replace(scheme="https")
+    feed_url = str(url)
     return {
         "token": token,
         "feed_url": feed_url,
