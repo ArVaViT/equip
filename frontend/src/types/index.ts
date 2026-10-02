@@ -79,8 +79,6 @@ export interface User {
   church?: string | null
   /** Kinds of course mail this person turned off. Empty or absent: all of it. */
   email_off?: MailKind[]
-  /** A teacher's saved comments for feedback (at most 50). */
-  comment_library?: string[]
 }
 
 /**

@@ -20,8 +20,6 @@ import { RubricGrid } from "@/components/rubric/RubricGrid"
 import { toast } from "@/lib/toast"
 import { isHttpUrl } from "@/lib/url"
 import type { AssignmentSubmission, SubmissionRubric } from "@/types"
-import { CommentLibrary } from "@/components/grading/CommentLibrary"
-import { appendComment } from "@/lib/feedback"
 
 interface Props {
   submission: AssignmentSubmission
@@ -219,13 +217,10 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
         )}
 
         <div className="space-y-1">
-          <div className="flex items-center justify-between gap-2">
-            <Label className="text-xs flex items-center gap-1">
-              <MessageSquare className="h-3 w-3" strokeWidth={1.75} />
-              {t("assignmentEditor.grader.feedback")}
-            </Label>
-            <CommentLibrary current={feedback} onInsert={(c) => setFeedback((f) => appendComment(f, c))} />
-          </div>
+          <Label className="text-xs flex items-center gap-1">
+            <MessageSquare className="h-3 w-3" strokeWidth={1.75} />
+            {t("assignmentEditor.grader.feedback")}
+          </Label>
           <Textarea
             fieldSize="sm"
             value={feedback}

@@ -6,8 +6,6 @@ import type { Quiz } from "@/types"
 import { QuestionCard } from "./QuestionCard"
 import { QuizHeaderFields } from "./QuizHeaderFields"
 import type { DraftOption, DraftQuestion } from "./types"
-import { ImportQuestionsDialog } from "./ImportQuestionsDialog"
-import type { ImportedQuestion } from "./importText"
 
 interface Props {
   title: string
@@ -21,7 +19,6 @@ interface Props {
   chapterType: "quiz" | "exam"
   questions: DraftQuestion[]
   onAddQuestion: () => void
-  onImportQuestions: (questions: ImportedQuestion[]) => void
   onRemoveQuestion: (idx: number) => void
   onMoveQuestion: (idx: number, direction: "up" | "down") => void
   onUpdateQuestion: (idx: number, patch: Partial<DraftQuestion>) => void
@@ -55,7 +52,6 @@ export function QuizEditView({
   chapterType,
   questions,
   onAddQuestion,
-  onImportQuestions,
   onRemoveQuestion,
   onMoveQuestion,
   onUpdateQuestion,
@@ -87,18 +83,14 @@ export function QuizEditView({
       />
 
       <div className="space-y-3">
-        {/* Wraps on a phone: the heading and two buttons are wider than 360px. */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center justify-between">
           <span className="text-sm font-medium">
             {t("quizEditor.questions.heading", { count: questions.length })}
           </span>
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <ImportQuestionsDialog onImport={onImportQuestions} />
-            <Button variant="outline" size="sm" onClick={onAddQuestion} className="h-7 text-xs">
-              <Plus className="h-3 w-3 mr-1" strokeWidth={1.75} />
-              {t("quizEditor.questions.addQuestion")}
-            </Button>
-          </div>
+          <Button variant="outline" size="sm" onClick={onAddQuestion} className="h-7 text-xs">
+            <Plus className="h-3 w-3 mr-1" strokeWidth={1.75} />
+            {t("quizEditor.questions.addQuestion")}
+          </Button>
         </div>
 
         {/* Said once for the quiz, not under every answered question: on a

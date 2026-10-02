@@ -13,7 +13,6 @@ import { beforeAll, describe, expect, it, vi } from "vitest"
 import i18n from "@/i18n/config"
 import { axe } from "@/test/a11y"
 import { AuthContext } from "@/context/auth-context"
-import { CommentLibrary } from "@/components/grading/CommentLibrary"
 import { ReadingControls } from "@/components/chapter/ReadingControls"
 import { VerseCard } from "@/components/chapter/VerseCard"
 import { LessonNote } from "@/components/chapter/LessonNote"
@@ -21,7 +20,6 @@ import MyNotesPage from "@/pages/Notes/MyNotesPage"
 import { notesService } from "@/services/notes"
 import { WeeklyReview } from "@/components/review/WeeklyReview"
 import { reviewService } from "@/services/review"
-import { ImportQuestionsDialog } from "@/components/quiz/editor/ImportQuestionsDialog"
 import { AddToCalendarButton } from "@/components/calendar/AddToCalendarButton"
 import TranscriptPage from "@/pages/Certificates/TranscriptPage"
 import { coursesService } from "@/services/courses"
@@ -40,15 +38,6 @@ function wrap(node: ReactNode) {
 describe("today's surfaces have no axe violations", () => {
   beforeAll(async () => {
     await i18n.changeLanguage("ru")
-  })
-
-  it("quiz import, opened with a pasted test", async () => {
-    const user = userEvent.setup()
-    wrap(<ImportQuestionsDialog onImport={vi.fn()} />)
-    await user.click(screen.getByRole("button", { name: "Вставить из текста" }))
-    screen.getByRole("textbox").focus()
-    await user.paste("Кто?\nА) Пётр\nБ) Лука\nОтвет: Б\n\nБез ответа\nА) x\nБ) y")
-    expect(await axe(document.body)).toHaveNoViolations()
   })
 
   it("write to students, opened", async () => {
@@ -91,18 +80,6 @@ describe("today's surfaces have no axe violations", () => {
   it("my data", async () => {
     const { container } = wrap(<MyDataSetting />)
     expect(await axe(container)).toHaveNoViolations()
-  })
-
-  it("the comment library, opened", async () => {
-    const user = userEvent.setup()
-    const auth = { user: { id: "t", comment_library: ["Укажите стих, а не только главу."] }, applyUser: vi.fn() }
-    wrap(
-      <AuthContext.Provider value={auth as never}>
-        <CommentLibrary current="Хорошо" onInsert={vi.fn()} />
-      </AuthContext.Provider>,
-    )
-    await user.click(screen.getByRole("button", { name: "Мои замечания (1)" }))
-    expect(await axe(document.body)).toHaveNoViolations()
   })
 
   it("add to calendar", async () => {
