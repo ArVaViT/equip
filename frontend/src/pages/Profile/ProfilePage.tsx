@@ -497,8 +497,8 @@ function ProfileTabs({ active, onSelect }: { active: ProfileTab; onSelect: (tab:
     document.getElementById(`profile-tab-${next}`)?.focus()
   }
   return (
-    // On a phone the three tabs share the width and a long label wraps;
-    // «Persönliche Angaben» used to push «Einstellungen» off the edge.
+    // On a phone the tabs share the width by their length, and a label wraps
+    // only when it must: «Persönliche Angaben» pushed «Einstellungen» off.
     <div role="tablist" aria-label={t("profile.tabs.label")} onKeyDown={onKeyDown} className="flex gap-1 border-b border-edge sm:overflow-x-auto">
       {PROFILE_TABS.map((tab) => (
         <button
@@ -510,7 +510,7 @@ function ProfileTabs({ active, onSelect }: { active: ProfileTab; onSelect: (tab:
           aria-controls={`profile-panel-${tab}`}
           tabIndex={active === tab ? 0 : -1}
           onClick={() => onSelect(tab)}
-          className={`-mb-px flex-1 border-b-2 px-2 py-2.5 text-center text-sm font-medium leading-tight sm:flex-none sm:whitespace-nowrap sm:px-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+          className={`-mb-px min-w-0 flex-auto border-b-2 px-2 py-2.5 text-center text-sm font-medium leading-tight sm:flex-none sm:whitespace-nowrap sm:px-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
             active === tab ? "border-brand text-ink" : "border-transparent text-ink-muted hover:text-ink"
           }`}
         >
