@@ -39,11 +39,11 @@ export function TeacherAtRiskCard() {
   return (
     <section
       aria-labelledby="teacher-at-risk-heading"
-      className="animate-fade-in overflow-hidden rounded-card bg-card shadow-card"
+      className="animate-fade-in overflow-hidden rounded-card border border-edge bg-card shadow-card dark:border-transparent"
     >
-      <header className="flex items-center gap-3 border-b border-edge px-4 py-3 sm:px-5 sm:py-4">
+      <header className="flex items-center gap-2.5 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
         <UserRoundX className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-        <h2 id="teacher-at-risk-heading" className="min-w-0 font-serif text-base font-semibold">
+        <h2 id="teacher-at-risk-heading" className="min-w-0 truncate font-serif text-sm font-semibold tracking-tight text-ink">
           {t("dashboard.atRisk.title")}
         </h2>
       </header>

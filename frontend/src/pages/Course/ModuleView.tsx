@@ -264,23 +264,29 @@ export default function ModuleView() {
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
                     <CardHeader className="py-4">
-                      <CardTitle className="flex min-w-0 items-center gap-2 text-base">
+                      <CardTitle className="flex min-w-0 items-start gap-2 text-base sm:items-center">
                         <Lock className="h-5 w-5 text-ink-muted shrink-0" strokeWidth={1.75} aria-hidden />
-                        <span className="min-w-0 flex-1 truncate text-ink-muted">
-                          {orNotTranslated(t, chapter.title)}
-                        </span>
-                        {noted.has(chapter.id) && (
-                          <NotebookPen
-                            className="h-3.5 w-3.5 shrink-0 text-ink-muted"
-                            strokeWidth={1.75}
-                            role="img"
-                            aria-label={t("notes.lesson.hasNote")}
-                          />
-                        )}
-                        <ReadingMinutes minutes={minutes?.[chapter.id]} />
-                        {chapter.chapter_type && (
-                          <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
-                        )}
+                        {/* On a phone the title gets the whole line and wraps;
+                            time, note and type sit under it. Wider, one row. */}
+                        <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-2">
+                          <span className={`block text-wrap-safe sm:min-w-0 sm:flex-1 sm:truncate ${"text-ink-muted"}`}>
+                            {orNotTranslated(t, chapter.title)}
+                          </span>
+                          <span className="mt-1.5 flex items-center gap-2 sm:mt-0 sm:shrink-0">
+                            {noted.has(chapter.id) && (
+                              <NotebookPen
+                                className="h-3.5 w-3.5 shrink-0 text-ink-muted"
+                                strokeWidth={1.75}
+                                role="img"
+                                aria-label={t("notes.lesson.hasNote")}
+                              />
+                            )}
+                            <ReadingMinutes minutes={minutes?.[chapter.id]} />
+                            {chapter.chapter_type && (
+                              <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
+                            )}
+                          </span>
+                        </div>
                         <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
                       </CardTitle>
                     </CardHeader>
@@ -303,7 +309,7 @@ export default function ModuleView() {
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
                     <CardHeader className="py-4">
-                      <CardTitle className="flex min-w-0 items-center gap-2 text-base">
+                      <CardTitle className="flex min-w-0 items-start gap-2 text-base sm:items-center">
                         {isGradable ? (
                           isCompleted ? (
                             <CheckCircle className="h-5 w-5 shrink-0 text-success" strokeWidth={1.75} aria-hidden />
@@ -327,21 +333,27 @@ export default function ModuleView() {
                           // rows that have a mark.
                           <span className="h-5 w-5 shrink-0" aria-hidden />
                         )}
-                        <span className={`min-w-0 flex-1 truncate ${isCompleted ? "text-ink-muted" : ""}`}>
-                          {orNotTranslated(t, chapter.title)}
-                        </span>
-                        {noted.has(chapter.id) && (
-                          <NotebookPen
-                            className="h-3.5 w-3.5 shrink-0 text-ink-muted"
-                            strokeWidth={1.75}
-                            role="img"
-                            aria-label={t("notes.lesson.hasNote")}
-                          />
-                        )}
-                        <ReadingMinutes minutes={minutes?.[chapter.id]} />
-                        {chapter.chapter_type && (
-                          <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
-                        )}
+                        {/* On a phone the title gets the whole line and wraps;
+                            time, note and type sit under it. Wider, one row. */}
+                        <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-2">
+                          <span className={`block text-wrap-safe sm:min-w-0 sm:flex-1 sm:truncate ${isCompleted ? "text-ink-muted" : ""}`}>
+                            {orNotTranslated(t, chapter.title)}
+                          </span>
+                          <span className="mt-1.5 flex items-center gap-2 sm:mt-0 sm:shrink-0">
+                            {noted.has(chapter.id) && (
+                              <NotebookPen
+                                className="h-3.5 w-3.5 shrink-0 text-ink-muted"
+                                strokeWidth={1.75}
+                                role="img"
+                                aria-label={t("notes.lesson.hasNote")}
+                              />
+                            )}
+                            <ReadingMinutes minutes={minutes?.[chapter.id]} />
+                            {chapter.chapter_type && (
+                              <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
+                            )}
+                          </span>
+                        </div>
                         <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
                       </CardTitle>
                     </CardHeader>

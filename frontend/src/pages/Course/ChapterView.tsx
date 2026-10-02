@@ -847,30 +847,35 @@ export default function ChapterView() {
             <ChapterTypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
             {t(CHAPTER_TYPE_LABEL_KEYS[chapterType])}
           </span>
-          <span aria-hidden className="text-ink-muted">·</span>
-          <span className="tabular-nums">
-            {/* The lesson's place in the course, not in its module. «Глава 1
-                из 3» on the first lesson of the second module told a student
-                they were at the start of something they were halfway through. */}
-            {t("chapter.positionEyebrow", { current: currentIdx + 1, total: structure.chapters.length })}
+          {/* Each separator travels with the item after it, so a wrapped
+              line never ends on a lone «·». */}
+          <span className="inline-flex items-center gap-x-2">
+            <span aria-hidden className="text-ink-muted">·</span>
+            <span className="tabular-nums">
+              {/* The lesson's place in the course, not in its module. «Глава 1
+                  из 3» on the first lesson of the second module told a student
+                  they were at the start of something they were halfway through. */}
+              {t("chapter.positionEyebrow", { current: currentIdx + 1, total: structure.chapters.length })}
+            </span>
           </span>
           {readingTime > 0 && (
-            <>
+            <span className="inline-flex items-center gap-x-2">
               <span aria-hidden className="text-ink-muted">·</span>
               <ReadingMinutes
                 minutes={readingTime}
                 className="gap-1.5 normal-case tracking-normal"
                 iconClassName="h-3.5 w-3.5"
               />
-            </>
+            </span>
           )}
           {parentModule?.title && (
-            <>
-              <span aria-hidden className="text-ink-muted">·</span>
+            // On a phone the module takes a line of its own, without a dot.
+            <span className="inline-flex min-w-0 items-center gap-x-2 max-sm:order-last max-sm:basis-full">
+              <span aria-hidden className="text-ink-muted max-sm:hidden">·</span>
               <span className="normal-case tracking-normal text-ink-muted text-wrap-safe">
                 {parentModule.title}
               </span>
-            </>
+            </span>
           )}
           {chapterType === "reading" && <ReadingControls prefs={readingPrefs} onChange={setReadingPrefs} />}
         </p>
