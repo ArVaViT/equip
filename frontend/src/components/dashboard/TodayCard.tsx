@@ -190,8 +190,10 @@ export function TodayCard() {
                   {/* The card answers "what do I need to do today", and
                       for a Saturday Zoom class the answer is a button,
                       not an instruction to go and find one. */}
-                  {!isOver(e) && <JoinMeetingLink url={e.meeting_url} title={e.title} className="mt-1.5" />}
-                  <RecordingLink url={e.recording_url} title={e.title} className="ml-1.5 mt-1.5" />
+                  <div className="mt-1.5 flex flex-wrap gap-1.5 empty:hidden">
+                    {!isOver(e) && <JoinMeetingLink url={e.meeting_url} title={e.title} />}
+                    <RecordingLink url={e.recording_url} title={e.title} />
+                  </div>
                 </div>
               </li>
             ))}
