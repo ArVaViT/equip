@@ -2,6 +2,7 @@ import { Clock } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
 import { activeIntlTag } from "@/i18n/config"
+import { cn } from "@/lib/utils"
 
 /**
  * Reading time as the eye expects it: a clock and a number — "12 мин",
@@ -10,7 +11,17 @@ import { activeIntlTag } from "@/i18n/config"
  * An hour or more is rounded to the nearest half hour: an estimate that
  * pretends to a tenth of an hour is not more honest, only noisier.
  */
-export function ReadingMinutes({ minutes, className }: { minutes: number | undefined; className?: string }) {
+export function ReadingMinutes({
+  minutes,
+  className,
+  iconClassName = "h-3 w-3",
+}: {
+  minutes: number | undefined
+  /** Replaces the default size and colour; layout and no-wrap stay. */
+  className?: string
+  /** To match the icons beside it in a header line. */
+  iconClassName?: string
+}) {
   const { t, i18n } = useTranslation()
   if (!minutes || minutes <= 0) return null
   let short: string
@@ -27,12 +38,12 @@ export function ReadingMinutes({ minutes, className }: { minutes: number | undef
   }
   return (
     <span
-      className={
-        className ??
-        "inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-normal tabular-nums text-ink-muted"
-      }
+      className={cn(
+        "inline-flex shrink-0 items-center whitespace-nowrap tabular-nums",
+        className ?? "gap-1 text-xs font-normal text-ink-muted",
+      )}
     >
-      <Clock className="h-3 w-3" strokeWidth={1.75} aria-hidden />
+      <Clock className={iconClassName} strokeWidth={1.75} aria-hidden />
       <span aria-hidden>{short}</span>
       <span className="sr-only">{full}</span>
     </span>

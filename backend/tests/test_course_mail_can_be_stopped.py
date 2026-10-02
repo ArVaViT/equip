@@ -1,11 +1,9 @@
 """Course mail, and the promise that every kind of it can be stopped.
 
 The privacy policy says it plainly: course mail "can be turned off in your
-profile, and every such message carries an unsubscribe link". The first
-course mail — "your work has been marked, or returned for a draft" — ships
-with the means to stop it, and with one mail per decision rather than one per
-click: a rubric re-scores the work each time a level changes after the grid
-is full.
+profile, and every such message carries an unsubscribe link". The one
+course mail sent today — the certificate decision — ships with the means to
+stop it; the switch, the link and the header are checked here by kind.
 """
 
 from __future__ import annotations

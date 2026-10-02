@@ -127,6 +127,12 @@ def test_the_issued_url_is_the_feed_itself(student_client: TestClient, secret: s
     assert "X-WR-CALNAME:" in resp.text
 
 
+def test_the_issued_url_keeps_the_scheme_the_proxy_saw(student_client: TestClient, secret: str) -> None:
+    """Vercel terminates TLS: the app sees http, the calendar must be given https."""
+    body = student_client.post("/api/v1/calendar/ical/token", headers={"X-Forwarded-Proto": "https"}).json()
+    assert body["feed_url"].startswith("https://")
+
+
 def test_feed_with_valid_token_serves_text_calendar(
     student: User, secret: str, db: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -15,7 +15,7 @@ import type { MailKind } from "@/types"
  * off here. A switch for a mail that is never sent would promise something
  * else, so only the kinds that exist are listed; a new kind adds a line.
  * Account mail — sign-in, password, invitations — has no switch: without it
- * an account cannot be used, and the hint says so.
+ * an account cannot be used.
  */
 const SENT_TODAY: MailKind[] = ["certificate_decided"]
 

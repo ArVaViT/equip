@@ -859,7 +859,8 @@ export default function ChapterView() {
               <span aria-hidden className="text-ink-muted">·</span>
               <ReadingMinutes
                 minutes={readingTime}
-                className="inline-flex items-center gap-1 normal-case tracking-normal tabular-nums"
+                className="gap-1.5 normal-case tracking-normal"
+                iconClassName="h-3.5 w-3.5"
               />
             </>
           )}

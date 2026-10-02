@@ -4,7 +4,7 @@
     "ask": "Stop sending “{{kind}}” emails?",
     "button": "Unsubscribe",
     "done": "Done: “{{kind}}” emails will no longer arrive.",
-    "again": "You can turn it back on in your profile, under Settings.",
+    "again": "You can turn them back on in your profile, under Settings.",
     "invalid": "This link does not work. Turn email off in your profile, under Settings.",
     "toProfile": "Open profile"
   },
@@ -2162,14 +2162,14 @@
   },
   "gradebook": {
     "write": {
-      "tooMany": "Too many addresses for one email. Copy them into Bcc.",
+      "tooMany": "Too many addresses for one link. Copy them into the Bcc field.",
       "open": "Write to…",
       "title": "Write to students",
       "who": "To",
       "work": "Work",
       "audience": {
         "not_submitted": "Not handed in",
-        "not_passed": "Not passed or revising",
+        "not_passed": "Not passed or sent back",
         "everyone": "The whole class"
       },
       "count_one": "{{count}} student",
@@ -2860,8 +2860,8 @@
       "confirm": "Publish anyway"
     },
     "checks": {
-      "headingsInOrder": "Lesson headings are in order.",
-      "imagesHaveAlt": "Pictures in lessons have descriptions.",
+      "headingsInOrder": "Headings in \"{{title}}\" are in order.",
+      "imagesHaveAlt": "Pictures in \"{{title}}\" have descriptions.",
       "hasDescription": "The course has a description for the catalog.",
       "hasCoverImage": "The course has a cover image.",
       "translationsComplete": "Every language has this course. It goes into the catalog once they all do.",

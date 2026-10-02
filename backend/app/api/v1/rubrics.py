@@ -369,9 +369,8 @@ def set_submission_marks(
             feedback=data.feedback if data.feedback is not None else submission.feedback,
             # A grid re-saved on work that was sent back for a draft keeps it
             # sent back: editing a comment is not accepting the work. It used
-            # to flip ``returned`` to ``graded`` silently, and with the mail
-            # that would tell the student "marked" days after "rewrite this".
-            # Accepting it is the explicit mark, which says so.
+            # to flip ``returned`` to ``graded`` silently. Accepting it is the
+            # explicit mark.
             new_status="returned" if submission.status == "returned" else "graded",
             teacher_id=teacher.id,
             source_locale=_course_source_locale_for_chapter(db, assignment.chapter_id),

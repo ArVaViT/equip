@@ -33,7 +33,7 @@ export function CourseReadingTime({ courseId }: { courseId: string }) {
   return (
     <>
       <span aria-hidden className="text-ink-muted">·</span>
-      <ReadingMinutes minutes={minutes} className="inline-flex items-center gap-1 tabular-nums" />
+      <ReadingMinutes minutes={minutes} className="gap-1.5" iconClassName="h-3.5 w-3.5" />
     </>
   )
 }

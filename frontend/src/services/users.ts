@@ -1,7 +1,6 @@
 import { supabase } from "@/lib/supabase"
 import type { MailKind, Profile } from "@/types"
 
-
 export interface ProfileUpdate {
   full_name?: string
   avatar_url?: string
@@ -59,7 +58,6 @@ export const usersService = {
     if (error) throw error
     return ((profile?.email_off as MailKind[] | null) ?? next)
   },
-
 
   /**
    * Record the device's zone, unless the person has chosen one.
