@@ -65,3 +65,34 @@ def test_headings_out_of_order_are_flagged_across_the_lesson(db: Session, teache
 
     flagged = {c.id for c in compute_readiness(db, course).checks if c.id.startswith("headings_in_order:")}
     assert flagged == {f"headings_in_order:{jump}", f"headings_in_order:{page_title}"}
+
+
+def test_a_published_course_is_judged_by_the_edit_still_waiting_for_translations(db: Session, teacher: User) -> None:
+    """On a published course an edit waits for every language before readers
+    get it. The checklist is the author's, so it reads that edit: a picture
+    added today must not pass until the translations land."""
+    from app.models.chapter_block import ChapterBlock
+    from app.models.staged_content_version import StagedContentVersion
+
+    course = make_course_with_text(db, title="Acts", status="published", created_by=TEACHER_ID, source_locale="en")
+    db.add(Module(id=f"m-{course.id}", course_id=course.id, title="M", order_index=0))
+    db.flush()
+    lesson = _lesson(db, course.id, "live", '<img src="https://x/a.png" alt="Map">')
+    block = db.query(ChapterBlock).filter(ChapterBlock.chapter_id == lesson).one()
+    db.add(
+        StagedContentVersion(
+            entity_type="chapter_block",
+            entity_id=str(block.id),
+            field="content",
+            locale="en",
+            course_id=course.id,
+            text='<h1>Again the title</h1><img src="https://x/b.png">',
+            origin="human",
+            source_locale="en",
+        )
+    )
+    db.commit()
+
+    checks = {c.id: c for c in compute_readiness(db, course).checks}
+    assert checks[f"images_have_alt:{lesson}"].passed is False
+    assert f"headings_in_order:{lesson}" in checks

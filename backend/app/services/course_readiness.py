@@ -380,21 +380,27 @@ def compute_readiness(db: Session, course: Course) -> ReadinessReport:
             .all()
         )
         blocks_with_cv_content = {eid for (eid, text, _locale) in block_rows if text and text.strip()}
-        # Images without a description, read in the language the teacher
-        # writes in: that is the text they can fix, and the translations
-        # carry its attributes over.
-        blocks_with_images = {
-            eid
-            for (eid, text, locale) in block_rows
-            if text and locale == (course.source_locale or locale) and _IMG.search(text)
-        }
+        # The teacher's own text, read in the language they write in: that
+        # is the text they can fix, and the translations carry its
+        # attributes over.
         source_text_by_block = {
             eid: text for (eid, text, locale) in block_rows if text and locale == (course.source_locale or locale)
         }
+        # On a published course an edit waits for every language before
+        # readers get it, but this is the author's checklist: it judges the
+        # text they just wrote, or a picture added today would pass until
+        # the translations land.
+        from app.services.staged_edits.read import staged_human_rows
+
+        block_id_set = {str(b) for b in all_block_ids}
+        for row in staged_human_rows(db, course.id):
+            if row.entity_type == "chapter_block" and row.field == "content" and str(row.entity_id) in block_id_set:
+                if row.text and row.text.strip():
+                    source_text_by_block[str(row.entity_id)] = row.text
+                    blocks_with_cv_content.add(str(row.entity_id))
+        blocks_with_images = {eid for eid, text in source_text_by_block.items() if _IMG.search(text)}
         blocks_with_unlabelled_images = {
-            eid
-            for (eid, text, locale) in block_rows
-            if text and locale == (course.source_locale or locale) and _has_unlabelled_image(text)
+            eid for eid, text in source_text_by_block.items() if _has_unlabelled_image(text)
         }
 
     # Quizzes / assignments are looked up by chapter_id; eagerly load
