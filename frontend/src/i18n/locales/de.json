@@ -1415,6 +1415,7 @@
     "share": {
       "share": "Teilen",
       "linkedIn": "Zu LinkedIn hinzufügen",
+      "linkedInShort": "LinkedIn",
       "text": "Ich habe den Kurs „{{course}}“ abgeschlossen. Das Zertifikat lässt sich hier prüfen:",
       "copied": "Prüflink kopiert",
       "copyFailed": "Link konnte nicht kopiert werden"

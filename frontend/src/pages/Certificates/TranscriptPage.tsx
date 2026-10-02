@@ -82,26 +82,41 @@ export default function TranscriptPage() {
         {issued.length === 0 ? (
           <p className="mt-10 text-center text-sm text-ink-muted">{t("certificates.transcript.empty")}</p>
         ) : (
-          <table className="mt-10 w-full border-collapse text-left text-sm">
-            <thead>
-              <tr className="border-b border-edge text-xs uppercase tracking-[0.14em] text-ink-muted">
-                <th className="py-2 pr-3 font-medium">{t("certificates.transcript.course")}</th>
-                <th className="py-2 pr-3 font-medium">{t("certificates.transcript.school")}</th>
-                <th className="py-2 pr-3 font-medium">{t("certificates.transcript.completed")}</th>
-                <th className="py-2 font-medium">{t("certificates.transcript.number")}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* A phone gets one entry per course; four columns do not fit
+                390px. The table stays for a wide screen and for paper. */}
+            <ul className="mt-8 divide-y divide-edge border-y border-edge text-sm sm:hidden print:hidden">
               {issued.map((c) => (
-                <tr key={c.id} className="border-b border-edge align-top">
-                  <td className="py-2.5 pr-3 font-medium">{c.course_title ?? c.archived_course_title ?? "—"}</td>
-                  <td className="py-2.5 pr-3">{c.school_name || "Equip"}</td>
-                  <td className="whitespace-nowrap py-2.5 pr-3">{date(c.issued_at)}</td>
-                  <td className="whitespace-nowrap py-2.5 font-mono text-xs">{c.certificate_number}</td>
-                </tr>
+                <li key={c.id} className="py-3">
+                  <p className="font-medium">{c.course_title ?? c.archived_course_title ?? "—"}</p>
+                  <p className="mt-0.5 text-xs text-ink-muted">
+                    {c.school_name || "Equip"} · {date(c.issued_at)}
+                  </p>
+                  <p className="mt-1 font-mono text-xs">{c.certificate_number}</p>
+                </li>
               ))}
-            </tbody>
-          </table>
+            </ul>
+            <table className="mt-10 hidden w-full border-collapse text-left text-sm sm:table print:table">
+              <thead>
+                <tr className="border-b border-edge text-xs uppercase tracking-[0.14em] text-ink-muted">
+                  <th className="py-2 pr-3 font-medium">{t("certificates.transcript.course")}</th>
+                  <th className="py-2 pr-3 font-medium">{t("certificates.transcript.school")}</th>
+                  <th className="py-2 pr-3 font-medium">{t("certificates.transcript.completed")}</th>
+                  <th className="py-2 font-medium">{t("certificates.transcript.number")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {issued.map((c) => (
+                  <tr key={c.id} className="border-b border-edge align-top">
+                    <td className="py-2.5 pr-3 font-medium">{c.course_title ?? c.archived_course_title ?? "—"}</td>
+                    <td className="py-2.5 pr-3">{c.school_name || "Equip"}</td>
+                    <td className="whitespace-nowrap py-2.5 pr-3">{date(c.issued_at)}</td>
+                    <td className="whitespace-nowrap py-2.5 font-mono text-xs">{c.certificate_number}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
 
         {issued.length > 0 && (

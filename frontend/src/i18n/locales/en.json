@@ -1415,6 +1415,7 @@
     "share": {
       "share": "Share",
       "linkedIn": "Add to LinkedIn",
+      "linkedInShort": "LinkedIn",
       "text": "I have completed the course “{{course}}”. The certificate can be verified here:",
       "copied": "Verification link copied",
       "copyFailed": "Could not copy the link"

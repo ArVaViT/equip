@@ -102,14 +102,15 @@ export default function CertificateDocument() {
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-6">
-      <div className="mb-4 flex items-center justify-between print:hidden">
+      <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between print:hidden">
         <Link to="/certificates">
           <Button variant="ghost" size="sm" className="-ml-2">
             <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
             {t("certificates.document.back")}
           </Button>
         </Link>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        {/* On a phone the actions take their own row under «back», left-aligned. */}
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           {cert.certificate_number && <CertificateShare cert={cert} />}
           <Button size="sm" onClick={() => window.print()}>
             <Printer className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />

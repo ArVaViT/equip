@@ -47,9 +47,16 @@ export function CertificateShare({ cert }: { cert: Certificate }) {
         {t("certificates.share.share")}
       </Button>
       <Button size="sm" variant="outline" asChild>
-        <a href={linkedInAddUrl(cert, origin, getDisplayTimeZone())} target="_blank" rel="noopener noreferrer">
+        {/* «LinkedIn» on the button, the whole action for the ear: the
+            long label wrapped the page's three buttons onto two rows. */}
+        <a
+          href={linkedInAddUrl(cert, origin, getDisplayTimeZone())}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={t("certificates.share.linkedIn")}
+        >
           <Link2 className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-          {t("certificates.share.linkedIn")}
+          {t("certificates.share.linkedInShort")}
         </a>
       </Button>
     </>
