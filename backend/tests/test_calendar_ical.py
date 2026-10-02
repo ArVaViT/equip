@@ -67,12 +67,12 @@ def _calendar_event(idx: int = 0) -> CalendarEvent:
 
 
 def test_render_calendar_emits_required_vcalendar_envelope() -> None:
-    ics = render_calendar([_calendar_event()], user_email="x@example.com")
+    ics = render_calendar([_calendar_event()])
     assert ics.startswith("BEGIN:VCALENDAR\r\n")
     assert ics.endswith("END:VCALENDAR\r\n")
     assert "VERSION:2.0\r\n" in ics
     assert "PRODID:-//Equip//Calendar//EN\r\n" in ics
-    assert "X-WR-CALNAME:Equip Calendar (x@example.com)\r\n" in ics
+    assert "X-WR-CALNAME:Equip Calendar\r\n" in ics
 
 
 def test_render_calendar_emits_one_vevent_per_event() -> None:
@@ -125,6 +125,17 @@ def test_the_issued_url_is_the_feed_itself(student_client: TestClient, secret: s
     resp = student_client.get(url.raw_path.decode())
     assert resp.status_code == 200, resp.text
     assert "X-WR-CALNAME:" in resp.text
+
+
+def test_the_feed_speaks_the_subscriber_s_language_not_the_fetcher_s(
+    student_client: TestClient, student: User, db: Session, secret: str
+) -> None:
+    """Google fetches with its own Accept-Language; a Russian reader's calendar was named in English."""
+    student.preferred_locale = "ru"
+    db.commit()
+    url = httpx.URL(student_client.post("/api/v1/calendar/ical/token").json()["feed_url"])
+    resp = student_client.get(url.raw_path.decode(), headers={"Accept-Language": "en-US"})
+    assert "X-WR-CALNAME:Календарь Equip\r\n" in resp.text
 
 
 def test_the_issued_url_keeps_the_scheme_the_proxy_saw(student_client: TestClient, secret: str) -> None:
@@ -316,8 +327,8 @@ def test_post_token_stamps_calendar_ical_min_iat(student: User, secret: str, db:
 def test_the_feed_is_named_in_the_subscribers_language() -> None:
     # The feed's name was English for everybody, in a list of calendars
     # the subscriber otherwise reads in their own language.
-    ics = render_calendar([_calendar_event()], user_email="x@example.com", locale="ru")
-    assert "X-WR-CALNAME:Календарь Equip (x@example.com)\r\n" in ics
+    ics = render_calendar([_calendar_event()], locale="ru")
+    assert "X-WR-CALNAME:Календарь Equip\r\n" in ics
 
 
 def test_a_recording_reaches_the_subscribed_calendar_in_the_reader_s_language() -> None:

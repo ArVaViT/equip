@@ -244,7 +244,9 @@ def serve_feed(
     # assignment deadlines + course events all come through with the
     # same cv localization, source-locale fallback, deleted-course
     # filtering, and 1000-event cap as ``GET /calendar/events``.
-    locale = normalize_locale(accept_language or user.preferred_locale)
+    # The subscriber's own language first: Google fetches the feed with its
+    # own Accept-Language, which named a Russian reader's calendar in English.
+    locale = normalize_locale(user.preferred_locale or accept_language)
     events: list[CalendarEvent] = build_calendar_events(
         db=db,
         user=user,
@@ -257,7 +259,7 @@ def serve_feed(
         # the only thing that knows better here.
         display_locale=locale,
     )
-    body = render_calendar(events, user_email=user.email, locale=locale)
+    body = render_calendar(events, locale=locale)
     response.headers["Content-Type"] = "text/calendar; charset=utf-8"
     response.headers["Cache-Control"] = "private, max-age=900"
     response.headers["Content-Disposition"] = 'inline; filename="equip-calendar.ics"'
