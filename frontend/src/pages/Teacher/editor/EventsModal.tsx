@@ -154,9 +154,10 @@ export function EventsModal({
               </p>
             )}
           </div>
-          {/* Added after the session, when there is a recording — so it is
-              only offered on an event being edited, not one being created. */}
-          {editingId && (
+          {/* Added after a live session, when there is a recording — so it
+              is offered only on a live session being edited (or one that
+              already has a link, so it can be taken off). */}
+          {editingId && (form.event_type === "live_session" || recordingTyped !== "") && (
             <div className="space-y-1">
               <Label className="text-xs" htmlFor="event-recording-url">
                 {t("meeting.recordingLabel")}
