@@ -32,24 +32,24 @@ describe("EmailSetting", () => {
     currentUser = { id: "u1", email: "s@example.com", role: "student", email_off: [] } as unknown as User
   })
 
-  const box = () => screen.getByRole("checkbox", { name: i18n.t("profile.emails.kinds.work_returned") })
+  const box = () => screen.getByRole("checkbox", { name: i18n.t("profile.emails.kinds.certificate_decided") })
 
   it("is on until the person turns it off", async () => {
-    setEmailKind.mockResolvedValue(["work_returned"])
+    setEmailKind.mockResolvedValue(["certificate_decided"])
     render(<EmailSetting />, { wrapper: Wrapper })
     expect(box()).toHaveAttribute("data-state", "checked")
     await userEvent.click(box())
-    await waitFor(() => expect(setEmailKind).toHaveBeenCalledWith("work_returned", false))
-    expect(applyUser).toHaveBeenCalledWith({ id: "u1", email_off: ["work_returned"] })
+    await waitFor(() => expect(setEmailKind).toHaveBeenCalledWith("certificate_decided", false))
+    expect(applyUser).toHaveBeenCalledWith({ id: "u1", email_off: ["certificate_decided"] })
   })
 
   it("turns back on, and shows what the server now holds", async () => {
-    currentUser = { ...currentUser, email_off: ["announcement", "work_returned"] } as User
+    currentUser = { ...currentUser, email_off: ["announcement", "certificate_decided"] } as User
     setEmailKind.mockResolvedValue(["announcement"])
     render(<EmailSetting />, { wrapper: Wrapper })
     expect(box()).toHaveAttribute("data-state", "unchecked")
     await userEvent.click(box())
-    await waitFor(() => expect(setEmailKind).toHaveBeenCalledWith("work_returned", true))
+    await waitFor(() => expect(setEmailKind).toHaveBeenCalledWith("certificate_decided", true))
     expect(applyUser).toHaveBeenCalledWith({ id: "u1", email_off: ["announcement"] })
   })
 })
