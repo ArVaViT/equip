@@ -30,4 +30,14 @@ describe("selected day heading", () => {
     expect(screen.getByText("October 5")).toBeInTheDocument()
     expect(screen.getByText("Monday")).toBeInTheDocument()
   })
+
+  it("offers a past session's recording, not a way to join it or add it", () => {
+    const evt = {
+      id: "e", title: "Session", description: null, event_type: "live_session", event_date: "2026-09-28T18:00:00Z",
+      meeting_url: "https://zoom.us/j/1", recording_url: "https://youtu.be/x", course_id: "c", course_title: null, source: "course_event",
+    } as never
+    render(<SelectedDayPanel selectedDay={new Date(2026, 8, 28)} events={[evt]} />, { wrapper: Wrapper })
+    expect(screen.getByRole("link", { name: /Session/ })).toHaveAttribute("href", "https://youtu.be/x")
+    expect(screen.queryByRole("link", { name: /Join/ })).toBeNull()
+  })
 })

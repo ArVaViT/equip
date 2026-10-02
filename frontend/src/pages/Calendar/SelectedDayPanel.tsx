@@ -13,6 +13,16 @@ import { getEventColor } from "./constants";
 import { formatTime } from "./utils";
 import { formatCalendarDay } from "@/i18n/format";
 
+/**
+ * An event carries a start and no length. Three hours after it began it is
+ * over: no joining it or adding it to a calendar, only its recording.
+ */
+const OVER_AFTER_MS = 3 * 60 * 60 * 1000
+function isOver(evt: CalendarEvent, now = Date.now()): boolean {
+  const start = Date.parse(evt.event_date)
+  return Number.isFinite(start) && now - start > OVER_AFTER_MS
+}
+
 interface SelectedDayPanelProps {
   selectedDay: Date;
   events: CalendarEvent[];
@@ -94,9 +104,9 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
                           is the day's detail panel, and the action to
                           take belongs after what the event is. */}
                       <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <JoinMeetingLink url={evt.meeting_url} title={evt.title} />
+                        {!isOver(evt) && <JoinMeetingLink url={evt.meeting_url} title={evt.title} />}
                         <RecordingLink url={evt.recording_url} title={evt.title} />
-                        <AddToCalendarButton event={evt} />
+                        {!isOver(evt) && <AddToCalendarButton event={evt} />}
                       </div>
                     </div>
                   </div>
