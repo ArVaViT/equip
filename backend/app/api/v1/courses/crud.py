@@ -94,7 +94,6 @@ def update_existing_course(
             message=f"Course '{course_id}' not found",
             context={"resource_type": "course", "resource_id": course_id},
         )
-    assert_course_owner(course, teacher)
     # ``access_mode`` (public vs institute) controls solo-enrollment
     # access per ADR-010. Letting any course owner flip it would let a
     # teacher promote their institute course to public, bypassing the
@@ -102,6 +101,14 @@ def update_existing_course(
     # its director (``directs``, by membership) or platform staff. Until
     # 2026-10-03 only staff could, so a director could not close a course
     # of their own school without the platform's help.
+    #
+    # Which also means the director may set it on a course one of their
+    # teachers owns — that field and nothing else: everything else on the
+    # course stays the owner's, as it was. Until 2026-10-03 the owner check
+    # ran first and a director closing a teacher's course met a 403.
+    only_access_mode = data.model_fields_set == {"access_mode"}
+    if not (only_access_mode and directs(db, teacher, course.organization_id)):
+        assert_course_owner(course, teacher)
     if data.access_mode is not None and not directs(db, teacher, course.organization_id):
         raise equip_error(
             ErrorCode.AUTH_FORBIDDEN,
