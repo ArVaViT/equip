@@ -76,9 +76,12 @@ describe("an organization's page", () => {
       page({ stats: { courses: 3, lessons: 0, certificates: 0, members: null, teachers: null } }),
     )
     renderPage()
-    expect(await screen.findByText("курса")).toBeInTheDocument()
+    expect(await screen.findByText("Курс проповеди — I")).toBeInTheDocument()
     expect(screen.queryByText(/^уроков$/)).toBeNull()
     expect(screen.queryByText(/сертификатов выдано/)).toBeNull()
+    // Left with the course count alone, the row is not drawn: the courses
+    // are listed right below.
+    expect(screen.queryByText("курса")).toBeNull()
   })
 
   it("offers its director the edit form", async () => {

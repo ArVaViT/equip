@@ -218,7 +218,8 @@ function Stats({ page }: { page: Page }) {
     // A zero is not a fact worth a tile: «0 certificates issued» on a new
     // school's page reads as a verdict, not as a beginning.
     .filter((x): x is NonNullable<typeof x> => x !== null && x.value > 0)
-  if (items.length === 0) return null
+  // The course count alone repeats the list of courses right below it.
+  if (items.length < 2) return null
   return (
     // Up to five tiles. Four or fewer sit in one row from sm; five need
     // a wider screen for that, and fall into 3 + 2 in between.
