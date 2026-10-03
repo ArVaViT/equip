@@ -126,10 +126,10 @@
     "appointPlaceholder": "director@example.com",
     "appoint": "Add",
     "directorAppointed": "Director added: {{email}}",
-    "statusHelp": "Application and Admitted — the page is seen only by members and platform staff · Verified — visible to everyone · Suspended — the page stays, courses are hidden, certificates remain valid",
+    "statusHelp": "Application and Admitted — the page is seen only by members and platform staff · Verified — visible to everyone · Suspended — the page stays without its courses and leaves the showcase; the courses stay in the catalogue, certificates remain valid",
     "suspendConfirm": {
       "title": "Suspend the organization?",
-      "body": "The page of {{name}} stays up, its courses are hidden, and the certificates it issued remain valid. The status can be changed back.",
+      "body": "The page of {{name}} stays up without its courses and leaves the showcase. Its courses stay in the catalogue, and the certificates it issued remain valid. The status can be changed back.",
       "confirm": "Suspend"
     },
     "listed": {

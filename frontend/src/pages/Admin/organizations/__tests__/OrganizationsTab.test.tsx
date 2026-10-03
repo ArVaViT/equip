@@ -63,7 +63,7 @@ describe("the organizations tab", () => {
   it("explains the statuses once, and every status select points at the explanation", async () => {
     vi.spyOn(organizationsService, "adminList").mockResolvedValue([org(), org({ id: "o2", slug: "b", public_name: "B" })])
     render(<OrganizationsTab />, { wrapper: Wrapper })
-    const help = await screen.findByText(/Проверена — видна всем · Приостановлена — страница остаётся, курсы скрыты, сертификаты действительны/)
+    const help = await screen.findByText(/Проверена — видна всем · Приостановлена — страница остаётся без курсов, школа уходит из списка организаций; в каталоге курсы остаются, сертификаты действительны/)
     for (const select of screen.getAllByRole("combobox", { name: "Статус" })) {
       expect(select).toHaveAttribute("aria-describedby", help.id)
     }
@@ -76,7 +76,7 @@ describe("the organizations tab", () => {
     render(<OrganizationsTab />, { wrapper: Wrapper })
     await user.click(await screen.findByRole("combobox", { name: "Статус" }))
     await user.click(await screen.findByRole("option", { name: "Приостановлена" }))
-    expect(await screen.findByRole("alertdialog")).toHaveTextContent("Страница UCOAT останется, курсы на ней будут скрыты")
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent("Страница UCOAT останется, но без курсов")
     await user.click(screen.getByRole("button", { name: "Отмена" }))
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull())
     expect(update).not.toHaveBeenCalled()

@@ -126,10 +126,10 @@
     "appointPlaceholder": "director@example.com",
     "appoint": "Hinzufügen",
     "directorAppointed": "Leitung hinzugefügt: {{email}}",
-    "statusHelp": "Antrag und Zugelassen — die Seite sehen nur Mitglieder und das Plattform-Team · Geprüft — für alle sichtbar · Ausgesetzt — die Seite bleibt, Kurse sind verborgen, Zertifikate bleiben gültig",
+    "statusHelp": "Antrag und Zugelassen — die Seite sehen nur Mitglieder und das Plattform-Team · Geprüft — für alle sichtbar · Ausgesetzt — die Seite bleibt ohne Kurse und verschwindet aus der Übersicht; im Katalog bleiben die Kurse, Zertifikate bleiben gültig",
     "suspendConfirm": {
       "title": "Organisation aussetzen?",
-      "body": "Die Seite von {{name}} bleibt bestehen, ihre Kurse werden verborgen, ausgestellte Zertifikate bleiben gültig. Der Status lässt sich zurücksetzen.",
+      "body": "Die Seite von {{name}} bleibt ohne Kurse bestehen und verschwindet aus der Übersicht. Im Katalog bleiben ihre Kurse, ausgestellte Zertifikate bleiben gültig. Der Status lässt sich zurücksetzen.",
       "confirm": "Aussetzen"
     },
     "listed": {
