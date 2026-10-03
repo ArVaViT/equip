@@ -492,4 +492,23 @@ END $$;
 
 RESET ROLE;
 
+-- Structural guard (2026-10-03): a SELECT policy on student work must not let
+-- a role in by membership alone. «teacher OR admin» once opened every
+-- student's submissions, answers and grades in every school to any teacher
+-- through PostgREST; the API scopes those reads to the teacher's own courses.
+DO $$
+DECLARE offenders text;
+BEGIN
+  SELECT string_agg(tablename || '.' || policyname, ', ') INTO offenders
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND tablename IN ('assignment_submissions', 'quiz_answers', 'quiz_attempts', 'quiz_extra_attempts',
+                      'student_grades', 'chapter_progress', 'enrollments')
+    AND qual LIKE '%''teacher''%';
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'SECURITY HOLE: student-work policies grant by teacher role alone: %', offenders;
+  END IF;
+  RAISE NOTICE 'OK: no student-work policy grants by teacher role alone';
+END $$;
+
 SELECT 'RLS policy assertions passed' AS result;
