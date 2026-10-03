@@ -2586,7 +2586,6 @@
       "more_other": "и ещё {{count}}"
     },
     "continue": {
-      "eyebrow": "Продолжить",
       "position": "урок {{current}} из {{total}}",
       "cta": "Продолжить"
     },

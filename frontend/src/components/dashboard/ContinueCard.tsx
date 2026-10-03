@@ -54,9 +54,10 @@ export function ContinueCard() {
     >
       <div className="min-w-0">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
-          {t("dashboard.continue.eyebrow")} · {t("dashboard.continue.position", { current: position, total })}
+          {/* Not «Продолжить · урок 1 из 5»: the button says «Продолжить». */}
+          {t("dashboard.continue.position", { current: position, total })}
         </p>
-        <h2 id="continue-heading" className="mt-1 truncate font-serif text-lg font-semibold text-ink">
+        <h2 id="continue-heading" className="mt-1 line-clamp-2 break-words font-serif text-lg font-semibold text-ink">
           {orNotTranslated(t, chapter.title)}
         </h2>
         <p className="truncate text-sm text-ink-muted">{orNotTranslated(t, course.title)}</p>

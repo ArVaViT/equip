@@ -136,7 +136,6 @@
       "more_other": "and {{count}} more"
     },
     "continue": {
-      "eyebrow": "Continue",
       "position": "lesson {{current}} of {{total}}",
       "cta": "Continue"
     },

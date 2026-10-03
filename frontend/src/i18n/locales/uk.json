@@ -142,7 +142,6 @@
       "more_other": "і ще {{count}}"
     },
     "continue": {
-      "eyebrow": "Продовжити",
       "position": "урок {{current}} з {{total}}",
       "cta": "Продовжити"
     },

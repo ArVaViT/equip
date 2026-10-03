@@ -136,7 +136,6 @@
       "more_other": "und {{count}} weitere"
     },
     "continue": {
-      "eyebrow": "Weiterlernen",
       "position": "Lektion {{current}} von {{total}}",
       "cta": "Weiter"
     },
