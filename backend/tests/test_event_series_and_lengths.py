@@ -402,3 +402,31 @@ class TestTheHourBefore:
         send_due_reminders(db)
         client.delete(f"{COURSES}/{course_id}/events/{event.id}")
         assert _notices(db, "event_reminder") == []
+
+
+class TestTheReminderCron:
+    GOOD = "reminder-cron-secret-0123456789abcdef"
+
+    def test_refuses_without_the_worker_secret_and_runs_with_it(
+        self, client: TestClient, db: Session, student: User, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from pydantic import SecretStr
+
+        monkeypatch.setattr("app.core.config.settings.TRANSLATION_WORKER_SECRET", SecretStr(self.GOOD), raising=False)
+        course_id = _course(db, student)
+        db.add(
+            CourseEvent(
+                course_id=course_id,
+                event_type="live_session",
+                event_date=datetime.now(UTC) + timedelta(minutes=20),
+                created_by=TEACHER_ID,
+            )
+        )
+        db.commit()
+        assert client.get("/api/v1/internal/event-reminders").status_code == 401
+        assert client.get("/api/v1/internal/event-reminders", headers={"X-Worker-Secret": "wrong"}).status_code == 401
+        assert _notices(db, "event_reminder") == []
+        r = client.get("/api/v1/internal/event-reminders", headers={"Authorization": f"Bearer {self.GOOD}"})
+        assert r.status_code == 200
+        assert r.json() == {"reminded": 1}
+        assert len(_notices(db, "event_reminder")) == 1
