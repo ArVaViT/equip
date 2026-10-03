@@ -3353,6 +3353,7 @@
     "recordingLabel": "Ссылка на запись",
     "recordingHint": "YouTube, Vimeo, Google Диск",
     "join": "Присоединиться",
+    "linkQuiet": "Ссылка на занятие",
     "joinVia": "Войти в {{provider}}",
     "joinAria": "Присоединиться к встрече — {{title}}",
     "linkLabel": "Ссылка на встречу",

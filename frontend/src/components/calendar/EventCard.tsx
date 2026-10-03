@@ -131,12 +131,22 @@ export function EventCard({
               <LinkifiedText text={event.description} />
             </p>
           )}
+          {/* Which button is the button follows the clock. Inside the join
+              window «Войти в Zoom» is solid and the one thing to press;
+              before it, the thing to do is «В календарь», which is the
+              bordered one, and the meeting address is a line of text. */}
           <div className="mt-2 flex flex-wrap items-center gap-2 empty:hidden">
+            {/* A group's day is in the subscription; a file of "all day
+                group starts" is not worth a button on the card. */}
+            {!over && !event.all_day && (
+              <AddToCalendarButton event={event} className={cn(!joinable && event.meeting_url && "text-ink")} />
+            )}
             {(!over || joinable) && (
               <JoinMeetingLink
                 url={event.meeting_url}
                 title={event.title}
                 prominent={joinable}
+                quiet={!joinable}
               />
             )}
             <RecordingLink url={event.recording_url} title={event.title} />
@@ -148,9 +158,6 @@ export function EventCard({
                 {t("calendar.card.addRecording")}
               </Button>
             )}
-            {/* A group's day is in the subscription; a file of "all day
-                group starts" is not worth a button on the card. */}
-            {!over && !event.all_day && <AddToCalendarButton event={event} />}
           </div>
         </div>
       </div>

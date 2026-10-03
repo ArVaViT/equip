@@ -3233,6 +3233,7 @@
     "recordingLabel": "Recording link",
     "recordingHint": "YouTube, Vimeo, Google Drive",
     "join": "Join",
+    "linkQuiet": "Class link",
     "joinVia": "Join on {{provider}}",
     "joinAria": "Join the meeting for {{title}}",
     "linkLabel": "Meeting link",

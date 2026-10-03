@@ -72,4 +72,26 @@ describe("EventCard — the title line", () => {
     expect(screen.getByText("Повторяющееся занятие")).toBeInTheDocument()
     expect(screen.queryByText(/из/)).toBeNull()
   })
+
+  describe("which button is the button", () => {
+    const ZOOM = "https://zoom.us/j/1234567890"
+
+    it("a week early: «В календарь» is the button and the meeting link a line of text", () => {
+      render(<EventCard event={session({ meeting_url: ZOOM })} now={NOW} />, { wrapper: Wrapper })
+      const join = screen.getByRole("link", { name: /Разбор проповеди/ })
+      expect(join).toHaveTextContent("Ссылка на занятие")
+      expect(join.className).toContain("border-0")
+      const calendar = screen.getByRole("button", { name: /в календарь/i })
+      expect(calendar.className).toContain("border-edge")
+      expect(calendar.className).toContain("text-ink")
+    })
+
+    it("inside the window: «Войти в Zoom» is solid", () => {
+      const tenMinutesBefore = Date.parse("2026-10-10T20:00:00Z") - 10 * 60_000
+      render(<EventCard event={session({ meeting_url: ZOOM })} now={tenMinutesBefore} />, { wrapper: Wrapper })
+      const join = screen.getByRole("link", { name: /Разбор проповеди/ })
+      expect(join).toHaveTextContent("Войти в Zoom")
+      expect(join.className).toContain("bg-brand ")
+    })
+  })
 })

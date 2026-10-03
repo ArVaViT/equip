@@ -3,7 +3,8 @@ import { AlertTriangle, CalendarDays, ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { CalendarEvent } from "@/types"
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
-import { isJoinableNow, isOver } from "@/lib/eventTime"
+import { eventDayKey, isJoinableNow, isOver } from "@/lib/eventTime"
+import { zonedDayKey } from "@/i18n/timeZone"
 import { formatEventTimeRange } from "@/components/calendar/eventTimeFormat"
 import { RecordingLink } from "@/components/calendar/RecordingLink"
 import { formatDateLong, formatDateTime } from "@/i18n/format"
@@ -27,6 +28,10 @@ export function UpcomingEvents({ events }: Props) {
   if (events.length === 0) return null
 
   const now = new Date()
+  // The join link belongs to the day of the class, on the reader's
+  // calendar. A week early it was a button on the course page beside a
+  // date a week away — something to press now, which it is not.
+  const todayKey = zonedDayKey(now)
   // Still ahead, or on now — and a deadline missed within the day, which
   // stays on top as a warning. A class already over is not "upcoming":
   // it led this list with yesterday's lesson while today's ran folded
@@ -86,11 +91,12 @@ export function UpcomingEvents({ events }: Props) {
                   two buttons beside the title pushed the row off the
                   screen. Renders nothing when there is nothing to open. */}
               <span className="order-last flex basis-full flex-wrap gap-2 pl-4 empty:hidden sm:order-none sm:basis-auto sm:pl-0">
-                {!isOver(evt, now.getTime()) && (
+                {!isOver(evt, now.getTime()) && eventDayKey(evt) === todayKey && (
                   <JoinMeetingLink
                     url={evt.meeting_url}
                     title={evt.title}
                     prominent={isJoinableNow(evt, now.getTime())}
+                    quiet={!isJoinableNow(evt, now.getTime())}
                   />
                 )}
                 <RecordingLink url={evt.recording_url} title={evt.title} />

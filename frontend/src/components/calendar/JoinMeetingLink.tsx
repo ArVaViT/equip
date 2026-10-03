@@ -12,6 +12,9 @@ interface Props {
   title: string
   /** The class is on now, or about to be: Join is the one thing to do. */
   prominent?: boolean
+  /** The class is days away: the address is kept, as a line of text,
+   *  not pressed on the reader as a button. */
+  quiet?: boolean
   className?: string
 }
 
@@ -46,11 +49,16 @@ interface Props {
  */
 /** Solid, a size up: the way in while the class is on. */
 const PROMINENT = "border-brand bg-brand px-3 py-1.5 text-sm text-brand-foreground hover:bg-brand/90 [&_svg]:h-4 [&_svg]:w-4"
+/** A line of text: a week before the class, «Войти в Zoom» as a button
+ *  beside «В календарь» read as something to do now, and the thing to do
+ *  now is the calendar. The link stays, for the one who wants to check it. */
+const QUIET = "rounded-none border-0 bg-transparent px-0 py-0 underline-offset-4 hover:bg-transparent hover:underline"
 
-export function JoinMeetingLink({ url, title, prominent = false, className }: Props) {
+export function JoinMeetingLink({ url, title, prominent = false, quiet = false, className }: Props) {
   const { t } = useTranslation()
   if (!isAbsoluteHttpUrl(url)) return null
   const provider = meetingProvider(url)
+  const label = quiet && !prominent ? t("meeting.linkQuiet") : provider ? t("meeting.joinVia", { provider }) : t("meeting.join")
   return (
     <a
       href={url as string}
@@ -65,12 +73,14 @@ export function JoinMeetingLink({ url, title, prominent = false, className }: Pr
         "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-brand/30 bg-brand/5 px-2 py-1",
         "text-xs font-medium text-brand transition-colors hover:bg-brand/10",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
+        // On now wins: a quiet link has no business on a class in progress.
+        quiet && !prominent && QUIET,
         prominent && PROMINENT,
         className,
       )}
     >
       <Video className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-      {provider ? t("meeting.joinVia", { provider }) : t("meeting.join")}
+      {label}
     </a>
   )
 }

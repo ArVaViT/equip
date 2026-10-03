@@ -102,4 +102,23 @@ describe("JoinMeetingLink", () => {
     render(<JoinMeetingLink url={ZOOM} title="Predigtstunde" />, { wrapper: Wrapper })
     expect(screen.getByRole("link")).toHaveTextContent("Über Zoom beitreten")
   })
+
+  it("is a line of text when asked to be quiet, and keeps its name", () => {
+    // A week before the class, «Войти в Zoom» as a button read as something
+    // to do now. The address stays, as text, under the same accessible name.
+    render(<JoinMeetingLink url={ZOOM} title="Занятие" quiet />, { wrapper: Wrapper })
+    const link = screen.getByRole("link")
+    expect(link).toHaveTextContent("Ссылка на занятие")
+    expect(link.className).toContain("border-0")
+    expect(link.className).not.toContain("bg-brand/5")
+    expect(link).toHaveAccessibleName("Присоединиться к встрече — Занятие")
+    expect(link).toHaveAttribute("href", ZOOM)
+  })
+
+  it("is never quiet while the class is on", () => {
+    render(<JoinMeetingLink url={ZOOM} title="Занятие" quiet prominent />, { wrapper: Wrapper })
+    const link = screen.getByRole("link")
+    expect(link).toHaveTextContent("Войти в Zoom")
+    expect(link.className).toContain("bg-brand ")
+  })
 })

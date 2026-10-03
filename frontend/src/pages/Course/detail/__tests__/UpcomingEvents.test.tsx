@@ -60,14 +60,28 @@ describe("UpcomingEvents", () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it("offers a way into a live session that has one", () => {
-    const soon = new Date()
-    soon.setDate(soon.getDate() + 3)
+  it("offers a way into today's live session, and none into one days away", () => {
+    // A week early the join button sat beside a date a week away —
+    // something to press now, which it was not. The link belongs to the
+    // day of the class.
     const zoom = "https://zoom.us/j/1234567890?pwd=aB3dEf"
-    render(<UpcomingEvents events={[eventAt(soon, { meeting_url: zoom })]} />, { wrapper: Wrapper })
+    const inThreeDays = new Date()
+    inThreeDays.setDate(inThreeDays.getDate() + 3)
+    const { unmount } = render(<UpcomingEvents events={[eventAt(inThreeDays, { meeting_url: zoom })]} />, {
+      wrapper: Wrapper,
+    })
+    expect(screen.queryByRole("link", { name: /Присоединиться/ })).toBeNull()
+    unmount()
+
+    const laterToday = new Date(Date.now() + 2 * 60 * 60 * 1000)
+    // Near midnight "two hours on" is tomorrow; the case does not exist then.
+    if (laterToday.getDate() !== new Date().getDate()) return
+    render(<UpcomingEvents events={[eventAt(laterToday, { meeting_url: zoom })]} />, { wrapper: Wrapper })
     const link = screen.getByRole("link", { name: /Присоединиться/ })
     expect(link).toHaveAttribute("href", zoom)
     expect(link).toHaveAttribute("rel", "noopener noreferrer")
+    // Hours away, it is a line of text, not a button.
+    expect(link).toHaveTextContent("Ссылка на занятие")
   })
 
   it("shows no join button on an event with nowhere to be", () => {
