@@ -18,6 +18,7 @@ from app.services.course_service import (
     get_module,
     get_teacher_courses,
 )
+from app.services.guest_preview import preview_chapter_id
 from app.services.reading_time import course_reading_minutes
 from app.services.translation.resolve_for_display import (
     build_localized_course_response_with_tree,
@@ -207,9 +208,12 @@ def get_course_detail(
     # A chapter held for its first release is the owner's and the
     # admin's to see — the same two the ``?source=1`` gate above trusts.
     # Everybody else is a reader, and a reader is not shown it.
-    return build_localized_course_response_with_tree(
+    localized = build_localized_course_response_with_tree(
         db, course, display_locale, hide_unreleased=not is_owner_or_admin(course, current_user)
     )
+    if current_user is None:
+        localized.preview_chapter_id = preview_chapter_id(db, course)
+    return localized
 
 
 class CourseReadingTime(BaseModel):

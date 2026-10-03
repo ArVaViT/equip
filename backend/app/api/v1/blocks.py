@@ -4,7 +4,13 @@ from fastapi import APIRouter, Depends, Header, Query, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, require_teacher, verify_chapter_access, verify_chapter_owner
+from app.api.dependencies import (
+    get_optional_user,
+    require_teacher,
+    verify_chapter_access,
+    verify_chapter_owner,
+    verify_guest_chapter_access,
+)
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.sanitize import sanitize_string
@@ -87,10 +93,16 @@ def list_blocks(
             "accidentally save the EN translation back into the source content."
         ),
     ),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
-    verify_chapter_access(db, chapter_id, current_user)
+    # A guest may read the course's first lesson and no other
+    # (``services/guest_preview``); everyone else goes through the usual
+    # enrolment and lock checks.
+    if current_user is None:
+        verify_guest_chapter_access(db, chapter_id)
+    else:
+        verify_chapter_access(db, chapter_id, current_user)
     response.headers["Vary"] = "Accept-Language"
     rows = db.query(ChapterBlock).filter(ChapterBlock.chapter_id == chapter_id).order_by(ChapterBlock.order_index).all()
     # One chapter→module→course join covers all the locale + access
