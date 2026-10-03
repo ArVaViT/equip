@@ -19,4 +19,9 @@ describe("the letters in place of a logo", () => {
   it("takes two letters from a plain two-word name", () => {
     expect(organizationInitials("Slovo Zhizni")).toBe("SZ")
   })
+
+  it("takes a whole emoji, never half of one", () => {
+    expect(organizationInitials("🔥 Огонь")).toBe("🔥О")
+    expect(organizationInitials("Церковь «🙏 Слово Жизни»")).toBe("🙏С")
+  })
 })

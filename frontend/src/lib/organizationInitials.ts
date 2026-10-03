@@ -32,6 +32,8 @@ export function organizationInitials(name: string): string {
   // which is as many as a tile can carry at this size.
   return rest
     .slice(0, 2)
-    .map((w) => w.charAt(0).toUpperCase())
+    // By code point, not by UTF-16 unit: «🔥 Church» must not hand the tile
+    // half of a surrogate pair.
+    .map((w) => (Array.from(w)[0] ?? "").toUpperCase())
     .join("")
 }
