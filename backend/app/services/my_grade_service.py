@@ -27,7 +27,7 @@ from sqlalchemy import func as sqlfunc
 
 from app.models.quiz import QuizAnswer, QuizAttempt
 from app.schemas.locale import normalize_locale
-from app.services.certificate_readiness import certificate_blockers
+from app.services.certificate_readiness import BELOW_THRESHOLD, certificate_blockers
 from app.services.gradable_items import course_items
 from app.services.grade_calculator import calculate_student_grade_for_course
 from app.services.grade_exemption_service import excused_item_ids
@@ -202,7 +202,17 @@ def build_my_course_grade(
 
     scheme = course.grading_scheme
     withheld = scheme in _COMPLETION_NATIVE_SCHEMES
-    no_number = breakdown.result_state in _NO_NUMBER_STATES or withheld
+    # The course is «graded» as soon as anybody in it has a mark — but a
+    # student none of whose own work has been marked has no number of their
+    # own yet. Shown 0,0% F the moment a classmate was marked, they read a
+    # failing grade for an essay still waiting on the teacher (2026-10-02).
+    # The teacher's gradebook still counts what is missing; this is the
+    # student's own screen.
+    nothing_marked_yet = breakdown.result_state == "graded" and not (
+        breakdown.student_has_quiz_marks or breakdown.student_has_assignment_marks
+    )
+    result_state = "not_graded_yet" if nothing_marked_yet else breakdown.result_state
+    no_number = result_state in _NO_NUMBER_STATES or withheld
 
     # A pass/fail course has a real verdict, and the student is the person who
     # most needs it — «зачёт» is predictable without arithmetic, which is the
@@ -236,7 +246,7 @@ def build_my_course_grade(
         "final_score": None if no_number else breakdown.final_score,
         "final_symbol": (breakdown.letter_grade or None) if not no_number else None,
         "scores_differ": False if no_number else breakdown.scores_differ,
-        "result_state": breakdown.result_state,
+        "result_state": result_state,
         "scores_withheld": withheld,
         "zachet": zachet,
         "official_grade": official_grade,
@@ -246,6 +256,8 @@ def build_my_course_grade(
         "certificate_blockers": [
             b.as_dict()
             for b in certificate_blockers(db, course, enrollment, student_id, breakdown=breakdown, zachet=zachet)
+            # «Below the pass line» needs a number, and there is none yet.
+            if not (nothing_marked_yet and b.code == BELOW_THRESHOLD)
         ],
         "items": sorted(items, key=lambda i: (i["kind"], i["title"], i["item_id"])),
     }

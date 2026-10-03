@@ -528,3 +528,41 @@ def test_item_titles_are_in_the_readers_language(student_client, db: Session, te
     # No Ukrainian row: an empty title the page marks as untranslated,
     # never the Russian one.
     assert titles("uk") == {""}
+
+
+def test_a_classmate_being_marked_does_not_hand_me_an_f(student_client, db: Session, teacher, student) -> None:
+    """2026-10-02, on a stand: the moment one student's essay was marked, the
+    other — whose essay was still waiting — read «0,0% F». The course was
+    «graded»; nothing of theirs was. No number until something of theirs is."""
+    from app.models.user import User, UserRole
+
+    course, module = _course(db, teacher, "c-my-classmate", qw=0, aw=100)
+    essay = _assignment(db, module, course.id, 0, "Эссе")
+    classmate = User(id=uuid.uuid4(), email="classmate@example.com", full_name="Classmate", role=UserRole.STUDENT.value)
+    db.add(classmate)
+    db.flush()
+    db.add(Enrollment(id="enr-c-my-classmate-2", user_id=classmate.id, course_id=course.id, progress=50))
+    db.add(
+        AssignmentSubmission(
+            id=uuid.uuid4(), assignment_id=essay.id, student_id=classmate.id, status="graded", grade=90
+        )
+    )
+    db.add(AssignmentSubmission(id=uuid.uuid4(), assignment_id=essay.id, student_id=STUDENT_ID, status="submitted"))
+    db.commit()
+
+    body = student_client.get(URL.format(course_id=course.id)).json()
+
+    assert body["current_score"] is None
+    assert body["final_score"] is None
+    assert body["final_symbol"] is None
+    assert body["result_state"] == "not_graded_yet"
+    codes = [b["code"] for b in body["certificate_blockers"]]
+    assert "work_not_graded" in codes
+    assert "below_threshold" not in codes, "a pass line needs a number, and there is none yet"
+
+    # Once their own essay is marked, the number is theirs to see.
+    db.query(AssignmentSubmission).filter_by(student_id=STUDENT_ID).update({"status": "graded", "grade": 80})
+    db.commit()
+    marked = student_client.get(URL.format(course_id=course.id)).json()
+    assert marked["final_score"] == 80.0
+    assert marked["result_state"] == "graded"
