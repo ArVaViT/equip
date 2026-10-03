@@ -3391,7 +3391,7 @@
       "teachers_other": "преподавателя"
     },
     "form": {
-      "description": "О организации",
+      "description": "Об организации",
       "descriptionPlaceholder": "Кто вы, кого учите и чему — в двух-трёх предложениях.",
       "website": "Сайт",
       "websiteHint": "Необязательно. Адрес, начинающийся с https://",
