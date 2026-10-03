@@ -2629,7 +2629,7 @@ CREATE INDEX ix_invitations_course_id ON public.invitations USING btree (course_
 -- Name: ix_invitations_one_pending_per_scope; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX ix_invitations_one_pending_per_scope ON public.invitations USING btree (organization_id, email, role, COALESCE(course_id, ''::character varying)) WHERE (status = 'pending'::text);
+CREATE UNIQUE INDEX ix_invitations_one_pending_per_scope ON public.invitations USING btree (organization_id, email, role, scope, COALESCE(course_id, ''::character varying)) WHERE (status = 'pending'::text);
 
 
 --

@@ -386,12 +386,11 @@ class TestThePlatformInvitationIsNotTheDirectors:
 
         resp = _invite(db, world["admin"], email=self.NEWCOMER, role="student", scope="platform")
 
-        # Refused, not written over it: the unique index behind the table
-        # does not know the scope, so until it does the two cannot both be
-        # pending under one organization — but the director's stays.
-        assert resp.status_code == 409, resp.text
-        assert resp.json()["detail"]["context"]["pending_scope"] == "organization"
-        assert _rows(db, self.NEWCOMER) == [("organization", "pending")]
+        # Written beside it, not over it: the two grant different things and
+        # the unique index keys on the scope (20261003210000).
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["scope"] == "platform"
+        assert sorted(_rows(db, self.NEWCOMER)) == [("organization", "pending"), ("platform", "pending")]
 
     def test_the_director_is_not_handed_the_platform_invitation(self, db: Session, world: dict) -> None:
         assert _invite(db, world["admin"], email=self.NEWCOMER, role="student", scope="platform").status_code == 201
@@ -400,9 +399,10 @@ class TestThePlatformInvitationIsNotTheDirectors:
 
         # A 201 here used to carry ``scope: platform`` — the admin's row,
         # resent in the director's name, admitting the person to nothing.
-        assert resp.status_code == 409, resp.text
-        assert resp.json()["detail"]["context"]["pending_scope"] == "platform"
-        assert _rows(db, self.NEWCOMER) == [("platform", "pending")]
+        # Now it is the director's own organization invitation.
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["scope"] == "organization"
+        assert sorted(_rows(db, self.NEWCOMER)) == [("organization", "pending"), ("platform", "pending")]
 
     def test_a_course_invitation_and_a_platform_invitation_stand_together(self, db: Session, world: dict) -> None:
         # A course row names its course in the index key, so nothing stops
@@ -468,8 +468,8 @@ class TestThePlatformInvitationIsNotTheDirectors:
         assert row.status == "revoked"
 
     def test_an_expired_platform_row_is_not_in_the_directors_way(self, db: Session, world: dict) -> None:
-        # Dead already; retired so the fresh row can be written, which is
-        # what happens to an expired row of the director's own kind too.
+        # Dead already, and of another kind: the director's row is written
+        # beside it, and it is left as it is — expiry already closed it.
         db.add(
             Invitation(
                 id=uuid.uuid4(),
@@ -489,7 +489,7 @@ class TestThePlatformInvitationIsNotTheDirectors:
 
         assert resp.status_code == 201, resp.text
         assert resp.json()["scope"] == "organization"
-        assert _rows(db, self.NEWCOMER) == [("organization", "pending"), ("platform", "revoked")]
+        assert sorted(_rows(db, self.NEWCOMER)) == [("organization", "pending"), ("platform", "pending")]
 
 
 class TestASuspendedTeacher:

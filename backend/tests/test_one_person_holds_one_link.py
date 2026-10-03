@@ -21,7 +21,6 @@ import uuid
 from typing import TYPE_CHECKING
 
 import pytest
-from fastapi import HTTPException
 
 from app.models.course import Course
 from app.models.invitation import Invitation, InvitationScope, InvitationStatus
@@ -201,13 +200,12 @@ class TestThePlatformIsOutsideTheOrder:
     def test_a_platform_row_is_not_what_a_school_resends(self, db: Session, admin: User) -> None:
         platform, _ = _invite(db, scope=InvitationScope.PLATFORM.value)
 
-        with pytest.raises(HTTPException) as refused:
-            _invite(db, scope=InvitationScope.ORGANIZATION.value)
+        school, created = _invite(db, scope=InvitationScope.ORGANIZATION.value)
 
-        # Refused rather than resent, and refused rather than retired: the
-        # unique index does not carry the scope, so the two cannot both be
-        # pending under one organization yet.
-        assert refused.value.status_code == 409
+        # Neither resent nor retired: a row of its own, beside the platform
+        # one — the unique index carries the scope (20261003210000).
+        assert created is True
+        assert school.id != platform.id
         db.refresh(platform)
         assert platform.status == InvitationStatus.PENDING.value
-        assert [row.id for row in _live(db)] == [platform.id]
+        assert sorted(row.scope for row in _live(db)) == ["organization", "platform"]

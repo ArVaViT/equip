@@ -282,28 +282,10 @@ def create_or_resend_invitation(
         _mail_the_invitation(db, standing, invited_by=invited_by)
         return standing, False
 
-    # The index that guards the insert, ``ix_invitations_one_pending_per_scope``,
-    # is keyed on (organization, email, role, course) and knows nothing of
-    # the scope. A platform row and a school row name no course, so the two
-    # kinds this function now keeps apart still share a key there, and the
-    # insert below would meet the handler's bare 409. Until the index carries
-    # the scope the collision is met here, by name: an expired row of the
-    # other kind is dead already and is retired so the fresh one can be
-    # written; a live one is refused, saying whose it is. The row itself is
-    # never revoked for being in the way — that is the defect this replaces.
-    # A course row carries its course in the key and never collides with a
-    # platform row.
-    if course_id is None:
-        in_the_way = pending_here.filter(Invitation.course_id.is_(None), Invitation.scope != scope).all()
-        for row in in_the_way:
-            if not is_invitation_expired(row):
-                raise equip_error(
-                    ErrorCode.VALIDATION_FAILED,
-                    status_code=status.HTTP_409_CONFLICT,
-                    message=f"A {row.scope} invitation to this address is already pending under this organization",
-                    context={"resource_type": "invitation", "field": "scope", "pending_scope": row.scope},
-                )
-            row.status = InvitationStatus.REVOKED.value
+    # A platform row and a school row for the same address may both be
+    # pending: the unique index carries the scope since 20261003210000, and
+    # neither covers the other (``_subsumes_scope``). A row of the other kind
+    # is never revoked for being here — that was the defect.
 
     # Nothing outstanding covers what is being offered now, so whatever
     # the new one subsumes is retired rather than left to arrive as a
