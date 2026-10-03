@@ -162,3 +162,87 @@ def test_an_event_whose_title_is_still_waiting_says_what_kind_it_is(db: Session,
     assert [e.title for e in feed if e.id == str(waiting.id)] == ["Живое занятие"]
     rows = localize_course_event_rows(db, [waiting], display_locale="de", source_locale="ru")
     assert rows[0].title == "Live-Termin"
+
+
+class TestATitleStillBeingTranslated:
+    """A new event on a published course is held until every language has
+    it. The reader whose language it was written in is not made to wait:
+    «Разбор проповеди» was showing as «Живое занятие» to the Russian class
+    of the Russian teacher who named it (2026-10-03)."""
+
+    @staticmethod
+    def _held_event(db: Session, course: Course, teacher: User, *, title: str) -> CourseEvent:
+        from app.services.staged_edits import stage_human_edit
+
+        event = CourseEvent(
+            id=uuid.uuid4(),
+            course_id=course.id,
+            event_type="live_session",
+            event_date=datetime.now(UTC) + timedelta(days=1),
+            created_by=teacher.id,
+        )
+        db.add(event)
+        db.flush()
+        stage_human_edit(
+            db,
+            entity_type="course_event",
+            entity_id=str(event.id),
+            course_id=course.id,
+            field="title",
+            locale="ru",
+            text=title,
+            authored_by=teacher.id,
+        )
+        db.commit()
+        return event
+
+    def test_the_reader_of_the_teachers_language_gets_the_title_the_teacher_typed(
+        self, db: Session, student: User, teacher: User
+    ) -> None:
+        from app.services.translation.resolve_for_display import localize_course_event_rows
+
+        course = _russian_course_with_dates(db, student, teacher)
+        held = self._held_event(db, course, teacher, title="Разбор проповеди")
+
+        feed = build_calendar_events(db=db, user=student, course_id=None, limit=100, display_locale="ru")
+        assert [e.title for e in feed if e.id == str(held.id)] == ["Разбор проповеди"]
+        rows = localize_course_event_rows(db, [held], display_locale="ru", source_locale="ru")
+        assert rows[0].title == "Разбор проповеди"
+
+    def test_a_reader_of_another_language_still_waits_for_the_translation(
+        self, db: Session, student: User, teacher: User
+    ) -> None:
+        from app.services.translation.resolve_for_display import localize_course_event_rows
+
+        course = _russian_course_with_dates(db, student, teacher)
+        held = self._held_event(db, course, teacher, title="Разбор проповеди")
+
+        feed = build_calendar_events(db=db, user=student, course_id=None, limit=100, display_locale="de")
+        assert [e.title for e in feed if e.id == str(held.id)] == ["Live-Termin"]
+        rows = localize_course_event_rows(db, [held], display_locale="de", source_locale="ru")
+        assert rows[0].title == "Live-Termin"
+
+    def test_an_edit_to_a_released_title_waits_for_every_language(
+        self, db: Session, student: User, teacher: User
+    ) -> None:
+        # Only a title nobody has yet is served from the staging table. A
+        # renamed class keeps its released name until all four languages
+        # change together — the same rule as every other edit.
+        from app.services.staged_edits import stage_human_edit
+
+        course = _russian_course_with_dates(db, student, teacher)
+        released = next(e for e in db.query(CourseEvent).filter(CourseEvent.course_id == course.id))
+        stage_human_edit(
+            db,
+            entity_type="course_event",
+            entity_id=str(released.id),
+            course_id=course.id,
+            field="title",
+            locale="ru",
+            text="Разбор Послания к Галатам",
+            authored_by=teacher.id,
+        )
+        db.commit()
+
+        feed = build_calendar_events(db=db, user=student, course_id=None, limit=100, display_locale="ru")
+        assert [e.title for e in feed if e.id == str(released.id)] == ["Разбор Послания к Римлянам"]

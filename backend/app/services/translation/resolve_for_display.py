@@ -1274,6 +1274,19 @@ def localize_course_event_rows(
         source_locale=source_locale,
         prefer_human=prefer_human,
     )
+    # A reader of the language the teacher wrote in gets the teacher's
+    # words while the other languages are still being made — the tier
+    # the calendar feed and the bell already have (``author_texts_in_locale``).
+    # Not for the editor view: it already has every held edit, in any
+    # language, through ``include_author_edits``.
+    if not prefer_human:
+        from app.services.staged_edits.read import author_texts_in_locale
+
+        for key, text in author_texts_in_locale(
+            db, entity_type="course_event", entity_ids=ids, fields=["title", "description"], locale=display_locale
+        ).items():
+            if not texts.get(key):
+                texts[key] = text
     out: list[CourseEventResponse] = []
     for e in events:
         eid = str(e.id)

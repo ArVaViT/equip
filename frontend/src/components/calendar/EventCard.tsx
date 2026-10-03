@@ -103,10 +103,14 @@ export function EventCard({
               </span>
             )}
           </div>
-          {/* Past: quieter by colour, not by opacity — faded text fell below 4.5:1. */}
-          <h3 className={cn("mt-1 text-sm font-semibold text-wrap-safe", over && !overdue && "text-ink-muted")}>
-            {event.title}
-          </h3>
+          {/* Past: quieter by colour, not by opacity — faded text fell below 4.5:1.
+              A title still being translated arrives as the kind of event,
+              which the line above already says: not twice. */}
+          {event.title && event.title !== typeLabel && (
+            <h3 className={cn("mt-1 text-sm font-semibold text-wrap-safe", over && !overdue && "text-ink-muted")}>
+              {event.title}
+            </h3>
+          )}
           {event.course_title && (
             <Link
               to={`/courses/${event.course_id}`}

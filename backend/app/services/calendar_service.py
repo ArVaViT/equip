@@ -20,6 +20,7 @@ from app.models.enrollment import Enrollment
 from app.models.user import User
 from app.schemas.calendar import CalendarEvent
 from app.schemas.locale import LocaleCode, normalize_locale
+from app.services.staged_edits.read import author_texts_in_locale
 from app.services.staged_edits.visibility import chapter_awaits_first_release
 from app.services.translation.resolve_for_display import (
     fetch_course_titles_by_id,
@@ -312,6 +313,20 @@ def build_calendar_events(
         for eid, fld, loc, txt in cv_rows:
             ce_rows_by_pair_locale.setdefault((eid, fld, loc), txt)
             ce_any_for_pair.setdefault((eid, fld), txt)
+        # An event added to a published course has no released title in
+        # any language until the pipeline has all four — and a reader of
+        # the language it was written in was shown its kind meanwhile.
+        # Same tier as the bell (``entity_title_for_locale``): the
+        # teacher's own words, for the reader whose language they are in.
+        held = author_texts_in_locale(
+            db,
+            entity_type="course_event",
+            entity_ids=ce_ids,
+            fields=["title", "description"],
+            locale=display_locale,
+        )
+        for (eid, fld), txt in held.items():
+            ce_rows_by_pair_locale.setdefault((eid, fld, display_locale), txt)
 
     for ce in course_events:
         ce_id = str(ce.id)
