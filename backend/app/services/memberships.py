@@ -105,6 +105,25 @@ def directs(db: Session, user: User | None, organization_id: UUID | None) -> boo
     return _holds_at_least(membership_of(db, user.id, organization_id), MembershipRole.DIRECTOR.value)
 
 
+def default_organization_id(user: User) -> UUID | None:
+    """The organization this person acted in before there were several.
+
+    This is ``profiles.organization_id`` — the deprecated column — read for
+    the one thing it is still good for: a tie-break. Every client that
+    exists today sends no ``X-Organization-Id``, and a person who sits in
+    two organizations (a platform admin in UCOAT as a teacher and in a
+    second school as its director; a teacher of A who directs B) would
+    otherwise be refused every creation with ``organization.ambiguous``.
+    The column names the first organization they joined, which is the one
+    the previous release put everything under; until the header is sent
+    (phase 4, when the column goes) that is the least surprising answer.
+
+    It is only ever a hint. The caller decides whether the organization it
+    names is one the person may act in at all; this function does not.
+    """
+    return user.organization_id
+
+
 def organizations_where(db: Session, user: User, *, at_least: str) -> list[OrganizationMember]:
     """The active memberships in which this person holds ``at_least`` the role.
 

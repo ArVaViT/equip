@@ -14,7 +14,7 @@ from app.models.enrollment import Enrollment
 from app.models.organization import MembershipRole, Organization
 from app.models.user import User, UserRole, can_teach
 from app.services.chapter_gate import chapter_is_open_to
-from app.services.memberships import directs, membership_of, organizations_where
+from app.services.memberships import default_organization_id, directs, membership_of, organizations_where
 
 security = HTTPBearer()
 optional_security = HTTPBearer(auto_error=False)
@@ -169,8 +169,14 @@ def acting_organization(
     * No header, none: 403, the same sentence as before — the action
       happens inside an organization and this account is in none that
       qualifies.
-    * No header, several: 400 ``organization.ambiguous`` listing them, so
-      the client can ask and resend.
+    * No header, several: the one ``profiles.organization_id`` names, if it
+      is among them (``default_organization_id`` — the first organization
+      the person joined, which is where the previous release put
+      everything; the column goes in phase 4, when every client sends the
+      header). It is only ever picked from the candidates already checked
+      against ``role``, so it opens nothing the person could not name
+      themselves. Otherwise 400 ``organization.ambiguous`` listing them,
+      so the client can ask and resend.
 
     Platform staff administer every organization, so a header from them is
     taken as given (404 only if no such organization exists), and without a
@@ -204,6 +210,9 @@ def acting_organization(
     candidates = organizations_where(db, user, at_least=role)
     if len(candidates) == 1:
         return candidates[0].organization_id
+    default = default_organization_id(user)
+    if default is not None and any(m.organization_id == default for m in candidates):
+        return default
     if not candidates:
         raise equip_error(
             ErrorCode.AUTH_FORBIDDEN,

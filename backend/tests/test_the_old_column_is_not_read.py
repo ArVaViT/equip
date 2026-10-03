@@ -8,9 +8,12 @@ course.organization_id`` reads perfectly well and is wrong for everyone
 with a second membership — and a review will not catch every one. This
 does: it greps.
 
-What is allowed: the model declaring the column, and ``grant_membership``
+What is allowed: the model declaring the column; ``grant_membership``
 writing it (the first organization, when empty) so the previous backend
-release still works on rollback. Both go with the column.
+release still works on rollback; and ``default_organization_id`` reading
+it, once, as the tie-break for a person who acts in several organizations
+and whose client sends no ``X-Organization-Id``. All three go with the
+column.
 """
 
 from __future__ import annotations
@@ -32,9 +35,12 @@ ALLOWED: dict[str, set[str]] = {
         "organization_id: Mapped[uuid.UUID | None] = mapped_column(",
     },
     "services/memberships.py": {
-        # The transitional dual write, and nothing else.
+        # The transitional dual write.
         "if user.organization_id is None:",
         "user.organization_id = organization_id",
+        # The one read: ``default_organization_id``, the tie-break for a
+        # person in several organizations until clients send the header.
+        "return user.organization_id",
     },
 }
 
