@@ -69,13 +69,21 @@ def _not_found(slug: str) -> Exception:
 
 
 def _active_members(db: Session, organization_id: UUID, roles: tuple[str, ...]) -> int:
+    """How many people hold one of ``roles`` here today.
+
+    An active membership on a deactivated account is nobody: the account
+    cannot sign in, and a count that includes it says the organization is
+    larger than it is. Until 2026-10-03 it was counted.
+    """
     return (
         db.query(func.count())
         .select_from(OrganizationMember)
+        .join(User, User.id == OrganizationMember.user_id)
         .filter(
             OrganizationMember.organization_id == organization_id,
             OrganizationMember.status == "active",
             OrganizationMember.role.in_(roles),
+            User.deactivated_at.is_(None),
         )
         .scalar()
         or 0
@@ -101,10 +109,18 @@ def list_organizations(
         .all()
     )
     courses_by_org = {org_id: n for org_id, n in course_counts if org_id is not None}
+    # "Somebody runs it" means a director who can sign in: the page's own
+    # list of directors leaves out a deactivated account, and the showcase
+    # must not stand behind an organization on the strength of one.
     directed = {
         row[0]
         for row in db.query(OrganizationMember.organization_id)
-        .filter(OrganizationMember.role == "director", OrganizationMember.status == "active")
+        .join(User, User.id == OrganizationMember.user_id)
+        .filter(
+            OrganizationMember.role == "director",
+            OrganizationMember.status == "active",
+            User.deactivated_at.is_(None),
+        )
         .distinct()
         .all()
     }

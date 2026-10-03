@@ -15,6 +15,7 @@ things load-bearing:
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -206,6 +207,25 @@ class TestTheOrganizationIntroducesItself:
         assert body["directors"] == [{"full_name": "Дмитрий Константинов", "avatar_url": None}]
         assert "director@ucoat.example" not in str(body)
 
+    def test_a_deactivated_account_is_not_counted(self, stranger_client: TestClient, db: Session, school: Organization):
+        # Memberships outlive the account's deactivation; the numbers on the
+        # page are about people who can sign in. Until 2026-10-03 the
+        # director list left them out and the counts kept them.
+        _person(db, "Director", "director")
+        for i in range(10):
+            _person(db, f"S{i}", "student")
+        for i in range(3):
+            _person(db, f"T{i}", "teacher")
+        stats = stranger_client.get("/api/v1/organizations/ucoat").json()["stats"]
+        assert (stats["members"], stats["teachers"]) == (14, 4)
+
+        gone = [u for u in db.query(User).filter(User.full_name.in_(["S0", "T0"])).all()]
+        for user in gone:
+            user.deactivated_at = datetime.now(UTC)
+        db.commit()
+        stats = stranger_client.get("/api/v1/organizations/ucoat").json()["stats"]
+        assert (stats["members"], stats["teachers"]) == (12, 3)
+
     def test_small_numbers_about_people_are_not_shown(
         self, stranger_client: TestClient, db: Session, school: Organization
     ):
@@ -295,3 +315,13 @@ class TestTheShowcase:
         school.status = "suspended"
         db.commit()
         assert listed() == []
+
+    def test_a_deactivated_director_runs_nothing(self, stranger_client: TestClient, db: Session, their_teacher: User):
+        # The page's own list of directors leaves a deactivated account
+        # out; the showcase used to count it as somebody running the place.
+        director = _person(db, "Director", "director")
+        _course(db, their_teacher, "ucoat-public", access_mode="public")
+        assert [c["slug"] for c in stranger_client.get("/api/v1/organizations").json()] == ["ucoat"]
+        director.deactivated_at = datetime.now(UTC)
+        db.commit()
+        assert stranger_client.get("/api/v1/organizations").json() == []
