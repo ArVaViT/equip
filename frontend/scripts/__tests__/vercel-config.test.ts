@@ -84,7 +84,9 @@ describe("frontend/vercel.json", () => {
       },
     );
 
-    it.each(["/assets/index-ABC12345.js", "/assets/nope.css"])(
+    // /video/ is served with a week of `immutable`: a missing file must 404,
+    // not come back as index.html cached for a week (2026-10-03).
+    it.each(["/assets/index-ABC12345.js", "/assets/nope.css", "/video/intro.mp4", "/video/nope.mp4"])(
       "does NOT rewrite a hashed asset request (%s) — that must 404, not fall back to index.html",
       (path) => {
         expect(regex.test(path)).toBe(false);
