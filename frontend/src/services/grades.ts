@@ -17,8 +17,9 @@ import type {
   StudentGrade,
 } from "@/types"
 
-/** An exemption moves a grade *and* a completion, so both sides go stale. */
-function invalidateAfterExemption(courseId: string): void {
+/** An exemption moves a grade *and* a completion, so both sides go stale —
+ *  and so does a new grading scale, which re-reads every symbol. */
+function invalidateGradesAndProgress(courseId: string): void {
   cacheInvalidate(`grades:course:${courseId}`)
   cacheInvalidate(`grades:summary:${courseId}`)
   cacheInvalidatePrefix("grades:my")
@@ -82,7 +83,7 @@ export const gradesService = {
       `/grades/course/${courseId}/student/${studentId}/exemptions`,
       data,
     )
-    invalidateAfterExemption(courseId)
+    invalidateGradesAndProgress(courseId)
     return response.data
   },
 
@@ -96,7 +97,7 @@ export const gradesService = {
     await api.delete(
       `/grades/course/${courseId}/student/${studentId}/exemptions/${itemType}/${itemId}`,
     )
-    invalidateAfterExemption(courseId)
+    invalidateGradesAndProgress(courseId)
   },
 
   async listExemptions(courseId: string, studentId: string): Promise<GradeExemption[]> {
@@ -245,9 +246,9 @@ export const gradesService = {
       data,
     )
     cacheInvalidate(`grades:scheme:${courseId}`)
-    cacheInvalidate(`grades:summary:${courseId}`)
-    cacheInvalidate(`grades:course:${courseId}`)
-    cacheInvalidatePrefix("grades:my")
+    // Progress and analytics show the same symbols; within their TTL they
+    // would still read against the old bands.
+    invalidateGradesAndProgress(courseId)
     return response.data
   },
 

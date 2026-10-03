@@ -162,6 +162,7 @@ interface DialogProps {
 function ChangeSchemeDialog({ open, courseId, current, onClose, onSaved }: DialogProps) {
   const { t } = useTranslation()
   const thresholdId = useId()
+  const problemId = useId()
   const [draftScheme, setDraftScheme] = useState<GradingScheme>(
     isScheme(current.grading_scheme) ? current.grading_scheme : "letter",
   )
@@ -247,12 +248,16 @@ function ChangeSchemeDialog({ open, courseId, current, onClose, onSaved }: Dialo
             value={draftThreshold}
             onChange={(e) => setDraftThreshold(e.target.value)}
             fieldSize="md"
+            // The objection belongs to this field: a screen reader reads it
+            // with the field, not only once when it appears.
+            aria-invalid={problemText ? true : undefined}
+            aria-describedby={problemText ? problemId : undefined}
           />
         </div>
         {/* The form's own objection while typing, the server's after Save —
             one place, so the eye learns where to look. */}
         {(error ?? problemText) && (
-          <p role="alert" className="text-sm text-destructive">
+          <p id={problemId} role="alert" className="text-sm text-destructive">
             {error ?? problemText}
           </p>
         )}

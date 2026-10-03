@@ -101,6 +101,9 @@ describe("GradingScaleCard", () => {
     await user.type(threshold, "120")
 
     expect(screen.getByRole("alert")).toHaveTextContent("Проходной балл — число от 0 до 100.")
+    // Tied to the field, so it is read with it, not only announced once.
+    expect(threshold).toBeInvalid()
+    expect(threshold).toHaveAccessibleDescription("Проходной балл — число от 0 до 100.")
     expect(screen.getByRole("button", { name: "Сохранить" })).toBeDisabled()
     expect(updateGradingScheme).not.toHaveBeenCalled()
   })
