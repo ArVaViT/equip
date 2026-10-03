@@ -3223,5 +3223,21 @@
   "theme": {
     "switchToLight": "Helles Design",
     "switchToDark": "Dunkles Design"
+  },
+  "guest": {
+    "readFirst": "Erste Lektion lesen",
+    "register": "Konto erstellen",
+    "signIn": "Anmelden",
+    "block": {
+      "title": "Test, Aufgabe oder Datei — nach der Anmeldung verfügbar"
+    },
+    "finish": {
+      "title": "Gefallen? Mit einem Konto weiterlesen",
+      "body": "Erstellen Sie ein kostenloses Konto, um sich einzuschreiben, weiterzulesen und Gelesenes zu markieren."
+    },
+    "wall": {
+      "title": "Diese Lektion ist für Eingeschriebene",
+      "body": "Die erste Lektion ist für alle offen. Um weiterzulesen, erstellen Sie ein kostenloses Konto und schreiben Sie sich ein."
+    }
   }
 }

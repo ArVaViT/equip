@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo, memo, lazy, Suspense } from "react"
+import { useContext, useEffect, useRef, useState, useCallback, useMemo, memo, lazy, Suspense } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { isAxiosError } from "axios"
@@ -17,6 +17,8 @@ import { progressService } from "@/services/progress"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
 import { useAuth } from "@/context/useAuth"
+import { AuthContext } from "@/context/auth-context"
+import { GuestPrompt } from "@/components/chapter/GuestPrompt"
 import {
   chapterHref,
   findChapter,
@@ -189,10 +191,20 @@ const BlockRenderer = memo(function BlockRenderer({
   onAssignmentCountLoaded?: (count: number) => void
 }) {
   const { t } = useTranslation()
+  // Read without ``useAuth``'s throw: a block is rendered on its own in
+  // places with no session at all (tests, previews), and "no provider"
+  // is not "a guest".
+  const auth = useContext(AuthContext)
+  const guest = auth !== null && !auth.loading && !auth.user
   const sanitizedContent = useMemo(
     () => (block.content ? sanitize(block.content) : ""),
     [block.content],
   )
+  // A guest reads the text of the preview lesson; a test, an assignment
+  // and a file are things to keep or hand in, and those need an account.
+  if (guest && (block.block_type === "quiz" || block.block_type === "assignment" || block.block_type === "file")) {
+    return <GuestPrompt variant="block" />
+  }
 
   switch (block.block_type) {
     case "text":
@@ -559,7 +571,7 @@ export default function ChapterView() {
   useUserTour({
     tourId: "chapter-view-v1",
     steps: chapterViewSteps(t),
-    ready: !loading && !error && course !== null,
+    ready: !loading && !error && course !== null && Boolean(user),
   })
 
   useEffect(() => {
@@ -586,7 +598,8 @@ export default function ChapterView() {
           // See `moduleProgress.ts` — `[]` and "unknown" must not be the
           // same value. Here it only drives the read tick, which now simply
           // does not draw rather than drawing a false "not read".
-          coursesService.getMyChapterProgress(courseId).catch(() => null),
+          // A guest has no progress to fetch.
+          user ? coursesService.getMyChapterProgress(courseId).catch(() => null) : Promise.resolve(null),
         ])
         if (cancelled) return
         setCourse(fullCourse)
@@ -640,10 +653,12 @@ export default function ChapterView() {
   // ordinary answer now, not a broken payload — so nothing that depends on it
   // may be on the path a lesson without one has to walk.
   const parentModule = placement?.group.module ?? null
-  const backHref = parentModule
-    ? `/courses/${courseId}/modules/${parentModule.id}`
+  // A guest goes back to the course: the module page asks for an account.
+  const backToModule = Boolean(parentModule && user)
+  const backHref = backToModule
+    ? `/courses/${courseId}/modules/${parentModule?.id}`
     : `/courses/${courseId}`
-  const backLabel = parentModule ? t("course.backToModule") : t("course.backToCourse")
+  const backLabel = backToModule ? t("course.backToModule") : t("course.backToCourse")
 
   /**
    * The chapter's own text, fetched from the URL rather than from the course.
@@ -776,6 +791,25 @@ export default function ChapterView() {
             )
           }
         />
+      </div>
+    )
+  }
+
+  // A guest reads the preview lesson and meets an invitation everywhere
+  // else in the course — before the blocks' 401 can show as an error.
+  if (!user && course?.preview_chapter_id !== chapter.id) {
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-3xl">
+        <Link to={`/courses/${courseId}`} className="-mx-2 mb-6 inline-flex">
+          <Button variant="ghost" size="sm" className="h-11 text-xs sm:h-8">
+            <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+            {t("course.backToCourse")}
+          </Button>
+        </Link>
+        <h1 className="mb-6 font-serif text-3xl font-semibold tracking-tight text-wrap-safe">
+          {orNotTranslated(t, chapter.title)}
+        </h1>
+        <GuestPrompt variant="wall" />
       </div>
     )
   }
@@ -913,7 +947,7 @@ export default function ChapterView() {
 
       {/* The reader's own margin, under the lesson it belongs to. Only for
           lessons to read: a test or an assignment has its own box to write in. */}
-      {chapterType === "reading" && <LessonNote key={chapter.id} chapterId={chapter.id} />}
+      {chapterType === "reading" && user && <LessonNote key={chapter.id} chapterId={chapter.id} />}
 
       {/* Reading chapters get an act of their own.
           Until now a chapter of pure text could not be finished by the person
@@ -921,7 +955,10 @@ export default function ChapterView() {
           product left no trace. The control is explicit rather than a scroll
           heuristic: a heuristic credits the skimmer who reaches the bottom and
           misses the careful reader on a phone who closes the tab. */}
-      {chapterType === "reading" && !hasAssignments && (
+      {/* The end of the preview: what reading on and keeping a mark takes. */}
+      {!user && <GuestPrompt variant="finish" className="mt-8" />}
+
+      {chapterType === "reading" && !hasAssignments && user && (
         <div className="mt-8 border-t border-edge pt-5">
           {isCompleted ? (
             <p className="flex items-center gap-2 text-sm font-medium text-success">

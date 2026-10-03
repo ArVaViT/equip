@@ -309,11 +309,21 @@ export function NotEnrolledView({
           // Back to this course after signing in — a visitor who came by a
           // pastor's link otherwise lands on the home screen (`Gate` reads
           // `state.from`, see lib/authRedirect).
-          <Button asChild size="lg">
-            <Link to="/login" state={{ from: `${location.pathname}${location.search}` }}>
-              {t("courseDetail.signInToEnroll")}
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild size="lg">
+              <Link to="/login" state={{ from: `${location.pathname}${location.search}` }}>
+                {t("courseDetail.signInToEnroll")}
+              </Link>
+            </Button>
+            {/* Read before deciding: the first lesson is open to a guest. */}
+            {course.preview_chapter_id && (
+              <Button asChild size="lg" variant="outline">
+                <Link to={`/courses/${course.id}/chapters/${course.preview_chapter_id}`}>
+                  {t("guest.readFirst")}
+                </Link>
+              </Button>
+            )}
+          </div>
         )}
       </div>
 

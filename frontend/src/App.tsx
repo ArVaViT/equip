@@ -125,7 +125,7 @@ function useRouteFocus() {
   }, [pathname])
 }
 
-type RouteMode = "private" | "public" | "teacher" | "admin"
+type RouteMode = "private" | "public" | "open" | "teacher" | "admin"
 
 function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -141,6 +141,9 @@ function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }
     getTeacherAgreementOwed,
   )
   if (loading) return <PageSpinner />
+  // Anyone, signed in or not: the page decides what a guest may do. A
+  // lesson is one — the course's first is open to a guest (guest_preview).
+  if (mode === "open") return <>{children}</>
   if (mode === "public") {
     // Back to the page a private gate refused, once there is someone to
     // let in; the dashboard otherwise. See `lib/authRedirect.ts`.
@@ -329,8 +332,8 @@ function AppRoutes() {
                   may add or drop after the link was sent. The module-shaped
                   address below stays: bookmarks, e-mails and the readiness
                   checklist point at it, and it resolves to the same screen. */}
-              <Route path="/courses/:courseId/chapters/:chapterId" element={<Gate mode="private"><ChapterView /></Gate>} />
-              <Route path="/courses/:courseId/modules/:moduleId/chapters/:chapterId" element={<Gate mode="private"><ChapterView /></Gate>} />
+              <Route path="/courses/:courseId/chapters/:chapterId" element={<Gate mode="open"><ChapterView /></Gate>} />
+              <Route path="/courses/:courseId/modules/:moduleId/chapters/:chapterId" element={<Gate mode="open"><ChapterView /></Gate>} />
               <Route path="/teacher" element={<Gate mode="teacher"><TeacherDashboard /></Gate>} />
               <Route path="/teacher/courses/:courseId" element={<Gate mode="teacher"><CourseEditor /></Gate>} />
               <Route path="/teacher/courses/:courseId/modules/:moduleId/edit" element={<Gate mode="teacher"><ModuleEditor /></Gate>} />

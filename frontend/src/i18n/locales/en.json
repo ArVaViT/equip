@@ -3223,5 +3223,21 @@
   "theme": {
     "switchToLight": "Light theme",
     "switchToDark": "Dark theme"
+  },
+  "guest": {
+    "readFirst": "Read the first lesson",
+    "register": "Create an account",
+    "signIn": "Sign in",
+    "block": {
+      "title": "A test, assignment or file — opens once you sign in"
+    },
+    "finish": {
+      "title": "Enjoyed it? Keep going with an account",
+      "body": "Create a free account to enroll, read on and mark lessons as read."
+    },
+    "wall": {
+      "title": "This lesson is for enrolled readers",
+      "body": "The first lesson is open to everyone. To read on, create a free account and enroll in the course."
+    }
   }
 }
