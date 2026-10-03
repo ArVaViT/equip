@@ -15,7 +15,7 @@ from app.api.dependencies import (
 )
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
-from app.models.invitation import Invitation
+from app.models.invitation import Invitation, InvitationScope
 from app.models.organization import MembershipRole, Organization
 from app.models.user import User, UserRole
 from app.schemas.invitation import (
@@ -221,7 +221,10 @@ def list_invitations_route(
 ) -> list[InvitationResponse]:
     # A director sees the invitations of the organization they are acting
     # in; platform staff see all of them unless they named one — the same
-    # split the cohort list uses (``organization_scope``).
+    # split the cohort list uses (``organization_scope``). Platform
+    # invitations are filed under an organization but are not its own:
+    # only platform staff see them.
+    is_platform_staff = director.role == UserRole.ADMIN.value
     scope = organization_scope(db, director, requested)
     rows = list_invitations(
         db,
@@ -230,6 +233,7 @@ def list_invitations_route(
         limit=limit,
         role=role,
         status_filter=invite_status,
+        platform_rows=is_platform_staff,
     )
     return [_to_response(r) for r in rows]
 
@@ -250,10 +254,18 @@ def revoke_invitation_route(
 
     The invitation names its organization, and the caller must direct that
     one (``directs``); a director of somewhere else is told the same thing
-    as somebody asking about an invitation that does not exist.
+    as somebody asking about an invitation that does not exist. So is a
+    director asking about a platform invitation filed under their own
+    organization: it is the platform admin's, and until 2026-10-03 the
+    director could withdraw it.
     """
     existing = get_invitation_by_id(db, invitation_id)
-    if existing is None or not directs(db, director, existing.organization_id):
+    is_the_platforms = existing is not None and existing.scope == InvitationScope.PLATFORM.value
+    if (
+        existing is None
+        or (is_the_platforms and director.role != UserRole.ADMIN.value)
+        or not directs(db, director, existing.organization_id)
+    ):
         raise equip_error(
             ErrorCode.INVITATION_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,

@@ -432,6 +432,41 @@ class TestThePlatformInvitationIsNotTheDirectors:
         assert resp.json()["scope"] == "platform"
         assert _rows(db, self.NEWCOMER) == [("course", "pending"), ("platform", "pending")]
 
+    def test_the_director_does_not_see_it(self, db: Session, world: dict) -> None:
+        # Filed under A for bookkeeping, recruiting for nothing of A's: the
+        # address is the platform admin's business. Until 2026-10-03 it sat
+        # in the director's list next to their own.
+        assert _invite(db, world["admin"], email=self.NEWCOMER, role="student", scope="platform").status_code == 201
+        assert (
+            _invite(db, world["director_a"], email="own@example.com", role="student", scope="organization").status_code
+            == 201
+        )
+
+        seen_by_director = _as(db, world["director_a"]).get("/api/v1/invitations")
+        seen_by_admin = _as(db, world["admin"]).get("/api/v1/invitations")
+
+        assert seen_by_director.status_code == 200, seen_by_director.text
+        assert [(row["email"], row["scope"]) for row in seen_by_director.json()] == [
+            ("own@example.com", "organization")
+        ]
+        assert sorted(row["scope"] for row in seen_by_admin.json()) == ["organization", "platform"]
+
+    def test_the_director_cannot_withdraw_it(self, db: Session, world: dict) -> None:
+        assert _invite(db, world["admin"], email=self.NEWCOMER, role="student", scope="platform").status_code == 201
+        row = db.query(Invitation).filter(Invitation.email == self.NEWCOMER).one()
+
+        resp = _as(db, world["director_a"]).delete(f"/api/v1/invitations/{row.id}")
+
+        # The same answer as for an invitation that does not exist — which,
+        # for the director, it does not.
+        assert resp.status_code == 404, resp.text
+        db.refresh(row)
+        assert row.status == "pending"
+        # The platform admin can.
+        assert _as(db, world["admin"]).delete(f"/api/v1/invitations/{row.id}").status_code == 200
+        db.refresh(row)
+        assert row.status == "revoked"
+
     def test_an_expired_platform_row_is_not_in_the_directors_way(self, db: Session, world: dict) -> None:
         # Dead already; retired so the fresh row can be written, which is
         # what happens to an expired row of the director's own kind too.

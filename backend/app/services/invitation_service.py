@@ -364,6 +364,7 @@ def list_invitations(
     limit: int = 50,
     role: str | None = None,
     status_filter: str | None = None,
+    platform_rows: bool = True,
 ) -> list[Invitation]:
     """Pending and spent invitations, newest first.
 
@@ -372,10 +373,18 @@ def list_invitations(
     who has not joined yet, and that is the neighbouring organization's
     recruiting, not theirs. ``None`` means platform staff, who
     administer every organization by definition.
+
+    ``platform_rows=False`` leaves out platform invitations, which are
+    filed under an organization for bookkeeping only and are the platform
+    admin's recruiting, not the director's — the same address, invited to
+    nothing of the school's. Until 2026-10-03 a director saw them, and
+    could withdraw them.
     """
     query = db.query(Invitation)
     if organization_id is not None:
         query = query.filter(Invitation.organization_id == organization_id)
+    if not platform_rows:
+        query = query.filter(Invitation.scope != InvitationScope.PLATFORM.value)
     if role is not None:
         query = query.filter(Invitation.role == role)
     if status_filter is not None:
