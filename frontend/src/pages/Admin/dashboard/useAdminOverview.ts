@@ -13,7 +13,7 @@ import type { AdminCert } from "./PendingCertsCard"
 import { displayNameOf } from "@/lib/userDisplay"
 import type { AdminStats, ProfileRow } from "./constants"
 
-const ROLE_FILTER_VALUES = ["admin", "teacher", "student"] as const
+const ROLE_FILTER_VALUES = ["admin", "director", "teacher", "student"] as const
 type RoleFilter = (typeof ROLE_FILTER_VALUES)[number] | ""
 
 function isRoleFilter(v: string): v is (typeof ROLE_FILTER_VALUES)[number] {

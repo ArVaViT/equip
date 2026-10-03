@@ -128,3 +128,18 @@ describe("the bulk role action", () => {
     })
   })
 })
+
+describe("the role filter", () => {
+  it("knows directors — a role people now hold, and the one the admin looks for", async () => {
+    users = [
+      { id: "a", email: "a@example.com", full_name: "A", role: "admin", created_at: "2026-10-01T00:00:00Z" },
+      { id: "d", email: "d@example.com", full_name: "D", role: "director", created_at: "2026-10-01T00:00:00Z" },
+      { id: "t", email: "t@example.com", full_name: "T", role: "teacher", created_at: "2026-10-01T00:00:00Z" },
+    ]
+    const { result } = renderHook(() => useAdminOverview({ currentUserId: "a" }), { wrapper: Wrapper })
+    await waitFor(() => expect(result.current.roleCounts.director).toBe(1))
+    act(() => result.current.setRoleFilter("director"))
+    await waitFor(() => expect(result.current.roleFilter).toBe("director"))
+    expect(result.current.filtered.map((u) => u.id)).toEqual(["d"])
+  })
+})
