@@ -47,7 +47,7 @@ describe("calendar subscription", () => {
     await user.click(screen.getByRole("button", { name: "Create link" }))
     await waitFor(() => expect(issueIcalFeed).toHaveBeenCalledTimes(1))
 
-    expect(screen.getByRole("link", { name: "iPhone Calendar, Outlook" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Apple Calendar, Outlook" })).toHaveAttribute(
       "href",
       "webcal://equipbible.com/api/v1/calendar/ical/feed?token=abc.def",
     )
@@ -87,19 +87,19 @@ describe("calendar subscription", () => {
 
     it("on Android, Google Calendar comes first and solid", async () => {
       const links = await linksAfterCreate(ANDROID)
-      expect(links.map((l) => l.name)).toEqual(["Google Calendar", "iPhone Calendar, Outlook"])
+      expect(links.map((l) => l.name)).toEqual(["Google Calendar", "Apple Calendar, Outlook"])
       expect(links.map((l) => l.solid)).toEqual([true, false])
     })
 
     it("on an iPhone, the Apple link stays first and solid", async () => {
       const links = await linksAfterCreate(IPHONE)
-      expect(links.map((l) => l.name)).toEqual(["iPhone Calendar, Outlook", "Google Calendar"])
+      expect(links.map((l) => l.name)).toEqual(["Apple Calendar, Outlook", "Google Calendar"])
       expect(links.map((l) => l.solid)).toEqual([true, false])
     })
 
     it("anywhere else keeps the order it had", async () => {
       const links = await linksAfterCreate(WINDOWS)
-      expect(links.map((l) => l.name)).toEqual(["iPhone Calendar, Outlook", "Google Calendar"])
+      expect(links.map((l) => l.name)).toEqual(["Apple Calendar, Outlook", "Google Calendar"])
     })
   })
 })

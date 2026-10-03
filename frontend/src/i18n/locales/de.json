@@ -1677,7 +1677,7 @@
       "description": "Termine und Fristen Ihrer Kurse erscheinen in Ihrem Kalender und bleiben aktuell.",
       "replaces": "Der Link ist persönlich. Wenn Sie schon abonniert haben, funktioniert der alte Link nicht mehr.",
       "create": "Link erstellen",
-      "apple": "iPhone-Kalender, Outlook",
+      "apple": "Apple-Kalender, Outlook",
       "google": "Google Kalender",
       "copy": "Link kopieren",
       "copied": "Kopiert",
@@ -1739,7 +1739,8 @@
       "addRecordingTitle": "Aufzeichnung von „{{title}}“",
       "addRecordingSave": "Speichern",
       "recordingAdded": "Aufzeichnung hinzugefügt — die Teilnehmenden werden benachrichtigt",
-      "openAssignment": "Aufgabe öffnen"
+      "openAssignment": "Aufgabe öffnen",
+      "openLesson": "Lektion öffnen"
     },
     "yesterday": "Gestern",
     "newEvent": {
@@ -1748,7 +1749,8 @@
     },
     "zone": "Zeiten in Ihrer Zeitzone: {{zone}}.",
     "zoneChange": "Ändern",
-    "allDay": "Ganztägig"
+    "allDay": "Ganztägig",
+    "untitledOther": "Termin"
   },
   "teacher": {
     "dashboardTitle": "Meine Kurse",

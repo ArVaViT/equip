@@ -15,6 +15,9 @@ import { RecordingLink } from "./RecordingLink"
 import { formatEventTimeRange } from "./eventTimeFormat"
 import { useCalendarEditing } from "./calendarEditing"
 
+/** The kinds the chip has a word for; anything else reads as "other". */
+const KINDS = ["deadline", "live_session", "exam", "other"] as const
+
 /**
  * One event as the reader needs it at this moment.
  *
@@ -47,9 +50,14 @@ export function EventCard({
   const joinable = Boolean(event.meeting_url) && isJoinableNow(event, now)
   const until = minutesUntil(event, now)
   const overdue = event.event_type === "deadline" && over
-  const typeLabel = t(`calendar.eventTypes.${event.event_type}`, {
-    defaultValue: event.event_type.replace("_", " "),
-  })
+  // The server files any kind it does not name under "other"; the chip
+  // does the same rather than printing a raw "lecture".
+  const kind = (KINDS as readonly string[]).includes(event.event_type) ? event.event_type : "other"
+  const typeLabel = t(`calendar.eventTypes.${kind}`)
+  // What the server writes in place of a title nobody has given yet —
+  // the kind's name, and for "other" its own word («Событие»). Either way
+  // it says nothing the chip above it has not.
+  const titleIsKindOnly = event.title === typeLabel || (kind === "other" && event.title === t("calendar.untitledOther"))
 
   return (
     <article
@@ -113,7 +121,7 @@ export function EventCard({
           {/* Past: quieter by colour, not by opacity — faded text fell below 4.5:1.
               A title still being translated arrives as the kind of event,
               which the line above already says: not twice. */}
-          {event.title && event.title !== typeLabel && (
+          {event.title && !titleIsKindOnly && (
             <h3 className={cn("mt-1 text-sm font-semibold text-wrap-safe", over && !overdue && "text-ink-muted")}>
               {event.title}
             </h3>
@@ -145,7 +153,9 @@ export function EventCard({
                 to={`/courses/${event.course_id}/chapters/${event.chapter_id}`}
                 className={cn(buttonVariants({ size: "sm" }), "h-7 text-xs")}
               >
-                {t("calendar.card.openAssignment")}
+                {/* A module's deadline leads to its first lesson, not to an
+                    assignment: the button says which it opens. */}
+                {event.assignment_id ? t("calendar.card.openAssignment") : t("calendar.card.openLesson")}
                 <ArrowUpRight className="ml-1 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
               </Link>
             )}

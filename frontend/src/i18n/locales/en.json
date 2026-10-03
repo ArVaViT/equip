@@ -1677,7 +1677,7 @@
       "description": "Your courses’ sessions and deadlines appear in your calendar and stay up to date.",
       "replaces": "The link is personal. If you subscribed before, the old link stops working.",
       "create": "Create link",
-      "apple": "iPhone Calendar, Outlook",
+      "apple": "Apple Calendar, Outlook",
       "google": "Google Calendar",
       "copy": "Copy link",
       "copied": "Copied",
@@ -1739,7 +1739,8 @@
       "addRecordingTitle": "Recording of “{{title}}”",
       "addRecordingSave": "Save",
       "recordingAdded": "Recording added — students will be notified",
-      "openAssignment": "Open the assignment"
+      "openAssignment": "Open the assignment",
+      "openLesson": "Open the lesson"
     },
     "yesterday": "Yesterday",
     "newEvent": {
@@ -1748,7 +1749,8 @@
     },
     "zone": "Times are in your zone: {{zone}}.",
     "zoneChange": "Change",
-    "allDay": "All day"
+    "allDay": "All day",
+    "untitledOther": "Event"
   },
   "teacher": {
     "dashboardTitle": "My Courses",

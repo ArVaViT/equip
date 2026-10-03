@@ -57,6 +57,22 @@ describe("EventCard — the title line", () => {
     expect(screen.getAllByText("Живое занятие")).toHaveLength(1)
   })
 
+  it("does not say it twice for an event of another kind either", () => {
+    // The server names an untitled "other" event «Событие», the chip says
+    // «Другое»; and a kind it does not know is "other" on both sides.
+    render(<EventCard event={session({ title: "Событие", event_type: "other" })} now={NOW} />, { wrapper: Wrapper })
+    expect(screen.queryByRole("heading", { level: 3 })).toBeNull()
+    expect(screen.getByText("Другое")).toBeInTheDocument()
+  })
+
+  it("reads an unknown kind as «Другое», not as its code", () => {
+    render(<EventCard event={session({ title: "Лекция Петра", event_type: "lecture" as CalendarEvent["event_type"] })} now={NOW} />, {
+      wrapper: Wrapper,
+    })
+    expect(screen.getByText("Другое")).toBeInTheDocument()
+    expect(screen.queryByText("lecture")).toBeNull()
+  })
+
   it("says which lesson of the series this is, beside the repeat mark", () => {
     // Eight Saturdays all read «Урок»; the fourth could not be told from the first.
     render(
@@ -102,6 +118,16 @@ describe("EventCard — the title line", () => {
     it("opens the lesson that holds the assignment", () => {
       render(<EventCard event={deadline({ chapter_id: "ch-7", assignment_id: "a-1" })} now={NOW} />, { wrapper: Wrapper })
       expect(screen.getByRole("link", { name: /Открыть задание/ })).toHaveAttribute("href", "/courses/c1/chapters/ch-7")
+    })
+
+    it("says «урок», not «задание», for a module's deadline", () => {
+      // A module deadline leads to the module's first lesson; there is no
+      // assignment behind it to promise.
+      render(<EventCard event={deadline({ source: "module_deadline", chapter_id: "ch-1", assignment_id: null })} now={NOW} />, {
+        wrapper: Wrapper,
+      })
+      expect(screen.getByRole("link", { name: /Открыть урок/ })).toHaveAttribute("href", "/courses/c1/chapters/ch-1")
+      expect(screen.queryByRole("link", { name: /Открыть задание/ })).toBeNull()
     })
 
     it("offers nothing to open when the server named no lesson", () => {

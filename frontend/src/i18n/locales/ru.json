@@ -1309,7 +1309,7 @@
       "description": "Занятия и сроки ваших курсов появятся в календаре и будут обновляться сами.",
       "replaces": "Ссылка личная. Если вы уже подписывались, прежняя ссылка перестанет работать.",
       "create": "Создать ссылку",
-      "apple": "Календарь iPhone, Outlook",
+      "apple": "Календарь Apple, Outlook",
       "google": "Google Календарь",
       "copy": "Скопировать ссылку",
       "copied": "Скопировано",
@@ -1377,7 +1377,8 @@
       "addRecordingTitle": "Запись занятия «{{title}}»",
       "addRecordingSave": "Сохранить",
       "recordingAdded": "Запись добавлена — студенты получат уведомление",
-      "openAssignment": "Открыть задание"
+      "openAssignment": "Открыть задание",
+      "openLesson": "Открыть урок"
     },
     "yesterday": "Вчера",
     "newEvent": {
@@ -1386,7 +1387,8 @@
     },
     "zone": "Время — по вашему поясу: {{zone}}.",
     "zoneChange": "Изменить",
-    "allDay": "Весь день"
+    "allDay": "Весь день",
+    "untitledOther": "Событие"
   },
   "teacher": {
     "dashboardTitle": "Мои курсы",
