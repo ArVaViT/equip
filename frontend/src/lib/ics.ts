@@ -116,8 +116,10 @@ export function icsFileName(event: CalendarEvent): string {
  * calendar is Google on an Android phone or in a browser, where an `.ics`
  * download lands in Files and goes no further.
  */
-export function googleCalendarUrl(event: CalendarEvent, recordingLabel?: string): string {
+export function googleCalendarUrl(event: CalendarEvent, recordingLabel?: string): string | null {
   const start = new Date(event.event_date)
+  // An event with no readable start has nothing to add.
+  if (Number.isNaN(start.getTime())) return null
   const minutes = event.duration_minutes ?? (takesTimeOfDay(event.event_type) ? 60 : 0)
   const end = new Date(start.getTime() + minutes * 60_000)
   const recording = event.recording_url ? `${recordingLabel ?? "Recording"}: ${event.recording_url}` : null

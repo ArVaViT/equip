@@ -86,13 +86,15 @@ describe("a recording on the event", () => {
   })
 
   it("builds a Google add link with the class's span and its meeting", () => {
-    const url = new URL(googleCalendarUrl(event({ duration_minutes: 90, meeting_url: "https://zoom.us/j/1" })))
+    const url = new URL(googleCalendarUrl(event({ duration_minutes: 90, meeting_url: "https://zoom.us/j/1" })) ?? "")
     expect(url.origin + url.pathname).toBe("https://calendar.google.com/calendar/render")
     expect(url.searchParams.get("action")).toBe("TEMPLATE")
     expect(url.searchParams.get("dates")).toBe("20261011T130000Z/20261011T143000Z")
     expect(url.searchParams.get("location")).toBe("https://zoom.us/j/1")
     // A deadline is a moment: start and end are the same instant.
-    const ddl = new URL(googleCalendarUrl(event({ event_type: "deadline" })))
+    const ddl = new URL(googleCalendarUrl(event({ event_type: "deadline" })) ?? "")
     expect(ddl.searchParams.get("dates")).toBe("20261011T130000Z/20261011T130000Z")
+    // No readable start: no link rather than a thrown RangeError mid-render.
+    expect(googleCalendarUrl(event({ event_date: "" }))).toBeNull()
   })
 })

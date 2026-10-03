@@ -26,6 +26,7 @@ interface Props {
  */
 export function AddToCalendarButton({ event, className }: Props) {
   const { t } = useTranslation()
+  const google = googleCalendarUrl(event, t("meeting.recording"))
 
   const download = () => {
     const blob = new Blob([eventToIcs(event, new Date(), t("meeting.recording"))], { type: "text/calendar;charset=utf-8" })
@@ -63,11 +64,13 @@ export function AddToCalendarButton({ event, className }: Props) {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuItem asChild>
-          <a href={googleCalendarUrl(event, t("meeting.recording"))} target="_blank" rel="noopener noreferrer">
-            {t("calendar.addOne.google")}
-          </a>
-        </DropdownMenuItem>
+        {google && (
+          <DropdownMenuItem asChild>
+            <a href={google} target="_blank" rel="noopener noreferrer">
+              {t("calendar.addOne.google")}
+            </a>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem onSelect={() => download()}>{t("calendar.addOne.file")}</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
