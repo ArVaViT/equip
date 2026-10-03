@@ -259,7 +259,7 @@ def serve_feed(
         # the only thing that knows better here.
         display_locale=locale,
     )
-    body = render_calendar(events, locale=locale)
+    body = render_calendar(events, locale=locale, time_zone=user.time_zone)
     return Response(
         content=body,
         media_type="text/calendar; charset=utf-8",

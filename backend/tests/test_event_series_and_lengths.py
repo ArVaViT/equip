@@ -430,3 +430,51 @@ class TestTheReminderCron:
         assert r.status_code == 200
         assert r.json() == {"reminded": 1}
         assert len(_notices(db, "event_reminder")) == 1
+
+
+class TestTheGroupsDays:
+    def test_a_student_sees_their_group_start_and_end_as_days(
+        self, client: TestClient, db: Session, student: User, student_client: TestClient
+    ) -> None:
+        from app.models.cohort import Cohort
+        from app.models.course import Course
+        from app.services.calendar_ical import render_calendar
+        from app.services.calendar_service import build_calendar_events
+        from app.services.content_versions.write import record_human_version
+
+        course_id = _course(db, student)
+        course = db.get(Course, course_id)
+        assert course is not None
+        cohort = Cohort(
+            id=uuid.uuid4(),
+            start_date=datetime(2099, 10, 5, 4, 0, tzinfo=UTC),  # midnight in Indianapolis
+            end_date=datetime(2099, 12, 19, 5, 0, tzinfo=UTC),
+            status="upcoming",
+            organization_id=uuid.UUID(str(course.organization_id)),
+        )
+        db.add(cohort)
+        db.flush()
+        record_human_version(
+            db,
+            entity_type="cohort",
+            entity_id=str(cohort.id),
+            field="title",
+            locale="ru",
+            text="Осень 2099",
+            authored_by=TEACHER_ID,
+        )
+        enrollment = db.query(Enrollment).filter(Enrollment.course_id == course_id).one()
+        enrollment.cohort_id = cohort.id
+        db.commit()
+
+        student.time_zone = "America/Indiana/Indianapolis"
+        db.commit()
+        events = build_calendar_events(db, user=student, display_locale="ru")
+        days = [e for e in events if e.source in ("cohort_start", "cohort_end")]
+        assert [(e.source, e.title, e.all_day) for e in days] == [
+            ("cohort_start", "Начало занятий группы: Осень 2099", True),
+            ("cohort_end", "Последний день группы: Осень 2099", True),
+        ]
+        ics = render_calendar(days, locale="ru", time_zone=student.time_zone)
+        assert "DTSTART;VALUE=DATE:20991005" in ics
+        assert "DTSTART;VALUE=DATE:20991219" in ics

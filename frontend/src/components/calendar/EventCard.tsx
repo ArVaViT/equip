@@ -142,7 +142,9 @@ export function EventCard({
                 {t("calendar.card.addRecording")}
               </Button>
             )}
-            {!over && <AddToCalendarButton event={event} />}
+            {/* A group's day is in the subscription; a file of "all day
+                group starts" is not worth a button on the card. */}
+            {!over && !event.all_day && <AddToCalendarButton event={event} />}
           </div>
         </div>
       </div>

@@ -592,7 +592,7 @@ export interface Profile {
 }
 
 type CalendarEventType = 'deadline' | 'live_session' | 'exam' | 'other'
-type CalendarEventSource = 'module_deadline' | 'assignment_deadline' | 'course_event'
+type CalendarEventSource = 'module_deadline' | 'assignment_deadline' | 'course_event' | 'cohort_start' | 'cohort_end'
 
 export interface CalendarEvent {
   id: string
@@ -611,6 +611,9 @@ export interface CalendarEvent {
   duration_minutes?: number | null
   /** Shared by the occurrences of one weekly series. */
   series_id?: string | null
+  /** A day rather than a moment — a group's first or last day. Shown as
+   *  "all day", never as 00:00. */
+  all_day?: boolean
   course_id: string
   course_title: string | null
   source: CalendarEventSource

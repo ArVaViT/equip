@@ -50,3 +50,11 @@ describe("a deadline", () => {
     expect(isOver(e, t("2026-10-25T00:00:00Z"))).toBe(true)
   })
 })
+
+describe("a group's day", () => {
+  it("lasts the day", () => {
+    const e = { event_date: "2026-10-05T04:00:00Z", event_type: "other" as const, all_day: true }
+    expect(eventEnd(e)?.toISOString()).toBe("2026-10-06T04:00:00.000Z")
+    expect(isOver(e, Date.parse("2026-10-05T20:00:00Z"))).toBe(false)
+  })
+})

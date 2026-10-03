@@ -168,4 +168,7 @@ class CalendarEvent(BaseModel):
     series_id: str | None = None
     course_id: str
     course_title: str | None = None
-    source: Literal["module_deadline", "assignment_deadline", "course_event"]
+    source: Literal["module_deadline", "assignment_deadline", "course_event", "cohort_start", "cohort_end"]
+    #: A day, not a moment: a group's first and last day of study. The
+    #: clients write "all day" instead of a time, and the feed a date.
+    all_day: bool = False

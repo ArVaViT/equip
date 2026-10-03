@@ -1744,7 +1744,8 @@
       "course": "Course"
     },
     "zone": "Times are in your zone: {{zone}}.",
-    "zoneChange": "Change"
+    "zoneChange": "Change",
+    "allDay": "All day"
   },
   "teacher": {
     "dashboardTitle": "My Courses",

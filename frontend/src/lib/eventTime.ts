@@ -1,6 +1,6 @@
 import type { CalendarEvent } from "@/types"
 
-type Timed = Pick<CalendarEvent, "event_date" | "event_type"> & { duration_minutes?: number | null }
+type Timed = Pick<CalendarEvent, "event_date" | "event_type"> & { duration_minutes?: number | null; all_day?: boolean }
 
 /**
  * An event without a stored length is treated as an hour long — the length
@@ -19,7 +19,10 @@ export const JOIN_STAYS_AFTER_MS = 10 * MINUTE
 /** When the event ends, or `null` for a moment (a deadline) or an unknown length. */
 export function eventEnd(event: Timed): Date | null {
   const start = Date.parse(event.event_date)
-  if (!Number.isFinite(start) || !event.duration_minutes) return null
+  if (!Number.isFinite(start)) return null
+  // A day is over when the day is.
+  if (event.all_day) return new Date(start + 24 * 60 * MINUTE)
+  if (!event.duration_minutes) return null
   return new Date(start + event.duration_minutes * MINUTE)
 }
 

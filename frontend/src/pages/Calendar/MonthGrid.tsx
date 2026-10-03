@@ -156,7 +156,7 @@ export function MonthGrid({
                           className={`block w-full truncate rounded px-1 py-0.5 text-xs leading-tight ${color.bg} ${color.text}`}
                           title={`${formatEventTimeRange(evt)} · ${evt.title}`}
                         >
-                          {evt.event_type !== "deadline" && (
+                          {evt.event_type !== "deadline" && !evt.all_day && (
                             <span className="tabular-nums font-medium">{formatEventTimeRange(evt).split("–")[0]} </span>
                           )}
                           {evt.title}

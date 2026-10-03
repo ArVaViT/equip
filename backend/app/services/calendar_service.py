@@ -7,6 +7,8 @@ arguments only — no FastAPI ``Request``/``Response``/``Depends``
 objects; header parsing and cache/Vary headers stay in the routes.
 """
 
+import uuid
+
 from sqlalchemy.orm import Session
 
 from app.core.i18n import t
@@ -25,6 +27,77 @@ from app.services.translation.resolve_for_display import (
 
 #: Event kinds with a label of their own (``event_type.*`` in ``app.core.i18n``).
 _EVENT_TYPE_LABELS = frozenset({"deadline", "live_session", "exam", "other"})
+
+
+def _cohort_days(
+    db: Session,
+    *,
+    user: User,
+    course_ids: list[str],
+    display_locale: LocaleCode,
+    titles: dict[str, str],
+) -> list[CalendarEvent]:
+    """The first and last day of each group the reader studies in.
+
+    A student placed in a group ("UCOAT, autumn 2026") had its dates on the
+    director's screen and nowhere on their own calendar. One pair per group,
+    not per course: a group can take three courses together. Named by the
+    group when it has a name in any language, by "your group" when not.
+    """
+    from app.models.cohort import Cohort
+    from app.models.content_version import ContentVersion, ContentVersionStatus
+
+    rows = (
+        db.query(Enrollment.cohort_id, Enrollment.course_id)
+        .filter(
+            Enrollment.user_id == user.id,
+            Enrollment.cohort_id.isnot(None),
+            Enrollment.course_id.in_(course_ids),
+        )
+        .all()
+    )
+    course_of: dict[str, str] = {}
+    for cohort_id, crs_id in rows:
+        course_of.setdefault(str(cohort_id), crs_id)
+    if not course_of:
+        return []
+    cohorts = db.query(Cohort).filter(Cohort.id.in_([uuid.UUID(cid) for cid in course_of])).all()
+    names: dict[tuple[str, str], str] = {}
+    for eid, loc, text in (
+        db.query(ContentVersion.entity_id, ContentVersion.locale, ContentVersion.text)
+        .filter(
+            ContentVersion.entity_type == "cohort",
+            ContentVersion.entity_id.in_(list(course_of)),
+            ContentVersion.field == "title",
+            ContentVersion.superseded_by.is_(None),
+            ContentVersion.status == ContentVersionStatus.OK,
+        )
+        .all()
+    ):
+        names.setdefault((eid, loc), text)
+        names.setdefault((eid, "*"), text)
+    out: list[CalendarEvent] = []
+    for cohort in cohorts:
+        cid = str(cohort.id)
+        name = names.get((cid, display_locale)) or names.get((cid, "*")) or t(display_locale, "calendar.cohort.unnamed")
+        crs_id = course_of[cid]
+        for source, key, when in (
+            ("cohort_start", "calendar.cohort.start", cohort.start_date),
+            ("cohort_end", "calendar.cohort.end", cohort.end_date),
+        ):
+            out.append(
+                CalendarEvent(
+                    id=f"{source}-{cid}",
+                    title=t(display_locale, key, name=name),
+                    event_type="other",
+                    event_date=when,
+                    course_id=crs_id,
+                    course_title=titles.get(crs_id),
+                    source=source,  # type: ignore[arg-type]
+                    all_day=True,
+                )
+            )
+    return out
 
 
 def build_calendar_events(
@@ -256,6 +329,10 @@ def build_calendar_events(
                 source="course_event",
             )
         )
+
+    events.extend(
+        _cohort_days(db, user=user, course_ids=enrolled_course_ids, display_locale=display_locale, titles=course_titles)
+    )
 
     events.sort(key=lambda e: e.event_date)
     # Apply defensive cap AFTER sorting so the oldest events

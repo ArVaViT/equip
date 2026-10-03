@@ -3,7 +3,7 @@ import { getDisplayTimeZone } from "@/i18n/timeZone"
 import { eventEnd } from "@/lib/eventTime"
 import type { CalendarEvent } from "@/types"
 
-type Timed = Pick<CalendarEvent, "event_date" | "event_type"> & { duration_minutes?: number | null }
+type Timed = Pick<CalendarEvent, "event_date" | "event_type"> & { duration_minutes?: number | null; all_day?: boolean }
 
 function unit(value: number, unitName: "hour" | "minute", locale: string): string {
   return new Intl.NumberFormat(locale, { style: "unit", unit: unitName, unitDisplay: "short" }).format(value)
@@ -37,6 +37,7 @@ export function formatEventTimeRange(event: Timed, language: string = i18n.langu
   })
   const start = new Date(event.event_date)
   if (Number.isNaN(start.getTime())) return ""
+  if (event.all_day) return i18n.t("calendar.allDay")
   const end = eventEnd(event)
   return end ? `${fmt.format(start)}–${fmt.format(end)}` : fmt.format(start)
 }

@@ -1814,7 +1814,8 @@
       "course": "Курс"
     },
     "zone": "Час — за вашим поясом: {{zone}}.",
-    "zoneChange": "Змінити"
+    "zoneChange": "Змінити",
+    "allDay": "Увесь день"
   },
   "teacher": {
     "dashboardTitle": "Мої курси",
