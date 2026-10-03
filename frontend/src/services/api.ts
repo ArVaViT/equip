@@ -185,6 +185,14 @@ api.interceptors.response.use(
     if (!original || original._retry) {
       return Promise.reject(error)
     }
+    // A request that went out without a token was a guest's: there is no
+    // session to refresh, and "your session expired" — written by the
+    // sign-out below — would greet somebody who never signed in. A guest
+    // reading a course's first lesson meets 401s on purpose.
+    const sentAuth = (original.headers as Record<string, unknown> | undefined)?.Authorization
+    if (!sentAuth) {
+      return Promise.reject(error)
+    }
     original._retry = true
 
     // Try to transparently recover from a stale/expired access token before

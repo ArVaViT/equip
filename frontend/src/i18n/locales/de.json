@@ -3229,7 +3229,7 @@
     "register": "Konto erstellen",
     "signIn": "Anmelden",
     "block": {
-      "title": "Test, Aufgabe oder Datei — nach der Anmeldung verfügbar"
+      "title": "Test, Aufgabe oder Datei — für Eingeschriebene"
     },
     "finish": {
       "title": "Gefallen? Mit einem Konto weiterlesen",
@@ -3238,6 +3238,15 @@
     "wall": {
       "title": "Diese Lektion ist für Eingeschriebene",
       "body": "Die erste Lektion ist für alle offen. Um weiterzulesen, erstellen Sie ein kostenloses Konto und schreiben Sie sich ein."
+    },
+    "toCourse": "Kurs belegen",
+    "enrollFinish": {
+      "title": "Gefallen? Belegen Sie den Kurs",
+      "body": "Mit der Einschreibung öffnen sich die weiteren Lektionen, Tests und das Markieren als gelesen."
+    },
+    "enrollWall": {
+      "title": "Diese Lektion ist für Eingeschriebene",
+      "body": "Die erste Lektion ist für alle offen. Belegen Sie den Kurs, um weiterzulesen."
     }
   }
 }

@@ -281,18 +281,28 @@ export function NotEnrolledView({
           </div>
         ) : isSignedIn ? (
           <div>
-            <Button
-              onClick={handleEnrollClick}
-              disabled={enrolling || !canEnroll}
-              size="lg"
-            >
-              <Users className="mr-2 h-4 w-4" strokeWidth={1.75} aria-hidden />
-              {!canEnroll
-                ? t("courseDetail.enrollmentNotAvailable")
-                : enrolling
-                  ? t("courseDetail.enrolling")
-                  : t("courseDetail.enrollInCourse")}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={handleEnrollClick}
+                disabled={enrolling || !canEnroll}
+                size="lg"
+              >
+                <Users className="mr-2 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                {!canEnroll
+                  ? t("courseDetail.enrollmentNotAvailable")
+                  : enrolling
+                    ? t("courseDetail.enrolling")
+                    : t("courseDetail.enrollInCourse")}
+              </Button>
+              {/* Read before enrolling, as a guest can. */}
+              {course.preview_chapter_id && (
+                <Button asChild size="lg" variant="outline">
+                  <Link to={`/courses/${course.id}/chapters/${course.preview_chapter_id}`}>
+                    {t("guest.readFirst")}
+                  </Link>
+                </Button>
+              )}
+            </div>
             {!canEnroll && (
               <p className="text-sm text-ink-muted mt-2">
                 {cohorts.length > 0

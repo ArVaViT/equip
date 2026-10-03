@@ -85,9 +85,12 @@ function TextBlockRender({ html }: { html: string }) {
   // Found by the server after the block renders; until then, plain text.
   const [passages, setPassages] = useState<Passage[]>([])
   const [verse, setVerse] = useState<{ anchor: HTMLElement; passage: Passage } | null>(null)
+  // Verse lookups go to a paid scripture API and need an account; a guest
+  // reads the references as plain text.
+  const signedIn = Boolean(useContext(AuthContext)?.user)
   useEffect(() => {
     const root = ref.current
-    if (!root) return
+    if (!root || !signedIn) return
     let live = true
     setVerse(null)
     void scriptureService.passagesIn(textForScripture(root)).then((found) => {
@@ -102,7 +105,7 @@ function TextBlockRender({ html }: { html: string }) {
     return () => {
       live = false
     }
-  }, [html, t])
+  }, [html, t, signedIn])
   useEffect(() => {
     // Order matters: ``renderToggleCalloutsIn`` rewrites parent
     // elements (``div[data-callout="toggle"]`` → ``<details>``), so
@@ -202,7 +205,13 @@ const BlockRenderer = memo(function BlockRenderer({
   )
   // A guest reads the text of the preview lesson; a test, an assignment
   // and a file are things to keep or hand in, and those need an account.
-  if (guest && (block.block_type === "quiz" || block.block_type === "assignment" || block.block_type === "file")) {
+  // In the preview — a guest's, or a reader not enrolled yet — the server
+  // sends a test, an assignment or a file without its ids and path.
+  const withheld =
+    (block.block_type === "quiz" && !block.quiz_id) ||
+    (block.block_type === "assignment" && !block.assignment_id) ||
+    (block.block_type === "file" && !block.file_path)
+  if (withheld || (guest && (block.block_type === "quiz" || block.block_type === "assignment" || block.block_type === "file"))) {
     return <GuestPrompt variant="block" />
   }
 
@@ -571,7 +580,8 @@ export default function ChapterView() {
   useUserTour({
     tourId: "chapter-view-v1",
     steps: chapterViewSteps(t),
-    ready: !loading && !error && course !== null && Boolean(user),
+    // The tour is for the course's own readers, not for a preview.
+    ready: !loading && !error && course !== null && Boolean(user) && !course.preview_chapter_id,
   })
 
   useEffect(() => {
@@ -642,6 +652,20 @@ export default function ChapterView() {
   const placement = findChapter(structure, chapterId)
 
   const chapter = placement?.chapter ?? null
+  // Reading as a guest or before enrolling: the server names a preview
+  // lesson for exactly those readers. A guest on a course without one
+  // previews nothing and meets the invitation on every lesson.
+  const previewing = !user || Boolean(course?.preview_chapter_id)
+  // For the blocks request only: a signed-in reader never waits on this
+  // (the request starts with the course, see below); a guest asks once the
+  // course has said which lesson is theirs.
+  const guestGate: "member" | "pending" | "preview" | "wall" = user
+    ? "member"
+    : !course
+      ? "pending"
+      : course.preview_chapter_id === chapterId
+        ? "preview"
+        : "wall"
   // The reader's own text size and easy-reading mode (the "Aa" in the header).
   const [readingPrefs, setReadingPrefs] = useReadingPrefs()
   // Named by the lesson, as the course page is by the course.
@@ -653,8 +677,8 @@ export default function ChapterView() {
   // ordinary answer now, not a broken payload — so nothing that depends on it
   // may be on the path a lesson without one has to walk.
   const parentModule = placement?.group.module ?? null
-  // A guest goes back to the course: the module page asks for an account.
-  const backToModule = Boolean(parentModule && user)
+  // A previewer goes back to the course: the module page is for the enrolled.
+  const backToModule = Boolean(parentModule && user && !course?.preview_chapter_id)
   const backHref = backToModule
     ? `/courses/${courseId}/modules/${parentModule?.id}`
     : `/courses/${courseId}`
@@ -682,6 +706,13 @@ export default function ChapterView() {
     let cancelled = false
 
     setHasAssignments(false)
+
+    // A guest's blocks wait for the course: it says whether this lesson is
+    // the preview, and asking for any other one is a 401 by design.
+    if (guestGate === "pending" || guestGate === "wall") {
+      setChapterBlocks([])
+      return
+    }
 
     // Only reading chapters carry blocks; quiz/exam/assignment render their
     // own dedicated panels. `chapter` may not have arrived yet — in that case
@@ -722,7 +753,7 @@ export default function ChapterView() {
     // `chapterId` drives it, not `chapter` — that dependency was the
     // waterfall. `chapter` stays so the type guard re-runs once the course
     // lands and can discard blocks for a non-reading chapter.
-  }, [chapterId, chapter, i18n.language, blocksReloadKey])
+  }, [chapterId, chapter, i18n.language, blocksReloadKey, guestGate])
 
   /**
    * Is this lesson walled off until the one before it is done?
@@ -796,8 +827,10 @@ export default function ChapterView() {
   }
 
   // A guest reads the preview lesson and meets an invitation everywhere
-  // else in the course — before the blocks' 401 can show as an error.
-  if (!user && course?.preview_chapter_id !== chapter.id) {
+  // else in the course — before the blocks' 401 can show as an error. A
+  // signed-in reader not enrolled yet (the server names a preview only for
+  // them) reads it too, and is asked to enrol for the rest.
+  if (previewing && course?.preview_chapter_id !== chapter.id) {
     return (
       <div className="container mx-auto px-4 py-6 max-w-3xl">
         <Link to={`/courses/${courseId}`} className="-mx-2 mb-6 inline-flex">
@@ -809,7 +842,7 @@ export default function ChapterView() {
         <h1 className="mb-6 font-serif text-3xl font-semibold tracking-tight text-wrap-safe">
           {orNotTranslated(t, chapter.title)}
         </h1>
-        <GuestPrompt variant="wall" />
+        <GuestPrompt variant={user ? "enrollWall" : "wall"} />
       </div>
     )
   }
@@ -947,7 +980,7 @@ export default function ChapterView() {
 
       {/* The reader's own margin, under the lesson it belongs to. Only for
           lessons to read: a test or an assignment has its own box to write in. */}
-      {chapterType === "reading" && user && <LessonNote key={chapter.id} chapterId={chapter.id} />}
+      {chapterType === "reading" && !previewing && <LessonNote key={chapter.id} chapterId={chapter.id} />}
 
       {/* Reading chapters get an act of their own.
           Until now a chapter of pure text could not be finished by the person
@@ -956,9 +989,9 @@ export default function ChapterView() {
           heuristic: a heuristic credits the skimmer who reaches the bottom and
           misses the careful reader on a phone who closes the tab. */}
       {/* The end of the preview: what reading on and keeping a mark takes. */}
-      {!user && <GuestPrompt variant="finish" className="mt-8" />}
+      {previewing && <GuestPrompt variant={user ? "enrollFinish" : "finish"} className="mt-8" />}
 
-      {chapterType === "reading" && !hasAssignments && user && (
+      {chapterType === "reading" && !hasAssignments && !previewing && (
         <div className="mt-8 border-t border-edge pt-5">
           {isCompleted ? (
             <p className="flex items-center gap-2 text-sm font-medium text-success">

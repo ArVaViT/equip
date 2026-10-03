@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
     get_optional_user,
+    is_preview_chapter,
+    reads_chapter_as_enrolled,
     require_teacher,
     verify_chapter_access,
     verify_chapter_owner,
@@ -99,10 +101,16 @@ def list_blocks(
     # A guest may read the course's first lesson and no other
     # (``services/guest_preview``); everyone else goes through the usual
     # enrolment and lock checks.
+    # A signed-in reader who is not enrolled reads the preview too: signing
+    # up must not take away the lesson they were reading a minute ago.
     if current_user is None:
         verify_guest_chapter_access(db, chapter_id)
+        previewing = True
+    elif not reads_chapter_as_enrolled(db, chapter_id, current_user) and is_preview_chapter(db, chapter_id):
+        previewing = True
     else:
         verify_chapter_access(db, chapter_id, current_user)
+        previewing = False
     response.headers["Vary"] = "Accept-Language"
     rows = db.query(ChapterBlock).filter(ChapterBlock.chapter_id == chapter_id).order_by(ChapterBlock.order_index).all()
     # One chapter→module→course join covers all the locale + access
@@ -136,13 +144,32 @@ def list_blocks(
     # A block held for its first release is not a reader's yet. The owner
     # previewing their lesson in another language still sees it, as they
     # do in the editor.
-    return localize_chapter_block_rows(
+    blocks = localize_chapter_block_rows(
         db,
         rows,
         display_locale=display_locale,
         source_locale=ctx.source_locale,
         hide_unreleased=not ctx.is_owner_or_admin,
     )
+    if previewing:
+        # The preview shows the text; a test, an assignment or a file is
+        # "opens once you sign in", and its ids and storage path are not a
+        # previewer's to collect.
+        blocks = [
+            b.model_copy(
+                update={
+                    "quiz_id": None,
+                    "assignment_id": None,
+                    "file_bucket": None,
+                    "file_path": None,
+                    "file_name": None,
+                }
+            )
+            if b.block_type != "text"
+            else b
+            for b in blocks
+        ]
+    return blocks
 
 
 @router.post(

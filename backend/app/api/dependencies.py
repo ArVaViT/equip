@@ -429,8 +429,27 @@ def verify_chapter_access(db: Session, chapter_id: str, user: User) -> Chapter:
     return chapter
 
 
+def reads_chapter_as_enrolled(db: Session, chapter_id: str, user: User) -> bool:
+    """Whether ``user`` reads this lesson as one of the course's own:
+    enrolled, the owner, or platform staff. Anyone else signed in reads
+    what a guest reads (``verify_guest_chapter_access``)."""
+    from app.services.guest_preview import reads_course_as_enrolled
+
+    _chapter, _module, course = _resolve_chapter(db, chapter_id)
+    return reads_course_as_enrolled(db, course, user)
+
+
+def is_preview_chapter(db: Session, chapter_id: str) -> bool:
+    """The guest rule as a question instead of a gate."""
+    try:
+        verify_guest_chapter_access(db, chapter_id)
+    except HTTPException:
+        return False
+    return True
+
+
 def verify_guest_chapter_access(db: Session, chapter_id: str) -> Chapter:
-    """A lesson read by somebody who is not signed in.
+    """A lesson read by somebody who is not signed in, or not enrolled.
 
     Only the course's preview lesson (``services/guest_preview``); every
     other lesson answers 401, which the client turns into "sign in to
@@ -439,9 +458,10 @@ def verify_guest_chapter_access(db: Session, chapter_id: str) -> Chapter:
     for a signed-in stranger.
     """
     from app.services.guest_preview import preview_chapter_id
+    from app.services.staged_edits.visibility import chapter_is_held
 
     chapter, _module, course = _resolve_chapter(db, chapter_id)
-    if course.status != CourseStatus.PUBLISHED or course.access_mode == "institute":
+    if course.status != CourseStatus.PUBLISHED or course.access_mode == "institute" or chapter_is_held(db, chapter.id):
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,

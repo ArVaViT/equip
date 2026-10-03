@@ -5,7 +5,7 @@ import { BookOpen, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-type Variant = "block" | "finish" | "wall"
+type Variant = "block" | "finish" | "wall" | "enrollFinish" | "enrollWall"
 
 /**
  * What a guest sees where a signed-in reader would act: a test, an
@@ -19,7 +19,9 @@ export function GuestPrompt({ variant, className }: { variant: Variant; classNam
   const { t } = useTranslation()
   const { courseId } = useParams<{ courseId: string }>()
   const back = { from: courseId ? `/courses/${courseId}` : "/" }
-  const Icon = variant === "finish" ? BookOpen : Lock
+  const Icon = variant === "finish" || variant === "enrollFinish" ? BookOpen : Lock
+  const enrolling = variant === "enrollFinish" || variant === "enrollWall"
+  const wall = variant === "wall" || variant === "enrollWall"
   // Inside the lesson, one quiet line; the buttons wait at its end.
   if (variant === "block") {
     return (
@@ -33,28 +35,38 @@ export function GuestPrompt({ variant, className }: { variant: Variant; classNam
     <div
       className={cn(
         "rounded-card border border-edge bg-muted/30 p-5",
-        variant === "wall" && "py-12 text-center",
+        wall && "py-12 text-center",
         className,
       )}
     >
-      <div className={cn("flex items-start gap-3", variant === "wall" && "flex-col items-center")}>
-        <Icon className={cn("shrink-0 text-ink-muted", variant === "wall" ? "h-8 w-8" : "mt-0.5 h-5 w-5")} strokeWidth={1.75} aria-hidden />
+      <div className={cn("flex items-start gap-3", wall && "flex-col items-center")}>
+        <Icon className={cn("shrink-0 text-ink-muted", wall ? "h-8 w-8" : "mt-0.5 h-5 w-5")} strokeWidth={1.75} aria-hidden />
         <div className="min-w-0">
-          <p className={cn("font-medium text-ink", variant === "wall" && "font-serif text-xl font-semibold")}>
+          <p className={cn("font-medium text-ink", wall && "font-serif text-xl font-semibold")}>
             {t(`guest.${variant}.title`)}
           </p>
           <p className="mt-1 text-sm text-ink-muted">{t(`guest.${variant}.body`)}</p>
-          <div className={cn("mt-4 flex flex-wrap gap-2", variant === "wall" && "justify-center")}>
-            <Button asChild size="sm">
-              <Link to="/register" state={back}>
-                {t("guest.register")}
-              </Link>
-            </Button>
-            <Button asChild size="sm" variant="outline">
-              <Link to="/login" state={back}>
-                {t("guest.signIn")}
-              </Link>
-            </Button>
+          <div className={cn("mt-4 flex flex-wrap gap-2", wall && "justify-center")}>
+            {enrolling ? (
+              // Signed in already: what is missing is the enrolment, and the
+              // course page is where it happens.
+              <Button asChild size="sm">
+                <Link to={courseId ? `/courses/${courseId}` : "/"}>{t("guest.toCourse")}</Link>
+              </Button>
+            ) : (
+              <>
+                <Button asChild size="sm">
+                  <Link to="/register" state={back}>
+                    {t("guest.register")}
+                  </Link>
+                </Button>
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/login" state={back}>
+                    {t("guest.signIn")}
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>
