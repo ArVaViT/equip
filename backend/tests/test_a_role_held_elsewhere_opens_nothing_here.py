@@ -302,6 +302,35 @@ class TestAPlatformInvitation:
         assert newcomer.role == UserRole.STUDENT.value
         assert db.query(OrganizationMember).filter(OrganizationMember.user_id == newcomer.id).count() == 0
 
+    def test_an_admin_who_sits_nowhere_can_still_write_one(self, db: Session, world: dict) -> None:
+        # No membership, no header. Until 2026-10-03 this was a 403: the
+        # route asked platform staff to *direct* an organization for an
+        # invitation that leads into none. Filed under the platform's first
+        # organization, which is the documented choice.
+        resp = _as(db, world["admin"]).post(
+            "/api/v1/invitations",
+            json={"email": "new@example.com", "role": "student", "scope": "platform", "age_attested": True},
+        )
+        assert resp.status_code == 201, resp.text
+        row = db.query(Invitation).filter(Invitation.email == "new@example.com").one()
+        assert row.organization_id == A_ID
+
+    def test_an_admin_who_sits_in_two_is_filed_under_their_default(self, db: Session, world: dict) -> None:
+        # Two memberships and no header was a 400 ``organization.ambiguous``.
+        admin = world["admin"]
+        _member(db, admin, A_ID, "teacher")
+        _member(db, admin, B_ID, "teacher")
+        db.query(User).filter(User.id == admin.id).update({User.organization_id: B_ID})
+        db.commit()
+        db.refresh(admin)
+        resp = _as(db, admin).post(
+            "/api/v1/invitations",
+            json={"email": "new@example.com", "role": "student", "scope": "platform", "age_attested": True},
+        )
+        assert resp.status_code == 201, resp.text
+        row = db.query(Invitation).filter(Invitation.email == "new@example.com").one()
+        assert row.organization_id == B_ID
+
     def test_a_pending_teacher_row_from_before_grants_no_role_either(self, db: Session, world: dict) -> None:
         newcomer = _person(db, "new@example.com", UserRole.STUDENT.value)
         token = uuid.uuid4().hex

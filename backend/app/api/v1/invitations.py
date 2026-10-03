@@ -16,7 +16,7 @@ from app.api.dependencies import (
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.invitation import Invitation
-from app.models.organization import MembershipRole
+from app.models.organization import MembershipRole, Organization
 from app.models.user import User, UserRole
 from app.schemas.invitation import (
     InvitationAcceptRequest,
@@ -40,7 +40,7 @@ from app.services.invitation_service import (
     list_invitations,
     revoke_invitation,
 )
-from app.services.memberships import belongs_to, directs, teaches_in
+from app.services.memberships import active_memberships, belongs_to, default_organization_id, directs, teaches_in
 
 router = APIRouter(prefix="/invitations", tags=["invitations"])
 
@@ -131,7 +131,7 @@ def create_invitation(
                 message="Only platform staff invite to the platform; invite into your organization instead",
                 context={"resource_type": "invitation", "field": "scope"},
             )
-        organization_id = acting_organization(db, teacher, requested, role=MembershipRole.DIRECTOR.value)
+        organization_id = _where_a_platform_invitation_is_filed(db, teacher, requested)
         is_director = True
     else:
         if teacher.role not in (UserRole.DIRECTOR.value, UserRole.ADMIN.value):
@@ -161,6 +161,52 @@ def create_invitation(
         organization_id=organization_id,
     )
     return _to_response(invitation)
+
+
+def _where_a_platform_invitation_is_filed(db: Session, admin: User, requested: UUID | None) -> UUID:
+    """The ``organization_id`` a platform invitation is written with.
+
+    Every invitation has carried a NOT NULL ``organization_id`` since
+    2026-09-12, when every invitation led somewhere. A platform invitation
+    leads nowhere — accepting it grants an account and no membership — so
+    for this one scope the column is bookkeeping: whose invitation list
+    the row appears in. Until 2026-10-03 it went through
+    ``acting_organization(..., role=director)``, which asked platform staff
+    to *direct* an organization: 403 for an admin who sits in none, 400 for
+    one who sits in two, for an invitation that has nothing to do with
+    either. No role is required of the admin here; the organization is
+    chosen, in order, as:
+
+    * the one named in ``X-Organization-Id``, which must exist;
+    * the admin's own default (``profiles.organization_id``, the one they
+      acted in before there were several);
+    * the one they sit in, highest role first, if they sit anywhere;
+    * the platform's first organization — the oldest row, the school the
+      platform grew out of — for an admin who sits nowhere. This is the
+      documented choice, not a leak: a platform invitation offers nothing
+      of that organization's, and its director already sees staff-written
+      invitations in their list.
+
+    Only a platform with no organization at all has nowhere to file it,
+    and says so.
+    """
+    if requested is not None:
+        return acting_organization(db, admin, requested)
+    default = default_organization_id(admin)
+    if default is not None:
+        return default
+    seats = active_memberships(db, admin.id)
+    if seats:
+        return seats[0].organization_id
+    first = db.query(Organization.id).order_by(Organization.created_at, Organization.id).first()
+    if first is None:
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="A platform invitation is filed under an organization, and there is none yet",
+            context={"resource_type": "invitation", "field": "organization_id"},
+        )
+    return cast("UUID", first[0])
 
 
 @router.get("", response_model=list[InvitationResponse])
