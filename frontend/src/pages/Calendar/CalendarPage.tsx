@@ -1,4 +1,5 @@
-import { zonedToday } from "@/i18n/timeZone";
+import { getDisplayTimeZone, timeZoneOptionLabel, zonedToday } from "@/i18n/timeZone";
+import { activeIntlTag } from "@/i18n/config";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { CalendarDays, CalendarPlus, Filter, RefreshCw } from "lucide-react";
@@ -31,7 +32,7 @@ import { useCalendarData } from "./useCalendarData";
 import { useMonthGrid } from "./useMonthGrid";
 
 export default function CalendarPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const {
     events,
     enrollments,
@@ -115,6 +116,15 @@ export default function CalendarPage() {
           <h1 className="font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
             {t("calendar.title")}
           </h1>
+          {/* Whose 20:00: a school in Indiana teaches people in Kyiv. */}
+          <p className="mt-2 text-sm text-ink-muted">
+            {t("calendar.zone", {
+              zone: timeZoneOptionLabel(activeIntlTag(i18n.resolvedLanguage ?? i18n.language), getDisplayTimeZone()),
+            })}{" "}
+            <Link to="/profile#time-zone" className="text-ink underline underline-offset-4 hover:text-brand">
+              {t("calendar.zoneChange")}
+            </Link>
+          </p>
         </div>
 
         {filterCourses.length > 0 && (

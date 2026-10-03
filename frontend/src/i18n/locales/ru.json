@@ -1375,7 +1375,9 @@
     "newEvent": {
       "open": "Новое событие",
       "course": "Курс"
-    }
+    },
+    "zone": "Время — по вашему поясу: {{zone}}.",
+    "zoneChange": "Изменить"
   },
   "teacher": {
     "dashboardTitle": "Мои курсы",

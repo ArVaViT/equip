@@ -1736,7 +1736,9 @@
     "newEvent": {
       "open": "New event",
       "course": "Course"
-    }
+    },
+    "zone": "Times are in your zone: {{zone}}.",
+    "zoneChange": "Change"
   },
   "teacher": {
     "dashboardTitle": "My Courses",

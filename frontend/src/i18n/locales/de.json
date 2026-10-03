@@ -1736,7 +1736,9 @@
     "newEvent": {
       "open": "Neuer Termin",
       "course": "Kurs"
-    }
+    },
+    "zone": "Zeiten in Ihrer Zeitzone: {{zone}}.",
+    "zoneChange": "Ändern"
   },
   "teacher": {
     "dashboardTitle": "Meine Kurse",

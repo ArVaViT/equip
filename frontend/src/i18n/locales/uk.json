@@ -1806,7 +1806,9 @@
     "newEvent": {
       "open": "Нова подія",
       "course": "Курс"
-    }
+    },
+    "zone": "Час — за вашим поясом: {{zone}}.",
+    "zoneChange": "Змінити"
   },
   "teacher": {
     "dashboardTitle": "Мої курси",
