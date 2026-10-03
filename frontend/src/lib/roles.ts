@@ -25,6 +25,16 @@ export function canTeach(role: UserRole | null | undefined): boolean {
 }
 
 /**
+ * The roles that run a school: its director and platform staff. Mirrors
+ * the backend's ``require_director``. Opens ``/admin``, but a director
+ * sees only the tabs whose endpoints let a director in — ``tabsFor`` in
+ * ``pages/Admin/dashboard/constants.ts``.
+ */
+export function canDirect(role: UserRole | null | undefined): boolean {
+  return role === ROLES.ADMIN || role === ROLES.DIRECTOR
+}
+
+/**
  * Single source of truth for mapping a ``UserRole`` enum value (which
  * mirrors Pydantic / Postgres ``CHECK`` constraint) to its i18n key.
  *

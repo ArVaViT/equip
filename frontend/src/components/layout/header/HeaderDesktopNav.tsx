@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next"
 import { useLocation } from "react-router-dom"
-import { ROLES, type UserRole } from "@/types"
+import type { UserRole } from "@/types"
+import { canDirect } from "@/lib/roles"
 import { HeaderNavLink } from "./HeaderNavLink"
 
 interface Props {
@@ -49,7 +50,7 @@ export function HeaderDesktopNav({ isTeacher, role }: Props) {
           {t("header.manage")}
         </HeaderNavLink>
       )}
-      {role === ROLES.ADMIN && (
+      {canDirect(role) && (
         <HeaderNavLink to="/admin" active={isActive("/admin")}>
           {t("header.admin")}
         </HeaderNavLink>

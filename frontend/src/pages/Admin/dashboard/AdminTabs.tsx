@@ -6,6 +6,19 @@ import { ADMIN_TAB_PANEL_ID, ADMIN_TAB_TRIGGER_ID, type AdminTab } from "./const
 interface Props {
   active: AdminTab
   onChange: (next: AdminTab) => void
+  /** Which tabs this reader may open — all of them for platform staff,
+   *  the school's own for a director (``tabsFor``). */
+  tabs: readonly AdminTab[]
+}
+
+const TAB_META: Record<AdminTab, { icon: typeof Users; labelKey: string }> = {
+  overview: { icon: Users, labelKey: "admin.tabOverview" },
+  cohorts: { icon: GraduationCap, labelKey: "admin.tabCohorts" },
+  invitations: { icon: Mail, labelKey: "admin.tabInvitations" },
+  translations: { icon: Languages, labelKey: "admin.tabTranslations" },
+  audit: { icon: FileText, labelKey: "admin.tabAudit" },
+  school: { icon: School, labelKey: "admin.tabSchool" },
+  dmca: { icon: Scale, labelKey: "admin.tabDmca" },
 }
 
 /**
@@ -16,59 +29,23 @@ interface Props {
  * reads as a real tab strip continuous with the card below rather
  * than three independently coloured buttons.
  */
-export function AdminTabs({ active, onChange }: Props) {
+export function AdminTabs({ active, onChange, tabs }: Props) {
   const { t } = useTranslation()
   return (
     <div className="mb-6 flex gap-1 border-b border-edge sm:mb-8" role="tablist">
-      <TabButton
-        name="overview"
-        active={active === "overview"}
-        onClick={() => onChange("overview")}
-        icon={<Users className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
-        label={t("admin.tabOverview")}
-      />
-      <TabButton
-        name="cohorts"
-        active={active === "cohorts"}
-        onClick={() => onChange("cohorts")}
-        icon={<GraduationCap className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
-        label={t("admin.tabCohorts")}
-      />
-      <TabButton
-        name="invitations"
-        active={active === "invitations"}
-        onClick={() => onChange("invitations")}
-        icon={<Mail className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
-        label={t("admin.tabInvitations")}
-      />
-      <TabButton
-        name="translations"
-        active={active === "translations"}
-        onClick={() => onChange("translations")}
-        icon={<Languages className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
-        label={t("admin.tabTranslations")}
-      />
-      <TabButton
-        name="audit"
-        active={active === "audit"}
-        onClick={() => onChange("audit")}
-        icon={<FileText className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
-        label={t("admin.tabAudit")}
-      />
-      <TabButton
-        name="school"
-        active={active === "school"}
-        onClick={() => onChange("school")}
-        icon={<School className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
-        label={t("admin.tabSchool")}
-      />
-      <TabButton
-        name="dmca"
-        active={active === "dmca"}
-        onClick={() => onChange("dmca")}
-        icon={<Scale className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
-        label={t("admin.tabDmca")}
-      />
+      {tabs.map((name) => {
+        const { icon: Icon, labelKey } = TAB_META[name]
+        return (
+          <TabButton
+            key={name}
+            name={name}
+            active={active === name}
+            onClick={() => onChange(name)}
+            icon={<Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
+            label={t(labelKey)}
+          />
+        )
+      })}
     </div>
   )
 }

@@ -22,6 +22,16 @@ export const ADMIN_TABS: readonly AdminTab[] = [
   "dmca",
 ]
 
+/** A director runs one school: its cohorts, invitations and settings,
+ *  plus the final sign-off on its certificates (shown on the cohorts
+ *  tab). The rest — users, translations, the platform's audit log,
+ *  DMCA — is platform staff's and answers a director 403. */
+export const DIRECTOR_TABS: readonly AdminTab[] = ["cohorts", "invitations", "school"]
+
+export function tabsFor(role: UserRole | null | undefined): readonly AdminTab[] {
+  return role === "admin" ? ADMIN_TABS : DIRECTOR_TABS
+}
+
 /** Stable DOM ids for each admin tab's trigger button. Mirrors of these
  *  live on the corresponding ``role="tabpanel"`` wrappers in
  *  ``AdminDashboard.tsx`` via ``aria-labelledby``, so screen readers

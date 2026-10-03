@@ -23,7 +23,7 @@ import { useGrandTour } from "@/hooks/useGrandTour"
 import { takePendingInviteToken } from "@/lib/pendingInvite"
 import { inviteAcceptPath } from "@/lib/inviteLink"
 import { returnPathFrom } from "@/lib/authRedirect"
-import { canTeach } from "@/lib/roles"
+import { canDirect, canTeach } from "@/lib/roles"
 import { DeniedRedirect } from "@/components/auth/DeniedRedirect"
 import { getTeacherAgreementOwed, subscribeTeacherAgreement } from "@/components/legal/useTeacherAgreement"
 import { hasStoredSupabaseSession } from "@/lib/storedSession"
@@ -158,7 +158,7 @@ function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }
     // they land when they close it.
     return <Navigate to="/" replace />
   }
-  if (mode === "admin" && user.role !== "admin") {
+  if (mode === "admin" && !canDirect(user.role)) {
     return <DeniedRedirect />
   }
   return <>{children}</>

@@ -6,7 +6,7 @@ import { useAuth } from "@/context/useAuth"
 import { Button } from "@/components/ui/button"
 import { ErrorState } from "@/components/patterns"
 import PageSpinner from "@/components/ui/PageSpinner"
-import { ADMIN_TAB_PANEL_ID, ADMIN_TAB_TRIGGER_ID, ADMIN_TABS, type AdminTab } from "./dashboard/constants"
+import { ADMIN_TAB_PANEL_ID, ADMIN_TAB_TRIGGER_ID, tabsFor, type AdminTab } from "./dashboard/constants"
 import { AdminTabs } from "./dashboard/AdminTabs"
 import { SchoolSettingsTab } from "./dashboard/SchoolSettingsTab"
 import { OverviewStats } from "./dashboard/OverviewStats"
@@ -16,6 +16,7 @@ import { useAdminOverview } from "./dashboard/useAdminOverview"
 import { useAdminAudit } from "./dashboard/useAdminAudit"
 import { Section } from "@/components/layout/Section"
 import { lazyRoute } from "@/lib/lazyRoute"
+import { canDirect } from "@/lib/roles"
 
 // The audit log and cohorts tabs are rarely the entry point — most admins
 // land on Overview. Splitting them off keeps the initial AdminDashboard
@@ -48,10 +49,11 @@ export default function AdminDashboard() {
   const { user } = useAuth()
   const [params, setParams] = useSearchParams()
 
+  const tabs = tabsFor(user?.role)
   const rawTab = params.get("tab")
-  const tab: AdminTab = ADMIN_TABS.includes(rawTab as AdminTab)
-    ? (rawTab as AdminTab)
-    : "overview"
+  // A tab this reader may not open (a director following an admin's
+  // link) lands on their first tab rather than on a screen of 403s.
+  const tab: AdminTab = tabs.includes(rawTab as AdminTab) ? (rawTab as AdminTab) : (tabs[0] ?? "cohorts")
 
   // Overview data is needed by the overview tab itself AND by the audit
   // tab (audit rows show the user's name via ``userMap``, which is
@@ -66,15 +68,18 @@ export default function AdminDashboard() {
   // trigger an admin-only audit-log query in the milliseconds before
   // the <Navigate> below redirects them.
   const isAdmin = user?.role === "admin"
-  const overviewEnabled = isAdmin && (tab === "overview" || tab === "audit")
-  const overview = useAdminOverview({ currentUserId: user?.id, enabled: overviewEnabled })
+  const isDirector = user?.role === "director"
+  // A director's certificates sit on the cohorts tab; the hook then
+  // fetches only them — the user list and the counts are staff-only.
+  const overviewEnabled = isAdmin ? tab === "overview" || tab === "audit" : isDirector && tab === "cohorts"
+  const overview = useAdminOverview({ currentUserId: user?.id, enabled: overviewEnabled, certsOnly: !isAdmin })
   const audit = useAdminAudit({ enabled: isAdmin && tab === "audit" })
 
-  if (user?.role !== "admin") return <Navigate to="/" replace />
+  if (!canDirect(user?.role)) return <Navigate to="/" replace />
 
   const setTab = (nextTab: AdminTab) => {
     const next = new URLSearchParams(params)
-    if (nextTab === "overview") next.delete("tab")
+    if (nextTab === (tabs[0] ?? "cohorts")) next.delete("tab")
     else next.set("tab", nextTab)
     // PUSH not replace -- tab switching is primary navigation and the
     // browser back button should return to the previously viewed tab.
@@ -100,7 +105,7 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <AdminTabs active={tab} onChange={setTab} />
+      <AdminTabs active={tab} onChange={setTab} tabs={tabs} />
 
       {overview.error && (
         <ErrorState
@@ -166,6 +171,16 @@ export default function AdminDashboard() {
           id={ADMIN_TAB_PANEL_ID.cohorts}
           aria-labelledby={ADMIN_TAB_TRIGGER_ID.cohorts}
         >
+          {isDirector && !overview.error && (
+            // Final sign-off only: a director cannot yet overturn what a
+            // teacher approved (``certificate_service.reject``), so a reject
+            // button would only ever answer 403.
+            <PendingCertsCard
+              certs={overview.adminCerts}
+              actionId={overview.certActionId}
+              onApprove={overview.handleFinalApproveCert}
+            />
+          )}
           <Suspense fallback={<PageSpinner />}>
             <CohortsTab />
           </Suspense>
