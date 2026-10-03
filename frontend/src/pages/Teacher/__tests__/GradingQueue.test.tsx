@@ -89,7 +89,7 @@ describe("GradingQueue", () => {
     vi.spyOn(gradesService, "getAssignmentQueue").mockRejectedValue(forbidden())
     render(<GradingQueue />, { wrapper: Wrapper })
 
-    await userEvent.click(await screen.findByRole("button", { name: /Проверять/ }))
+    await userEvent.click(await screen.findByRole("button", { name: /Проверить/ }))
 
     expect(await screen.findByRole("alert")).toHaveTextContent(i18n.t("errors.byStatus.403"))
     // The green tick was the screen a failed fetch used to land on.
@@ -111,7 +111,7 @@ describe("GradingQueue", () => {
     })
     render(<GradingQueue />, { wrapper: Wrapper })
 
-    await userEvent.click(await screen.findByRole("button", { name: /Проверять/ }))
+    await userEvent.click(await screen.findByRole("button", { name: /Проверить/ }))
 
     expect(await screen.findByText("Раньше")).toBeInTheDocument()
     // Where you are, so «дальше» is a known distance rather than an open-ended
@@ -135,7 +135,7 @@ describe("GradingQueue", () => {
     const grade = vi.spyOn((await import("@/services/courses")).coursesService, "gradeSubmission")
     grade.mockResolvedValue({} as never)
     render(<GradingQueue />, { wrapper: Wrapper })
-    await userEvent.click(await screen.findByRole("button", { name: /Проверять/ }))
+    await userEvent.click(await screen.findByRole("button", { name: /Проверить/ }))
 
     const note = await screen.findByPlaceholderText(/Что удалось/)
     await userEvent.type(note, "Хорошая работа")

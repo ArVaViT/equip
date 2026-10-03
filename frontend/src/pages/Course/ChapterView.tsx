@@ -914,6 +914,7 @@ export default function ChapterView() {
         {chapterType === "assignment" && (
           <AssignmentPanel
             chapterId={chapter.id}
+            pageTitle={orNotTranslated(t, chapter.title)}
             onSubmitted={refreshCompletion}
             onCountLoaded={handleAssignmentCountLoaded}
           />
@@ -961,19 +962,15 @@ export default function ChapterView() {
         </div>
       )}
 
-      {hasAssignments && (
+      {/* Once handed in, nothing here: the card above already says where the
+          work stands («на проверке», a grade), and «Завершено» under «на
+          проверке» told the student two different things. */}
+      {hasAssignments && !isCompleted && (
         <div className="mt-6 border-t border-edge pt-5">
-          {isCompleted ? (
-            <p className="flex items-center gap-2 text-sm font-medium text-success">
-              <CheckCircle className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-              {t("chapter.completed")}
-            </p>
-          ) : (
-            <p className="flex items-center gap-2 text-sm text-ink-muted">
-              <Circle className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-              {t("chapter.submitAssignmentToComplete")}
-            </p>
-          )}
+          <p className="flex items-center gap-2 text-sm text-ink-muted">
+            <Circle className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+            {t("chapter.submitAssignmentToComplete")}
+          </p>
         </div>
       )}
 

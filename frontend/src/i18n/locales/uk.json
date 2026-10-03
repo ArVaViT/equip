@@ -989,7 +989,6 @@
     "attachmentEyebrow": "Вкладення",
     "blocksLoadFailed": "Не вдалося завантажити цей урок",
     "blocksLoadFailedDescription": "Вміст уроку не завантажився. Зазвичай це тимчасова проблема зі зв’язком — спробуйте ще раз.",
-    "completed": "Завершено",
     "downloadFile": "Завантажити файл",
     "downloadFileAria": "Завантажити вкладення: {{name}}",
     "emptyContent": "До цього уроку ще не додано вмісту.",

@@ -384,19 +384,20 @@ export default function TeacherGradebook() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <div className="flex items-center gap-2 text-sm text-ink-muted mb-6">
-        <Link to="/teacher" className="hover:text-ink transition-colors">
+      {/* No last crumb: it was the page's own name, said again by the
+          heading right below — and on a phone it pushed «Мои курсы» onto
+          two lines. */}
+      <div className="flex min-w-0 items-center gap-2 text-sm text-ink-muted mb-6">
+        <Link to="/teacher" className="shrink-0 whitespace-nowrap hover:text-ink transition-colors">
           {t("gradebook.breadcrumbCourses")}
         </Link>
         <ChevronRight className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} aria-hidden />
         <Link
           to={`/teacher/courses/${courseId}`}
-          className="hover:text-ink transition-colors truncate"
+          className="min-w-0 truncate hover:text-ink transition-colors"
         >
           {courseTitle || t("gradebook.breadcrumbCourseFallback")}
         </Link>
-        <ChevronRight className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} aria-hidden />
-        <span className="text-ink font-medium">{t("gradebook.pageHeading")}</span>
       </div>
 
       {/* On a phone the two buttons go under the heading: side by side they

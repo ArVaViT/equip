@@ -963,7 +963,6 @@
     "attachmentEyebrow": "Attachment",
     "blocksLoadFailed": "Couldn't load this lesson",
     "blocksLoadFailedDescription": "We couldn't load the lesson content. This is usually a temporary network issue — try again.",
-    "completed": "Completed",
     "downloadFile": "Download file",
     "downloadFileAria": "Download attachment: {{name}}",
     "emptyContent": "No content has been added to this lesson yet.",

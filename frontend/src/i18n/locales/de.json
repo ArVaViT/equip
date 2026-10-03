@@ -963,7 +963,6 @@
     "attachmentEyebrow": "Anhang",
     "blocksLoadFailed": "Diese Lektion konnte nicht geladen werden",
     "blocksLoadFailedDescription": "Der Lektionsinhalt ließ sich nicht laden. Meist ist das ein vorübergehendes Netzproblem — versuchen Sie es erneut.",
-    "completed": "Abgeschlossen",
     "downloadFile": "Datei herunterladen",
     "downloadFileAria": "Anhang herunterladen: {{name}}",
     "emptyContent": "Zu dieser Lektion wurde noch kein Inhalt hinzugefügt.",

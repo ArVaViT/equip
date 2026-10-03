@@ -52,9 +52,21 @@ interface AssignmentPanelProps {
   onSubmitted?: () => void
   /** Fires once after fetch with the number of assignments visible in this panel. */
   onCountLoaded?: (count: number) => void
+  /** The page's own title, when the whole lesson is the assignment. The
+   *  page already says «Задание» and its name; the card then drops the
+   *  eyebrow, and the name too when it only repeats the page's. */
+  pageTitle?: string
 }
 
-export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, onCountLoaded, aiPolicy }: AssignmentPanelProps) {
+/** «Эссе: что изменилось в Пятидесятницу» already says «Что изменилось в
+ *  Пятидесятницу». Case and punctuation aside. */
+function repeats(pageTitle: string, title: string): boolean {
+  const norm = (s: string) => s.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()
+  const inner = norm(title)
+  return inner.length > 0 && norm(pageTitle).includes(inner)
+}
+
+export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, onCountLoaded, aiPolicy, pageTitle }: AssignmentPanelProps) {
   const { t } = useTranslation()
   const [assignments, setAssignments] = useState<Assignment[]>([])
   // Three values, not two. `null` means the student has not handed anything in;
@@ -157,6 +169,7 @@ export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, 
           onRetry={() => setReloadKey((k) => k + 1)}
           onSubmitted={onSubmitted}
           aiPolicy={aiPolicy}
+          pageTitle={pageTitle}
         />
       ))}
     </div>
@@ -169,7 +182,9 @@ function SingleAssignment({
   onSubmitted,
   onRetry,
   aiPolicy,
+  pageTitle,
 }: {
+  pageTitle?: string
   assignment: Assignment
   initialSubmission: AssignmentSubmission | null | typeof UNKNOWN
   onSubmitted?: () => void
@@ -296,13 +311,17 @@ function SingleAssignment({
   return (
     <div className="rounded-card border border-edge dark:border-transparent bg-card shadow-card">
       <div className="border-b border-edge px-5 py-5">
-        <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
-          <FileText className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-          {t("assignment.eyebrow")}
-        </p>
-        <h3 className="font-serif text-lg font-semibold tracking-tight text-wrap-safe">
-          {orNotTranslated(t, assignment.title)}
-        </h3>
+        {pageTitle === undefined && (
+          <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
+            <FileText className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            {t("assignment.eyebrow")}
+          </p>
+        )}
+        {(pageTitle === undefined || !repeats(pageTitle, orNotTranslated(t, assignment.title))) && (
+          <h3 className="font-serif text-lg font-semibold tracking-tight text-wrap-safe">
+            {orNotTranslated(t, assignment.title)}
+          </h3>
+        )}
         {assignment.description && (
           <p className="prose-verse mt-1.5 text-sm leading-relaxed text-ink-muted text-wrap-safe whitespace-pre-line">
             {/* A cited verse opens over the page, as it does in a lesson. */}
