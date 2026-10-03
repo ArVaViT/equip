@@ -37,6 +37,15 @@ describe("Footer (minimalist)", () => {
     expect(screen.queryByText(/biblical teaching|Системное изучение/i)).not.toBeInTheDocument()
   })
 
+  it("leads to the organizations showcase", async () => {
+    // `/organizations` is public and was reachable from nowhere on the
+    // landing page (2026-10-03).
+    await i18n.changeLanguage("ru")
+    render(<Footer />, { wrapper: Wrapper })
+    expect(screen.getByRole("link", { name: "Организации" })).toHaveAttribute("href", "/organizations")
+    await i18n.changeLanguage("en")
+  })
+
   it("renders a support mailto link", () => {
     render(<Footer />, { wrapper: Wrapper })
     const support = screen.getByRole("link", { name: /support|поддерж/i })
@@ -55,7 +64,7 @@ describe("Footer (minimalist)", () => {
     expect(screen.queryByRole("link", { name: /^calendar$|^календарь$/i })).toBeNull()
     expect(screen.queryByRole("link", { name: /^certificates$|^сертификат/i })).toBeNull()
     // Everything that *is* here has to be reachable without an account.
-    const PUBLIC = ["/", "/courses", "/login", "/register", "/privacy", "/terms", "/teacher-terms", "/school-agreement", "/dmca"]
+    const PUBLIC = ["/", "/courses", "/organizations", "/login", "/register", "/privacy", "/terms", "/teacher-terms", "/school-agreement", "/dmca"]
     for (const link of screen.getAllByRole("link")) {
       const href = link.getAttribute("href")
       if (!href || href.startsWith("mailto:")) continue
