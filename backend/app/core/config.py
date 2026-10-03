@@ -369,6 +369,14 @@ class Settings(BaseSettings):
         # name is dead: adopting it made the settings object look configured
         # while every call it authorised came back 401. Set
         # SUPABASE_SERVICE_ROLE_KEY, or be honestly unconfigured.
+        #
+        # ``SUPABASE_SECRET_KEY`` is the name the new ``sb_secret_…`` key
+        # goes by everywhere else (1Password, the scripts); when it is set it
+        # wins, so a deployment still carrying a pre-June value under the old
+        # name stops authorising with a dead key.
+        secret_key = os.getenv("SUPABASE_SECRET_KEY")
+        if secret_key and secret_key.strip():
+            self.SUPABASE_SERVICE_ROLE_KEY = secret_key.strip()
 
         if not self.DATABASE_URL:
             self.DATABASE_URL = (
