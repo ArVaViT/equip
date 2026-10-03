@@ -110,7 +110,9 @@ export function UpcomingEvents({ events }: Props) {
                 title={formatDateTime(evt.event_date)}
                 className="text-xs text-ink-muted whitespace-nowrap tabular-nums"
               >
-                {formatDateLong(evtDate, { year: undefined, month: "short", day: "numeric" })},{" "}
+                {/* The weekday too: «сб, 10 окт.» answers "which evening"
+                    without a trip to the calendar. */}
+                {formatDateLong(evtDate, { year: undefined, weekday: "short", month: "short", day: "numeric" })},{" "}
                 {formatEventTimeRange(evt)}
               </time>
             </div>

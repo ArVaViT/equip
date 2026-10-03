@@ -87,4 +87,15 @@ describe("EventsModal — length and repetition", () => {
     expect(screen.getByText("2 из 3")).toBeInTheDocument()
     expect(screen.getByText("3 из 3")).toBeInTheDocument()
   })
+
+  it("names the lesson being edited by its day — every row of a series is «Урок»", () => {
+    const lesson: CourseEvent = {
+      id: "b", course_id: "c1", title: "Урок", description: null, event_type: "live_session",
+      event_date: "2026-10-11T00:00:00Z", meeting_url: null, recording_url: null, duration_minutes: 90,
+      series_id: "s1", series_index: 2, series_count: 4, created_by: "t", created_at: "2026-10-01T00:00:00Z",
+    }
+    // 00:00Z on the 11th is Saturday evening the 10th in Indianapolis.
+    renderForm({ event_type: "live_session" }, "b", [lesson])
+    expect(screen.getByText("Изменить: Урок · сб, 10 окт.")).toBeInTheDocument()
+  })
 })

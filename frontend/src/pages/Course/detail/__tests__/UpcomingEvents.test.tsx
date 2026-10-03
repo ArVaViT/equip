@@ -48,8 +48,9 @@ describe("UpcomingEvents", () => {
     render(<UpcomingEvents events={[eventAt(soon)]} />, { wrapper: Wrapper })
     const time = screen.getByText(/19:30/)
     expect(time.tagName).toBe("TIME")
-    // The month is Russian and in the genitive, not «Апр» dressed by CSS.
-    expect(time.textContent).toMatch(/^\d{1,2} \p{Ll}/u)
+    // «сб, 10 окт., 19:30»: the weekday first, then the day and a Russian
+    // month in the genitive, not «Апр» dressed by CSS.
+    expect(time.textContent).toMatch(/^\p{Ll}{2}, \d{1,2} \p{Ll}/u)
     expect(time).toHaveAttribute("datetime", soon.toISOString())
   })
 

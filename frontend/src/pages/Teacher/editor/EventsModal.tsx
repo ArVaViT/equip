@@ -80,6 +80,7 @@ export function EventsModal({
   const { t, i18n } = useTranslation()
   const ids = useId()
   const patch = (p: Partial<EventFormState>) => onFormChange({ ...form, ...p })
+  const editing = editingId ? events.find((e) => e.id === editingId) : undefined
   // Blank is fine — most events have no meeting. Only a link that has
   // been typed and is not a link is an error, and it blocks the save so
   // the teacher is not told about it by a toast after the fact.
@@ -106,10 +107,18 @@ export function EventsModal({
       <div className="space-y-4">
         {header}
         <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+          {/* The heading names what is being edited — «Изменить: Урок ·
+              сб, 10 окт.» — because in a series every row is «Урок», and
+              the form alone did not say which Saturday it had open. */}
           <p className="text-xs font-medium text-ink-muted uppercase tracking-wide">
-            {editingId
-              ? t("teacherEditor.modals.events.editEvent")
-              : t("teacherEditor.modals.events.createEvent")}
+            {editing
+              ? t("teacherEditor.modals.events.editNamed", {
+                  title: editing.title,
+                  date: formatDateLong(editing.event_date, { year: undefined, weekday: "short", month: "short", day: "numeric" }),
+                })
+              : editingId
+                ? t("teacherEditor.modals.events.editEvent")
+                : t("teacherEditor.modals.events.createEvent")}
           </p>
           <Input
             value={form.title}
