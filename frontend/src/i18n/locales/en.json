@@ -136,7 +136,6 @@
       "more_other": "and {{count}} more"
     },
     "continue": {
-      "eyebrow": "Continue",
       "position": "lesson {{current}} of {{total}}",
       "cta": "Continue"
     },
@@ -463,8 +462,6 @@
     "pageSubtitle": "Browse our seminary courses and deepen your biblical knowledge",
     "pageSubtitleAuthed": "Discover more courses to expand your knowledge",
     "searchPlaceholder": "Search courses...",
-    "signInLink": "Sign in",
-    "signInToEnroll": "to enroll in courses",
     "noCoursesFound": "No courses found",
     "noCoursesYet": "No courses yet",
     "tryDifferentSearch": "Try a different search term",
@@ -694,7 +691,6 @@
     "imageTooLarge": "Image must be under 2 MB",
     "updateFailed": "Failed to update profile",
     "learningProgress": "Learning Progress",
-    "learningProgressDescription": "Your achievements at a glance",
     "coursesCompleted": "Courses Completed",
     "certificatesEarned": "Certificates Earned",
     "accountDetails": "Account Details",
@@ -965,7 +961,6 @@
     "attachmentEyebrow": "Attachment",
     "blocksLoadFailed": "Couldn't load this lesson",
     "blocksLoadFailedDescription": "We couldn't load the lesson content. This is usually a temporary network issue — try again.",
-    "completed": "Completed",
     "downloadFile": "Download file",
     "downloadFileAria": "Download attachment: {{name}}",
     "emptyContent": "No content has been added to this lesson yet.",
@@ -2096,6 +2091,14 @@
     }
   },
   "courseDetail": {
+    "tabs": {
+      "label": "Course sections",
+      "about": "About",
+      "program": "Syllabus",
+      "author": "Author",
+      "programEmpty": "No lessons yet",
+      "authorUnknown": "No author named"
+    },
     "minutesShort": "{{minutes}} min",
     "hoursShort": "≈ {{hours}} h",
     "readingHours": "≈ {{hours}} h of reading",
@@ -3047,6 +3050,7 @@
     "saveAndFinish": "Save and finish",
     "feedbackPlaceholder": "What worked, what to fix, and how",
     "points": "points",
+    "outOf": "out of {{max}}",
     "gradeAria": "Grade",
     "loadFailed": "Could not load the queue",
     "saveFailed": "Could not save"

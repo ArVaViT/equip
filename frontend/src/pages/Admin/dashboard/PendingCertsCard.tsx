@@ -12,7 +12,9 @@ interface Props {
   certs: AdminCert[]
   actionId: string | null
   onApprove: (certId: string) => void
-  onReject: (certId: string) => void
+  /** Left out for a director, who gives the final sign-off but cannot
+   *  yet overturn the teacher's. */
+  onReject?: (certId: string) => void
 }
 
 /** Certificates pending final admin approval after a teacher signed off. */
@@ -107,16 +109,18 @@ export function PendingCertsCard({ certs, actionId, onApprove, onReject }: Props
                   <CheckCircle className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
                   {t("admin.pendingCerts.approve")}
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 text-destructive hover:text-destructive"
-                  onClick={() => onReject(cert.id)}
-                  disabled={actionId === cert.id}
-                >
-                  <XCircle className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-                  {t("admin.pendingCerts.reject")}
-                </Button>
+                {onReject && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-destructive hover:text-destructive"
+                    onClick={() => onReject(cert.id)}
+                    disabled={actionId === cert.id}
+                  >
+                    <XCircle className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                    {t("admin.pendingCerts.reject")}
+                  </Button>
+                )}
                 <p className="text-xs leading-tight text-ink-muted">
                   {t("admin.pendingCerts.approveHint")}
                 </p>

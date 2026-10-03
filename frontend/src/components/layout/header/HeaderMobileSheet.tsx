@@ -3,8 +3,9 @@ import { Link, useLocation } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
-import { ROLES, type User } from "@/types"
+import type { User } from "@/types"
 import { HeaderNavLink } from "./HeaderNavLink"
+import { canDirect } from "@/lib/roles"
 import { lazyRoute } from "@/lib/lazyRoute"
 
 const NotificationBell = lazyRoute(() => import("../NotificationBell"))
@@ -62,7 +63,7 @@ export function HeaderMobileSheet({ open, onOpenChange, user, isTeacher }: Props
                     {t("header.manageCourses")}
                   </HeaderNavLink>
                 )}
-                {user.role === ROLES.ADMIN && (
+                {canDirect(user.role) && (
                   <HeaderNavLink variant="sheet" to="/admin" active={isActive("/admin")} onNavigate={closeMobile}>
                     {t("header.adminPanel")}
                   </HeaderNavLink>

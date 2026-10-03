@@ -33,9 +33,11 @@ interface QuizTakerProps {
   // complete the chapter on the server but the next chapter in the UI
   // stayed locked until a full page refresh (completedIds was stale).
   onSubmitted?: () => void
+  /** The page's own title, when the whole lesson is this test. */
+  pageTitle?: string
 }
 
-export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerProps) {
+export default function QuizTaker({ chapterId, quizId, onSubmitted, pageTitle }: QuizTakerProps) {
   const { t } = useTranslation()
   const { loading, fetchError, notTranslated, quiz, attempts, setAttempts } = useQuizTaker({
     chapterId,
@@ -167,6 +169,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted }: QuizTakerP
         maxAttempts={maxAttempts}
         attemptsUsed={attemptsUsed}
         attemptsUnverified={countUnverified}
+        pageTitle={pageTitle}
       />
 
       {showResults && result ? (

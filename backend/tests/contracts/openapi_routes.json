@@ -1432,6 +1432,21 @@
     "body": true
   },
   {
+    "method": "GET",
+    "path": "/api/v1/courses/{course_id}/author",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
     "method": "POST",
     "path": "/api/v1/courses/{course_id}/chapters",
     "params": [

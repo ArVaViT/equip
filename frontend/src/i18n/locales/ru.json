@@ -282,7 +282,6 @@
     "imageTooLarge": "Изображение должно быть меньше 2 МБ",
     "updateFailed": "Не удалось обновить профиль",
     "learningProgress": "Учебный прогресс",
-    "learningProgressDescription": "Ваши достижения с одного взгляда",
     "coursesCompleted": "Курсов завершено",
     "certificatesEarned": "Сертификатов получено",
     "accountDetails": "Сведения об аккаунте",
@@ -557,7 +556,6 @@
     "attachmentEyebrow": "Вложение",
     "blocksLoadFailed": "Не удалось загрузить урок",
     "blocksLoadFailedDescription": "Не удалось загрузить содержимое урока. Обычно это временная проблема сети — попробуйте ещё раз.",
-    "completed": "Завершено",
     "downloadFile": "Скачать файл",
     "downloadFileAria": "Скачать вложение: {{name}}",
     "emptyContent": "В этом уроке пока нет материалов.",
@@ -1738,6 +1736,14 @@
     }
   },
   "courseDetail": {
+    "tabs": {
+      "label": "Разделы курса",
+      "about": "О курсе",
+      "program": "Программа",
+      "author": "Автор",
+      "programEmpty": "Уроков пока нет",
+      "authorUnknown": "Автор не указан"
+    },
     "minutesShort": "{{minutes}} мин",
     "hoursShort": "≈ {{hours}} ч",
     "readingHours": "≈ {{hours}} ч чтения",
@@ -2587,7 +2593,6 @@
       "more_other": "и ещё {{count}}"
     },
     "continue": {
-      "eyebrow": "Продолжить",
       "position": "урок {{current}} из {{total}}",
       "cta": "Продолжить"
     },
@@ -2920,8 +2925,6 @@
     "pageSubtitle": "Изучайте семинарские курсы и углубляйте знание Писания",
     "pageSubtitleAuthed": "Откройте для себя новые курсы и расширьте знания",
     "searchPlaceholder": "Поиск курсов...",
-    "signInLink": "Войти",
-    "signInToEnroll": "чтобы записаться на курсы",
     "noCoursesFound": "Курсы не найдены",
     "noCoursesYet": "Пока нет курсов",
     "tryDifferentSearch": "Попробуйте другой запрос",
@@ -3149,7 +3152,7 @@
     "emptyTitle": "Всё проверено",
     "emptyBody": "Ничего не ждёт вашей проверки.",
     "waitingSince": "Самая ранняя ждёт {{when}}",
-    "mark": "Проверять",
+    "mark": "Проверить",
     "openCourse": "К курсу",
     "backToQueue": "К очереди",
     "groupDoneTitle": "Задание проверено",
@@ -3157,6 +3160,7 @@
     "saveAndFinish": "Сохранить и закончить",
     "feedbackPlaceholder": "Что удалось, что поправить, как именно",
     "points": "баллов",
+    "outOf": "из {{max}}",
     "gradeAria": "Оценка",
     "loadFailed": "Не удалось загрузить очередь",
     "saveFailed": "Не удалось сохранить"

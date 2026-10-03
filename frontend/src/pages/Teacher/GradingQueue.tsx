@@ -77,7 +77,7 @@ export default function GradingQueue() {
           <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
           {t("grading.backToQueue")}
         </Button>
-        <MarkOneByOne assignmentId={openItem} title={group?.title} onDone={closeItem} />
+        <MarkOneByOne assignmentId={openItem} title={group?.title} maxScore={group?.max_score ?? null} onDone={closeItem} />
       </Section>
     )
   }
@@ -114,7 +114,9 @@ export default function GradingQueue() {
             <Card key={`${group.kind}:${group.item_id}`}>
               <CardContent className="flex items-center justify-between gap-3 p-4">
                 <div className="min-w-0">
-                  <p className="truncate font-medium">{group.title}</p>
+                  {/* Two lines, not one: on a phone the button takes half the
+                      row, and «Эссе: что изменилос…» does not say which essay. */}
+                  <p className="line-clamp-2 break-words font-medium">{group.title}</p>
                   <p className="mt-0.5 text-xs text-ink-muted">
                     {/* Age, not size. The essay waiting three weeks is the one
                         somebody is upset about. */}

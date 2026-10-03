@@ -890,6 +890,8 @@ export interface WaitingGroup {
   waiting: number
   /** The oldest thing in the group — what the queue is ordered by. */
   oldest: string | null
+  /** What a mark is out of, for an assignment; the grade route refuses more. */
+  max_score?: number | null
 }
 
 /** One piece of work to mark, with what is needed to mark it. */

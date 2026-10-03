@@ -8,6 +8,7 @@ from app.api.dependencies import get_current_user, get_optional_user, is_owner_o
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.course import Course, CourseStatus
+from app.models.organization import Organization
 from app.models.user import User, UserRole
 from app.schemas.course import CourseResponse, CourseSummary, ModuleResponse
 from app.schemas.locale import LocaleCode, normalize_locale
@@ -231,6 +232,40 @@ def get_course_reading_time(
     response.headers["Vary"] = "Accept-Language"
     minutes = course_reading_minutes(db, course, normalize_locale(accept_language))
     return CourseReadingTime(chapters=minutes, total_minutes=sum(minutes.values()))
+
+
+class CourseAuthor(BaseModel):
+    """Who is teaching this course, as the «Автор» tab shows it."""
+
+    name: str | None = None
+    avatar_url: str | None = None
+    #: The school's public name — what its certificates print, not localized.
+    school: str | None = None
+
+
+@router.get("/{course_id}/author", response_model=CourseAuthor)
+def get_course_author(
+    course_id: str,
+    current_user: User | None = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+) -> CourseAuthor:
+    """The course's author: a name, a face, a school. Nothing else.
+
+    Visible exactly when the course page is (``_course_a_reader_may_see``) —
+    it is the «кто ведёт» a visitor reads before enrolling, as on
+    BibleProject's course pages. No email, no role: a stranger has no use
+    for either.
+    """
+    course = _course_a_reader_may_see(db, course_id, current_user)
+    author = db.query(User.full_name, User.avatar_url).filter(User.id == course.created_by).first()
+    school = None
+    if course.organization_id is not None:
+        school = db.query(Organization.public_name).filter(Organization.id == course.organization_id).scalar()
+    return CourseAuthor(
+        name=author.full_name if author else None,
+        avatar_url=author.avatar_url if author else None,
+        school=school,
+    )
 
 
 @router.get("/{course_id}/modules/{module_id}", response_model=ModuleResponse)

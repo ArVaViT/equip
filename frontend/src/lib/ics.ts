@@ -4,8 +4,9 @@
  *
  * The same shape as the subscription feed (`backend/app/services/
  * calendar_ical.py`), on purpose: the same `UID`, so a reader who both
- * subscribed and added the event by hand sees it once, not twice; zero
- * duration, as the feed has (an event carries no length); and both
+ * subscribed and added the event by hand sees it once, not twice; the
+ * same duration — zero for a deadline, an hour for a live session or an
+ * exam, which carry no stored length; and both
  * `LOCATION` and `URL` for a meeting link, because Google reads only the
  * first and Apple only the second.
  *
@@ -70,7 +71,7 @@ export function eventToIcs(event: CalendarEvent, now: Date = new Date(), recordi
     foldLine(`UID:${event.source}-${event.id}@${DOMAIN}`),
     `DTSTAMP:${formatUtc(now)}`,
     `DTSTART:${formatUtc(start)}`,
-    "DURATION:PT0S",
+    `DURATION:${event.event_type === "live_session" || event.event_type === "exam" ? "PT1H" : "PT0S"}`,
     foldLine(`SUMMARY:${escapeText(event.title)}`),
   ]
   if (description) lines.push(foldLine(`DESCRIPTION:${escapeText(description)}`))

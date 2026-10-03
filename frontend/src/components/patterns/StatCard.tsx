@@ -43,11 +43,13 @@ export function StatCard({
   if (variant === "icon-leading") {
     return (
       <Card>
-        <CardContent className="flex items-center gap-4 p-5">
-          <div className="rounded-md bg-muted p-3">
+        <CardContent className="flex items-center gap-4 p-4 sm:p-5">
+          {/* Not on a phone: two cards a row leave the label ~70px beside
+              the icon, and «Опубликовано» ran out of its card. */}
+          <div className="hidden rounded-md bg-muted p-3 sm:block">
             <Icon className="h-6 w-6 text-ink-muted" strokeWidth={1.75} aria-hidden />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-sm text-ink-muted">{label}</p>
             <p className={cn("text-2xl font-bold tabular-nums", valueClassName)}>{value}</p>
             {hint && <p className="mt-0.5 text-xs text-ink-muted">{hint}</p>}

@@ -191,19 +191,20 @@ export default function StudentProgress() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="flex items-center gap-2 text-sm text-ink-muted mb-6">
-        <Link to="/teacher" className="hover:text-ink transition-colors">
+      {/* No last crumb: it was the page's own name, said again by the
+          heading right below — and on a phone it pushed «Мои курсы» onto
+          two lines. */}
+      <div className="flex min-w-0 items-center gap-2 text-sm text-ink-muted mb-6">
+        <Link to="/teacher" className="shrink-0 whitespace-nowrap hover:text-ink transition-colors">
           {t("studentProgress.breadcrumb.myCourses")}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+        <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
         <Link
           to={`/teacher/courses/${courseId}`}
-          className="hover:text-ink transition-colors"
+          className="min-w-0 truncate hover:text-ink transition-colors"
         >
           {data.course_title || t("studentProgress.breadcrumb.courseFallback")}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
-        <span className="text-ink font-medium">{t("studentProgress.heading")}</span>
       </div>
 
       {/* Wraps on a phone: the two buttons beside the heading made the page

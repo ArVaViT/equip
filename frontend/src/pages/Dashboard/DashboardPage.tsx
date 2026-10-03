@@ -331,6 +331,10 @@ export default function DashboardPage() {
     // calc is the fallback without `:has()`: the window below the header
     // (`h-16` and its rule). It was `100dvh - 6rem`, the header counted twice.
     <div data-single-screen className="container mx-auto h-full px-4 py-4 sm:py-6 lg:h-[calc(100dvh-4rem-1px)]">
+      {/* Every other page opens with an h1; this one is a set of panels with
+          no title on screen. A reader moving by headings still needs to
+          know where they are. */}
+      <h1 className="sr-only">{t("header.home")}</h1>
       <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-5">
         {/* Left column: an optional "recently viewed" strip (renders
             nothing when empty, so it costs no vertical space for new

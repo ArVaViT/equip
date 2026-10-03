@@ -89,7 +89,9 @@ export function CourseCard({
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             {/* The name opens the course, as a name does everywhere else in
                 the app; it was plain text, and the way in was an icon. */}
-            <h3 className="min-w-0 flex-1 truncate text-base font-semibold sm:text-lg">
+            {/* Its own line on a phone: beside «Опубликован» the name had
+                a few letters and read «Де…». */}
+            <h3 className="line-clamp-2 min-w-0 basis-full break-words text-base font-semibold sm:basis-0 sm:flex-1 sm:line-clamp-1 sm:text-lg">
               <Link
                 to={`/teacher/courses/${course.id}`}
                 className="underline-offset-4 transition-colors hover:text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"

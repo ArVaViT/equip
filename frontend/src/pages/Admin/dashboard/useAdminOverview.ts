@@ -28,6 +28,9 @@ interface UseAdminOverviewArgs {
    *  counts when the user opens a tab (cohorts) that needs none of
    *  them. Defaults to true so existing callers don't change shape. */
   enabled?: boolean
+  /** A director's view: fetch only the certificates awaiting final
+   *  sign-off. The user list and the counts are staff-only endpoints. */
+  certsOnly?: boolean
 }
 
 /**
@@ -37,7 +40,7 @@ interface UseAdminOverviewArgs {
  * handlers. Split out of `AdminDashboard` so the page component stays
  * focused on layout and tab routing.
  */
-export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOverviewArgs) {
+export function useAdminOverview({ currentUserId, enabled = true, certsOnly = false }: UseAdminOverviewArgs) {
   const confirm = useConfirm()
   const { t } = useTranslation()
   const [params, setParams] = useSearchParams()
@@ -86,6 +89,13 @@ export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOver
       // ``enabled`` arg lets the parent skip the fetch (and the loading
       // state) without unmounting the hook.
       if (!enabled) return undefined
+      if (certsOnly) {
+        // A director: the certificates awaiting their sign-off are the one
+        // piece of the overview they may read.
+        const certs = await coursesService.getAdminPendingCerts()
+        if (isCancelled()) return undefined
+        return { allUsers: [], coursesCount: { count: 0, error: null }, enrollmentsCount: { count: 0, error: null }, certs }
+      }
       const [allUsers, coursesCount, enrollmentsCount, certs] = await Promise.all([
         coursesService.getAllUsers(),
         supabase.from("courses").select("id", { count: "exact", head: true }),
@@ -101,7 +111,7 @@ export function useAdminOverview({ currentUserId, enabled = true }: UseAdminOver
       if (enrollmentsCount.error) throw enrollmentsCount.error
       return { allUsers, coursesCount, enrollmentsCount, certs }
     },
-    [reloadKey, enabled],
+    [reloadKey, enabled, certsOnly],
   )
 
   // Sync fetched data into individual state (handlers still need setUsers/setAdminCerts)

@@ -389,20 +389,10 @@ function ChapterNavLink({
   const enabledClass =
     "group flex min-w-0 flex-1 flex-col rounded-md bg-card px-3 py-2 transition-colors hover:border-brand/40 hover:bg-muted/40"
 
-  if (!chapter) {
-    return (
-      <div className={`${disabledClass} ${alignment}`} aria-hidden="true">
-        <span className={`flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted ${justify}`}>
-          {side === "prev" && <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.75} />}
-          {eyebrow}
-          {side === "next" && <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />}
-        </span>
-        <span className="mt-0.5 truncate text-sm text-ink-muted">
-          {fallbackLabel}
-        </span>
-      </div>
-    )
-  }
+  // Nothing before the first lesson, so nothing drawn: a greyed «Назад ·
+  // Предыдущий урок» there was a button that goes nowhere. The empty cell
+  // keeps «Далее» on the right.
+  if (!chapter) return <div className="min-w-0 flex-1" aria-hidden="true" />
 
   if (locked) {
     return (
@@ -907,13 +897,14 @@ export default function ChapterView() {
 
         {(chapterType === "quiz" || chapterType === "exam") && (
           <Suspense fallback={<PageSpinner variant="section" />}>
-            <QuizTaker chapterId={chapter.id} onSubmitted={refreshCompletion} />
+            <QuizTaker chapterId={chapter.id} pageTitle={orNotTranslated(t, chapter.title)} onSubmitted={refreshCompletion} />
           </Suspense>
         )}
 
         {chapterType === "assignment" && (
           <AssignmentPanel
             chapterId={chapter.id}
+            pageTitle={orNotTranslated(t, chapter.title)}
             onSubmitted={refreshCompletion}
             onCountLoaded={handleAssignmentCountLoaded}
           />
@@ -961,19 +952,15 @@ export default function ChapterView() {
         </div>
       )}
 
-      {hasAssignments && (
+      {/* Once handed in, nothing here: the card above already says where the
+          work stands («на проверке», a grade), and «Завершено» under «на
+          проверке» told the student two different things. */}
+      {hasAssignments && !isCompleted && (
         <div className="mt-6 border-t border-edge pt-5">
-          {isCompleted ? (
-            <p className="flex items-center gap-2 text-sm font-medium text-success">
-              <CheckCircle className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-              {t("chapter.completed")}
-            </p>
-          ) : (
-            <p className="flex items-center gap-2 text-sm text-ink-muted">
-              <Circle className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-              {t("chapter.submitAssignmentToComplete")}
-            </p>
-          )}
+          <p className="flex items-center gap-2 text-sm text-ink-muted">
+            <Circle className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+            {t("chapter.submitAssignmentToComplete")}
+          </p>
         </div>
       )}
 

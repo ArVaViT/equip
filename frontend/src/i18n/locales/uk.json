@@ -142,7 +142,6 @@
       "more_other": "і ще {{count}}"
     },
     "continue": {
-      "eyebrow": "Продовжити",
       "position": "урок {{current}} з {{total}}",
       "cta": "Продовжити"
     },
@@ -475,8 +474,6 @@
     "pageSubtitle": "Перегляньте наші семінарські курси й поглибте знання Біблії",
     "pageSubtitleAuthed": "Відкрийте для себе більше курсів і розширте свої знання",
     "searchPlaceholder": "Пошук курсів...",
-    "signInLink": "Увійдіть",
-    "signInToEnroll": ", щоб записатися на курси",
     "noCoursesFound": "Курсів не знайдено",
     "noCoursesYet": "Курсів поки немає",
     "tryDifferentSearch": "Спробуйте інший запит",
@@ -717,7 +714,6 @@
     "updateFailed": "Не вдалося оновити профіль",
     "learningProgress": "Навчальний поступ",
     "coursesCompleted": "Завершені курси",
-    "learningProgressDescription": "Ваші здобутки одним поглядом",
     "certificatesEarned": "Отримані сертифікати",
     "accountDetails": "Дані облікового запису",
     "memberSince": "З нами від",
@@ -991,7 +987,6 @@
     "attachmentEyebrow": "Вкладення",
     "blocksLoadFailed": "Не вдалося завантажити цей урок",
     "blocksLoadFailedDescription": "Вміст уроку не завантажився. Зазвичай це тимчасова проблема зі зв’язком — спробуйте ще раз.",
-    "completed": "Завершено",
     "downloadFile": "Завантажити файл",
     "downloadFileAria": "Завантажити вкладення: {{name}}",
     "emptyContent": "До цього уроку ще не додано вмісту.",
@@ -2172,6 +2167,14 @@
     }
   },
   "courseDetail": {
+    "tabs": {
+      "label": "Розділи курсу",
+      "about": "Про курс",
+      "program": "Програма",
+      "author": "Автор",
+      "programEmpty": "Уроків поки немає",
+      "authorUnknown": "Автора не вказано"
+    },
     "minutesShort": "{{minutes}} хв",
     "hoursShort": "≈ {{hours}} год",
     "readingHours": "≈ {{hours}} год читання",
@@ -3157,6 +3160,7 @@
     "saveAndFinish": "Зберегти й завершити",
     "feedbackPlaceholder": "Що вийшло, що виправити і як",
     "points": "бали",
+    "outOf": "з {{max}}",
     "gradeAria": "Оцінка",
     "loadFailed": "Не вдалося завантажити чергу",
     "saveFailed": "Не вдалося зберегти"

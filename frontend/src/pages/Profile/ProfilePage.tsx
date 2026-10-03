@@ -275,7 +275,6 @@ export default function ProfilePage() {
                 <CardTitle>
                   {t("profile.learningProgress")}
                 </CardTitle>
-                <CardDescription>{t("profile.learningProgressDescription")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

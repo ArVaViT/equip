@@ -14,6 +14,7 @@ import { SubmissionDeclaration, type DeclarationState } from "./SubmissionDeclar
 import { declarationStatement } from "./declarationStatement"
 import { RubricGrid } from "@/components/rubric/RubricGrid"
 import { toast } from "@/lib/toast"
+import { repeatsTitle } from "@/lib/repeatsTitle"
 import type { AiPolicy, Assignment, AssignmentSubmission, SubmissionRubric } from "@/types"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { formatDateTimeZoned } from "@/i18n/format"
@@ -52,9 +53,13 @@ interface AssignmentPanelProps {
   onSubmitted?: () => void
   /** Fires once after fetch with the number of assignments visible in this panel. */
   onCountLoaded?: (count: number) => void
+  /** The page's own title, when the whole lesson is the assignment. The
+   *  page already says «Задание» and its name; the card then drops the
+   *  eyebrow, and the name too when it only repeats the page's. */
+  pageTitle?: string
 }
 
-export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, onCountLoaded, aiPolicy }: AssignmentPanelProps) {
+export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, onCountLoaded, aiPolicy, pageTitle }: AssignmentPanelProps) {
   const { t } = useTranslation()
   const [assignments, setAssignments] = useState<Assignment[]>([])
   // Three values, not two. `null` means the student has not handed anything in;
@@ -157,6 +162,7 @@ export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, 
           onRetry={() => setReloadKey((k) => k + 1)}
           onSubmitted={onSubmitted}
           aiPolicy={aiPolicy}
+          pageTitle={pageTitle}
         />
       ))}
     </div>
@@ -169,7 +175,9 @@ function SingleAssignment({
   onSubmitted,
   onRetry,
   aiPolicy,
+  pageTitle,
 }: {
+  pageTitle?: string
   assignment: Assignment
   initialSubmission: AssignmentSubmission | null | typeof UNKNOWN
   onSubmitted?: () => void
@@ -296,13 +304,17 @@ function SingleAssignment({
   return (
     <div className="rounded-card border border-edge dark:border-transparent bg-card shadow-card">
       <div className="border-b border-edge px-5 py-5">
-        <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
-          <FileText className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-          {t("assignment.eyebrow")}
-        </p>
-        <h3 className="font-serif text-lg font-semibold tracking-tight text-wrap-safe">
-          {orNotTranslated(t, assignment.title)}
-        </h3>
+        {pageTitle === undefined && (
+          <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
+            <FileText className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            {t("assignment.eyebrow")}
+          </p>
+        )}
+        {(pageTitle === undefined || !repeatsTitle(pageTitle, orNotTranslated(t, assignment.title))) && (
+          <h2 className="font-serif text-lg font-semibold tracking-tight text-wrap-safe">
+            {orNotTranslated(t, assignment.title)}
+          </h2>
+        )}
         {assignment.description && (
           <p className="prose-verse mt-1.5 text-sm leading-relaxed text-ink-muted text-wrap-safe whitespace-pre-line">
             {/* A cited verse opens over the page, as it does in a lesson. */}
@@ -358,10 +370,14 @@ function SingleAssignment({
         )}
         {submission && (
           <div className="mb-5 space-y-3">
-            <div className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${statusConfig[submission.status]?.color ?? ""}`}>
-              {statusConfig[submission.status]?.icon}
-              <span className="font-medium">{statusConfig[submission.status]?.label}</span>
-            </div>
+            {/* «Оценено» above «Оценка 90 / 100» said it twice: the grade is
+                the status. */}
+            {!(submission.status === "graded" && submission.grade !== null) && (
+              <div className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${statusConfig[submission.status]?.color ?? ""}`}>
+                {statusConfig[submission.status]?.icon}
+                <span className="font-medium">{statusConfig[submission.status]?.label}</span>
+              </div>
+            )}
 
             {submission.status === "graded" && submission.grade !== null && (
               <div className="rounded-md border border-success/30 bg-success/5 px-4 py-3">

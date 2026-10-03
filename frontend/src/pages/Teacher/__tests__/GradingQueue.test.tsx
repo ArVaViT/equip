@@ -89,7 +89,7 @@ describe("GradingQueue", () => {
     vi.spyOn(gradesService, "getAssignmentQueue").mockRejectedValue(forbidden())
     render(<GradingQueue />, { wrapper: Wrapper })
 
-    await userEvent.click(await screen.findByRole("button", { name: /Проверять/ }))
+    await userEvent.click(await screen.findByRole("button", { name: /Проверить/ }))
 
     expect(await screen.findByRole("alert")).toHaveTextContent(i18n.t("errors.byStatus.403"))
     // The green tick was the screen a failed fetch used to land on.
@@ -111,7 +111,7 @@ describe("GradingQueue", () => {
     })
     render(<GradingQueue />, { wrapper: Wrapper })
 
-    await userEvent.click(await screen.findByRole("button", { name: /Проверять/ }))
+    await userEvent.click(await screen.findByRole("button", { name: /Проверить/ }))
 
     expect(await screen.findByText("Раньше")).toBeInTheDocument()
     // Where you are, so «дальше» is a known distance rather than an open-ended
@@ -135,14 +135,44 @@ describe("GradingQueue", () => {
     const grade = vi.spyOn((await import("@/services/courses")).coursesService, "gradeSubmission")
     grade.mockResolvedValue({} as never)
     render(<GradingQueue />, { wrapper: Wrapper })
-    await userEvent.click(await screen.findByRole("button", { name: /Проверять/ }))
+    await userEvent.click(await screen.findByRole("button", { name: /Проверить/ }))
 
     const note = await screen.findByPlaceholderText(/Что удалось/)
     await userEvent.type(note, "Хорошая работа")
+    await userEvent.type(screen.getByRole("spinbutton", { name: "Оценка" }), "90")
     await userEvent.click(screen.getByRole("button", { name: /Сохранить и дальше/ }))
 
     // The one mistake this screen must never make.
     expect(await screen.findByText("Позже")).toBeInTheDocument()
     expect(screen.getByPlaceholderText(/Что удалось/)).toHaveValue("")
+    expect(screen.getByRole("spinbutton", { name: "Оценка" })).toHaveValue(null)
+    expect(grade).toHaveBeenCalledWith("s1", expect.objectContaining({ grade: 90 }))
+  })
+
+  it("will not save an essay nobody has scored as a zero", async () => {
+    vi.spyOn(gradesService, "getQueue").mockResolvedValue([group({ max_score: 50 })])
+    vi.spyOn(gradesService, "getAssignmentQueue").mockResolvedValue([
+      work({ content: "", file_url: "https://drive.google.com/file/d/abc" }),
+    ])
+    vi.spyOn(rubricsService, "forSubmission").mockResolvedValue({ rubric: null, marks: [], earned: null, out_of: null })
+    const grade = vi.spyOn((await import("@/services/courses")).coursesService, "gradeSubmission")
+    render(<GradingQueue />, { wrapper: Wrapper })
+    await userEvent.click(await screen.findByRole("button", { name: /Проверить/ }))
+
+    // Work handed in as a document: the teacher can open it.
+    expect(await screen.findByRole("link", { name: /файл/i })).toHaveAttribute("href", "https://drive.google.com/file/d/abc")
+    const save = screen.getByRole("button", { name: /Сохранить и закончить/ })
+    expect(save).toBeDisabled()
+    // Out of what: the grade route refuses anything above it.
+    expect(screen.getByText("из 50")).toBeInTheDocument()
+    await userEvent.click(save)
+    expect(grade).not.toHaveBeenCalled()
+    await userEvent.type(screen.getByRole("spinbutton", { name: "Оценка" }), "0")
+    expect(save).toBeEnabled()
+    // Above the maximum: the route would refuse it, so the button does first.
+    const box = screen.getByRole("spinbutton", { name: "Оценка" })
+    await userEvent.clear(box)
+    await userEvent.type(box, "60")
+    expect(save).toBeDisabled()
   })
 })

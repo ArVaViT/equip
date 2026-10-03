@@ -133,3 +133,26 @@ class TestTheCatalogueNamesTheSchool:
 
         assert _card(body, "ucoat-course")["organization_name"] == "UCOAT"
         assert _card(body, "other-course")["organization_name"] == "Other School"
+
+
+class TestTheCoursePageNamesItsAuthor:
+    """The «Автор» tab: a visitor reads who is teaching before enrolling."""
+
+    def test_a_stranger_reads_the_name_and_the_school_and_nothing_else(
+        self, stranger_client: TestClient, db: Session, their_teacher: User
+    ):
+        _published_course(db, their_teacher, "ucoat-author")
+
+        resp = stranger_client.get("/api/v1/courses/ucoat-author/author")
+
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body == {"name": "Their Teacher", "avatar_url": None, "school": "UCOAT"}
+        assert "teacher@ucoat.example" not in resp.text, "a stranger has no use for the author's email"
+
+    def test_a_draft_has_no_author_page(self, stranger_client: TestClient, db: Session, their_teacher: User):
+        course = _published_course(db, their_teacher, "ucoat-draft-author")
+        course.status = "draft"
+        db.commit()
+
+        assert stranger_client.get("/api/v1/courses/ucoat-draft-author/author").status_code == 404
