@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { render, screen, waitFor } from "@testing-library/react"
+import { act, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { I18nextProvider } from "react-i18next"
 import { MemoryRouter } from "react-router-dom"
@@ -269,5 +269,33 @@ describe("DailyChallengeCard", () => {
     expect(await screen.findByText("John 3:16 names the Son.")).toBeInTheDocument()
     const lit = await screen.findByRole("img", { name: /4/ })
     expect(lit.querySelector("svg")?.getAttribute("class")).toContain("fill-warning")
+  })
+
+  it("drops «not in your language yet» once the language has the question", async () => {
+    const err = new AxiosError("not translated", "ERR_BAD_REQUEST")
+    Object.assign(err, {
+      response: { status: 404, data: { detail: { code: "daily_challenge.not_translated", message: "x" } } },
+    })
+    const getToday = vi.fn().mockRejectedValueOnce(err).mockResolvedValue(todayPayload())
+    stub({ getToday, getStreak: vi.fn().mockResolvedValue({ current_streak: 1, longest_streak: 1, last_engaged_date: null }) })
+    await i18n.changeLanguage("en")
+    render(<DailyChallengeCard />, { wrapper: Wrapper })
+    expect(await screen.findByText(/not in your language yet/i)).toBeInTheDocument()
+
+    await act(() => i18n.changeLanguage("ru"))
+
+    expect(await screen.findByText(/in john 3:16, what did god give\?/i)).toBeInTheDocument()
+    await act(() => i18n.changeLanguage("en"))
+  })
+
+  it("shows no streak at all, rather than «0», when the streak cannot be had", async () => {
+    stub({
+      getToday: vi.fn().mockResolvedValue(todayPayload()),
+      getStreak: vi.fn().mockRejectedValue(new Error("offline")),
+    })
+    render(<DailyChallengeCard />, { wrapper: Wrapper })
+
+    expect(await screen.findByText(/in john 3:16, what did god give\?/i)).toBeInTheDocument()
+    expect(screen.queryByRole("img", { name: /0/ })).not.toBeInTheDocument()
   })
 })

@@ -30,7 +30,7 @@ the Vercel project pages -- not in this repo.
 - `python -m py_compile app/main.py` + `python -m compileall app/`
   (every module byte-compiles) and a smoke import of `app.main:app`
 - `mypy --config-file mypy.ini`
-- `pytest tests/` against in-memory SQLite (3,200+ test functions)
+- `pytest tests/` against in-memory SQLite (4,700+ tests)
 - `pip-audit --requirement requirements.txt --strict` -- no ignores
   today; `--ignore-vuln` would be added in the workflow if one were ever
   needed
@@ -44,8 +44,8 @@ the Vercel project pages -- not in this repo.
 `.github/workflows/frontend-ci.yml`:
 
 - `npm ci` then `audit-ci --high --skip-dev` with an explicit allowlist
-  (one advisory today; the list lives in the workflow, not in
-  `package.json`)
+  (two advisories today, each with its reason beside it; the list lives in
+  the workflow, not in `package.json`)
 - `eslint --max-warnings 0`
 - `npm run i18n:check` (locale parity across ru / en / de / uk)
 - `tsc --noEmit` (strict)
@@ -81,9 +81,11 @@ it up, both services are live in 60-120 s.
    frontend and backend.
 2. Reviewer (or you, on a solo change) checks the preview.
 3. Merge to `main`. Vercel kicks off the production build automatically.
-4. Vercel finishes; the new commit SHA shows up at
-   `https://api.equipbible.com/` (root JSON) and in the frontend's
-   "Inspect Element → version" footer.
+4. Vercel finishes. The deployment's commit is on the Vercel deployment
+   page; the frontend also reports it as the RUM `version` tag
+   (`VITE_APP_VERSION`, derived from `VERCEL_GIT_COMMIT_SHA`), and the
+   backend tags every shipped log line with it. The root JSON at
+   `https://api.equipbible.com/` carries no SHA.
 
 That's it. No manual deploy step, no SSH, no `vercel --prod`.
 
@@ -299,7 +301,8 @@ Required for the API to serve (collected by
 `Settings.runtime_ready_errors()`; boot itself does not fail -- see below):
 
 - `SUPABASE_URL` -- project URL
-- `SUPABASE_SERVICE_ROLE_KEY` -- server-side admin client. The old
+- `SUPABASE_SECRET_KEY` (the `sb_secret_…` key; wins when set) or the older
+  name `SUPABASE_SERVICE_ROLE_KEY` -- server-side admin client. The old
   `SUPABASE_KEY` name is **no longer read**: Supabase disabled the legacy
   key format on 2026-06-08, so a value under that name only made the
   settings look configured while every call came back `401`.
@@ -320,14 +323,20 @@ Optional but production-set:
 - `TRANSLATION_QUEUE_ENABLED=true` -- routes publish-time translation through
   the async queue (drained by the cron) instead of running inline.
 - `CRON_SECRET` -- **must equal `TRANSLATION_WORKER_SECRET`** (see below).
-- `RESEND_API_KEY` -- lets the backend send invitation emails
-  (`app/services/email/send.py`). Missing → the invitation row is
-  still created and a WARNING is logged; the director has to share the
-  accept link by hand. Auth emails do not use this key -- they go through
+- `RESEND_API_KEY` -- lets the backend send its mail: invitations and the
+  certificate decision (`app/services/email/send.py`). Missing → nothing is
+  sent and a WARNING is logged; an invitation row is still created and the
+  director can share the accept link by hand. Auth emails do not use this key -- they go through
   the `send-email` edge function, which has its own copy.
 - `FRONTEND_URL` -- base for links inside backend-sent emails (the
   `/invite/accept` link). Defaults to `https://equipbible.com`; a local or
   preview backend should point it at its own frontend.
+- `API_PUBLIC_URL` -- the API's public origin for the one-click unsubscribe
+  in a course mail's `List-Unsubscribe` header. Defaults to
+  `https://api.equipbible.com`.
+- `EMAIL_ALLOWLIST` -- comma-separated recipients; when set, mail to anyone
+  else is not sent. For local and preview work against real data; **unset
+  on production**.
 - `GEMINI_REVIEW_MODEL`, `GEMINI_TIMEOUT_SECONDS`, `GEMINI_MAX_OUTPUT_TOKENS`,
   `GEMINI_MIN_INTERVAL_SECONDS`, `TRANSLATION_WORKER_BUDGET_SECONDS` -- tuning
   knobs with measured defaults in `backend/app/core/config.py`; production runs
@@ -372,9 +381,9 @@ bearer (constant-time) against `TRANSLATION_WORKER_SECRET`. **Therefore
 `CRON_SECRET` and `TRANSLATION_WORKER_SECRET` must be set to the SAME value
 on `equip-backend`.** If `CRON_SECRET` is missing/mismatched the cron 401s
 every tick and, with `TRANSLATION_QUEUE_ENABLED=true`, queued translations
-silently never drain (this caused a ~37 min outage on 2026-06-03). The
-`translation-worker-401-rate` + `worker-cron-silent` Datadog monitors now
-page on a recurrence. **Pre-launch check:** `curl` the prod worker with no
+silently never drain (this caused a ~37 min outage on 2026-06-03). A
+recurrence is caught by the Datadog monitors «telemetry has gone quiet»
+(no worker metric for 30 minutes) and «Translation queue is not draining». **Pre-launch check:** `curl` the prod worker with no
 auth → expect `401`; confirm recent drained jobs in `/admin/translations/
 queue-status`.
 
@@ -523,8 +532,7 @@ to keep in source.
 - **No deploy notification.** Vercel can ping a Slack channel on
   production deploy success/failure. Equip has no shared Slack today,
   so this is deferred until the team grows past one developer.
-- **Edge functions deploy by hand and nothing notices the drift.** The
-  gap is not the manual step -- migrations are manual too, on purpose --
-  it is that nothing anywhere compares the deployed function against
-  `main`. A check that fetched the running function and diffed it, or
-  simply a CI job that deploys it on merge, would close it.
+- **Edge functions deploy from CI, not by hand.**
+  `.github/workflows/edge-functions-deploy.yml` deploys on every push to
+  `main` that touches a function and re-checks daily for drift (see
+  "Edge functions" above).

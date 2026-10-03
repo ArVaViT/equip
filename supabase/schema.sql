@@ -3766,9 +3766,7 @@ ALTER TABLE public.chapter_progress ENABLE ROW LEVEL SECURITY;
 -- Name: chapter_progress chapter_progress_select; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY chapter_progress_select ON public.chapter_progress FOR SELECT TO authenticated USING (((user_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text])))))));
+CREATE POLICY chapter_progress_select ON public.chapter_progress FOR SELECT TO authenticated USING (((user_id = ( SELECT auth.uid() AS uid)) OR public.is_platform_staff()));
 
 
 --
@@ -3973,9 +3971,7 @@ ALTER TABLE public.enrollments ENABLE ROW LEVEL SECURITY;
 -- Name: enrollments enrollments_select; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY enrollments_select ON public.enrollments FOR SELECT TO authenticated USING (((user_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text])))))));
+CREATE POLICY enrollments_select ON public.enrollments FOR SELECT TO authenticated USING (((user_id = ( SELECT auth.uid() AS uid)) OR public.is_platform_staff()));
 
 
 --
@@ -4096,11 +4092,9 @@ ALTER TABLE public.quiz_answers ENABLE ROW LEVEL SECURITY;
 -- Name: quiz_answers quiz_answers_select_own; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY quiz_answers_select_own ON public.quiz_answers FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
+CREATE POLICY quiz_answers_select_own ON public.quiz_answers FOR SELECT TO authenticated USING (((EXISTS ( SELECT 1
    FROM public.quiz_attempts qa
-  WHERE ((qa.id = quiz_answers.attempt_id) AND ((qa.user_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
-           FROM public.profiles p
-          WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))))))));
+  WHERE ((qa.id = quiz_answers.attempt_id) AND (qa.user_id = ( SELECT auth.uid() AS uid))))) OR public.is_platform_staff()));
 
 
 --
@@ -4113,9 +4107,7 @@ ALTER TABLE public.quiz_attempts ENABLE ROW LEVEL SECURITY;
 -- Name: quiz_attempts quiz_attempts_select_own; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY quiz_attempts_select_own ON public.quiz_attempts FOR SELECT TO authenticated USING (((user_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text])))))));
+CREATE POLICY quiz_attempts_select_own ON public.quiz_attempts FOR SELECT TO authenticated USING (((user_id = ( SELECT auth.uid() AS uid)) OR public.is_platform_staff()));
 
 
 --
@@ -4128,9 +4120,7 @@ ALTER TABLE public.quiz_extra_attempts ENABLE ROW LEVEL SECURITY;
 -- Name: quiz_extra_attempts quiz_extra_attempts_select_own; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY quiz_extra_attempts_select_own ON public.quiz_extra_attempts FOR SELECT TO authenticated USING (((user_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text])))))));
+CREATE POLICY quiz_extra_attempts_select_own ON public.quiz_extra_attempts FOR SELECT TO authenticated USING (((user_id = ( SELECT auth.uid() AS uid)) OR public.is_platform_staff()));
 
 
 --
@@ -4219,9 +4209,7 @@ ALTER TABLE public.student_grades ENABLE ROW LEVEL SECURITY;
 -- Name: student_grades student_grades_select; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY student_grades_select ON public.student_grades FOR SELECT TO authenticated USING (((student_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text])))))));
+CREATE POLICY student_grades_select ON public.student_grades FOR SELECT TO authenticated USING (((student_id = ( SELECT auth.uid() AS uid)) OR public.is_platform_staff()));
 
 
 --
@@ -4234,9 +4222,7 @@ ALTER TABLE public.submission_declarations ENABLE ROW LEVEL SECURITY;
 -- Name: assignment_submissions submissions_select_own_or_teacher; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY submissions_select_own_or_teacher ON public.assignment_submissions FOR SELECT TO authenticated USING (((student_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text])))))));
+CREATE POLICY submissions_select_own_or_teacher ON public.assignment_submissions FOR SELECT TO authenticated USING (((student_id = ( SELECT auth.uid() AS uid)) OR public.is_platform_staff()));
 
 
 --

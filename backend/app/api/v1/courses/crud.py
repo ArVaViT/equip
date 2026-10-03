@@ -5,7 +5,7 @@ import logging
 from fastapi import Depends, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import assert_course_owner, organization_of, require_teacher
+from app.api.dependencies import assert_course_owner, is_owner_or_admin, organization_of, require_teacher
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.sanitize import sanitize_plain_text
@@ -207,6 +207,21 @@ def clone_existing_course(
             message=f"Course '{course_id}' not found",
             context={"resource_type": "course", "resource_id": course_id},
         )
+    # An «institute» course is its school's: to anyone else it is not there,
+    # here as on the course page (``_course_a_reader_may_see``). Without this
+    # a teacher of any school could copy another school's closed course,
+    # whole tree and every translation (2026-10-03).
+    if (
+        course.access_mode == "institute"
+        and not is_owner_or_admin(course, teacher)
+        and teacher.organization_id != course.organization_id
+    ):
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message=f"Course '{course_id}' not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
     # Drafts are only visible (and therefore clonable) to their owner,
     # regardless of admin status.
     is_owner = str(course.created_by) == str(teacher.id)
@@ -220,8 +235,12 @@ def clone_existing_course(
     # A clone is the most expensive course a teacher can make: the whole
     # tree is copied, and every translated string with it. Gate it before
     # the copy, not after.
+    # The copy is the cloner's, so it lives in their school — not in the
+    # original's, and never in none: the column has no default, and the clone
+    # left it empty.
+    organization_id = organization_of(teacher)
     assert_can_own_another_course(db, teacher)
-    new_course = clone_course(db, course_id, str(teacher.id))
+    new_course = clone_course(db, course_id, str(teacher.id), organization_id=organization_id)
     if not new_course:
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,

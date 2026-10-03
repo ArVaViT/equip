@@ -162,7 +162,9 @@ export default function CourseDetail() {
       const enrolled = await coursesService.enrollInCourse(id, cohortId)
       setEnrollment(enrolled)
       const [cert, progress, mats, evts] = await Promise.all([
-        coursesService.getCourseCertificate(id),
+        // The enrolment has happened; a failed side read must not turn it
+        // into «enrol failed» over the enrolled view (as on load).
+        coursesService.getCourseCertificate(id).catch(() => null),
         coursesService.getMyChapterProgress(id).catch(() => null),
         storageService.listCourseMaterials(id).catch(() => [] as CourseMaterial[]),
         coursesService.getCalendarEvents(id).catch(() => [] as CalendarEvent[]),

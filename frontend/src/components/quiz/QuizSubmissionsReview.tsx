@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/patterns"
 import { CheckCheck, CheckCircle2, GraduationCap, Inbox, Loader2, Save, Users } from "lucide-react"
 import { formatDateTime } from "@/i18n/format"
 import { countWords } from "@/lib/text"
+import { useLatestRequest } from "@/hooks/useLatestRequest"
 import { orNotTranslated } from "@/lib/untranslated"
 
 type EditableAnswer = PendingAnswer & {
@@ -39,18 +40,21 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
   const [showGraded, setShowGraded] = useState(false)
   const [error, setError] = useState(false)
 
+  const begin = useLatestRequest()
   const load = useCallback(async () => {
+    const isCurrent = begin()
     setLoading(true)
     setError(false)
     try {
       const pending = await coursesService.getPendingAnswers(quizId, showGraded)
+      if (!isCurrent()) return
       setItems(pending.map(toDraft))
     } catch {
-      setError(true)
+      if (isCurrent()) setError(true)
     } finally {
-      setLoading(false)
+      if (isCurrent()) setLoading(false)
     }
-  }, [quizId, showGraded])
+  }, [begin, quizId, showGraded])
 
   useEffect(() => {
     void load()

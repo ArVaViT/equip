@@ -68,7 +68,9 @@ class TestTheLink:
             algorithm="HS256",
         )
         assert read_unsubscribe_token(ical) is None
-        forged = jwt.encode({"sub": "p", "kind": "work_returned", "aud": "equip-unsubscribe"}, "not-the-key")
+        forged = jwt.encode(
+            {"sub": "p", "kind": "work_returned", "aud": "equip-unsubscribe"}, "not-the-key-" + "x" * 32
+        )
         assert read_unsubscribe_token(forged) is None
         unknown = jwt.encode(
             {"sub": "p", "kind": "newsletter", "aud": "equip-unsubscribe"}, settings.JWT_SECRET_KEY, algorithm="HS256"

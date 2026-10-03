@@ -11,6 +11,7 @@ from app.models.chapter_block import ChapterBlock
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.quiz import Quiz, QuizOption, QuizQuestion
+from app.models.rubric import AssignmentRubric, Rubric, RubricCriterion, RubricLevel
 
 from ._queries import _COURSE_TREE
 
@@ -34,6 +35,9 @@ _CLONABLE_TEXT_FIELDS: dict[str, tuple[str, ...]] = {
     "quiz_question": ("question_text",),
     "quiz_option": ("option_text",),
     "assignment": ("title", "description"),
+    "rubric": ("title",),
+    "rubric_criterion": ("title", "description"),
+    "rubric_level": ("title", "description"),
 }
 
 
@@ -87,7 +91,9 @@ def _clone_cv_rows(
         )
 
 
-def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Course | None:
+def clone_course(
+    db: Session, course_id: str, teacher_id: str | uuid.UUID, *, organization_id: uuid.UUID
+) -> Course | None:
     """Deep-clone a course and all nested content. Returns the new Course.
 
     Copies: Course -> Modules, Course -> Chapters -> ChapterBlocks, Quizzes
@@ -171,6 +177,7 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
         status=CourseStatus.DRAFT,
         source_locale=original.source_locale,
         created_by=uuid.UUID(teacher_id) if isinstance(teacher_id, str) else teacher_id,
+        organization_id=organization_id,
         enrollment_start=None,
         enrollment_end=None,
         # Grading configuration travels with the course (D13). Cloning is how a
@@ -183,6 +190,11 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
         quiz_weight=original.quiz_weight,
         assignment_weight=original.assignment_weight,
         academic_hours=original.academic_hours,
+        # Who may see it and what it allows travel too: a closed course
+        # cloned for the next cohort came out public, and published that way
+        # with nobody told (2026-10-03).
+        access_mode=original.access_mode,
+        ai_policy=original.ai_policy,
     )
     db.add(new_course)
 
@@ -193,7 +205,10 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
             id=new_module_id,
             course_id=new_course_id,
             order_index=module.order_index,
-            due_date=module.due_date,
+            # Dates belong to a run of the course, not to the course: the copy
+            # is for a new cohort, and assignments below already start blank.
+            # The old date put last term's deadline on the new calendar.
+            due_date=None,
         )
         db.add(new_module)
 
@@ -307,6 +322,72 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
                 )
             )
 
+    # Rubrics, and which assignment each one marks. Left behind, every essay
+    # in the copy was marked by a bare number, and its maximum stayed whatever
+    # the rubric had set (2026-10-03). Live criteria and levels only: an
+    # archived one exists for the marks that rest on it, and the copy has none.
+    rubric_id_map: dict[str, str] = {}
+    criterion_id_map: dict[str, str] = {}
+    level_id_map: dict[str, str] = {}
+    cloner = uuid.UUID(teacher_id) if isinstance(teacher_id, str) else teacher_id
+    for rubric in db.query(Rubric).filter(Rubric.course_id == original.id, Rubric.archived_at.is_(None)).all():
+        new_rubric_id = uuid.uuid4()
+        rubric_id_map[str(rubric.id)] = str(new_rubric_id)
+        db.add(Rubric(id=new_rubric_id, course_id=new_course_id, title=rubric.title, created_by=cloner))
+        criteria = (
+            db.query(RubricCriterion)
+            .filter(RubricCriterion.rubric_id == rubric.id, RubricCriterion.archived_at.is_(None))
+            .all()
+        )
+        for criterion in criteria:
+            new_criterion_id = uuid.uuid4()
+            criterion_id_map[str(criterion.id)] = str(new_criterion_id)
+            db.add(
+                RubricCriterion(
+                    id=new_criterion_id,
+                    rubric_id=new_rubric_id,
+                    order_index=criterion.order_index,
+                    title=criterion.title,
+                    description=criterion.description,
+                )
+            )
+            levels = (
+                db.query(RubricLevel)
+                .filter(RubricLevel.criterion_id == criterion.id, RubricLevel.archived_at.is_(None))
+                .all()
+            )
+            for level in levels:
+                new_level_id = uuid.uuid4()
+                level_id_map[str(level.id)] = str(new_level_id)
+                db.add(
+                    RubricLevel(
+                        id=new_level_id,
+                        criterion_id=new_criterion_id,
+                        order_index=level.order_index,
+                        label=level.label,
+                        points=level.points,
+                        description=level.description,
+                    )
+                )
+    if rubric_id_map and assignment_id_map_cv:
+        db.flush()
+        attachments = (
+            db.query(AssignmentRubric)
+            .filter(AssignmentRubric.assignment_id.in_([uuid.UUID(a) for a in assignment_id_map_cv]))
+            .all()
+        )
+        for attachment in attachments:
+            new_rubric = rubric_id_map.get(str(attachment.rubric_id))
+            new_assignment = assignment_id_map_cv.get(str(attachment.assignment_id))
+            if new_rubric and new_assignment:
+                db.add(
+                    AssignmentRubric(
+                        assignment_id=uuid.UUID(new_assignment),
+                        rubric_id=uuid.UUID(new_rubric),
+                        attached_by=cloner,
+                    )
+                )
+
     # Fan a single bulk SELECT + INSERT per entity_type across
     # the whole clone tree so the new course inherits its bilingual
     # text from the original instead of landing as an empty draft.
@@ -323,6 +404,11 @@ def clone_course(db: Session, course_id: str, teacher_id: str | uuid.UUID) -> Co
     _clone_cv_rows(
         db, entity_type="assignment", id_map=assignment_id_map_cv, fields=_CLONABLE_TEXT_FIELDS["assignment"]
     )
+    _clone_cv_rows(db, entity_type="rubric", id_map=rubric_id_map, fields=_CLONABLE_TEXT_FIELDS["rubric"])
+    _clone_cv_rows(
+        db, entity_type="rubric_criterion", id_map=criterion_id_map, fields=_CLONABLE_TEXT_FIELDS["rubric_criterion"]
+    )
+    _clone_cv_rows(db, entity_type="rubric_level", id_map=level_id_map, fields=_CLONABLE_TEXT_FIELDS["rubric_level"])
 
     # Append " (Copy)", in the title's language, to the course title so the catalog stays
     # distinguishable. Try the source-locale row first; fall back to

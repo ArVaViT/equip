@@ -78,4 +78,17 @@ describe("SchoolSettingsTab", () => {
     expect(await screen.findByText(/буквенная/)).toBeInTheDocument()
     expect(screen.getByText(/70/)).toBeInTheDocument()
   })
+
+  it("shows no form, and so nothing to save, while a retry is loading", async () => {
+    // The empty form saved null over the school's name; a retry used to show
+    // it for as long as the second request took.
+    vi.spyOn(adminService, "getOrgSettings")
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockReturnValueOnce(new Promise(() => {}))
+    render(<SchoolSettingsTab />, { wrapper: Wrapper })
+
+    await userEvent.click(await screen.findByRole("button", { name: /Повторить/ }))
+
+    expect(screen.queryByRole("button", { name: /Сохранить/i })).not.toBeInTheDocument()
+  })
 })

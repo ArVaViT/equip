@@ -175,3 +175,21 @@ def test_mark_job_failed_truncates_long_error_text(db: Session, teacher):
     db.refresh(job)
     assert job.last_error is not None
     assert len(job.last_error) <= 2000
+
+
+def test_a_job_that_kills_its_worker_every_time_is_retired(db: Session, teacher):
+    """A worker that dies mid-run never reaches ``mark_job_failed``, so its
+    cap never applied: the stale-``processing`` branch re-claimed the job
+    forever (2026-10-03)."""
+    from datetime import UTC, datetime, timedelta
+
+    course = _make_course(db, teacher.id)
+    job = enqueue_course_translation(db, course.id)
+    job.status = TranslationJobStatus.PROCESSING
+    job.attempts = TRANSLATION_JOB_MAX_ATTEMPTS
+    job.started_at = datetime.now(UTC) - timedelta(hours=2)
+    db.commit()
+
+    assert claim_next_job(db) is None
+    db.refresh(job)
+    assert job.status == TranslationJobStatus.FAILED_PERMANENT

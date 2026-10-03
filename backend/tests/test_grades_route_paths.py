@@ -112,19 +112,16 @@ class TestGradingConfigVisibility:
 
 
 class TestGradeSummaryErrorPath:
-    def test_sqlalchemy_error_maps_to_500(
+    def test_sqlalchemy_error_is_the_global_503(
         self,
         client: TestClient,
         db: Session,
         teacher: User,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        """When ``calculate_all_student_grades`` raises a
-        ``SQLAlchemyError`` (DB hiccup, lock timeout) the route
-        catches it and surfaces a clean 500 envelope rather than a
-        bare Internal Server Error trace. Pin both the status code
-        and the error message so the frontend's banner mapping
-        doesn't silently regress."""
+        """A database error (DB hiccup, lock timeout) answers the way it
+        does on every other route: the global handler's 503 «try again»,
+        not a route-local 500 dressed as a validation failure."""
         from app.api.v1 import grades as route_mod
 
         course_id = _seed_published_course(db)
@@ -134,5 +131,5 @@ class TestGradeSummaryErrorPath:
 
         monkeypatch.setattr(route_mod, "calculate_all_student_grades", fake_calc)
         r = client.get(f"/api/v1/grades/course/{course_id}/summary")
-        assert r.status_code == 500
-        assert "Grade calculation failed" in r.json()["detail"]["message"]
+        assert r.status_code == 503
+        assert "try again" in r.json()["detail"]

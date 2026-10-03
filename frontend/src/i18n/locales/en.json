@@ -50,7 +50,6 @@
     "home": "Home",
     "courses": "Courses",
     "calendar": "Calendar",
-    "certificates": "Certificates",
     "manage": "Teaching",
     "manageCourses": "Courses I teach",
     "admin": "Admin",
@@ -74,8 +73,7 @@
   "landing": {
     "hero": {
       "manifesto": "Study Scripture in order, not in fragments",
-      "subline": "Free courses with real assessment and a certificate anyone can check — for people who take Scripture seriously.",
-      "facts": "Free · Open source · RU EN DE UK · Verifiable certificate"
+      "subline": "Free courses with real assessment and a certificate anyone can check — for people who take Scripture seriously."
     },
     "value": {
       "heading": "What's in Equip",
@@ -822,6 +820,7 @@
       "invitation_expired": "This invitation has expired.",
       "invitation_already_used": "This invitation has already been used.",
       "invitation_email_mismatch": "This invitation was sent to a different address.",
+      "invitation_other_school": "You already have a higher role in another school on Equip. Accepting would move you here and change it, so this invitation can't be used with this account. Ask whoever invited you to talk to us.",
       "plan_limit_reached": "You already have {{limit}} courses, which is as many as one teacher can keep at once. Delete one you no longer need, or ask an administrator.",
       "validation_failed": "Something you entered isn't right.",
       "legal_consent_required": "Please accept the current Terms of Use and Privacy Policy before making changes.",
@@ -2910,9 +2909,6 @@
     "prevMonth": "Previous month",
     "nextMonth": "Next month"
   },
-  "datePicker": {
-    "placeholder": "Pick a date"
-  },
   "dateTimePicker": {
     "placeholder": "Pick date + time",
     "hourAria": "Hour",
@@ -2936,6 +2932,7 @@
       "unusable": "This invitation has already been used, was revoked, or has expired. Ask the admin who invited you for a new one.",
       "emailMismatch": "This invitation was sent to a different email address.",
       "emailMismatchDetail": "This invitation was sent to <strong>{{invited}}</strong>, but you're signed in as <strong>{{current}}</strong>.",
+      "otherSchool": "You already have a higher role in another school on Equip. Accepting would move you here and change it, so this invitation can't be used with this account. Ask whoever invited you to talk to us.",
       "acceptFailed": "Couldn't accept this invitation. Please try again.",
       "accountExists": "You already have an Equip account with this email. Log in, then reopen this invite link to accept it."
     },
@@ -3136,6 +3133,7 @@
     "complete": "This course exists in every language and has been checked",
     "remaining": "{{count}} still to translate",
     "prepare": "Translate now",
+    "prepareFailed": "Couldn't start the translation — please try again.",
     "behindBy": "— {{count}} missing",
     "heldEdits": "{{count}} edits waiting on translation. Students see them once every language is ready.",
     "blockedEdits": "{{count}} edits are stuck. A translation failed its check and needs a person.",

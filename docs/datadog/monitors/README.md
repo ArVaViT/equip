@@ -16,15 +16,21 @@ dashboard-only.** Concretely:
 - UX / tuning signals (LCP, rage-clicks) and backend *warnings* →
   **dashboard-only** (no `@` handle in the message). They're worth watching,
   not worth an email.
-- Every monitor sets `notify_no_data: false` and `renotify_interval: 0` — one
-  email per incident, never a "no data" page, never re-nags.
+- Every monitor sets `renotify_interval: 0` — one email per incident, never
+  re-nags — and `notify_no_data: false`, except the ones whose whole job is to
+  notice silence: `translation-backlog-not-draining.json` (the metric stops
+  when the worker stops) and the RUM and telemetry "gone quiet" monitors,
+  which alert on an absence by query rather than by no-data.
 
-The live set is **12 monitors, 9 email / 3 dashboard-only**, plus the five
-translation monitors below, four of which are committed here and **not yet
-applied** — `scripts/apply_datadog_monitors.py --apply` creates them the
-moment a write-scoped application key exists (see "Applying" at the bottom).
-The 4 synthetic uptime checks (`/health`, frontend `/`, `/api/v1/courses`,
-Supabase) are managed in the Synthetics UI and are not mirrored here.
+The live set (checked 2026-10-03) is **18 monitors**: the 4 synthetic uptime
+checks (`/health`, frontend `/`, `/api/v1/courses`, Supabase), managed in the
+Synthetics UI and not mirrored here, and 14 others — 13 of the 16 files in
+this directory (the translation set applied 2026-08-22; the thinking-tokens
+monitor stays blocked and the two added 2026-10-03 are not applied yet, see
+their rows) plus «telemetry has gone quiet (no worker metric)», which is live
+but has no file yet. Two are
+dashboard-only: the warning spike and «An edit has been waiting on
+translation too long».
 
 ## Inventory (the mirrored monitors)
 
@@ -36,8 +42,10 @@ Supabase) are managed in the Synthetics UI and are not mirrored here.
 | `translation-jobs-stuck-processing.json` | jobs piling up in `processing` (workers dying mid-run) | **email** |
 | `equip-frontend-rum-error-spike.json` | spike in real-user JS errors (RUM) | **email** |
 | `equip-backend-warning-log-spike.json` | ≥20 backend `status:warning` logs in 15 min | dashboard-only |
+| `daily-challenge-replenish-failing.json` | the nightly generator produced no question twice in three days (added 2026-10-03, **not yet applied**) | **email** |
+| `backend-platform-5xx.json` | Vercel answered 5xx for the backend — crashes and timeouts the app's logger never sees (added 2026-10-03, **not yet applied**) | **email** |
 
-### Translation and spend (added 2026-08-17, not yet applied)
+### Translation and spend (added 2026-08-17, applied 2026-08-22)
 
 Nothing watched the translation pipeline's cost or health before this, which
 is how production spent 81 days on a thinking model at roughly 840 billed-but-

@@ -1,12 +1,14 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Response, status
+from sqlalchemy import exists, or_
 from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.models.course import Course
 from app.models.notification import Notification
 from app.models.user import User
 from app.schemas.locale import normalize_locale
@@ -19,6 +21,18 @@ from app.services.notification_service import render_notification
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
+#: The course a notification is about, when it is about one.
+_ABOUT_COURSE = Notification.meta["course_id"].as_string()
+
+#: Not about a course, or about one that is still there. A course in the
+#: bin (or purged) kept its announcements and events in the bell, each a
+#: link to a 404 (2026-10-03). Filtered when read rather than deleted, so
+#: restoring the course from the bin brings them back with it.
+_ABOUT_A_LIVE_COURSE = or_(
+    _ABOUT_COURSE.is_(None),
+    exists().where(Course.id == _ABOUT_COURSE, Course.deleted_at.is_(None)),
+)
+
 
 @router.get("", response_model=NotificationListResponse)
 def list_notifications(
@@ -29,11 +43,15 @@ def list_notifications(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    total = (db.query(sa_func.count(Notification.id)).filter(Notification.user_id == current_user.id).scalar()) or 0
+    total = (
+        db.query(sa_func.count(Notification.id))
+        .filter(Notification.user_id == current_user.id, _ABOUT_A_LIVE_COURSE)
+        .scalar()
+    ) or 0
 
     items = (
         db.query(Notification)
-        .filter(Notification.user_id == current_user.id)
+        .filter(Notification.user_id == current_user.id, _ABOUT_A_LIVE_COURSE)
         .order_by(Notification.created_at.desc())
         .offset((page - 1) * page_size)
         .limit(page_size)
@@ -75,6 +93,7 @@ def get_unread_count(
         .filter(
             Notification.user_id == current_user.id,
             Notification.is_read == False,
+            _ABOUT_A_LIVE_COURSE,
         )
         .scalar()
     ) or 0

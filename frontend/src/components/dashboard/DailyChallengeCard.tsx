@@ -112,6 +112,12 @@ export function DailyChallengeCard() {
     let cancelled = false
     const load = async () => {
       setLoading(true)
+      // A language switch reloads the card; what the last language could not
+      // show must not outlive it, or a question now in this language stays
+      // behind «not in your language yet».
+      setNotScheduled(false)
+      setNotTranslated(false)
+      setReveal(null)
       try {
         // The streak alongside the question, answered or not: the chip is
         // on the card in every state now. Its failure costs the chip, not
@@ -122,7 +128,8 @@ export function DailyChallengeCard() {
         ])
         if (cancelled) return
         setData(today)
-        setStreakAfter(streak?.current_streak ?? today.user_attempt?.streak_after ?? 0)
+        // Unknown is no chip, not «0» to somebody twenty days in.
+        setStreakAfter(streak?.current_streak ?? today.user_attempt?.streak_after ?? null)
         if (today.user_attempt) {
           // Already answered → the same reveal the submit showed. The
           // server sends the correct option and the explanation for a

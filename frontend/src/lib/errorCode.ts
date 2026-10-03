@@ -62,6 +62,7 @@ export type ErrorCode =
   | "invitation.expired"
   | "invitation.already_used"
   | "invitation.email_mismatch"
+  | "invitation.other_school"
   // plan limits
   | "plan.limit_reached"
   // validation

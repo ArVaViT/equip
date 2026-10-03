@@ -169,6 +169,19 @@ def stage_human_edit(
         .delete(synchronize_session=False)
     )
 
+    # One held edit per field, whatever language it was written in. The
+    # detector can file two saves of a short text under two languages; the
+    # upsert key includes the locale, so the field held both, promotion
+    # released the older one and dropped the newer, and the author's own view
+    # raised on two rows (2026-10-03).
+    db.query(StagedContentVersion).filter(
+        StagedContentVersion.entity_type == entity_type,
+        StagedContentVersion.entity_id == entity_id,
+        StagedContentVersion.field == field,
+        StagedContentVersion.origin == "human",
+        StagedContentVersion.locale != locale,
+    ).delete(synchronize_session=False)
+
     row = _upsert_staged(
         db,
         entity_type=entity_type,

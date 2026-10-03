@@ -1,19 +1,15 @@
 name: Frontend E2E
 
+# Every push to main and every PR, without a top-level `paths:` filter — the
+# always-run + detect-changes + aggregator pattern of backend-ci.yml. With the
+# filter, «Frontend E2E Pass» could not be a required check (a docs-only PR
+# would wait for it forever), so Dependabot's auto-merge, which waits only
+# for required checks, could merge past a red E2E run (2026-10-03).
 on:
   pull_request:
-    paths:
-      - "frontend/**"
-      - "backend/**"
-      - "supabase/**"
-      - ".github/workflows/frontend-e2e.yml"
+    branches: [main]
   push:
     branches: [main]
-    paths:
-      - "frontend/**"
-      - "backend/**"
-      - "supabase/**"
-      - ".github/workflows/frontend-e2e.yml"
 
 # Least-privilege token: this workflow only checks out the repo and uploads
 # build artifacts (report/traces) — neither needs write scope. Declaring it
@@ -41,7 +37,41 @@ concurrency:
 # Nothing here needs a secret, so fork and Dependabot PRs get the full
 # authenticated suite too — not just the public smoke specs.
 jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      e2e: ${{ steps.filter.outputs.e2e }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Detect E2E-relevant changes
+        id: filter
+        run: |
+          set -e
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+            if [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+              BASE_SHA="$(git rev-parse "$HEAD_SHA^")"
+            fi
+          fi
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
+          if echo "$CHANGED" | grep -qE '^frontend/|^backend/|^supabase/|^\.github/workflows/frontend-e2e\.yml$'; then
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "e2e=false" >> "$GITHUB_OUTPUT"
+          fi
+
   e2e:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -348,3 +378,32 @@ jobs:
           name: backend-log
           path: /tmp/backend.log
           retention-days: 7
+
+  # Required-check aggregator: always reports, so it can be required on main.
+  e2e-pass:
+    name: Frontend E2E Pass
+    needs: [detect-changes, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Verify E2E outcome
+        run: |
+          set -e
+          DC="${{ needs.detect-changes.result }}"
+          CHANGED="${{ needs.detect-changes.outputs.e2e }}"
+          E2E="${{ needs.e2e.result }}"
+          echo "detect-changes=$DC e2e_changed=$CHANGED e2e=$E2E"
+          if [ "$DC" != "success" ]; then
+            echo "::error::detect-changes did not succeed (result=$DC); cannot auto-pass."
+            exit 1
+          fi
+          if [ "$CHANGED" != "true" ]; then
+            echo "No E2E-relevant changes — auto-pass."
+            exit 0
+          fi
+          if [ "$E2E" != "success" ]; then
+            echo "::error::Frontend E2E failed."
+            exit 1
+          fi
+          echo "Frontend E2E succeeded."

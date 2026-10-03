@@ -25,10 +25,10 @@ class TestSubmissionFileUrl:
         SubmissionCreate(file_url="https://example.com/work.pdf")
 
     def test_none_is_accepted(self):
-        SubmissionCreate(file_url=None)
+        SubmissionCreate(file_url=None, content="My essay")
 
     def test_empty_string_normalizes_to_none(self):
-        result = SubmissionCreate(file_url="")
+        result = SubmissionCreate(file_url="", content="My essay")
         assert result.file_url is None
 
     def test_javascript_scheme_is_rejected(self):
@@ -98,3 +98,19 @@ class TestBlockFilePath:
     def test_backslash_traversal_rejected(self):
         with pytest.raises(ValidationError):
             BlockCreate(block_type="file", file_bucket="course-materials", file_path="chapter\\..\\evil.pdf")
+
+
+class TestASubmissionHasSomethingInIt:
+    """A declaration alone, or a blank text box, was accepted as the work and
+    marked the lesson done (2026-10-03)."""
+
+    def test_nothing_is_refused(self):
+        with pytest.raises(ValidationError):
+            SubmissionCreate()
+
+    def test_blank_text_is_refused(self):
+        with pytest.raises(ValidationError):
+            SubmissionCreate(content="   \n ")
+
+    def test_a_file_alone_is_enough(self):
+        SubmissionCreate(file_url="https://example.com/work.pdf")

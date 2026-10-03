@@ -4,6 +4,7 @@ import { History, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { gradesService } from "@/services/grades"
 import { formatDate } from "@/i18n/format"
+import { useLatestRequest } from "@/hooks/useLatestRequest"
 import type { GradeHistoryEntry } from "@/types"
 
 /** Actions this build has words for. See the fallback below for the rest. */
@@ -40,17 +41,30 @@ export function GradeHistory({ courseId, studentId }: { courseId: string; studen
     // what to whose grade.
     setEntries(null)
     setFailed(false)
+    // The request for the previous student is retired below and will not
+    // clear its own spinner.
+    setLoading(false)
   }, [courseId, studentId])
 
+  const begin = useLatestRequest()
+
+  useEffect(() => {
+    // …and a history still on its way for the previous student must not land
+    // in this one's drawer: starting a new request retires the old one.
+    begin()
+  }, [begin, courseId, studentId])
+
   const load = async () => {
+    const isCurrent = begin()
     setLoading(true)
     setFailed(false)
     try {
-      setEntries(await gradesService.getGradeHistory(courseId, studentId))
+      const history = await gradesService.getGradeHistory(courseId, studentId)
+      if (isCurrent()) setEntries(history)
     } catch {
-      setFailed(true)
+      if (isCurrent()) setFailed(true)
     } finally {
-      setLoading(false)
+      if (isCurrent()) setLoading(false)
     }
   }
 

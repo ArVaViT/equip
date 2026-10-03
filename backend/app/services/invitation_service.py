@@ -12,7 +12,7 @@ from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import increment, timing
 from app.models.course import Course
 from app.models.invitation import Invitation, InvitationScope, InvitationStatus
-from app.models.user import User, higher_role
+from app.models.user import User, UserRole, higher_role
 from app.services.audit_service import log_action
 from app.services.course_service._enrollment import enroll_user_in_course
 from app.services.email.invitation import send_invitation_email
@@ -479,6 +479,31 @@ def accept_invitation(
             ErrorCode.INVITATION_EMAIL_MISMATCH,
             status_code=status.HTTP_403_FORBIDDEN,
             message="This invitation was sent to a different email address",
+            context={"resource_type": "invitation"},
+        )
+
+    # Accepting moves the person to the inviting school, and the role never
+    # moves down. Across schools those two cannot both hold for somebody who
+    # holds more where they are than they are offered here: keeping the role
+    # carried a director or teacher of school A into school B as B's director
+    # or teacher; taking the offered one would silently cost them school A
+    # (a stale course link was enough). Neither is the inviter's call, so the
+    # invitation is refused before anything is written (2026-10-03).
+    # Platform staff are not a school's to give or take.
+    person = db.query(User).filter(User.id == current_user_id).first()
+    if (
+        person is not None
+        and invitation.scope != InvitationScope.PLATFORM.value
+        and person.organization_id is not None
+        and person.organization_id != invitation.organization_id
+        and person.role != UserRole.ADMIN.value
+        and higher_role(person.role, invitation.role) != invitation.role
+    ):
+        increment("equip.invitations.refused_total", reason="other_school", scope=invitation.scope)
+        raise equip_error(
+            ErrorCode.INVITATION_OTHER_SCHOOL,
+            status_code=status.HTTP_409_CONFLICT,
+            message="This account holds a higher role in another school",
             context={"resource_type": "invitation"},
         )
 

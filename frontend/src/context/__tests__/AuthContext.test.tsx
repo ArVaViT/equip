@@ -102,10 +102,10 @@ function makeSession(user: SupabaseUser): Session {
 }
 
 function mockProfileFetch(profile: Record<string, unknown> | null, error?: unknown) {
-  // supabase.from(...).select(...).eq(...).single() returns a thenable that
+  // supabase.from(...).select(...).eq(...).maybeSingle() returns a thenable that
   // yields `{ data, error }`.
   const single = vi.fn().mockResolvedValue({ data: profile, error: error ?? null })
-  const eq = vi.fn().mockReturnValue({ single })
+  const eq = vi.fn().mockReturnValue({ maybeSingle: single })
   const select = vi.fn().mockReturnValue({ eq })
   from.mockReturnValue({ select })
   return { single, eq, select }
@@ -282,6 +282,22 @@ describe("AuthContext", () => {
     expect(screen.getByTestId("user").textContent).toBe("anon")
   })
 
+  it("forgets where the signed-out person was heading", async () => {
+    // A password sign-in returns by router state and never reads the key.
+    sessionStorage.setItem("equip:returnTo", "/teacher/courses/abc")
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>,
+    )
+
+    await act(async () => {
+      authHandler!("SIGNED_OUT", null)
+    })
+
+    expect(sessionStorage.getItem("equip:returnTo")).toBeNull()
+  })
+
   it("logout() calls authService.logout and clears state even on error", async () => {
     mockProfileFetch({
       id: "user-1",
@@ -400,10 +416,10 @@ describe("AuthContext", () => {
     })
     from
       .mockReturnValueOnce({
-        select: () => ({ eq: () => ({ single: slowSingle }) }),
+        select: () => ({ eq: () => ({ maybeSingle: slowSingle }) }),
       })
       .mockReturnValueOnce({
-        select: () => ({ eq: () => ({ single: fastSingle }) }),
+        select: () => ({ eq: () => ({ maybeSingle: fastSingle }) }),
       })
 
     render(

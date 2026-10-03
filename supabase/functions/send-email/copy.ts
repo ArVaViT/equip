@@ -336,9 +336,9 @@ export const GOTRUE_EMAIL_ACTION_TYPES = [
 /**
  * Falls back to signup for an action type we have no copy for.
  *
- * The fallback is deliberate — a new action type should still send *an*
- * email rather than none — but it is no longer silent: a type we do not
- * recognise at all is a bug in this table, and the caller logs it.
+ * The hook never reaches the fallback any more — it checks `hasCopyFor`
+ * first and sends nothing for a type without wording (see `index.ts`). The
+ * fallback stays so a caller that skips the check still gets a valid `Copy`.
  */
 export function copyFor(emailType: string, locale: Locale): Copy {
   const byLocale = COPY[emailType] ?? COPY.signup;

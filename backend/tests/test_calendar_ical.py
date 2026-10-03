@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 def secret(monkeypatch: pytest.MonkeyPatch) -> str:
     """Make the JWT secret deterministic for the tests so we can mint
     and decode tokens without touching the real Supabase one."""
-    s = "test-ical-secret"
+    s = "test-ical-secret-" + "x" * 32
     monkeypatch.setattr(settings, "JWT_SECRET_KEY", s)
     monkeypatch.setattr(settings, "JWT_ALGORITHM", "HS256")
     return s

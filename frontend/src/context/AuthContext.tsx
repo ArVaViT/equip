@@ -6,6 +6,7 @@ import type { User } from "@/types"
 import { AuthContext } from "./auth-context"
 import { setDatadogUser, clearDatadogUser } from "@/lib/datadog"
 import { cacheClear } from "@/lib/cache"
+import { takeReturnPath } from "@/lib/authRedirect"
 import { setDisplayTimeZone } from "@/i18n/timeZone"
 import { hasStoredSupabaseSession } from "@/lib/storedSession"
 
@@ -52,7 +53,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .from("profiles")
       .select("*")
       .eq("id", userId)
-      .single()
+      // maybeSingle: a profile row that does not exist yet (the moment after
+      // sign-up) is an empty answer, not a 406 counted as an error in RUM.
+      .maybeSingle()
       .then(
         ({ data, error }) => {
           // Clear inflight regardless of outcome — a failed fetch
@@ -194,6 +197,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Drop the signed-out user's cached API payloads so the next
           // account on this device starts from a cold cache.
           cacheClear()
+          // And where they were heading: a password sign-in returns by router
+          // state and never reads the remembered path, so it outlived them
+          // and sent the tab's next Google or emailed sign-in there.
+          takeReturnPath()
           setLoading(false)
         }
       },

@@ -95,5 +95,8 @@ describe("SubmissionGrader — the number belongs to whoever owns it", () => {
     await userEvent.click(screen.getByRole("button", { name: /Сохранить/i }))
 
     await waitFor(() => expect(gradeSubmission).toHaveBeenCalled())
+    // As a status the server takes: the work's own «submitted» was sent
+    // as is and refused (422) unless the select had been touched.
+    expect(gradeSubmission.mock.calls[0]?.[1].status).toBe("graded")
   })
 })

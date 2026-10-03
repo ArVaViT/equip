@@ -48,6 +48,7 @@ from app.services.translation.course_pipeline import (
     merge_orchestrator_reports,
     translate_course_content,
 )
+from app.services.translation.job_retention import prune_finished_jobs
 from app.services.translation.orchestrator import OrchestratorReport
 from app.services.translation.queue import (
     claim_next_job,
@@ -250,7 +251,7 @@ def _prune_history(db: Session) -> PruneReport:
         logger.debug("worker: idle prune skipped (another tick holds it)")
         return PruneReport()
     try:
-        return prune_superseded_machine_translations(
+        report = prune_superseded_machine_translations(
             db,
             older_than_days=settings.TRANSLATION_HISTORY_RETENTION_DAYS,
             max_groups=_IDLE_PRUNE_GROUP_LIMIT,
@@ -259,6 +260,16 @@ def _prune_history(db: Session) -> PruneReport:
         db.rollback()
         logger.warning("worker: idle prune failed: %s", exc)
         return PruneReport()
+    # Finished jobs share the window: same claim, same "housekeeping never
+    # fails a tick" rule. See ``services/translation/job_retention.py``.
+    try:
+        jobs = prune_finished_jobs(db, older_than_days=settings.TRANSLATION_HISTORY_RETENTION_DAYS)
+        if jobs:
+            logger.info("worker: idle queue, pruned %d finished translation job(s)", jobs)
+    except Exception as exc:
+        db.rollback()
+        logger.warning("worker: finished-job prune failed: %s", exc)
+    return report
 
 
 def _run_one_tick(db: Session) -> WorkerTickResponse:

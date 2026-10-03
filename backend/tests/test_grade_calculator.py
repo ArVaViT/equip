@@ -5,7 +5,6 @@ boundary. The existing ``test_certificates_and_grades.py`` covers the
 HTTP/route surface; this file targets the service-layer arithmetic
 that gets exercised by both the single-student and batch entry points:
 
-* ``score_to_letter`` — threshold rounding (incl. negative score → F).
 * ``calculate_student_grade_for_course`` — the convenience wrapper used
   by the per-student grades page; exercises the quiz/assignment/
   participation branches together with realistic weights.
@@ -24,8 +23,6 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-import pytest
-
 from app.models.assignment import AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter
@@ -36,7 +33,6 @@ from app.models.user import User, UserRole
 from app.services.grade_calculator import (
     calculate_all_student_grades,
     calculate_student_grade_for_course,
-    score_to_letter,
 )
 
 from ._cv_helpers import (
@@ -133,46 +129,6 @@ def _enroll(db: Session, student_id: uuid.UUID, course_id: str) -> Enrollment:
     db.add(enrollment)
     db.commit()
     return enrollment
-
-
-class TestScoreToLetter:
-    """Letter-grade thresholds — pinned so the API contract that
-    students see (and the certificate UI prints) doesn't drift under
-    refactor.
-    """
-
-    @pytest.mark.parametrize(
-        "score, expected",
-        [
-            (100.0, "A"),
-            (95.0, "A"),
-            (90.0, "A"),
-            (89.99, "B"),
-            (80.0, "B"),
-            (79.99, "C"),
-            (70.0, "C"),
-            (69.99, "D"),
-            (60.0, "D"),
-            (59.99, "F"),
-            (0.0, "F"),
-        ],
-    )
-    def test_threshold_table(self, score: float, expected: str) -> None:
-        assert score_to_letter(score) == expected
-
-    def test_negative_score_falls_through_to_F(self) -> None:
-        """The ``LETTER_GRADES`` table has a ``(0, "F")`` floor entry,
-        so a negative score (impossible in production but tests pin the
-        defensive ``return "F"`` line at the bottom of the function so
-        a future table edit that drops the 0-floor still degrades
-        safely instead of returning the previous letter from leak.
-        """
-        # This exercises the ``return "F"`` after the loop — only
-        # reachable if ``LETTER_GRADES`` lost its 0-threshold floor.
-        # We don't mutate the constant here; the floor catches everything
-        # at or above 0. A negative score still returns "F" via the
-        # 0-threshold row, which is what we expect today.
-        assert score_to_letter(-10.0) == "F"
 
 
 class TestCalculateStudentGradeForCourse:

@@ -190,6 +190,47 @@ describe("QuizTaker", () => {
     ])
   })
 
+  it("opens the next lesson's quiz on its questions, not on the last result", async () => {
+    // The lesson page stays mounted from lesson to lesson; «You passed» and
+    // the previous score came along under the next quiz's title.
+    getChapterQuiz.mockImplementation(async (chapterId: string) =>
+      chapterId === "chap-1" ? makeQuiz() : makeQuiz({ id: "quiz-2", title: "Genesis 2 Quiz" }),
+    )
+    getMyQuizAttempts.mockResolvedValue([])
+    submitQuiz.mockResolvedValue(makeAttempt())
+    const user = userEvent.setup()
+
+    const { rerender } = render(<QuizTaker chapterId="chap-1" />, renderOpts)
+    await waitFor(() => screen.getByText("Genesis 1 Quiz"))
+    await user.click(screen.getByLabelText("6"))
+    await user.click(screen.getByRole("button", { name: "True" }))
+    await user.click(screen.getByRole("button", { name: /submit quiz/i }))
+    await waitFor(() => expect(screen.getByText(/you passed/i)).toBeInTheDocument())
+
+    rerender(<QuizTaker chapterId="chap-2" />)
+    await waitFor(() => screen.getByText("Genesis 2 Quiz"))
+
+    expect(screen.queryByText(/you passed/i)).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /submit quiz/i })).toBeDisabled()
+  })
+
+  it("still says the attempt count is unknown after a submit", async () => {
+    // Unknown history plus one new attempt is still unknown, not «1 / 3».
+    getChapterQuiz.mockResolvedValue(makeQuiz({ max_attempts: 3 }))
+    getMyQuizAttempts.mockRejectedValue(new Error("offline"))
+    submitQuiz.mockResolvedValue(makeAttempt())
+    const user = userEvent.setup()
+
+    render(<QuizTaker chapterId="chap-1" />, renderOpts)
+    await waitFor(() => screen.getByText("Genesis 1 Quiz"))
+    await user.click(screen.getByLabelText("6"))
+    await user.click(screen.getByRole("button", { name: "True" }))
+    await user.click(screen.getByRole("button", { name: /submit quiz/i }))
+    await waitFor(() => expect(screen.getByText(/you passed/i)).toBeInTheDocument())
+
+    expect(screen.getByText(/Couldn't check how many attempts/i)).toBeInTheDocument()
+  })
+
   it("shows a toast when the submission fails", async () => {
     getChapterQuiz.mockResolvedValue(makeQuiz())
     getMyQuizAttempts.mockResolvedValue([])
@@ -251,5 +292,32 @@ describe("QuizTaker", () => {
       expect(screen.getByText("Genesis 1 Quiz")).toBeInTheDocument()
     })
     expect(await axe(container)).toHaveNoViolations()
+  })
+
+  it("does not count an essay under its minimum length as answered", async () => {
+    await i18n.changeLanguage("en")
+    getChapterQuiz.mockResolvedValue(
+      makeQuiz({
+        questions: [
+          {
+            id: "qe",
+            quiz_id: "quiz-1",
+            question_text: "Why?",
+            question_type: "essay",
+            points: 10,
+            order_index: 0,
+            min_words: 50,
+            options: [],
+          } as never,
+        ],
+      }),
+    )
+    getMyQuizAttempts.mockResolvedValue([])
+    render(<QuizTaker chapterId="chap-1" />, renderOpts)
+
+    await userEvent.type(await screen.findByRole("textbox"), "three short words")
+
+    // The counter and the button agree: not answered yet.
+    expect(screen.getByText(/0\s*\/\s*1/)).toBeInTheDocument()
   })
 })

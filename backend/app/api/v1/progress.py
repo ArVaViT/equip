@@ -197,9 +197,19 @@ def mark_chapter_read(
         .filter(ChapterProgress.user_id == current_user.id, ChapterProgress.chapter_id == chapter_id)
         .first()
     )
+    # On a course with nothing to assess, reading is what moves progress (see
+    # ``fresh_progress``); on any other it changes nothing — so only there is
+    # it recomputed. Every recompute also writes a metric line, and «read» is
+    # the most frequent thing anybody does here.
+    reading_moves_progress = bool(enrolled) and not _has_live_gradable_chapter(db, course_id)
     if progress is not None and progress.completed:
         # Idempotent: pressing it twice is the same statement made twice, and
-        # the second press must not overwrite when it was first read.
+        # the second press must not overwrite when it was first read. It still
+        # recomputes where reading counts: somebody who read it all before
+        # reading counted sat at 0%, and this press was their only way out.
+        if reading_moves_progress:
+            sync_enrollment_progress(db, current_user.id, course_id)
+            db.commit()
         return {"chapter_id": chapter_id, "completed": True, "completed_at": progress.completed_at}
 
     if progress is None:
@@ -210,9 +220,24 @@ def mark_chapter_read(
     #: chapter a teacher ticked and one a student read are different facts.
     progress.completion_type = "self"
     progress.completed_at = datetime.now(UTC)
+    if reading_moves_progress:
+        sync_enrollment_progress(db, current_user.id, course_id)
     db.commit()
     db.refresh(progress)
     return {"chapter_id": chapter_id, "completed": True, "completed_at": progress.completed_at}
+
+
+def _has_live_gradable_chapter(db: Session, course_id: str) -> bool:
+    return (
+        db.query(Chapter.id)
+        .filter(
+            Chapter.course_id == course_id,
+            Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES),
+            Chapter.deleted_at.is_(None),
+        )
+        .first()
+        is not None
+    )
 
 
 @router.put("/chapter/{chapter_id}/student/{student_id}/complete")

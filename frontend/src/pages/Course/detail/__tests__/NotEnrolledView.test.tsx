@@ -272,3 +272,42 @@ describe("NotEnrolledView — a visitor who is not signed in", () => {
     expect(screen.getByText("login, back to /courses/c-1?ref=pastor")).toBeInTheDocument()
   })
 })
+
+describe("NotEnrolledView — the course's own enrolment window", () => {
+  // The catalog card said «Enrollment closed» while this page offered the
+  // button, and the server refused the click (2026-10-03).
+  it("offers no enrolment once the window has closed", async () => {
+    await i18n.changeLanguage("en")
+    render(
+      <NotEnrolledView
+        course={makeCourse({ status: "published", enrollment_end: "2020-01-01T00:00:00Z" })}
+        cohorts={[]}
+        isOwner={false}
+        isSignedIn
+        enrolling={false}
+        onEnroll={() => {}}
+      />,
+      { wrapper: Wrapper },
+    )
+
+    expect(screen.getByRole("button", { name: /Enrollment not available/i })).toBeDisabled()
+    expect(screen.getByText("Enrollment closed")).toBeInTheDocument()
+  })
+
+  it("still offers it while the window is open", async () => {
+    await i18n.changeLanguage("en")
+    render(
+      <NotEnrolledView
+        course={makeCourse({ status: "published", enrollment_end: "2999-01-01T00:00:00Z" })}
+        cohorts={[]}
+        isOwner={false}
+        isSignedIn
+        enrolling={false}
+        onEnroll={() => {}}
+      />,
+      { wrapper: Wrapper },
+    )
+
+    expect(screen.getByRole("button", { name: /Enroll in Course/i })).toBeEnabled()
+  })
+})

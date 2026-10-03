@@ -188,8 +188,18 @@ def replenish_one_question(
         return ReplenishOutcome(status="error", passage=label, detail=f"generation: {exc}")
 
     if not outcome.created_question_ids:
-        logger.info("replenish: no survivors for %s (all candidates rejected)", label)
-        return ReplenishOutcome(status="no_survivors", passage=label, detail="all candidates rejected at a gate")
+        # Which gate, in the line itself: «all candidates rejected» four
+        # nights running (2026-09-29..10-02) said nothing about where, and
+        # the answer then lived only in the events table. WARNING, so it
+        # reaches Datadog — a night with no new question is a failed run.
+        gates = (
+            f"scripture={outcome.rejected_at_scripture} doctrinal={outcome.rejected_at_doctrinal} "
+            f"bilingual={outcome.rejected_at_bilingual}"
+        )
+        logger.warning(
+            "replenish: no survivors for %s (rejected %s; %s)", label, gates, "; ".join(outcome.errors) or "no error"
+        )
+        return ReplenishOutcome(status="no_survivors", passage=label, detail=f"all candidates rejected ({gates})")
 
     qid = outcome.created_question_ids[0]
     question = db.query(DailyChallengeQuestion).filter_by(id=qid).one()

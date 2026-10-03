@@ -94,15 +94,17 @@ Deno.serve(async (req: Request) => {
       { supabaseUrl: SUPABASE_URL, secretKey: PROFILE_READ_KEY },
     );
     if (!hasCopyFor(emailType)) {
-      // Loud, because the fallback is indistinguishable from working: an
-      // unrecognised type still sends an email, just the wrong one. This is
-      // how "magic_link" vs "magiclink" survived — every sign-in link was
-      // emailed as a registration confirmation and nothing said so.
-      console.error(JSON.stringify({
-        level: "error",
-        msg: "no copy for email_action_type — sending the signup wording instead",
-        email_type: emailType,
-      }));
+      // Nothing rather than the wrong thing. Production Auth has the
+      // «password changed», «email changed» and «identity linked» notices
+      // switched on, and none of them has wording here (nor do `invite` and
+      // `reauthentication`, which no flow of ours triggers): the old fallback
+      // mailed each one as «Welcome — confirm your email» with a link
+      // (2026-10-03). A notice nobody receives is a gap; a notice that
+      // reads as a stranger's signup is a phishing lookalike. Logged to
+      // Datadog, where the send-email monitor can see it.
+      console.error(JSON.stringify({ level: "error", msg: "no copy for email_action_type — not sent", email_type: emailType }));
+      await logToDatadog("error", "no copy for email_action_type — not sent", { email_type: emailType });
+      return new Response(JSON.stringify({ skipped: emailType }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
     const copy = copyFor(emailType, locale);
     const name = user.user_metadata?.full_name || "";

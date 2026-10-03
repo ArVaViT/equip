@@ -30,7 +30,6 @@ function containsClass(code: string, className: string): boolean {
 const FILES = [
   resolve(SRC, "components/ui/badge.tsx"),
   resolve(SRC, "components/ui/buttonVariants.ts"),
-  resolve(SRC, "components/ui/date-picker.tsx"),
   resolve(SRC, "components/ui/date-range-picker.tsx"),
   resolve(SRC, "components/ui/datetime-picker.tsx"),
   resolve(SRC, "components/ui/dialog.tsx"),

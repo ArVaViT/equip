@@ -278,7 +278,9 @@ function SingleAssignment({
   // them and for whoever marks it.
   const showForm = !unknown && (!submission || canResubmit)
 
-  const isOverdue = assignment.due_date && new Date(assignment.due_date) < new Date()
+  // Overdue is about work not handed in. Work handed in before the date
+  // read «Overdue» in red the day after (2026-10-03).
+  const isOverdue = !submission && assignment.due_date && new Date(assignment.due_date) < new Date()
 
   const statusConfig: Record<string, { icon: React.ReactNode; label: string; color: string }> = useMemo(
     () => ({
@@ -448,7 +450,7 @@ function SingleAssignment({
               {/* Quiet, and only once there is something to say. A student who
                   has typed one word does not need reassurance; one who comes
                   back to find their essay still there needs to know why. */}
-              {savedAt !== null && (
+              {(restored !== null || savedAt !== null) && (
                 <p className="text-xs text-ink-muted" role="status">
                   {restored ? t("assignment.draftRestored") : t("assignment.draftSaved")}
                 </p>

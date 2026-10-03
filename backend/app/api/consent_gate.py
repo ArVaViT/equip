@@ -53,8 +53,7 @@ cost in practice.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from fastapi import Depends, Request, status
 from fastapi.security import HTTPAuthorizationCredentials  # noqa: TC002 — used by FastAPI Depends at runtime
@@ -128,39 +127,15 @@ EXEMPT_PREFIXES: tuple[str, ...] = (
     "/api/v1/email/unsubscribe",
 )
 
-#: The registry's role-aware answer, when the registry has one.
-#:
-#: ``outstanding_for(role, accepted)`` arrives with the document registry
-#: (PR #1291): it knows that a teacher signs the teacher terms and a student
-#: does not, and that a version published as a correction does not bring
-#: anybody back to the gate. This module treats the registry as data and
-#: asks it the question rather than re-deriving the answer, so a new
-#: document or a new role changes one table and nothing here.
-#:
-#: Until that lands, ``_outstanding_from_current_versions`` below answers the
-#: same question from what today's registry does expose — one current version
-#: per signable document, required of everybody. Same shape, coarser rule,
-#: and coarser in the safe direction: it can ask somebody for a document they
-#: would not have been asked for, never the reverse.
-_RoleAwareOutstanding = Callable[[str, set[tuple[str, str]]], Sequence[Any]]
-_registry_outstanding: _RoleAwareOutstanding | None = getattr(legal_registry, "outstanding_for", None)
-
-
-def _outstanding_from_current_versions(role: str, accepted: set[tuple[str, str]]) -> tuple[str, ...]:
-    """Which signable documents this person has not accepted at its current version."""
-    required = set(legal_registry.required_slugs())
-    return tuple(
-        slug
-        for slug, version in sorted(legal_registry.LEGAL_DOCUMENTS.items())
-        if slug in required and (slug, version) not in accepted
-    )
-
 
 def outstanding_slugs(role: str, accepted: set[tuple[str, str]]) -> tuple[str, ...]:
-    """What this person still owes, as slugs, newest rule first."""
-    if _registry_outstanding is not None:
-        return tuple(str(spec.slug) for spec in _registry_outstanding(role, accepted))
-    return _outstanding_from_current_versions(role, accepted)
+    """What this person still owes, as slugs, newest rule first.
+
+    The registry answers it (``outstanding_for``): it knows that a teacher
+    signs the teacher terms and a student does not, and that a version
+    published as a correction brings nobody back to the gate.
+    """
+    return tuple(str(spec.slug) for spec in legal_registry.outstanding_for(role, accepted))
 
 
 def user_owes_consent(db: Session, user: User) -> tuple[str, ...]:

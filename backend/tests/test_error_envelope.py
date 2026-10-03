@@ -72,6 +72,7 @@ def test_enum_values_are_stable_strings():
         "invitation.expired",
         "invitation.already_used",
         "invitation.email_mismatch",
+        "invitation.other_school",
         "plan.limit_reached",
         "validation.failed",
         "legal.consent_required",

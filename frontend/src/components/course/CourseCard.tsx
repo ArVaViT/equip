@@ -9,6 +9,7 @@ import { CourseCoverFallback } from "./CourseCoverFallback"
 import { toProxyImage } from "@/lib/images"
 import { formatDate } from "@/i18n/format"
 import { orNotTranslated } from "@/lib/untranslated"
+import { enrollmentState } from "@/lib/enrollmentWindow"
 
 interface CourseCardProps {
   course: Course
@@ -21,18 +22,6 @@ interface CourseCardProps {
    * lookup — never fetched per-card.
    */
   progress?: number | null
-}
-
-type EnrollmentState = "opens" | "closed" | "open" | null
-
-function enrollmentState(start?: string | null, end?: string | null): { state: EnrollmentState; date?: Date } {
-  if (!start && !end) return { state: null }
-  const now = new Date()
-  const s = start ? new Date(start) : null
-  const e = end ? new Date(end) : null
-  if (s && now < s) return { state: "opens", date: s }
-  if (e && now > e) return { state: "closed" }
-  return { state: "open" }
 }
 
 function EnrollmentBadge({ start, end }: { start?: string | null; end?: string | null }) {

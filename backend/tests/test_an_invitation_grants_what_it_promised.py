@@ -173,6 +173,58 @@ class TestWhatAcceptingGrants:
         # ...and the rest of the invitation still happened.
         assert db.query(Enrollment).filter(Enrollment.user_id == INVITEE_ID).count() == 1
 
+    @pytest.mark.parametrize("role", [UserRole.DIRECTOR.value, UserRole.TEACHER.value])
+    def test_a_higher_role_elsewhere_refuses_and_writes_nothing(self, db: Session, admin: User, role: str) -> None:
+        """Accepting moves the person to the inviting school; the role never
+        moves down. For a director or teacher of school B offered a student
+        seat in school A both cannot hold: keeping the role carried it into A
+        (2026-10-03), dropping it would cost them B without a word. Refused,
+        and the invitation is still there.
+        """
+        db.add(Organization(id=OTHER_ORGANIZATION_ID, slug="other-school", public_name="Other School"))
+        db.commit()
+        _invitee(db, role=role, organization_id=OTHER_ORGANIZATION_ID)
+        invitation = _invitation(db, role=UserRole.STUDENT.value)
+
+        with pytest.raises(Exception) as exc:
+            _accept(db, invitation)
+        assert getattr(exc.value, "status_code", None) == 409
+
+        db.rollback()
+        user = db.query(User).filter(User.id == INVITEE_ID).one()
+        assert (user.role, user.organization_id) == (role, OTHER_ORGANIZATION_ID)
+        still = db.query(Invitation).filter(Invitation.id == invitation.id).one()
+        assert still.status == InvitationStatus.PENDING.value
+
+    def test_a_student_of_another_school_moves_to_this_one(self, db: Session, admin: User) -> None:
+        db.add(Organization(id=OTHER_ORGANIZATION_ID, slug="other-school", public_name="Other School"))
+        db.commit()
+        _invitee(db, organization_id=OTHER_ORGANIZATION_ID)
+        invitation = _invitation(db, role=UserRole.STUDENT.value)
+
+        _accept(db, invitation)
+
+        user = db.query(User).filter(User.id == INVITEE_ID).one()
+        assert (user.role, user.organization_id) == (UserRole.STUDENT.value, TEST_ORGANIZATION_ID)
+
+    def test_a_director_of_this_school_keeps_directing(self, db: Session, admin: User) -> None:
+        _invitee(db, role=UserRole.DIRECTOR.value, organization_id=TEST_ORGANIZATION_ID)
+        invitation = _invitation(db, role=UserRole.STUDENT.value)
+
+        _accept(db, invitation)
+
+        assert db.query(User).filter(User.id == INVITEE_ID).one().role == UserRole.DIRECTOR.value
+
+    def test_staff_keep_their_role_wherever_they_sit(self, db: Session, admin: User) -> None:
+        db.add(Organization(id=OTHER_ORGANIZATION_ID, slug="other-school", public_name="Other School"))
+        db.commit()
+        _invitee(db, role=UserRole.ADMIN.value, organization_id=OTHER_ORGANIZATION_ID)
+        invitation = _invitation(db, role=UserRole.STUDENT.value)
+
+        _accept(db, invitation)
+
+        assert db.query(User).filter(User.id == INVITEE_ID).one().role == UserRole.ADMIN.value
+
 
 class TestWhatAcceptingRefuses:
     def test_a_vanished_course_does_not_burn_the_invitation(self, db: Session, admin: User) -> None:

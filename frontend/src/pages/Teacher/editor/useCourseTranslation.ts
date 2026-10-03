@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import i18n from "@/i18n/config"
+import { getErrorDetail } from "@/lib/errorDetail"
+import { toast } from "@/lib/toast"
 
 import {
   courseTranslationService,
@@ -78,6 +81,10 @@ export function useCourseTranslation(courseId: string | undefined): UseCourseTra
       // "in progress" on the same click rather than at the next tick.
       await load()
       inFlight.current = true
+    } catch (err) {
+      // The caller fires and forgets (`void prepare()`): without this a
+      // refusal was an unhandled rejection and a spinner that just stopped.
+      toast({ title: getErrorDetail(err, i18n.t("courseTranslation.prepareFailed")), variant: "destructive" })
     } finally {
       setPreparing(false)
     }

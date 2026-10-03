@@ -145,6 +145,30 @@ def claim_next_job(db: Session) -> TranslationJob | None:
     minimised.
     """
     stale_before = datetime.now(UTC) - _PROCESSING_STALE_AFTER
+    # A worker that dies mid-run never reaches ``mark_job_failed``, so the
+    # cap that applies there never applied here: a job that crashes its
+    # worker every time was re-claimed forever (attempts=41 in a probe,
+    # 2026-10-03). Out of attempts and abandoned is permanent.
+    retired = (
+        db.query(TranslationJob)
+        .filter(
+            TranslationJob.status == TranslationJobStatus.PROCESSING,
+            TranslationJob.started_at < stale_before,
+            TranslationJob.attempts >= TRANSLATION_JOB_MAX_ATTEMPTS,
+        )
+        .update(
+            {
+                TranslationJob.status: TranslationJobStatus.FAILED_PERMANENT,
+                TranslationJob.finished_at: datetime.now(UTC),
+                TranslationJob.last_error: "worker died mid-run on every attempt",
+            },
+            synchronize_session=False,
+        )
+    )
+    if retired:
+        # Its own transaction: the claim below may find nothing, and that
+        # path commits nothing.
+        db.commit()
     job = (
         db.execute(
             select(TranslationJob)

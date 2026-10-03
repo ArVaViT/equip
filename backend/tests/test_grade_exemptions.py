@@ -920,3 +920,17 @@ def test_marking_a_chapter_complete_by_hand_is_written_down(client, db: Session,
     client.put(f"/api/v1/progress/chapter/c-audit-complete-ch0/student/{STUDENT_ID}/incomplete")
     removed = db.query(AuditLog).filter(AuditLog.action == "chapter_completion_removed_by_teacher").first()
     assert removed is not None, "and taking it back clears completed_by, so it needs its own entry"
+
+
+def test_a_malformed_student_id_is_a_422_not_a_500(client, db: Session, teacher, student) -> None:
+    """The ids are typed at the route: «not-a-uuid» is the caller's mistake."""
+    course, (first, _second) = _course_with_two_assignments(db, teacher, course_id="c-excuse-badid")
+    base = f"/api/v1/grades/course/{course.id}/student/not-a-uuid/exemptions"
+
+    assert client.get(base).status_code == 422
+    assert client.post(base, json={"item_type": "assignment", "item_id": str(first.id)}).status_code == 422
+    assert client.delete(f"{base}/assignment/{first.id}").status_code == 422
+    assert (
+        client.delete(f"/api/v1/grades/course/{course.id}/student/{STUDENT_ID}/exemptions/assignment/x").status_code
+        == 422
+    )

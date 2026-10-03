@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Literal
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.staged_content_version import StagedContentVersion
 from app.schemas.locale import LOCALE_CODES
+from app.services.translation.hash import compute_source_hash
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -150,13 +151,18 @@ def staged_status_for_course(db: Session, course: Course) -> list[StagedFieldSta
         key = (human.entity_type, human.entity_id, human.field)
         translations = staged_by_key.get(key, {})
         exempt = hand_translated.get(key, set())
+        current = compute_source_hash(human.text, locale=human.locale)
         pending: list[str] = []
         blocked: list[str] = []
         for locale in LOCALE_CODES:
             if locale == human.locale or locale in exempt:
                 continue
             staged_row = translations.get(locale)
-            if staged_row is None:
+            # A translation of the words before the latest save is no
+            # translation of these: counted as done, it released the new
+            # source beside the old translations — the mixed-language state
+            # this table exists to prevent (2026-10-03).
+            if staged_row is None or (staged_row.origin == "mt" and staged_row.source_hash != current):
                 pending.append(locale)
             elif staged_row.status == ContentVersionStatus.OK:
                 continue
@@ -206,6 +212,9 @@ def author_text(db: Session, *, entity_type: str, entity_id: str, field: str) ->
             StagedContentVersion.field == field,
             StagedContentVersion.origin == "human",
         )
+        # The newest, should a field hold two from before one-per-field.
+        .order_by(StagedContentVersion.updated_at.desc().nullslast(), StagedContentVersion.created_at.desc())
+        .limit(1)
         .scalar()
     )
 

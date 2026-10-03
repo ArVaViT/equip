@@ -13,7 +13,7 @@
       "destination": "https://rrisqutxlkamwfhcashl.supabase.co/storage/v1/object/public/avatars/:path*"
     },
     {
-      "source": "/((?!assets/).*)",
+      "source": "/((?!assets/|video/).*)",
       "destination": "/index.html"
     }
   ],
@@ -24,6 +24,15 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/img/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
         }
       ]
     },

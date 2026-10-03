@@ -17,7 +17,7 @@ from app.models.certificate import Certificate, CertificateStatus
 from app.models.course import Course
 from app.models.enrollment import Enrollment
 from app.models.user import User, UserRole
-from app.schemas.certificate import CertificateResponse, CertificateVerifyResponse
+from app.schemas.certificate import CertificateBlockerOut, CertificateResponse, CertificateVerifyResponse
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services import certificate_service
 from app.services.certificate_readiness import certificate_blockers
@@ -326,7 +326,9 @@ def _enrich_pending_certs(
                         or (course_titles.get(str(cert.course_id)) if cert.course_id else cert.archived_course_title)
                     ),
                     "teacher_approver_name": ((approver[0] or approver[1]) if approver else None),
-                    "blockers": blockers_by_cert.get(cert.id, []),
+                    # ``model_copy`` does not validate: dicts passed straight in
+                    # stayed dicts and every serialisation warned about it.
+                    "blockers": [CertificateBlockerOut(**b) for b in blockers_by_cert.get(cert.id, [])],
                 }
             )
         )
@@ -548,10 +550,16 @@ def verify_certificate(
         )
     if course_title is None:
         course_title = cert.archived_course_title
+    # The name as the document carries it (``_snapshot_letterhead``): a
+    # rename after issuance must not make the page disagree with the paper
+    # it vouches for. The snapshot falls back to the address when there was
+    # no name, and an address is not for a public page — then the live name,
+    # as before.
+    frozen_name = cert.student_name if cert.student_name and "@" not in cert.student_name else None
     return CertificateVerifyResponse(
         valid=True,
         certificate_number=cert.certificate_number,
-        user_name=user.full_name if user else None,
+        user_name=frozen_name or (user.full_name if user else None),
         course_title=course_title,
         issued_at=cert.issued_at,
     )

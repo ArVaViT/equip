@@ -37,7 +37,17 @@ interface QuizTakerProps {
   pageTitle?: string
 }
 
-export default function QuizTaker({ chapterId, quizId, onSubmitted, pageTitle }: QuizTakerProps) {
+/**
+ * One quiz's worth of state per quiz. The lesson page stays mounted from one
+ * lesson to the next, and the answers, result and results screen of the last
+ * quiz survived the switch: the next lesson opened on «You passed» with the
+ * previous score under the new title (2026-10-03).
+ */
+export default function QuizTaker(props: QuizTakerProps) {
+  return <OneQuiz key={`${props.chapterId}:${props.quizId ?? ""}`} {...props} />
+}
+
+function OneQuiz({ chapterId, quizId, onSubmitted, pageTitle }: QuizTakerProps) {
   const { t } = useTranslation()
   const { loading, fetchError, notTranslated, quiz, attempts, setAttempts } = useQuizTaker({
     chapterId,
@@ -84,7 +94,10 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted, pageTitle }:
     setAnswers((prev) => ({ ...prev, [questionId]: value }))
   }
 
-  const allAnswered = sortedQuestions.every((q) => {
+  // One rule for «answered», used by the counter and the submit button alike:
+  // with two, an essay under its minimum length read «1 / 1 answered» above
+  // a disabled button (2026-10-03).
+  const isAnswered = (q: (typeof sortedQuestions)[number]): boolean => {
     const a = answers[q.id]
     if (!a) return false
     if (q.question_type === "short_answer" || q.question_type === "essay") {
@@ -99,7 +112,8 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted, pageTitle }:
       return true
     }
     return !!a.selected_option_id
-  })
+  }
+  const allAnswered = sortedQuestions.every(isAnswered)
 
   // Mirrors the backend: only MCQ / true-false questions contribute to the
   // auto-graded score. Open-ended answers (``short_answer`` + ``essay``) are
@@ -126,7 +140,10 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted, pageTitle }:
       setResult(attempt)
       setShowResults(true)
       // Even from `null`: we may not know the history, but we know this one.
-      setAttempts((prev) => [attempt, ...(prev ?? [])])
+      // Unknown history stays unknown: one new attempt on top of «could not
+      // load» became a confident «1 / 3» and a «Try again» the server could
+      // refuse (2026-10-03).
+      setAttempts((prev) => (prev === null ? null : [attempt, ...prev]))
       onSubmitted?.()
     } catch (error: unknown) {
       const detail = getErrorDetail(error)
@@ -147,14 +164,7 @@ export default function QuizTaker({ chapterId, quizId, onSubmitted, pageTitle }:
     setResult(null)
   }
 
-  const answeredCount = sortedQuestions.reduce((count, q) => {
-    const a = answers[q.id]
-    if (!a) return count
-    if (q.question_type === "short_answer" || q.question_type === "essay") {
-      return a.text_answer?.trim() ? count + 1 : count
-    }
-    return a.selected_option_id ? count + 1 : count
-  }, 0)
+  const answeredCount = sortedQuestions.filter(isAnswered).length
   const answerProgress = sortedQuestions.length
     ? Math.round((answeredCount / sortedQuestions.length) * 100)
     : 0

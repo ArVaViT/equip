@@ -460,7 +460,7 @@ it is a handful of `GET /api/v1/synthetics/tests` and
 `GET /api/v1/monitor` calls with the read-only application key). It
 prints:
 
-- Status of all 3 synthetics (`live` vs failing).
+- Status of all 4 synthetics (`live` vs failing).
 - Any firing monitors.
 - RUM event totals for the last hour (views, errors, rage clicks).
 - A link to the Equip overview dashboard.

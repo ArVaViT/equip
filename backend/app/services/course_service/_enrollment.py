@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import case, func, select
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 
@@ -16,6 +16,8 @@ from app.models.course import Chapter, Course
 from app.models.enrollment import Enrollment
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import Any
     from uuid import UUID
 
     from sqlalchemy.orm import Session
@@ -150,62 +152,26 @@ def resync_course_progress(db: Session, course_id: str | UUID) -> int:
 
     Returns the number of rows updated, for the caller's audit line.
     """
-    gradable = (
-        select(Chapter.id)
-        .where(
-            Chapter.course_id == course_id,
-            Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES),
-            Chapter.deleted_at.is_(None),
-        )
-        .scalar_subquery()
-    )
-    total = (
-        select(func.count())
-        .select_from(Chapter)
-        .where(
-            Chapter.course_id == course_id,
-            Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES),
-            Chapter.deleted_at.is_(None),
-        )
-        .scalar_subquery()
-    )
-    completed = (
-        select(func.count())
-        .select_from(ChapterProgress)
-        .where(
-            ChapterProgress.user_id == Enrollment.user_id,
-            ChapterProgress.chapter_id.in_(gradable),
-            ChapterProgress.completed.is_(True),
-        )
-        .scalar_subquery()
-    )
-    # A course with nothing gradable is 0%, not a division by zero — the same
-    # answer ``sync_enrollment_progress`` gives.
-    fresh = case(
-        (total == 0, 0),
-        else_=func.round(completed * 100.0 / func.nullif(total, 0)),
-    )
-
-    # Counted first, then written. Doing both in one statement means relying
-    # on the UPDATE's row count, which is "rows I looked at" — every enrolment
-    # on the course — and that reads as "rows that were wrong" to whoever
-    # pressed the button. Two statements, one honest number.
-    # The stale rows are selected, not counted in SQL. Wrapping the predicate
-    # in ``count()`` — directly or through a subquery — drops the correlation
-    # to ``Enrollment`` that ``completed`` depends on, and the answer comes
-    # back 0: the resync then reports "nothing to fix" on a course that is
-    # entirely wrong. A course's enrolment list is small enough to hold.
-    stale_ids = [
-        row[0]
-        for row in db.query(Enrollment.id).filter(
-            Enrollment.course_id == course_id,
-            Enrollment.progress.is_distinct_from(fresh),
-        )
-    ]
-    changed = len(stale_ids)
-    if stale_ids:
-        db.query(Enrollment).filter(Enrollment.id.in_(stale_ids)).update(
-            {Enrollment.progress: fresh}, synchronize_session=False
+    # One rule for one student and for a whole course: ``fresh_progress``.
+    # The SQL-only version of this counted gradable chapters alone and gave
+    # a course with none 0% — so deleting a course's only quiz stranded
+    # everybody who had read it all at 0, with no action left that would move
+    # them (2026-10-03). Computed set-based here — two totals and two grouped
+    # counts, whatever the enrolment — because this runs on every lesson
+    # added, removed or retyped.
+    fresh_for = _course_progress_rule(db, course_id)
+    rows = db.query(Enrollment.id, Enrollment.user_id, Enrollment.progress).filter(Enrollment.course_id == course_id)
+    stale: dict[int, list] = {}
+    for enrollment_id, user_id, progress in rows:
+        value = fresh_for(str(user_id))
+        if progress != value:
+            stale.setdefault(value, []).append(enrollment_id)
+    # Counted first, then written: the number returned is rows that were
+    # wrong, not rows looked at.
+    changed = sum(len(ids) for ids in stale.values())
+    for value, ids in stale.items():
+        db.query(Enrollment).filter(Enrollment.id.in_(ids)).update(
+            {Enrollment.progress: value}, synchronize_session=False
         )
     db.commit()
     return int(changed)
@@ -263,24 +229,20 @@ def reading_progress_by_course(
     return {str(row.course_id): (int(row.read or 0), int(row.to_read or 0)) for row in rows}
 
 
-def sync_enrollment_progress(db: Session, user_id: str | UUID, course_id: str | UUID) -> Enrollment | None:
-    """Recompute ``enrollment.progress`` from completed gradable chapters.
+def fresh_progress(db: Session, user_id: str | UUID, course_id: str | UUID) -> int:
+    """What this student's ``enrollment.progress`` should read now.
 
-    Called from submission/quiz-grading flows after a pass-state flip.
-    Uses a single aggregated query so this stays cheap even on courses
-    with hundreds of chapters.
+    The share of the course's live gradable chapters they have completed —
+    assessment, by design. On a course with nothing to assess, reading is the
+    work: the share of its live chapters they have read. The certificate gate
+    for such a course is «progress == 100» (``completion_pass`` in
+    grade_calculator); counting assessed chapters alone gave it 0% however
+    much was read, so a reading-only course could never be finished.
     """
-    db.flush()
-    enrollment = db.query(Enrollment).filter(Enrollment.user_id == user_id, Enrollment.course_id == course_id).first()
-    if not enrollment:
-        return None
-
-    # Single round-trip: count gradable chapters and the subset that this user
-    # has completed via a LEFT JOIN + COUNT FILTER.
-    row = (
+    gradable = (
         db.query(
-            func.count(Chapter.id).label("total_gradable"),
-            func.count(ChapterProgress.id).filter(ChapterProgress.completed.is_(True)).label("completed_gradable"),
+            func.count(Chapter.id),
+            func.count(ChapterProgress.id).filter(ChapterProgress.completed.is_(True)),
         )
         .select_from(Chapter)
         .outerjoin(
@@ -294,13 +256,93 @@ def sync_enrollment_progress(db: Session, user_id: str | UUID, course_id: str | 
         )
         .one()
     )
-    total_gradable = row.total_gradable or 0
-    completed_gradable = row.completed_gradable or 0
+    total, done = int(gradable[0] or 0), int(gradable[1] or 0)
+    if total:
+        return round(done / total * 100)
+    reading = (
+        db.query(
+            func.count(Chapter.id),
+            func.count(ChapterProgress.id).filter(ChapterProgress.completed.is_(True)),
+        )
+        .select_from(Chapter)
+        .outerjoin(
+            ChapterProgress,
+            (ChapterProgress.chapter_id == Chapter.id) & (ChapterProgress.user_id == user_id),
+        )
+        .filter(Chapter.course_id == course_id, Chapter.deleted_at.is_(None))
+        .one()
+    )
+    to_read, read = int(reading[0] or 0), int(reading[1] or 0)
+    return round(read / to_read * 100) if to_read else 0
 
-    if total_gradable == 0:
-        enrollment.progress = 0
-    else:
-        enrollment.progress = round((completed_gradable / total_gradable) * 100)
+
+def _course_progress_rule(db: Session, course_id: str | UUID) -> Callable[[str], int]:
+    """``fresh_progress`` for every student of one course, in four queries.
+
+    The same rule — share of live gradable chapters completed, or on a course
+    with none, share of live chapters read — with the per-student counts
+    grouped by user instead of asked once per student.
+    """
+
+    def _done_by_user(*conditions: Any) -> dict[str, int]:
+        rows = (
+            db.query(ChapterProgress.user_id, func.count(ChapterProgress.id))
+            .join(Chapter, Chapter.id == ChapterProgress.chapter_id)
+            .filter(
+                Chapter.course_id == course_id,
+                Chapter.deleted_at.is_(None),
+                ChapterProgress.completed.is_(True),
+                *conditions,
+            )
+            .group_by(ChapterProgress.user_id)
+            .all()
+        )
+        return {str(user_id): int(count) for user_id, count in rows}
+
+    def _total(*conditions: Any) -> int:
+        return int(
+            db.query(func.count(Chapter.id))
+            .filter(Chapter.course_id == course_id, Chapter.deleted_at.is_(None), *conditions)
+            .scalar()
+            or 0
+        )
+
+    gradable = Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES)
+    total = _total(gradable)
+    if total:
+        done = _done_by_user(gradable)
+        return lambda user_id: round(done.get(user_id, 0) / total * 100)
+    to_read = _total()
+    if not to_read:
+        return lambda _user_id: 0
+    read = _done_by_user()
+    return lambda user_id: round(read.get(user_id, 0) / to_read * 100)
+
+
+def sync_enrollment_progress(db: Session, user_id: str | UUID, course_id: str | UUID) -> Enrollment | None:
+    """Recompute ``enrollment.progress`` from completed gradable chapters —
+    or, on a course with none, from the chapters read.
+
+    Called from submission/quiz-grading flows after a pass-state flip.
+    Uses a single aggregated query so this stays cheap even on courses
+    with hundreds of chapters.
+    """
+    db.flush()
+    # Every enrolment this student holds on the course: a retake or a second
+    # cohort is a second row, and ``.first()`` with no order updated one of
+    # them at random while the grade view and the certificate gate read the
+    # latest (2026-10-03). The fraction is the student's, so all rows agree.
+    enrollments = (
+        db.query(Enrollment)
+        .filter(Enrollment.user_id == user_id, Enrollment.course_id == course_id)
+        .order_by(Enrollment.enrolled_at.desc().nullslast(), Enrollment.id.desc())
+        .all()
+    )
+    if not enrollments:
+        return None
+    value = fresh_progress(db, user_id, course_id)
+    for enrollment in enrollments:
+        enrollment.progress = value
     db.flush()
 
     # ``equip.completion.course_avg_pct`` is read by the Course
@@ -313,10 +355,10 @@ def sync_enrollment_progress(db: Session, user_id: str | UUID, course_id: str | 
 
         gauge(
             "equip.completion.course_avg_pct",
-            float(enrollment.progress),
+            float(value),
             course_id=str(course_id),
         )
     except Exception:
         pass
 
-    return enrollment
+    return enrollments[0]

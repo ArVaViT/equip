@@ -209,6 +209,11 @@ async def log_requests(request: Request, call_next):
         # browser session straight to the backend log line. The header
         # is already listed in ``expose_headers`` on the CORS config.
         response.headers["X-Request-Id"] = request_id
+        # The uptime probes hit /health every few minutes: an access line and
+        # a request metric each time was most of the backend's own log
+        # volume and inflated the engagement dashboard's request rate.
+        if request.url.path.endswith("/health"):
+            return response
         duration = round((time.time() - start) * 1000, 1)
         logger.info(
             "%s %s %s %sms",

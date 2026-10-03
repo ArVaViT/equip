@@ -240,7 +240,8 @@ is meant.
   (`.github/workflows/frontend-ci.yml`) — a HIGH/CRITICAL advisory on
   production deps is a hard gate that fails the build. The workflow
   carries an explicit `--allowlist` for advisories that were reviewed and
-  accepted (one today); every entry there is a decision, not a silence.
+  accepted (two today: react-router RSC mode and braces via tailwindcss);
+  every entry there is a decision, not a silence.
   Moderate/low advisories are triaged via Dependabot rather than blocking.
 - Major-version bumps must be deliberate. Don't blindly run `npm
   outdated --json | jq | xargs npm install` -- breakages from major

@@ -70,7 +70,6 @@ describe("PublicLanding (unauth marketing page)", () => {
     const hero = screen.getByRole("region", { name: i18n.t("landing.hero.manifesto") })
     const hrefs = Array.from(hero.querySelectorAll("a[href]")).map((a) => a.getAttribute("href"))
     expect(hrefs).toEqual(["/courses", "/login"])
-    expect(screen.queryByText(i18n.t("landing.hero.facts"))).not.toBeInTheDocument()
   })
 
   it("exposes the key internal destinations as real <a href>", () => {

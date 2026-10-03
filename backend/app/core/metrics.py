@@ -36,8 +36,10 @@ def emit(name: str, value: float = 1.0, **tags: Any) -> None:
     ----------
     name : str
         Metric name in ``equip.<group>.<measurement>`` shape (e.g.,
-        ``equip.grading.pending`` or
-        ``equip.activity.daily_active_users``). The dashboards in
+        ``equip.activity.requests_total`` or
+        ``equip.translation.queue_depth``). A name only becomes a Datadog
+        metric once a log-based-metric rule exists for it — see
+        ``docs/datadog/README.md``. The dashboards in
         ``docs/datadog/*.json`` assume this exact prefix.
     value : float, default 1.0
         Numeric value. Counter increments pass ``1.0``; gauges pass

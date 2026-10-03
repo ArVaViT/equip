@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { useLatestRequest } from "@/hooks/useLatestRequest"
 import {
   courseReadinessService,
   type ReadinessReport,
@@ -23,20 +24,22 @@ export function useCourseReadiness(courseId: string | undefined): UseCourseReadi
   const [report, setReport] = useState<ReadinessReport | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const begin = useLatestRequest()
   const load = useCallback(async () => {
     if (!courseId) return
+    const isCurrent = begin()
     setLoading(true)
     try {
       const data = await courseReadinessService.get(courseId)
-      setReport(data)
+      if (isCurrent()) setReport(data)
     } catch {
       // The card hides itself when ``report === null`` — a transient
       // backend blip shouldn't break the editor.
-      setReport(null)
+      if (isCurrent()) setReport(null)
     } finally {
-      setLoading(false)
+      if (isCurrent()) setLoading(false)
     }
-  }, [courseId])
+  }, [begin, courseId])
 
   useEffect(() => {
     void load()

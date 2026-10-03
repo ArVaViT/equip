@@ -15,6 +15,9 @@ interface Args {
   courseId: string | undefined
   course: Course | null
   setCourse: Dispatch<SetStateAction<Course | null>>
+  /** Re-read the course from the server. A reorder is several requests;
+   *  when some land and some fail, only the server knows the order now. */
+  reload?: () => void
 }
 
 export interface CourseChapters {
@@ -53,6 +56,7 @@ export function useCourseChapters({
   courseId,
   course,
   setCourse,
+  reload,
 }: Args): CourseChapters {
   const navigate = useNavigate()
   const { t } = useTranslation()
@@ -292,12 +296,15 @@ export function useCourseChapters({
         )
       } catch {
         toast({ title: t("lessons.toast.reorderFailed"), variant: "destructive" })
-        setCourse((prev) => (prev ? { ...prev, chapters: sorted } : prev))
+        // The requests that did land stay landed: putting the old order back
+        // on screen showed an order the server no longer had.
+        if (reload) reload()
+        else setCourse((prev) => (prev ? { ...prev, chapters: sorted } : prev))
       } finally {
         reorderingRef.current = false
       }
     },
-    [course?.chapters, courseId, setCourse, t],
+    [course?.chapters, courseId, reload, setCourse, t],
   )
 
   const reorderModuleChapters = useCallback(
@@ -331,14 +338,16 @@ export function useCourseChapters({
         )
       } catch {
         toast({ title: t("lessons.toast.reorderFailed"), variant: "destructive" })
-        setCourse((prev) =>
-          prev ? { ...prev, modules: prev.modules?.map((m) => (m.id === moduleId ? { ...m, chapters: sorted } : m)) } : prev,
-        )
+        if (reload) reload()
+        else
+          setCourse((prev) =>
+            prev ? { ...prev, modules: prev.modules?.map((m) => (m.id === moduleId ? { ...m, chapters: sorted } : m)) } : prev,
+          )
       } finally {
         reorderingRef.current = false
       }
     },
-    [course, courseId, setCourse, t],
+    [course, courseId, reload, setCourse, t],
   )
 
   return {
