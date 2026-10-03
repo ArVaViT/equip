@@ -18,7 +18,7 @@ import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
 import { useAuth } from "@/context/useAuth"
 import { AuthContext } from "@/context/auth-context"
-import { GuestPrompt } from "@/components/chapter/GuestPrompt"
+import { GuestPrompt, LockedBlock } from "@/components/chapter/GuestPrompt"
 import {
   chapterHref,
   findChapter,
@@ -212,7 +212,7 @@ const BlockRenderer = memo(function BlockRenderer({
     (block.block_type === "assignment" && !block.assignment_id) ||
     (block.block_type === "file" && !block.file_path)
   if (withheld || (guest && (block.block_type === "quiz" || block.block_type === "assignment" || block.block_type === "file"))) {
-    return <GuestPrompt variant="block" />
+    return <LockedBlock />
   }
 
   switch (block.block_type) {

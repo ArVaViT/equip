@@ -1,36 +1,48 @@
-import { Link, useParams } from "react-router-dom"
+import { Link, useLocation, useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { BookOpen, Lock } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-type Variant = "block" | "finish" | "wall" | "enrollFinish" | "enrollWall"
+type Variant = "finish" | "wall" | "enrollFinish" | "enrollWall"
 
 /**
- * What a guest sees where a signed-in reader would act: a test, an
- * assignment or a file inside the preview lesson ("block"), the end of it
- * ("finish"), or any other lesson ("wall").
+ * Inside the preview lesson, where a test, an assignment or a file would be:
+ * one quiet line, no buttons — those wait at the lesson's end. On its own
+ * because a block renders in places with no router at all (tests, previews),
+ * and the card below reads the location.
+ */
+export function LockedBlock({ className }: { className?: string }) {
+  const { t } = useTranslation()
+  return (
+    <p className={cn("flex items-center gap-2 rounded-md border border-dashed border-edge px-3 py-2.5 text-sm text-ink-muted", className)}>
+      <Lock className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+      {t("guest.block.title")}
+    </p>
+  )
+}
+
+/**
+ * What a guest sees where a signed-in reader would act: the end of the
+ * preview lesson ("finish"), or any other lesson ("wall").
  *
- * Both buttons come back to the course page, not to the lesson: a new
- * account is not yet enrolled, and the course page is where enrolling is.
+ * Both buttons come back to this very lesson. They used to lead to the course
+ * page, on the reasoning that enrolling is there — but a reader who stopped
+ * mid-course to create an account had lost their place and had to find the
+ * lesson again. The lesson itself asks them to enrol now (the «enroll…»
+ * variants), so the course page is a detour. The path is read from the
+ * location rather than built from the params, so a module-shaped address
+ * comes back as itself (`lib/authRedirect` validates it either way).
  */
 export function GuestPrompt({ variant, className }: { variant: Variant; className?: string }) {
   const { t } = useTranslation()
   const { courseId } = useParams<{ courseId: string }>()
-  const back = { from: courseId ? `/courses/${courseId}` : "/" }
+  const location = useLocation()
+  const back = { from: `${location.pathname}${location.search}` }
   const Icon = variant === "finish" || variant === "enrollFinish" ? BookOpen : Lock
   const enrolling = variant === "enrollFinish" || variant === "enrollWall"
   const wall = variant === "wall" || variant === "enrollWall"
-  // Inside the lesson, one quiet line; the buttons wait at its end.
-  if (variant === "block") {
-    return (
-      <p className={cn("flex items-center gap-2 rounded-md border border-dashed border-edge px-3 py-2.5 text-sm text-ink-muted", className)}>
-        <Lock className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-        {t("guest.block.title")}
-      </p>
-    )
-  }
   return (
     <div
       className={cn(
