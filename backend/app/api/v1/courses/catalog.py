@@ -140,8 +140,20 @@ def _course_a_reader_may_see(db: Session, course_id: str, current_user: User | N
 
     Shared by the course page and everything a reader asks about the course
     from it, so the two cannot drift: what one hides the other must too.
+    Loads the whole tree; a route that only needs the verdict passes its own
+    slim row to ``_a_reader_may_see``.
     """
-    course = get_course(db, course_id)
+    return _a_reader_may_see(db, get_course(db, course_id), course_id, current_user)
+
+
+def _a_reader_may_see(db: Session, course: Course | None, course_id: str, current_user: User | None) -> Course:
+    """The one rule for who may read a course, applied to a row already fetched.
+
+    Until 2026-10-03 the module route kept a private copy of this — status and
+    owner, nothing about ``access_mode`` — so an institute course's modules
+    and the titles of their lessons read 200 to anyone with the ids, signed
+    in or not, while the course itself read 404. The rule lives here once.
+    """
     if not course:
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
@@ -311,32 +323,18 @@ def get_module_detail(
     current_user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> ModuleResponse:
-    # Lightweight access probe — avoids loading the whole course→modules→chapters
-    # tree just to check publication state. Pull source_locale here too so we
-    # don't need a second course fetch to apply the translation overlay below.
-    course_row = (
-        db.query(Course.status, Course.created_by, Course.source_locale)
-        .filter(Course.id == course_id, Course.deleted_at.is_(None))
-        .first()
+    # The course row without its tree — the verdict needs status, owner and
+    # access_mode, and the overlay below needs source_locale; nothing here
+    # needs the modules and chapters loaded. The verdict itself is the
+    # course page's (``_a_reader_may_see``): an institute course's module is
+    # exactly as visible as the course.
+    course = _a_reader_may_see(
+        db,
+        db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first(),
+        course_id,
+        current_user,
     )
-    if not course_row:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=404,
-            message=f"Course '{course_id}' not found",
-            context={"resource_type": "course", "resource_id": course_id},
-        )
-    course_status, course_owner_id, course_source_locale = course_row
-    if course_status != CourseStatus.PUBLISHED:
-        if not current_user or (
-            str(course_owner_id) != str(current_user.id) and current_user.role != UserRole.ADMIN.value
-        ):
-            raise equip_error(
-                ErrorCode.RESOURCE_NOT_FOUND,
-                status_code=404,
-                message=f"Course '{course_id}' not found",
-                context={"resource_type": "course", "resource_id": course_id},
-            )
+    course_owner_id, course_source_locale = course.created_by, course.source_locale
     module = get_module(db, course_id, module_id)
     if not module:
         raise equip_error(

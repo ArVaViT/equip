@@ -18,6 +18,7 @@ from app.schemas.locale import LocaleCode, normalize_locale
 from app.schemas.user import PreferredLocaleUpdate, UserResponse
 from app.services.audit_service import log_action
 from app.services.course_service import get_user_courses, reading_progress_by_course
+from app.services.memberships import active_memberships, mirror_role
 from app.services.my_data_export import export_my_data
 from app.services.translation.resolve_for_display import (
     build_localized_course_dashboard_summaries,
@@ -345,7 +346,18 @@ def bulk_update_user_roles(
     # Admins must not demote themselves; silently skip their own id.
     safe_uuids = [u for u in valid_uuids if u != admin.id]
 
-    updated = db.query(User).filter(User.id.in_(safe_uuids)).update({User.role: body.role}, synchronize_session="fetch")
+    # The same contract as the single route: in or out of ``admin``. A
+    # person whose memberships say otherwise is left alone and named in
+    # ``held_by_membership`` rather than failing the whole batch — the
+    # others asked for are not wrong because one of them was.
+    updated = 0
+    held: list[str] = []
+    for user in db.query(User).filter(User.id.in_(safe_uuids)).all():
+        outcome = _move_platform_role(db, user, body.role)
+        if outcome == "held":
+            held.append(str(user.id))
+        elif outcome == "changed":
+            updated += 1
     db.commit()
 
     log_action(
@@ -354,10 +366,46 @@ def bulk_update_user_roles(
         "bulk_role_update",
         "user",
         ",".join(str(u) for u in safe_uuids[:10]),
-        details={"new_role": body.role, "count": updated},
+        details={"new_role": body.role, "count": updated, "held_by_membership": len(held)},
     )
 
-    return {"updated": updated, "role": body.role}
+    return {"updated": updated, "role": body.role, "held_by_membership": held}
+
+
+def _move_platform_role(db: Session, user: User, requested: str) -> str:
+    """Move ``user`` in or out of ``admin``; anything else is the mirror's.
+
+    ``profiles.role`` below ``admin`` is a mirror of the person's highest
+    organization membership (``mirror_role``, and the trigger in Postgres).
+    Writing ``teacher`` or ``director`` here used to hold until the next
+    membership write anywhere, which put the old value back: the review's
+    probe demoted a director to student and watched a student invitation to
+    another school make them a director again. So:
+
+    * ``admin`` makes the person platform staff;
+    * any other value asked of an admin stops them being platform staff, and
+      the memberships say what is left — ``teacher`` for an admin who also
+      teaches somewhere, ``student`` for one who belongs nowhere;
+    * any other value asked of a non-admin is accepted only when it is what
+      the memberships already say (the mirror is re-run first, so a stale
+      profile is repaired by the ask). Otherwise ``"held"``: the role is held
+      by a membership and changes there.
+
+    Returns ``"changed"``, ``"unchanged"`` or ``"held"``. Flushes, does not
+    commit; nothing is written for ``"held"``.
+    """
+    before = user.role
+    if requested == UserRole.ADMIN.value:
+        user.role = UserRole.ADMIN.value
+    elif user.role == UserRole.ADMIN.value:
+        user.role = UserRole.STUDENT.value
+        mirror_role(db, user)
+    else:
+        mirror_role(db, user)
+        if user.role != requested:
+            return "held"
+    db.flush()
+    return "changed" if user.role != before else "unchanged"
 
 
 @router.put("/admin/users/{user_id}/role")
@@ -386,10 +434,34 @@ def update_user_role(
         )
     user = _get_user_or_404(db, uid)
     old_role = user.role
-    user.role = role
+    if _move_platform_role(db, user, role) == "held":
+        raise equip_error(
+            ErrorCode.USER_ROLE_HELD_BY_MEMBERSHIP,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            message=(
+                "This role is held by the person's organization memberships and changes there; "
+                "this route only makes somebody platform staff, or stops them being it"
+            ),
+            context={
+                "resource_type": "user",
+                "user_id": str(user.id),
+                "requested": role,
+                "role": user.role,
+                "memberships": [
+                    {"organization_id": str(m.organization_id), "role": m.role} for m in active_memberships(db, uid)
+                ],
+            },
+        )
     db.commit()
     db.refresh(user)
-    log_action(db, admin.id, "update", "user", user_id, details={"old_role": old_role, "new_role": role})
+    log_action(
+        db,
+        admin.id,
+        "update",
+        "user",
+        user_id,
+        details={"old_role": old_role, "new_role": user.role, "requested": role},
+    )
     return {"id": str(user.id), "email": user.email, "role": user.role}
 
 

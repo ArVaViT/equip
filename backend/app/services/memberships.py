@@ -31,12 +31,14 @@ from app.models.organization import (
     MEMBERSHIP_RANK,
     STAFF_ROLES,
     MembershipRole,
+    MembershipSource,
     MembershipStatus,
     OrganizationMember,
 )
 from app.models.user import User, UserRole
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from uuid import UUID
 
     from sqlalchemy.orm import Session
@@ -137,6 +139,32 @@ def mirror_role(db: Session, user: User) -> None:
         user.role = mirrored
 
 
+def mirror_roles(db: Session, users: Iterable[User]) -> None:
+    """``mirror_role`` for many people in one query — the one the trigger
+    would run per row; here the rows that joined together are mirrored
+    together, and only the profiles whose answer changed are written."""
+    people = {u.id: u for u in users if u.role != UserRole.ADMIN.value}
+    if not people:
+        return
+    highest: dict[UUID, int] = {}
+    for user_id, role in (
+        db.query(OrganizationMember.user_id, OrganizationMember.role)
+        .filter(
+            OrganizationMember.user_id.in_(list(people)),
+            OrganizationMember.status == MembershipStatus.ACTIVE.value,
+        )
+        .all()
+    ):
+        rank = MEMBERSHIP_RANK.get(role, -1)
+        if rank > highest.get(user_id, -1):
+            highest[user_id] = rank
+    by_rank = {rank: role for role, rank in MEMBERSHIP_RANK.items()}
+    for user_id, user in people.items():
+        mirrored = by_rank.get(highest.get(user_id, -1), MembershipRole.STUDENT.value)
+        if user.role != mirrored:
+            user.role = mirrored
+
+
 def grant_membership(
     db: Session,
     *,
@@ -145,15 +173,24 @@ def grant_membership(
     role: str,
     joined_via: str,
     invited_by: UUID | None = None,
+    reactivate: bool = True,
 ) -> tuple[OrganizationMember, bool]:
     """Put ``user`` in ``organization_id`` as ``role``, or raise them to it.
 
     Idempotent and monotonic within the organization: an existing row keeps
     the higher of its role and the offered one — a director accepting a
-    student invitation onto one of their own courses stays a director — and
-    a suspended row is reactivated, because whoever is granting now has
-    decided the person belongs. Nothing about any *other* organization
-    changes: that is the whole point of the table.
+    student invitation onto one of their own courses stays a director.
+    Nothing about any *other* organization changes: that is the whole point
+    of the table.
+
+    A suspended row is a decision the organization made about this person,
+    and ``reactivate`` says whether the grant being made now outranks it:
+    ``True`` when whoever is granting speaks for the organization today (a
+    platform admin appointing, a director placing somebody by hand);
+    ``False`` when the grant rides on something older — an invitation
+    written by somebody who has since stopped being that organization's
+    staff — in which case the row is left exactly as it is, role and status,
+    and the caller is told nothing was created.
 
     Returns ``(membership, created)`` so the caller can audit "joined" apart
     from "was already there". Flushes, does not commit.
@@ -181,6 +218,8 @@ def grant_membership(
             invited_by=invited_by,
         )
         db.add(membership)
+    elif membership.status != MembershipStatus.ACTIVE.value and not reactivate:
+        return membership, False
     else:
         if MEMBERSHIP_RANK[role] > MEMBERSHIP_RANK.get(membership.role, -1):
             membership.role = role
@@ -191,6 +230,66 @@ def grant_membership(
     mirror_role(db, user)
     db.flush()
     return membership, created
+
+
+def grant_student_memberships(
+    db: Session,
+    *,
+    user_ids: Iterable[UUID],
+    organization_id: UUID,
+    placed_by: UUID,
+) -> set[UUID]:
+    """Everyone in ``user_ids`` who is not yet in ``organization_id`` joins
+    it as a student — one read of who is there, one write of who is not.
+
+    ``grant_membership`` for a whole cohort, without a round trip per
+    student: a director attaching a closed course to a cohort of forty
+    placed forty people with a SELECT, an INSERT and a mirror each. Here the
+    rows that exist are read once, the missing ones inserted together, and
+    the mirror runs once for exactly the people who joined.
+
+    A row that exists is left exactly as it is, whatever its role or status:
+    a teacher stays a teacher, and somebody the organization suspended stays
+    suspended — being seated in a class is not the organization taking them
+    back, and the director who wants them back has the membership itself to
+    say so. Returns the ids of the people who joined. Flushes, does not
+    commit.
+    """
+    wanted = set(user_ids)
+    if not wanted:
+        return set()
+    already = {
+        row[0]
+        for row in db.query(OrganizationMember.user_id).filter(
+            OrganizationMember.organization_id == organization_id,
+            OrganizationMember.user_id.in_(list(wanted)),
+        )
+    }
+    joining = wanted - already
+    if not joining:
+        return set()
+    db.add_all(
+        [
+            OrganizationMember(
+                user_id=user_id,
+                organization_id=organization_id,
+                role=MembershipRole.STUDENT.value,
+                status=MembershipStatus.ACTIVE.value,
+                joined_via=MembershipSource.APPOINTMENT.value,
+                invited_by=placed_by,
+            )
+            for user_id in joining
+        ]
+    )
+    people = db.query(User).filter(User.id.in_(list(joining))).all()
+    for user in people:
+        # The transitional dual write, as in ``grant_membership``.
+        if user.organization_id is None:
+            user.organization_id = organization_id
+    db.flush()
+    mirror_roles(db, people)
+    db.flush()
+    return joining
 
 
 def is_staff_role(role: str) -> bool:

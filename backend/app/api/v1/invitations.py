@@ -40,7 +40,7 @@ from app.services.invitation_service import (
     list_invitations,
     revoke_invitation,
 )
-from app.services.memberships import belongs_to, directs
+from app.services.memberships import belongs_to, directs, teaches_in
 
 router = APIRouter(prefix="/invitations", tags=["invitations"])
 
@@ -85,10 +85,13 @@ def create_invitation(
       not direct that organization the role must be ``student``: a
       teacher who could mint teachers would be an escalation with extra
       steps.
-    * **Everything else** — inviting into the organization at large, or
-      to the platform, and any invitation carrying a teaching role —
-      stays with a director (of the organization the request acts in,
-      ``acting_organization``) or a platform admin.
+    * **An organization invitation** — into the organization at large,
+      and any invitation carrying a teaching role — stays with a director
+      (of the organization the request acts in, ``acting_organization``)
+      or a platform admin.
+    * **A platform invitation** is an account and nothing else, and only
+      the platform offers one: admin only. A director invites into their
+      organization; there is no "the platform" for them to speak for.
 
     Idempotent on re-invite while a prior invitation for the same
     (organization, email, role, course) is still pending and unexpired;
@@ -108,12 +111,28 @@ def create_invitation(
             )
         organization_id = course.organization_id
         is_director = directs(db, teacher, organization_id)
-        if not is_director and str(course.created_by) != str(teacher.id):
+        # Owning the course is not enough on its own: the invitation puts
+        # somebody *into the organization*, so the owner must still teach
+        # there. A teacher the organization suspended keeps their courses
+        # but not the door.
+        if not is_director and (
+            str(course.created_by) != str(teacher.id) or not teaches_in(db, teacher, organization_id)
+        ):
             raise equip_error(
                 ErrorCode.AUTH_FORBIDDEN,
                 status_code=status.HTTP_403_FORBIDDEN,
                 message="You do not own this course",
             )
+    elif body.scope == "platform":
+        if teacher.role != UserRole.ADMIN.value:
+            raise equip_error(
+                ErrorCode.AUTH_FORBIDDEN,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="Only platform staff invite to the platform; invite into your organization instead",
+                context={"resource_type": "invitation", "field": "scope"},
+            )
+        organization_id = acting_organization(db, teacher, requested, role=MembershipRole.DIRECTOR.value)
+        is_director = True
     else:
         if teacher.role not in (UserRole.DIRECTOR.value, UserRole.ADMIN.value):
             raise equip_error(

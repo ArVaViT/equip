@@ -195,6 +195,15 @@ class ErrorCode(enum.StrEnum):
     say which. Sent with ``context.organizations`` (id, slug, public_name,
     role) so the client can ask; the answer travels in ``X-Organization-Id``."""
 
+    USER_ROLE_HELD_BY_MEMBERSHIP = "user.role_held_by_membership"
+    """The admin route was asked to make somebody a teacher, director or
+    student, and that is not the route's to give: ``profiles.role`` below
+    ``admin`` mirrors the person's organization memberships, and a value
+    written here would be overwritten by the next membership write. The
+    route moves people in and out of ``admin`` only; a role inside an
+    organization is changed on the membership. ``context.role`` is what the
+    memberships say, ``context.memberships`` lists them."""
+
     # ── Plan limits ─────────────────────────────────────────────────────
     PLAN_LIMIT_REACHED = "plan.limit_reached"
     """The account already holds as many of something as its plan allows.

@@ -13,11 +13,11 @@ from app.core.metrics import increment, timing
 from app.models.course import Course
 from app.models.invitation import Invitation, InvitationScope, InvitationStatus
 from app.models.organization import MembershipSource
-from app.models.user import User, higher_role
+from app.models.user import User
 from app.services.audit_service import log_action
 from app.services.course_service._enrollment import enroll_user_in_course
 from app.services.email.invitation import send_invitation_email
-from app.services.memberships import grant_membership
+from app.services.memberships import grant_membership, teaches_in
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 from app.services.user_locale import preferred_locale_of
 
@@ -543,11 +543,13 @@ def accept_invitation(
     previous_role = user.role
     membership_created = False
     if invitation.scope == InvitationScope.PLATFORM.value:
-        # An account and nothing else — no organization to be a member of.
-        # The role offered still counts platform-wide, and never down.
-        granted_role = higher_role(previous_role, invitation.role)
-        if granted_role != previous_role:
-            user.role = granted_role
+        # An account and nothing else — no organization to be a member of,
+        # so nothing to hold a role in. Until 2026-10-03 this raised
+        # ``profiles.role`` to the offered one, which made a teacher of
+        # nowhere: every ``require_teacher`` surface open, and the mirror
+        # setting it back to student on the next membership write anywhere.
+        # A role lives in ``organization_members`` or it does not exist.
+        granted_role = previous_role
     else:
         # Membership in the inviting organization, in the offered role —
         # a *second* membership for somebody who already belongs elsewhere,
@@ -559,6 +561,17 @@ def accept_invitation(
         # mirror of the highest membership and follows. Platform staff keep
         # their role whatever they are offered: it is not a school's to give
         # or take.
+        #
+        # A membership the organization *suspended* is reopened by this
+        # link only if the person who wrote it still speaks for the
+        # organization — its staff today. An invitation is good for seven
+        # days and a teacher can be let go in less; their outstanding links
+        # must not keep letting people back in.
+        inviter = (
+            db.query(User).filter(User.id == invitation.invited_by).first()
+            if invitation.invited_by is not None
+            else None
+        )
         _membership, membership_created = grant_membership(
             db,
             user=user,
@@ -566,6 +579,7 @@ def accept_invitation(
             role=invitation.role,
             joined_via=MembershipSource.INVITATION.value,
             invited_by=invitation.invited_by,
+            reactivate=teaches_in(db, inviter, invitation.organization_id),
         )
         granted_role = user.role
     if course is not None and user.onboarding_completed_at is None:

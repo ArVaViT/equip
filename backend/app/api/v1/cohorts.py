@@ -44,7 +44,7 @@ from app.models.cohort import Cohort, CohortCourse, CohortStatus
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.course import Course, CourseStatus
 from app.models.enrollment import Enrollment
-from app.models.organization import MembershipRole, MembershipSource
+from app.models.organization import MembershipRole
 from app.models.user import User, UserRole
 from app.schemas.cohort import (
     CohortCourseAttach,
@@ -59,7 +59,7 @@ from app.services.audit_service import log_action
 from app.services.cohort_capacity import assert_cohort_has_capacity
 from app.services.content_versions import record_human_version
 from app.services.language_detection import detect_locale
-from app.services.memberships import belongs_to, directs, grant_membership
+from app.services.memberships import belongs_to, directs, grant_student_memberships
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import Localizer
 
@@ -243,19 +243,13 @@ def _place_in_organization(db: Session, cohort: Cohort, user_ids: set, *, placed
     (``_course_a_reader_may_see``). A director who puts a student in a cohort
     of one has decided the student belongs — and without this row the student
     would hold an enrolment on a course that answers them 404. Membership is
-    the lowest role, is never lowered (``grant_membership``), and says how it
-    came about: ``appointment``, by this director. A student who is already
-    a member, in any role, is left exactly as they are.
+    the lowest role and says how it came about: ``appointment``, by this
+    director. Anybody who already has a row — a teacher, or somebody the
+    organization suspended — is left exactly as they are: a seat in a class
+    is not a change of standing (``grant_student_memberships``, which does
+    the whole cohort in two statements rather than three per student).
     """
-    for user in db.query(User).filter(User.id.in_(user_ids)).all():
-        grant_membership(
-            db,
-            user=user,
-            organization_id=cohort.organization_id,
-            role=MembershipRole.STUDENT.value,
-            joined_via=MembershipSource.APPOINTMENT.value,
-            invited_by=placed_by.id,
-        )
+    grant_student_memberships(db, user_ids=user_ids, organization_id=cohort.organization_id, placed_by=placed_by.id)
 
 
 # ----------------------------- admin CRUD -----------------------------
