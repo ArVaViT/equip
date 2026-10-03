@@ -56,7 +56,15 @@ def _day(moment: datetime, locale: LocaleCode) -> str:
 
 
 def _lesson_count(db: Session, course_id: str) -> int:
-    return db.query(Chapter).filter(Chapter.course_id == course_id, Chapter.deleted_at.is_(None)).count()
+    """The lessons the invited person will find — a chapter held for its
+    first release is not one of them yet (2026-10-03)."""
+    from app.services.staged_edits.visibility import chapter_awaits_first_release
+
+    return (
+        db.query(Chapter)
+        .filter(Chapter.course_id == course_id, Chapter.deleted_at.is_(None), ~chapter_awaits_first_release())
+        .count()
+    )
 
 
 def _course_title(db: Session, course_id: str, locale: LocaleCode) -> str | None:

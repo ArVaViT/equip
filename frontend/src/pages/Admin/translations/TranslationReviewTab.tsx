@@ -279,6 +279,7 @@ function ReviewRow({ row, busy, onAct }: ReviewRowProps) {
       ? LOCALE_NATIVE_LABELS[row.source_locale]
       : (row.source_locale ?? "")
   const targetLabel = isSupportedLocale(row.locale) ? LOCALE_NATIVE_LABELS[row.locale] : row.locale
+  const gaveUp = row.status === "failed_permanent"
 
   return (
     <article className="px-4 py-4 sm:px-5">
@@ -291,6 +292,13 @@ function ReviewRow({ row, busy, onAct }: ReviewRowProps) {
             : (row.course_title ?? t("admin.translationReview.unknownCourse"))}
         </span>
         <Badge variant="infoSubtle">{targetLabel}</Badge>
+        {/* A held edit is one students are waiting on: the teacher's change
+            reaches nobody until this row is resolved. Said here, because a
+            reviewer working oldest-first has no other way to tell it from a
+            parked row that merely keeps a draft out of the catalogue. */}
+        {row.held_edit && (
+          <Badge variant="warningSubtle">{t("admin.translationReview.heldEdit")}</Badge>
+        )}
         <span className="text-xs uppercase tracking-[0.14em] text-ink-muted">
           {row.entity_type} · {row.field}
         </span>
@@ -313,15 +321,25 @@ function ReviewRow({ row, busy, onAct }: ReviewRowProps) {
           <p className="text-xs uppercase tracking-[0.14em] text-ink-muted">
             {t("admin.translationReview.translationLabel", { language: targetLabel })}
           </p>
-          <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">{row.text}</p>
+          {gaveUp ? (
+            <p className="mt-1 text-sm italic text-ink-muted">
+              {t("admin.translationReview.failedPermanent")}
+            </p>
+          ) : (
+            <p className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">{row.text}</p>
+          )}
         </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Button size="sm" disabled={busy} onClick={() => onAct(row, "accept")}>
-          <Check className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-          {t("admin.translationReview.accept")}
-        </Button>
+        {/* Nothing came back for a row the pipeline gave up on, so there is
+            nothing a person could be accepting; the button would only 404. */}
+        {!gaveUp && (
+          <Button size="sm" disabled={busy} onClick={() => onAct(row, "accept")}>
+            <Check className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            {t("admin.translationReview.accept")}
+          </Button>
+        )}
         <Button size="sm" variant="outline" disabled={busy} onClick={() => onAct(row, "retry")}>
           <RefreshCw className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
           {t("admin.translationReview.retry")}

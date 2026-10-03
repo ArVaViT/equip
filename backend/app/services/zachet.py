@@ -55,12 +55,20 @@ NOT_ATTESTED = "not_attested"
 
 
 def assignments_in_course(db: Session, course_id: str) -> list:
+    """Every assignment a student of this course owes.
+
+    Not one in a chapter held for its first release: nobody can open it,
+    so nobody can be «не зачтено» over it (2026-10-03).
+    """
+    from app.services.staged_edits.visibility import chapter_awaits_first_release
+
     return (
         db.query(Assignment.id)
         .join(Chapter, Chapter.id == Assignment.chapter_id)
         .filter(
             Chapter.course_id == course_id,
             Chapter.deleted_at.is_(None),
+            ~chapter_awaits_first_release(),
         )
         .all()
     )
@@ -143,13 +151,17 @@ def unaccepted_assignments(
 
 def course_quiz_rows(db: Session, course_id: str) -> list:
     """Every live quiz in the course, with its pass line. Course-invariant, so a
-    caller looping over a cohort fetches it once."""
+    caller looping over a cohort fetches it once. A quiz in a chapter held for
+    its first release is not live for anybody yet (2026-10-03)."""
+    from app.services.staged_edits.visibility import chapter_awaits_first_release
+
     return (
         db.query(Quiz.id, Quiz.passing_score)
         .join(Chapter, Chapter.id == Quiz.chapter_id)
         .filter(
             Chapter.course_id == course_id,
             Chapter.deleted_at.is_(None),
+            ~chapter_awaits_first_release(),
         )
         .all()
     )

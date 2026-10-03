@@ -2784,6 +2784,8 @@
       },
       "dailyChallenge": "Питання дня",
       "unknownCourse": "Без курсу",
+      "heldEdit": "Відкладена правка",
+      "failedPermanent": "Переклад не надійшов: конвеєр відмовився від цієї мови. «Перекласти заново» запитає ще раз.",
       "sourceLabel": "Оригінал ({{language}})",
       "sourceGone": "Вихідний текст більше недоступний.",
       "translationLabel": "Переклад ({{language}})",

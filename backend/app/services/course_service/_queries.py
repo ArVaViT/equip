@@ -96,10 +96,15 @@ def attach_counts(db: Session, courses: list[Course]) -> None:
     if not courses:
         return
     course_ids = [c.id for c in courses]
+    from app.services.staged_edits.visibility import chapter_awaits_first_release
+
     chapter_counts: dict[str, int] = {
         course_id: count
         for course_id, count in db.query(Chapter.course_id, func.count(Chapter.id))
-        .filter(Chapter.course_id.in_(course_ids), Chapter.deleted_at.is_(None))
+        # The lessons a reader will find, not the rows: a chapter held for
+        # its first release is not in the tree the card opens onto
+        # (2026-10-03).
+        .filter(Chapter.course_id.in_(course_ids), Chapter.deleted_at.is_(None), ~chapter_awaits_first_release())
         .group_by(Chapter.course_id)
         .all()
     }

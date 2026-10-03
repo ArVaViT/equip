@@ -395,7 +395,12 @@ def verify_chapter_access(db: Session, chapter_id: str, user: User) -> Chapter:
         return chapter
     if str(course.created_by) == str(user.id):
         return chapter
-    if course.status != CourseStatus.PUBLISHED:
+    # A chapter held for its first release is not in any student's tree
+    # (``staged_edits.visibility``), and for them it does not exist by id
+    # either — same 404 as an unpublished course, for the same reason.
+    from app.services.staged_edits.visibility import chapter_is_held
+
+    if course.status != CourseStatus.PUBLISHED or chapter_is_held(db, chapter.id):
         # 404 (not 403) so an unpublished course's existence doesn't leak
         # to students probing chapter ids.
         raise equip_error(

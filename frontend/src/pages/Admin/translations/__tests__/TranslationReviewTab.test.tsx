@@ -23,6 +23,8 @@ function row(over: Partial<NeedsReviewRow> = {}): NeedsReviewRow {
     course_id: "c1",
     course_title: "Послание к Римлянам",
     is_daily_challenge: false,
+    status: "needs_review",
+    held_edit: false,
     ...over,
   }
 }
@@ -101,6 +103,29 @@ describe("TranslationReviewTab", () => {
     await userEvent.click(second)
 
     expect(retry).toHaveBeenCalledWith(["3f2b1c44-0000-4000-8000-000000000002"])
+  })
+
+  it("marks a held edit so the reviewer knows students are waiting on it", async () => {
+    // Until 2026-10-03 the queue did not list these at all: a teacher's
+    // edit whose translation was parked stayed «blocked» with no exit.
+    vi.spyOn(adminTranslationsService, "listNeedsReview").mockResolvedValue(
+      page([row({ held_edit: true })]),
+    )
+    render(<TranslationReviewTab />, { wrapper: Wrapper })
+
+    expect(await screen.findByText("Отложенная правка")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Принять/ })).toBeInTheDocument()
+  })
+
+  it("offers no Accept on a translation that never came back", async () => {
+    vi.spyOn(adminTranslationsService, "listNeedsReview").mockResolvedValue(
+      page([row({ held_edit: true, status: "failed_permanent", text: "", review_reason: null })]),
+    )
+    render(<TranslationReviewTab />, { wrapper: Wrapper })
+
+    expect(await screen.findByText(/Перевод не пришёл/)).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /Принять/ })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Перевести заново/ })).toBeInTheDocument()
   })
 
   it("says the queue is empty instead of showing an error", async () => {

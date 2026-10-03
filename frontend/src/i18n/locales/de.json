@@ -2690,6 +2690,8 @@
       },
       "dailyChallenge": "Tagesfrage",
       "unknownCourse": "Ohne Kurs",
+      "heldEdit": "Zurückgehaltene Änderung",
+      "failedPermanent": "Es kam nichts zurück: die Pipeline hat diese Sprache aufgegeben. „Erneut übersetzen“ fragt noch einmal.",
       "sourceLabel": "Original ({{language}})",
       "sourceGone": "Der Ausgangstext ist nicht mehr verfügbar.",
       "translationLabel": "Übersetzung ({{language}})",

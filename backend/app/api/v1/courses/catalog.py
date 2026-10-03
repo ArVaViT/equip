@@ -204,7 +204,12 @@ def get_course_detail(
     response.headers["Vary"] = "Accept-Language"
     if not should_apply_course_translation_overlay(course=course, current_user=current_user):
         return CourseResponse.model_validate(course, from_attributes=True)
-    return build_localized_course_response_with_tree(db, course, display_locale)
+    # A chapter held for its first release is the owner's and the
+    # admin's to see — the same two the ``?source=1`` gate above trusts.
+    # Everybody else is a reader, and a reader is not shown it.
+    return build_localized_course_response_with_tree(
+        db, course, display_locale, hide_unreleased=not is_owner_or_admin(course, current_user)
+    )
 
 
 class CourseReadingTime(BaseModel):
@@ -397,4 +402,5 @@ def get_module_detail(
         module,
         display_locale=display_locale,
         source_locale=source_locale,
+        hide_unreleased=not (is_owner or is_admin),
     )

@@ -38,6 +38,20 @@ export interface NeedsReviewRow {
   course_title: string | null
   /** Platform-wide content: the Daily Challenge rotation has no course. */
   is_daily_challenge: boolean
+  /**
+   * `needs_review`: text came back and failed its check — read it, accept
+   * it or send it back. `failed_permanent`: nothing usable came back and
+   * the pipeline stopped asking; there is nothing to accept, only retry.
+   * Listed for held edits only.
+   */
+  status: "needs_review" | "failed_permanent"
+  /**
+   * From the staging table: the translation of an edit, or of new content,
+   * on a course students are reading right now. Every reader is kept from
+   * that edit until this row is resolved — until 2026-10-03 the queue did
+   * not list these at all, and a «blocked» edit had no exit.
+   */
+  held_edit: boolean
 }
 
 export interface NeedsReviewPage {

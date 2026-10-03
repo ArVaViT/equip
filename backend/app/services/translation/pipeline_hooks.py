@@ -154,14 +154,18 @@ def run_course_translation_pipeline_if_published(db: Session, course_id: str) ->
         _log_pipeline_failure(scope="course-pipeline", entity_type="course", entity_id=course_id, exc=exc)
 
 
-def _translate_and_release_edits(
+def translate_and_release_held_edits(
     db: Session,
     course: Course,
     *,
     entity_type: str,
     entity_id: object,
 ) -> None:
-    """Translate whatever this save put on hold, then release what is whole.
+    """Translate whatever is on hold for ``course``, then release what is whole.
+
+    Called after a teacher's save, and since 2026-10-03 after an admin
+    re-opens a held translation from the review queue — the one other
+    moment somebody is waiting on exactly this pass.
 
     Two delivery modes, the same pair the full-course path has:
 
@@ -236,7 +240,7 @@ def reconcile_entity_if_course_published(
     # changed and leave the edit untranslated. Which is how an edit
     # would sit invisible forever.
     if course.status == CourseStatus.PUBLISHED:
-        _translate_and_release_edits(db, course, entity_type=str(entity_type), entity_id=entity_id)
+        translate_and_release_held_edits(db, course, entity_type=str(entity_type), entity_id=entity_id)
         return
 
     try:

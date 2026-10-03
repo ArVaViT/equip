@@ -102,6 +102,13 @@ def test_adding_a_quiz_dilutes_everybody_already_enrolled(db: Session, teacher: 
         ChapterCreate(title="Quiz 2", chapter_type="quiz", order_index=5),
     )
 
+    # The course is live, so the new quiz is held until every language has
+    # it: nobody can see it, and it counts against nobody (2026-10-03). The
+    # release is the moment it dilutes everybody.
+    assert _progress(db) == 100
+    from app.services.staged_edits import promote_staged_entity_unconditionally
+
+    promote_staged_entity_unconditionally(db, course_id=COURSE_ID)
     assert _progress(db) == 50
 
 
