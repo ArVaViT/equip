@@ -2062,7 +2062,8 @@
       "announcements": "Announcements",
       "materials": "Materials",
       "events": "Events",
-      "accessMode": "Access mode"
+      "accessMode": "Access mode",
+      "downloadPdf": "Download PDF"
     },
     "accessMode": {
       "title": "Course access mode",
@@ -2079,6 +2080,10 @@
       "title": "Unpublish this course?",
       "description": "It will leave the catalog, and students — including those already enrolled — will not be able to open its lessons until you publish it again. Their progress and grades are kept.",
       "confirm": "Unpublish"
+    },
+    "pdf": {
+      "preparing": "Preparing the course PDF…",
+      "failed": "Could not prepare the PDF. Please try again."
     }
   },
   "chapterEditor": {

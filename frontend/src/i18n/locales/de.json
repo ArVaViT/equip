@@ -2062,7 +2062,8 @@
       "announcements": "Ankündigungen",
       "materials": "Materialien",
       "events": "Termine",
-      "accessMode": "Zugangsart"
+      "accessMode": "Zugangsart",
+      "downloadPdf": "PDF herunterladen"
     },
     "accessMode": {
       "title": "Zugang zum Kurs",
@@ -2079,6 +2080,10 @@
       "title": "Veröffentlichung dieses Kurses aufheben?",
       "description": "Der Kurs verschwindet aus dem Katalog, und Lernende – auch bereits eingeschriebene – können seine Lektionen erst wieder öffnen, wenn Sie ihn erneut veröffentlichen. Fortschritt und Noten bleiben erhalten.",
       "confirm": "Veröffentlichung aufheben"
+    },
+    "pdf": {
+      "preparing": "Kurs-PDF wird erstellt…",
+      "failed": "Das PDF konnte nicht erstellt werden. Bitte erneut versuchen."
     }
   },
   "chapterEditor": {
