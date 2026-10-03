@@ -32,6 +32,13 @@ describe("one event as an .ics file", () => {
     expect(formatUtc(new Date("2026-01-02T03:04:05.678Z"))).toBe("20260102T030405Z")
   })
 
+  it("uses the event's own length and rings half an hour before a class, never before a deadline", () => {
+    const ics = eventToIcs(event({ duration_minutes: 90 }))
+    expect(ics).toContain("DURATION:PT90M")
+    expect(ics).toContain("TRIGGER:-PT30M")
+    expect(eventToIcs(event({ event_type: "deadline" }))).not.toContain("VALARM")
+  })
+
   it("escapes text so a comma does not swallow the rest of the title", () => {
     expect(escapeText("a, b; c\\d\ne")).toBe("a\\, b\\; c\\\\d\\ne")
     expect(eventToIcs(event({ title: "Урок 1, часть 2" }))).toContain("SUMMARY:Урок 1\\, часть 2")

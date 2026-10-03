@@ -3223,5 +3223,28 @@
   "theme": {
     "switchToLight": "Helles Design",
     "switchToDark": "Dunkles Design"
+  },
+  "eventSeries": {
+    "duration": "Dauer",
+    "durationNone": "Keine Angabe",
+    "repeat": "Wiederholen",
+    "repeatNone": "Keine Wiederholung",
+    "repeatWeekly": "Jede Woche",
+    "repeatBiweekly": "Alle zwei Wochen",
+    "count": "Anzahl der Termine",
+    "countRange": "Von 2 bis {{max}}",
+    "lastOn": "der letzte am {{date}}",
+    "partOfSeries": "Wiederkehrender Termin",
+    "created_one": "{{count}} Termin erstellt",
+    "created_other": "{{count}} Termine erstellt",
+    "scope": {
+      "saveTitle": "Wiederkehrenden Termin bearbeiten",
+      "deleteTitle": "Wiederkehrenden Termin löschen",
+      "this": "Nur dieser Termin",
+      "following": "Dieser und alle folgenden",
+      "all": "Alle Termine der Serie",
+      "saveAction": "Speichern",
+      "deleteAction": "Löschen"
+    }
   }
 }

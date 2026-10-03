@@ -3337,5 +3337,30 @@
   "theme": {
     "switchToLight": "Светлая тема",
     "switchToDark": "Тёмная тема"
+  },
+  "eventSeries": {
+    "duration": "Длительность",
+    "durationNone": "Не указана",
+    "repeat": "Повторять",
+    "repeatNone": "Не повторять",
+    "repeatWeekly": "Каждую неделю",
+    "repeatBiweekly": "Каждые две недели",
+    "count": "Всего занятий",
+    "countRange": "От 2 до {{max}}",
+    "lastOn": "последнее — {{date}}",
+    "partOfSeries": "Повторяющееся занятие",
+    "created_one": "Создано {{count}} занятие",
+    "created_few": "Создано {{count}} занятия",
+    "created_many": "Создано {{count}} занятий",
+    "created_other": "Создано {{count}} занятия",
+    "scope": {
+      "saveTitle": "Изменить повторяющееся занятие",
+      "deleteTitle": "Удалить повторяющееся занятие",
+      "this": "Только это занятие",
+      "following": "Это и следующие",
+      "all": "Все занятия серии",
+      "saveAction": "Сохранить",
+      "deleteAction": "Удалить"
+    }
   }
 }

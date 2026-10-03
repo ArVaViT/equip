@@ -3223,5 +3223,28 @@
   "theme": {
     "switchToLight": "Light theme",
     "switchToDark": "Dark theme"
+  },
+  "eventSeries": {
+    "duration": "Length",
+    "durationNone": "Not set",
+    "repeat": "Repeat",
+    "repeatNone": "Does not repeat",
+    "repeatWeekly": "Every week",
+    "repeatBiweekly": "Every two weeks",
+    "count": "Number of classes",
+    "countRange": "From 2 to {{max}}",
+    "lastOn": "the last on {{date}}",
+    "partOfSeries": "Repeating class",
+    "created_one": "{{count}} class created",
+    "created_other": "{{count}} classes created",
+    "scope": {
+      "saveTitle": "Edit a repeating class",
+      "deleteTitle": "Delete a repeating class",
+      "this": "This class only",
+      "following": "This and following",
+      "all": "All classes in the series",
+      "saveAction": "Save",
+      "deleteAction": "Delete"
+    }
   }
 }

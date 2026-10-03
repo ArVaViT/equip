@@ -526,6 +526,7 @@ export type NotificationType =
   | 'new_event'
   | 'event_rescheduled'
   | 'recording_ready'
+  | 'event_reminder'
   | 'retake_requested'
 
 export interface Notification {
@@ -605,6 +606,11 @@ export interface CalendarEvent {
   meeting_url: string | null
   /** Where to watch it afterwards, once the teacher has added it. */
   recording_url?: string | null
+  /** Minutes, when the event is a span (a class, an exam) and its teacher
+   *  gave a length. Absent on deadlines and on events from before lengths. */
+  duration_minutes?: number | null
+  /** Shared by the occurrences of one weekly series. */
+  series_id?: string | null
   course_id: string
   course_title: string | null
   source: CalendarEventSource
@@ -778,6 +784,8 @@ export interface CourseEvent {
   event_date: string
   meeting_url: string | null
   recording_url?: string | null
+  duration_minutes?: number | null
+  series_id?: string | null
   created_by: string
   created_at: string
 }

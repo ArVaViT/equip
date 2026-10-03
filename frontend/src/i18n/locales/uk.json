@@ -3337,5 +3337,30 @@
   "theme": {
     "switchToLight": "Світла тема",
     "switchToDark": "Темна тема"
+  },
+  "eventSeries": {
+    "duration": "Тривалість",
+    "durationNone": "Не вказана",
+    "repeat": "Повторювати",
+    "repeatNone": "Не повторювати",
+    "repeatWeekly": "Щотижня",
+    "repeatBiweekly": "Кожні два тижні",
+    "count": "Усього занять",
+    "countRange": "Від 2 до {{max}}",
+    "lastOn": "останнє — {{date}}",
+    "partOfSeries": "Повторюване заняття",
+    "created_one": "Створено {{count}} заняття",
+    "created_few": "Створено {{count}} заняття",
+    "created_many": "Створено {{count}} занять",
+    "created_other": "Створено {{count}} заняття",
+    "scope": {
+      "saveTitle": "Змінити повторюване заняття",
+      "deleteTitle": "Видалити повторюване заняття",
+      "this": "Лише це заняття",
+      "following": "Це й наступні",
+      "all": "Усі заняття серії",
+      "saveAction": "Зберегти",
+      "deleteAction": "Видалити"
+    }
   }
 }

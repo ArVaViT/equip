@@ -1,4 +1,5 @@
 import {
+  AlarmClock,
   Award,
   Bell,
   CalendarClock,
@@ -28,6 +29,7 @@ const NOTIFICATION_ICONS: Record<NotificationType, typeof Bell> = {
   new_event: CalendarPlus,
   event_rescheduled: CalendarClock,
   recording_ready: PlayCircle,
+  event_reminder: AlarmClock,
   retake_requested: RotateCcw,
 }
 
@@ -39,6 +41,7 @@ const NOTIFICATION_COLORS: Record<NotificationType, string> = {
   new_event: "text-info",
   event_rescheduled: "text-warning",
   recording_ready: "text-info",
+  event_reminder: "text-warning",
   retake_requested: "text-warning",
 }
 

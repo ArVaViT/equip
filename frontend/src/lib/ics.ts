@@ -5,8 +5,9 @@
  * The same shape as the subscription feed (`backend/app/services/
  * calendar_ical.py`), on purpose: the same `UID`, so a reader who both
  * subscribed and added the event by hand sees it once, not twice; the
- * same duration — zero for a deadline, an hour for a live session or an
- * exam, which carry no stored length; and both
+ * same duration — the event's own length when it has one, otherwise zero
+ * for a deadline and an hour for a live session or an exam; the same
+ * half-hour alarm for a class; and both
  * `LOCATION` and `URL` for a meeting link, because Google reads only the
  * first and Apple only the second.
  *
@@ -57,6 +58,16 @@ export function formatUtc(date: Date): string {
   return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z")
 }
 
+function takesTimeOfDay(eventType: string): boolean {
+  return eventType === "live_session" || eventType === "exam"
+}
+
+/** The event's own length; without one, an hour for a class or an exam and none for a deadline. */
+export function icsDuration(event: Pick<CalendarEvent, "event_type" | "duration_minutes">): string {
+  if (event.duration_minutes) return `PT${event.duration_minutes}M`
+  return takesTimeOfDay(event.event_type) ? "PT1H" : "PT0S"
+}
+
 export function eventToIcs(event: CalendarEvent, now: Date = new Date(), recordingLabel?: string): string {
   const start = new Date(event.event_date)
   const recording = event.recording_url ? `${recordingLabel ?? "Recording"}: ${event.recording_url}` : null
@@ -71,7 +82,7 @@ export function eventToIcs(event: CalendarEvent, now: Date = new Date(), recordi
     foldLine(`UID:${event.source}-${event.id}@${DOMAIN}`),
     `DTSTAMP:${formatUtc(now)}`,
     `DTSTART:${formatUtc(start)}`,
-    `DURATION:${event.event_type === "live_session" || event.event_type === "exam" ? "PT1H" : "PT0S"}`,
+    `DURATION:${icsDuration(event)}`,
     foldLine(`SUMMARY:${escapeText(event.title)}`),
   ]
   if (description) lines.push(foldLine(`DESCRIPTION:${escapeText(description)}`))
@@ -81,7 +92,13 @@ export function eventToIcs(event: CalendarEvent, now: Date = new Date(), recordi
     lines.push(foldLine(`LOCATION:${escapeText(event.meeting_url)}`))
     lines.push(foldLine(`URL:${event.meeting_url}`))
   }
-  lines.push(`CATEGORIES:${escapeText(event.event_type)}`, "END:VEVENT", "END:VCALENDAR")
+  lines.push(`CATEGORIES:${escapeText(event.event_type)}`)
+  if (takesTimeOfDay(event.event_type)) {
+    // The feed's alarm, the same half hour: a phone that has the event
+    // should say something before the class, not at it.
+    lines.push("BEGIN:VALARM", "ACTION:DISPLAY", foldLine(`DESCRIPTION:${escapeText(event.title)}`), "TRIGGER:-PT30M", "END:VALARM")
+  }
+  lines.push("END:VEVENT", "END:VCALENDAR")
   return lines.join("\r\n") + "\r\n"
 }
 

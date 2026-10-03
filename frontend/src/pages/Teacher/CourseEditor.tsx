@@ -436,6 +436,9 @@ export default function CourseEditor() {
         onCancelEdit={events.resetForm}
         onEdit={events.startEdit}
         onDelete={events.remove}
+        pendingScope={events.pendingScope}
+        onChooseScope={events.chooseScope}
+        onCancelScope={events.cancelScope}
       />
 
       {isAdmin && (
