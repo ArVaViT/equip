@@ -9,6 +9,7 @@
     "toProfile": "Open profile"
   },
   "common": {
+    "late": "Late",
     "appName": "Equip",
     "cancel": "Cancel",
     "confirm": "Confirm",
@@ -997,6 +998,8 @@
     "attemptsShort": "Attempts: {{used}}/{{max}}",
     "attemptsUnverified": "Couldn't check how many attempts you have used. You can start, but if your attempts are spent the server will refuse the submission — reload the page first.",
     "essayHelper": "Essay · graded by the teacher",
+    "draftSaved": "Draft saved on this device",
+    "draftRestored": "Draft restored from this device",
     "essayPlaceholder": "Write your essay response…",
     "essayPlaceholderMin": "Write at least {{count}} words. Your response will be reviewed by the teacher.",
     "exam": "Exam",

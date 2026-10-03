@@ -23,13 +23,24 @@ import uuid
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
+import pytest
+from fastapi.testclient import TestClient
+
+from app.api.dependencies import get_current_user, get_optional_user
+from app.core.database import get_db
+from app.main import app
 from app.models.audit_log import AuditLog
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
+from app.models.organization import Organization
 from app.models.quiz import Quiz
 from app.models.student_grade import StudentGrade
+from app.models.user import User, UserRole
+from tests.conftest import TEST_ORGANIZATION_ID
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from sqlalchemy.orm import Session
 
 #: The smallest quiz the API accepts: one answerable question. A quiz with no
@@ -204,30 +215,102 @@ def test_a_teacher_can_still_see_how_their_course_is_graded(client, db: Session,
     assert resp.json()["bands"], "including the bands their grades are read against"
 
 
-def test_a_director_may_change_a_course_they_do_not_teach(admin_client, db: Session, teacher) -> None:
-    """Which is the whole point of it being an institutional call."""
-    from app.models.user import User, UserRole
+def _signed_in_as(db: Session, user: User) -> Iterator[TestClient]:
+    def _db():
+        yield db
 
-    other_teacher = User(
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_optional_user] = lambda: user
+    with TestClient(app, raise_server_exceptions=False) as tc:
+        yield tc
+    app.dependency_overrides.clear()
+
+
+@pytest.fixture()
+def director_client(db: Session, teacher) -> Iterator[TestClient]:
+    """A director of the *test* organization — the school the seeded teacher's
+    courses belong to. Not platform staff: ``admin_client`` passes every
+    ownership check by role, which is how the test below used to pass while
+    a real director was refused."""
+    director = User(
         id=uuid.uuid4(),
-        email="other-teacher@test.local",
-        full_name="Other Teacher",
-        role=UserRole.TEACHER,
+        email="director@example.com",
+        full_name="Dmytro Director",
+        role=UserRole.DIRECTOR.value,
+        organization_id=TEST_ORGANIZATION_ID,
     )
-    db.add(other_teacher)
-    db.flush()
-    foreign = Course(id="c-foreign-scheme", status="published", created_by=other_teacher.id)
-    db.add(foreign)
+    db.add(director)
     db.commit()
+    yield from _signed_in_as(db, director)
 
-    resp = admin_client.put(
-        SCHEME_URL.format(course_id=foreign.id),
+
+@pytest.fixture()
+def other_schools_director_client(db: Session, teacher) -> Iterator[TestClient]:
+    """A director of a different organization altogether."""
+    other = Organization(slug="other-school", public_name="Other School")
+    db.add(other)
+    db.flush()
+    director = User(
+        id=uuid.uuid4(),
+        email="director@other-school.example.com",
+        full_name="Next Door",
+        role=UserRole.DIRECTOR.value,
+        organization_id=other.id,
+    )
+    db.add(director)
+    db.commit()
+    yield from _signed_in_as(db, director)
+
+
+def test_a_director_may_change_a_course_they_do_not_teach(director_client: TestClient, db: Session, teacher) -> None:
+    """Which is the whole point of it being an institutional call.
+
+    The course is the seeded teacher's; the caller is a director of the same
+    school who never touched it. Until 2026-10-03 the route checked course
+    *ownership* after ``require_director``, so this exact caller got «You do
+    not own this course» — and this test passed only because it signed in as
+    platform staff.
+    """
+    course = _course(db, teacher, course_id="c-director-same-school")
+
+    resp = director_client.put(
+        SCHEME_URL.format(course_id=course.id),
         json={"grading_scheme": "percent", "pass_threshold": "60"},
     )
 
-    assert resp.status_code == 200
-    db.refresh(foreign)
-    assert foreign.grading_scheme == "percent"
+    assert resp.status_code == 200, resp.text
+    db.refresh(course)
+    assert course.grading_scheme == "percent"
+
+
+def test_a_director_may_read_the_scheme_of_a_course_they_do_not_teach(
+    director_client: TestClient, db: Session, teacher
+) -> None:
+    """The read is the form the change is made from."""
+    course = _course(db, teacher, course_id="c-director-reads")
+
+    resp = director_client.get(SCHEME_URL.format(course_id=course.id))
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["grading_scheme"] == "letter"
+
+
+def test_another_schools_director_may_not(other_schools_director_client: TestClient, db: Session, teacher) -> None:
+    """Inside their own school, never across. A 404, as for a cohort or a
+    certificate next door: the answer must not confirm what is there."""
+    course = _course(db, teacher, course_id="c-director-other-school")
+
+    put = other_schools_director_client.put(
+        SCHEME_URL.format(course_id=course.id),
+        json={"grading_scheme": "percent", "pass_threshold": "60"},
+    )
+    get = other_schools_director_client.get(SCHEME_URL.format(course_id=course.id))
+
+    assert put.status_code == 404, put.text
+    assert get.status_code == 404, get.text
+    db.refresh(course)
+    assert course.grading_scheme == "letter", "and nothing moved"
 
 
 class TestQuizThresholdAlignment:

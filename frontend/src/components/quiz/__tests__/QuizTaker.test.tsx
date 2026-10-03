@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Quiz, QuizAttempt } from "@/types"
 import i18n from "@/i18n/config"
 import { axe } from "@/test/a11y"
+import { AuthContext } from "@/context/auth-context"
 
 const getChapterQuiz = vi.fn()
 const getMyQuizAttempts = vi.fn()
@@ -319,5 +320,78 @@ describe("QuizTaker", () => {
 
     // The counter and the button agree: not answered yet.
     expect(screen.getByText(/0\s*\/\s*1/)).toBeInTheDocument()
+  })
+
+  describe("an open answer survives a reload", () => {
+    const DRAFT_KEY = "equip.draft.quiz.student-1.quiz-1.qe"
+    const essayQuiz = () =>
+      makeQuiz({
+        questions: [
+          {
+            id: "qe",
+            quiz_id: "quiz-1",
+            question_text: "Why?",
+            question_type: "essay",
+            points: 10,
+            order_index: 0,
+            min_words: null,
+            options: [],
+          } as never,
+        ],
+      })
+
+    function SignedIn({ children }: { children: React.ReactNode }) {
+      return (
+        <I18nextProvider i18n={i18n}>
+          <AuthContext.Provider
+            value={{
+              user: { id: "student-1", email: "s@example.org" } as never,
+              loading: false,
+              login: vi.fn(),
+              register: vi.fn(),
+              signInWithGoogle: vi.fn(),
+              sendSignInLink: vi.fn(),
+              resetPassword: vi.fn(),
+              logout: vi.fn(),
+              refreshUser: vi.fn().mockResolvedValue(undefined),
+              applyUser: vi.fn(),
+            }}
+          >
+            {children}
+          </AuthContext.Provider>
+        </I18nextProvider>
+      )
+    }
+
+    beforeEach(async () => {
+      await i18n.changeLanguage("en")
+      window.localStorage.clear()
+      getChapterQuiz.mockResolvedValue(essayQuiz())
+      getMyQuizAttempts.mockResolvedValue([])
+    })
+
+    it("puts back what the student typed before the page went away, and says so", async () => {
+      window.localStorage.setItem(DRAFT_KEY, "Because the Spirit came at Pentecost")
+
+      render(<QuizTaker chapterId="chap-1" quizId="quiz-1" />, { wrapper: SignedIn })
+
+      expect(await screen.findByRole("textbox")).toHaveValue("Because the Spirit came at Pentecost")
+      expect(screen.getByRole("status")).toHaveTextContent(/draft restored/i)
+      // Restored counts as answered: the button opens without retyping.
+      expect(screen.getByRole("button", { name: /submit quiz/i })).toBeEnabled()
+    })
+
+    it("keeps the draft while typing and forgets it once the attempt is in", async () => {
+      submitQuiz.mockResolvedValue(makeAttempt({ answers: [] }))
+      render(<QuizTaker chapterId="chap-1" quizId="quiz-1" />, { wrapper: SignedIn })
+
+      await userEvent.type(await screen.findByRole("textbox"), "Acts 2")
+      await waitFor(() => expect(window.localStorage.getItem(DRAFT_KEY)).toBe("Acts 2"))
+
+      await userEvent.click(screen.getByRole("button", { name: /submit quiz/i }))
+
+      await waitFor(() => expect(submitQuiz).toHaveBeenCalled())
+      await waitFor(() => expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull())
+    })
   })
 })

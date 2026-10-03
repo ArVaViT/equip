@@ -11,6 +11,7 @@ from app.api.dependencies import (
     refuse_if_chapter_locked,
     require_teacher,
     verify_chapter_owner,
+    verify_course_in_own_school,
     verify_course_owner,
 )
 from app.constants import GRADABLE_CHAPTER_TYPES
@@ -95,7 +96,8 @@ def get_course_gradebook_matrix(
     every student against every chapter at once, so it needs the per-chapter
     breakdown for the whole roster.
     """
-    course = verify_course_owner(db, course_id, teacher)
+    # Read-only: the school's director may see it, as the ведомость (2026-10-03).
+    course = verify_course_in_own_school(db, course_id, teacher)
     return build_course_gradebook_matrix(
         db, course, course_id, display_locale=normalize_locale(accept_language) if accept_language else None
     )

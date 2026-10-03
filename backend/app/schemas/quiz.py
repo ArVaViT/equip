@@ -318,6 +318,9 @@ class PendingAnswerInfo(BaseModel):
     student_name: str | None = None
     student_email: str
     submitted_at: datetime | None = None
+    #: The attempt came in after its module's due date — the only deadline a
+    #: quiz has. Derived at read time; see ``SubmissionResponse.is_late``.
+    is_late: bool = False
 
 
 class QuizAttemptResponse(BaseModel):
@@ -332,6 +335,9 @@ class QuizAttemptResponse(BaseModel):
     started_at: datetime
     completed_at: datetime | None = None
     answers: list[QuizAnswerResult] = []
+    #: Completed after the module's due date. Derived at read time, never
+    #: stored; an attempt still in progress is not late yet (2026-10-03).
+    is_late: bool = False
 
 
 class GrantExtraAttemptsRequest(RequestModel):

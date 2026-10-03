@@ -190,7 +190,16 @@ class TestTheDoorDidNotSwingTooFar:
             director_client.post(f"/api/v1/courses/{course_id}/modules", json={"title": "Чужой модуль"}).status_code
             == 403
         )
-        assert director_client.get(f"/api/v1/grades/course/{course_id}").status_code == 403
+        # Reading the school's grades is the director's (2026-10-03): the
+        # ведомость they sign sits on top of them. Marking stays the teacher's.
+        assert director_client.get(f"/api/v1/grades/course/{course_id}").status_code == 200
+        assert (
+            director_client.put(
+                f"/api/v1/grades/course/{course_id}/student/{uuid.uuid4()}",
+                json={"override_code": "A", "reason": "not mine"},
+            ).status_code
+            == 403
+        )
         assert (
             director_client.post(
                 "/api/v1/announcements",

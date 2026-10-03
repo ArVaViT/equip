@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { RubricGrid } from "@/components/rubric/RubricGrid"
-import { ErrorState } from "@/components/patterns"
+import { ErrorState, LateBadge } from "@/components/patterns"
 import { gradesService } from "@/services/grades"
 import { rubricsService } from "@/services/rubrics"
 import { coursesService } from "@/services/courses"
@@ -222,7 +222,10 @@ export function MarkOneByOne({
 
       <Card>
         <CardContent className="space-y-3 p-4">
-          <p className="text-xs text-ink-muted">{current.student_name}</p>
+          <p className="flex items-center gap-2 text-xs text-ink-muted">
+            {current.student_name}
+            {current.is_late && <LateBadge />}
+          </p>
           {/* The work gets the screen — and the same reading treatment the
               chapters get. The product's careful typography used to stop at
               course text: the essay a teacher must actually read was set at
