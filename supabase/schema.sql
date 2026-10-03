@@ -265,6 +265,37 @@ $$;
 
 
 --
+-- Name: is_director_of(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.is_director_of(org uuid) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+    SELECT org IS NOT NULL AND EXISTS (
+        SELECT 1 FROM public.organization_members
+        WHERE user_id = (SELECT auth.uid()) AND organization_id = org AND status = 'active'
+          AND role = 'director'
+    );
+$$;
+
+
+--
+-- Name: is_member_of(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.is_member_of(org uuid) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+    SELECT org IS NOT NULL AND EXISTS (
+        SELECT 1 FROM public.organization_members
+        WHERE user_id = (SELECT auth.uid()) AND organization_id = org AND status = 'active'
+    );
+$$;
+
+
+--
 -- Name: is_platform_staff(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -276,6 +307,81 @@ CREATE FUNCTION public.is_platform_staff() RETURNS boolean
         SELECT 1 FROM public.profiles
         WHERE id = (SELECT auth.uid()) AND role = 'admin'
     );
+$$;
+
+
+--
+-- Name: is_staff_of(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.is_staff_of(org uuid) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+    SELECT org IS NOT NULL AND EXISTS (
+        SELECT 1 FROM public.organization_members
+        WHERE user_id = (SELECT auth.uid()) AND organization_id = org AND status = 'active'
+          AND role IN ('teacher', 'director')
+    );
+$$;
+
+
+--
+-- Name: member_organization_ids(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.member_organization_ids() RETURNS SETOF uuid
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+    SELECT organization_id FROM public.organization_members
+    WHERE user_id = (SELECT auth.uid()) AND status = 'active';
+$$;
+
+
+--
+-- Name: mirror_profile_role(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.mirror_profile_role(p_user uuid) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  mirrored text;
+BEGIN
+  SELECT m.role INTO mirrored
+  FROM public.organization_members AS m
+  WHERE m.user_id = p_user AND m.status = 'active'
+  ORDER BY CASE m.role WHEN 'director' THEN 2 WHEN 'teacher' THEN 1 ELSE 0 END DESC
+  LIMIT 1;
+  mirrored := COALESCE(mirrored, 'student');
+  UPDATE public.profiles
+     SET role = mirrored
+   WHERE id = p_user AND role <> 'admin' AND role <> mirrored;
+END;
+$$;
+
+
+--
+-- Name: organization_members_mirror_profile_role(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.organization_members_mirror_profile_role() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+  IF TG_OP IN ('INSERT', 'UPDATE') THEN
+    PERFORM public.mirror_profile_role(NEW.user_id);
+  END IF;
+  -- A row that moved to another person, or went away, changes the old
+  -- person's answer too.
+  IF TG_OP = 'DELETE' OR (TG_OP = 'UPDATE' AND OLD.user_id IS DISTINCT FROM NEW.user_id) THEN
+    PERFORM public.mirror_profile_role(OLD.user_id);
+  END IF;
+  RETURN NULL;
+END;
 $$;
 
 
@@ -1057,6 +1163,24 @@ CREATE TABLE public.org_settings (
 
 
 --
+-- Name: organization_members; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.organization_members (
+    user_id uuid NOT NULL,
+    organization_id uuid NOT NULL,
+    role text NOT NULL,
+    status text DEFAULT 'active'::text NOT NULL,
+    joined_at timestamp with time zone DEFAULT now() NOT NULL,
+    invited_by uuid,
+    joined_via text NOT NULL,
+    CONSTRAINT organization_members_joined_via_check CHECK ((joined_via = ANY (ARRAY['invitation'::text, 'join_link'::text, 'appointment'::text, 'migration'::text]))),
+    CONSTRAINT organization_members_role_check CHECK ((role = ANY (ARRAY['director'::text, 'teacher'::text, 'student'::text]))),
+    CONSTRAINT organization_members_status_check CHECK ((status = ANY (ARRAY['active'::text, 'suspended'::text])))
+);
+
+
+--
 -- Name: organizations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1073,8 +1197,14 @@ CREATE TABLE public.organizations (
     verification_basis text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    description text,
+    logo_url text,
+    website_url text,
+    show_member_count boolean DEFAULT true NOT NULL,
+    CONSTRAINT organizations_description_length_check CHECK (((description IS NULL) OR (char_length(description) <= 280))),
     CONSTRAINT organizations_slug_shape_check CHECK ((slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'::text)),
-    CONSTRAINT organizations_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'verified'::text, 'suspended'::text])))
+    CONSTRAINT organizations_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'approved'::text, 'verified'::text, 'suspended'::text]))),
+    CONSTRAINT organizations_website_url_https_check CHECK (((website_url IS NULL) OR (website_url ~ '^https://'::text)))
 );
 
 
@@ -1701,6 +1831,14 @@ ALTER TABLE ONLY public.notifications
 
 ALTER TABLE ONLY public.org_settings
     ADD CONSTRAINT org_settings_pkey PRIMARY KEY (organization_id);
+
+
+--
+-- Name: organization_members organization_members_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organization_members
+    ADD CONSTRAINT organization_members_pkey PRIMARY KEY (user_id, organization_id);
 
 
 --
@@ -2469,6 +2607,13 @@ CREATE INDEX ix_notifications_user_id_is_read ON public.notifications USING btre
 
 
 --
+-- Name: ix_organization_members_org_role; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_organization_members_org_role ON public.organization_members USING btree (organization_id, role) WHERE (status = 'active'::text);
+
+
+--
 -- Name: ix_profiles_organization_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2739,6 +2884,13 @@ CREATE TRIGGER trg_enrollments_fulfil_invitations AFTER INSERT OR UPDATE OF user
 --
 
 CREATE TRIGGER trg_invitations_created_fulfil AFTER INSERT ON public.invitations FOR EACH ROW WHEN ((new.status = 'pending'::text)) EXECUTE FUNCTION public.fulfil_invitations_after_change();
+
+
+--
+-- Name: organization_members trg_organization_members_mirror_profile_role; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_organization_members_mirror_profile_role AFTER INSERT OR DELETE OR UPDATE ON public.organization_members FOR EACH ROW EXECUTE FUNCTION public.organization_members_mirror_profile_role();
 
 
 --
@@ -3413,6 +3565,30 @@ ALTER TABLE ONLY public.org_settings
 
 
 --
+-- Name: organization_members organization_members_invited_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organization_members
+    ADD CONSTRAINT organization_members_invited_by_fkey FOREIGN KEY (invited_by) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: organization_members organization_members_organization_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organization_members
+    ADD CONSTRAINT organization_members_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: organization_members organization_members_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.organization_members
+    ADD CONSTRAINT organization_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+
+--
 -- Name: organizations organizations_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4041,6 +4217,19 @@ CREATE POLICY notifications_select_own ON public.notifications FOR SELECT TO aut
 --
 
 ALTER TABLE public.org_settings ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: organization_members; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.organization_members ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: organization_members organization_members_select_self; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY organization_members_select_self ON public.organization_members FOR SELECT TO authenticated USING ((user_id = ( SELECT auth.uid() AS uid)));
+
 
 --
 -- Name: organizations; Type: ROW SECURITY; Schema: public; Owner: -

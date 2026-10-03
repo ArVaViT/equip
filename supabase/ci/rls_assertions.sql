@@ -511,4 +511,135 @@ BEGIN
   RAISE NOTICE 'OK: no student-work policy grants by teacher role alone';
 END $$;
 
+
+-- ---------------------------------------------------------------------
+-- 16) Memberships (20261003165050): a person reads their own rows, the
+--     helpers answer by membership, and the mirror keeps profiles.role.
+--
+-- Nothing reads organization_members from a policy yet (phase 3 rewrites
+-- the three organization policies to the helpers below); these assertions
+-- pin the contract the policies will rest on, so phase 3 proves one thing
+-- rather than two.
+-- ---------------------------------------------------------------------
+
+\set member_x '44444444-4444-4444-4444-444444444444'
+
+INSERT INTO auth.users (id, email) VALUES (:'member_x', 'member-x@test.local');
+INSERT INTO public.profiles (id, email, role) VALUES (:'member_x', 'member-x@test.local', 'student');
+
+-- Director A directs A; X studies in A and used to teach in B (suspended).
+INSERT INTO public.organization_members (user_id, organization_id, role, joined_via)
+VALUES
+  (:'director_a', :'school_a', 'director', 'appointment'),
+  (:'member_x',   :'school_a', 'student',  'invitation');
+INSERT INTO public.organization_members (user_id, organization_id, role, status, joined_via)
+VALUES
+  (:'member_x',   :'school_b', 'teacher', 'suspended', 'invitation');
+
+-- The mirror ran as the owner: a student with a suspended teacher row is a
+-- student; the director reads director.
+DO $$
+DECLARE r text;
+BEGIN
+  SELECT role INTO r FROM public.profiles WHERE id = '44444444-4444-4444-4444-444444444444';
+  IF r <> 'student' THEN
+    RAISE EXCEPTION 'BROKEN: a suspended teacher membership mirrored into profiles.role (%)', r;
+  END IF;
+  UPDATE public.organization_members SET status = 'active'
+   WHERE user_id = '44444444-4444-4444-4444-444444444444' AND organization_id = 'bbbb2222-0000-0000-0000-000000000002';
+  SELECT role INTO r FROM public.profiles WHERE id = '44444444-4444-4444-4444-444444444444';
+  IF r <> 'teacher' THEN
+    RAISE EXCEPTION 'BROKEN: reactivating a teacher membership did not reach profiles.role (%)', r;
+  END IF;
+  UPDATE public.organization_members SET status = 'suspended'
+   WHERE user_id = '44444444-4444-4444-4444-444444444444' AND organization_id = 'bbbb2222-0000-0000-0000-000000000002';
+  SELECT role INTO r FROM public.profiles WHERE id = '44444444-4444-4444-4444-444444444444';
+  IF r <> 'student' THEN
+    RAISE EXCEPTION 'BROKEN: suspending the membership did not drop profiles.role back (%)', r;
+  END IF;
+  RAISE NOTICE 'OK: profiles.role mirrors the highest active membership';
+END $$;
+
+SET request.jwt.claim.sub = '44444444-4444-4444-4444-444444444444';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM public.organization_members;
+  IF n <> 2 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a member sees % membership rows, expected only their own 2', n;
+  END IF;
+  SELECT count(*) INTO n FROM public.organization_members WHERE user_id = '33333333-3333-3333-3333-333333333333';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: another person''s membership row is readable';
+  END IF;
+  RAISE NOTICE 'OK: organization_members is self-only';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO public.organization_members (user_id, organization_id, role, joined_via)
+  VALUES ('44444444-4444-4444-4444-444444444444', 'bbbb2222-0000-0000-0000-000000000002', 'director', 'appointment');
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can INSERT organization_members (self-appointment)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: organization_members INSERT denied (privilege)';
+  WHEN unique_violation THEN RAISE EXCEPTION 'SECURITY HOLE: the INSERT reached the table';
+END $$;
+
+DO $$
+BEGIN
+  UPDATE public.organization_members SET role = 'director'
+   WHERE user_id = '44444444-4444-4444-4444-444444444444';
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can UPDATE organization_members (self-promotion)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: organization_members UPDATE denied (privilege)';
+END $$;
+
+-- The helpers, as member X: a member of A in any role, staff of nowhere
+-- (the B row is suspended), director of nowhere, and NULL is never a yes.
+DO $$
+BEGIN
+  IF NOT public.is_member_of('aaaa1111-0000-0000-0000-000000000001') THEN
+    RAISE EXCEPTION 'BROKEN: is_member_of denies an active member';
+  END IF;
+  IF public.is_member_of('bbbb2222-0000-0000-0000-000000000002') THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a suspended membership still counts as membership';
+  END IF;
+  IF public.is_staff_of('aaaa1111-0000-0000-0000-000000000001') THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a student is staff';
+  END IF;
+  IF public.is_director_of('aaaa1111-0000-0000-0000-000000000001') THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a student is a director';
+  END IF;
+  IF public.is_member_of(NULL) IS DISTINCT FROM false OR public.is_staff_of(NULL) IS DISTINCT FROM false
+     OR public.is_director_of(NULL) IS DISTINCT FROM false THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a NULL organization satisfies a membership helper';
+  END IF;
+  IF (SELECT count(*) FROM public.member_organization_ids()) <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: member_organization_ids() should list exactly school A';
+  END IF;
+  RAISE NOTICE 'OK: membership helpers answer by active membership and refuse NULL';
+END $$;
+
+-- And as director A: staff and director of A, neither of B.
+RESET ROLE;
+SET request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+SET ROLE authenticated;
+
+DO $$
+BEGIN
+  IF NOT (public.is_staff_of('aaaa1111-0000-0000-0000-000000000001')
+          AND public.is_director_of('aaaa1111-0000-0000-0000-000000000001')) THEN
+    RAISE EXCEPTION 'BROKEN: a director is not staff and director of their own organization';
+  END IF;
+  IF public.is_member_of('bbbb2222-0000-0000-0000-000000000002')
+     OR public.is_director_of('bbbb2222-0000-0000-0000-000000000002') THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a director of A is something in B';
+  END IF;
+  RAISE NOTICE 'OK: a director directs their own organization only';
+END $$;
+
+RESET ROLE;
+
 SELECT 'RLS policy assertions passed' AS result;

@@ -95,6 +95,8 @@ GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.notifications TO anon;
 GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.notifications TO authenticated;
 GRANT ALL ON TABLE public.notifications TO service_role;
 GRANT ALL ON TABLE public.org_settings TO service_role;
+GRANT SELECT ON TABLE public.organization_members TO authenticated;
+GRANT ALL ON TABLE public.organization_members TO service_role;
 GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN ON TABLE public.profiles TO anon;
 GRANT SELECT,REFERENCES,TRIGGER,MAINTAIN,UPDATE ON TABLE public.profiles TO authenticated;
 GRANT ALL ON TABLE public.profiles TO service_role;

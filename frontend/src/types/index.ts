@@ -34,6 +34,39 @@ export const ROLES = {
   STUDENT: 'student',
 } as const satisfies Record<string, UserRole>
 
+/**
+ * The role a person holds inside one organization — a row of
+ * ``organization_members``, not the platform-wide ``UserRole``. Platform
+ * ``admin`` is deliberately not one: it is a role over the platform.
+ * ``profiles.role`` (``User.role``) mirrors the highest active membership.
+ *
+ * Mirrors ``MembershipRole`` / ``MembershipStatus`` / ``MembershipSource``
+ * in ``backend/app/models/organization.py`` and the CHECK constraints on
+ * ``organization_members``. All four representations stay in lockstep.
+ */
+export type MembershipRole = 'director' | 'teacher' | 'student'
+export type MembershipStatus = 'active' | 'suspended'
+/** How the person got into the organization. */
+export type MembershipSource = 'invitation' | 'join_link' | 'appointment' | 'migration'
+
+export const MEMBERSHIP_ROLES = {
+  DIRECTOR: 'director',
+  TEACHER: 'teacher',
+  STUDENT: 'student',
+} as const satisfies Record<string, MembershipRole>
+
+export const MEMBERSHIP_STATUSES = {
+  ACTIVE: 'active',
+  SUSPENDED: 'suspended',
+} as const satisfies Record<string, MembershipStatus>
+
+export const MEMBERSHIP_SOURCES = {
+  INVITATION: 'invitation',
+  JOIN_LINK: 'join_link',
+  APPOINTMENT: 'appointment',
+  MIGRATION: 'migration',
+} as const satisfies Record<string, MembershipSource>
+
 export interface User {
   id: string
   email: string
