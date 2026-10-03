@@ -13,6 +13,7 @@ import { CohortSelectModal } from "./CohortSelectModal"
 import { DraftOutline } from "./DraftOutline"
 import { orNotTranslated } from "@/lib/untranslated"
 import { CourseReadingTime } from "./CourseReadingTime"
+import { CourseTabs } from "./CourseTabs"
 
 interface Props {
   course: Course
@@ -105,6 +106,68 @@ export function NotEnrolledView({
     void onEnroll(selectedCohortId)
   }
 
+  // What the course is and when its group meets. Above the button for the
+  // author's preview; for everyone else, the «О курсе» tab.
+  const aboutContent = (
+    <>
+        {course.description && (
+          <p className="text-ink leading-relaxed mb-6 whitespace-pre-line text-wrap-safe">
+            {course.description}
+          </p>
+        )}
+
+        {activeCohort && (
+          <Card className="mb-6">
+            <CardContent className="py-4">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <CalendarDays className="h-4 w-4 text-brand" strokeWidth={1.75} aria-hidden />
+                <span className="font-medium">{activeCohort.name}</span>
+                <Badge variant={COHORT_STATUS_BADGE[activeCohort.status]}>
+                  {t(COHORT_STATUS_KEY[activeCohort.status])}
+                </Badge>
+              </div>
+              <p className="text-sm text-ink-muted">
+                {formatDate(activeCohort.start_date)} &mdash; {formatDate(activeCohort.end_date)}
+              </p>
+              {activeCohort.enrollment_start && activeCohort.enrollment_end && (
+                <p className="text-xs text-ink-muted mt-1 flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
+                  {t("courseDetail.enrollmentRangeLabel", {
+                    start: formatDate(activeCohort.enrollment_start),
+                    end: formatDate(activeCohort.enrollment_end),
+                  })}
+                </p>
+              )}
+              {activeCohort.max_students && (
+                <p className="text-xs text-ink-muted mt-1">
+                  {t("courseDetail.studentsEnrolledOfMax", {
+                    enrolled: activeCohort.student_count,
+                    max: activeCohort.max_students,
+                  })}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {!activeCohort &&
+          cohorts.length === 0 &&
+          (course.enrollment_start || course.enrollment_end) && (
+            <div className="flex flex-wrap items-center gap-2 text-sm mb-6">
+              <CalendarDays className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
+              {course.enrollment_start && course.enrollment_end && (
+                <span className="text-ink-muted text-xs">
+                  {t("courseDetail.enrollmentRangeLabel", {
+                    start: formatDate(course.enrollment_start),
+                    end: formatDate(course.enrollment_end),
+                  })}
+                </span>
+              )}
+            </div>
+          )}
+    </>
+  )
+
   return (
     <div className="animate-fade-in container mx-auto px-4 py-6 max-w-3xl">
       <Link to={isOwnerPreview ? `/teacher/courses/${course.id}` : "/"}>
@@ -155,61 +218,7 @@ export function NotEnrolledView({
         </p>
       )}
 
-      {course.description && (
-        <p className="text-ink-muted leading-relaxed mb-6 whitespace-pre-line text-wrap-safe">
-          {course.description}
-        </p>
-      )}
-
-      {activeCohort && (
-        <Card className="mb-6">
-          <CardContent className="py-4">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <CalendarDays className="h-4 w-4 text-brand" strokeWidth={1.75} aria-hidden />
-              <span className="font-medium">{activeCohort.name}</span>
-              <Badge variant={COHORT_STATUS_BADGE[activeCohort.status]}>
-                {t(COHORT_STATUS_KEY[activeCohort.status])}
-              </Badge>
-            </div>
-            <p className="text-sm text-ink-muted">
-              {formatDate(activeCohort.start_date)} &mdash; {formatDate(activeCohort.end_date)}
-            </p>
-            {activeCohort.enrollment_start && activeCohort.enrollment_end && (
-              <p className="text-xs text-ink-muted mt-1 flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
-                {t("courseDetail.enrollmentRangeLabel", {
-                  start: formatDate(activeCohort.enrollment_start),
-                  end: formatDate(activeCohort.enrollment_end),
-                })}
-              </p>
-            )}
-            {activeCohort.max_students && (
-              <p className="text-xs text-ink-muted mt-1">
-                {t("courseDetail.studentsEnrolledOfMax", {
-                  enrolled: activeCohort.student_count,
-                  max: activeCohort.max_students,
-                })}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {!activeCohort &&
-        cohorts.length === 0 &&
-        (course.enrollment_start || course.enrollment_end) && (
-          <div className="flex flex-wrap items-center gap-2 text-sm mb-6">
-            <CalendarDays className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-            {course.enrollment_start && course.enrollment_end && (
-              <span className="text-ink-muted text-xs">
-                {t("courseDetail.enrollmentRangeLabel", {
-                  start: formatDate(course.enrollment_start),
-                  end: formatDate(course.enrollment_end),
-                })}
-              </span>
-            )}
-          </div>
-        )}
+      {isOwnerPreview && aboutContent}
 
       <div>
         {isOwnerPreview ? (
@@ -297,6 +306,13 @@ export function NotEnrolledView({
           </Button>
         )}
       </div>
+
+      {!isOwnerPreview && <CourseTabs
+          courseId={course.id}
+          structure={structure}
+          about={aboutContent}
+          hasAbout={Boolean(course.description || activeCohort || course.enrollment_start || course.enrollment_end)}
+        />}
 
       <CohortSelectModal
         open={cohortSelectModal}

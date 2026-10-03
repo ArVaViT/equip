@@ -91,6 +91,16 @@ const courseCrud = {
     })
   },
 
+  /** Who teaches the course — the «Автор» tab. Visible when the course page is. */
+  async getAuthor(id: string): Promise<{ name: string | null; avatar_url: string | null; school: string | null }> {
+    return cached(`courses:author:${id}`, CACHE_TTL.THREE_MINUTES, async () => {
+      const response = await api.get<{ name: string | null; avatar_url: string | null; school: string | null }>(
+        `/courses/${id}/author`,
+      )
+      return response.data
+    })
+  },
+
   async getCourse(id: string): Promise<Course> {
     return cached(`courses:detail:${id}`, CACHE_TTL.THREE_MINUTES, async () => {
       const response = await api.get<Course>(`/courses/${id}`)

@@ -2091,6 +2091,14 @@
     }
   },
   "courseDetail": {
+    "tabs": {
+      "label": "Course sections",
+      "about": "About",
+      "program": "Syllabus",
+      "author": "Author",
+      "programEmpty": "No lessons yet",
+      "authorUnknown": "No author named"
+    },
     "minutesShort": "{{minutes}} min",
     "hoursShort": "≈ {{hours}} h",
     "readingHours": "≈ {{hours}} h of reading",

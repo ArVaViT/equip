@@ -1736,6 +1736,14 @@
     }
   },
   "courseDetail": {
+    "tabs": {
+      "label": "Разделы курса",
+      "about": "О курсе",
+      "program": "Программа",
+      "author": "Автор",
+      "programEmpty": "Уроков пока нет",
+      "authorUnknown": "Автор не указан"
+    },
     "minutesShort": "{{minutes}} мин",
     "hoursShort": "≈ {{hours}} ч",
     "readingHours": "≈ {{hours}} ч чтения",

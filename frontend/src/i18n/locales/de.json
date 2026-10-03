@@ -2091,6 +2091,14 @@
     }
   },
   "courseDetail": {
+    "tabs": {
+      "label": "Kursbereiche",
+      "about": "Über den Kurs",
+      "program": "Programm",
+      "author": "Autor",
+      "programEmpty": "Noch keine Lektionen",
+      "authorUnknown": "Kein Autor angegeben"
+    },
     "minutesShort": "{{minutes}} Min.",
     "hoursShort": "≈ {{hours}} Std.",
     "readingHours": "≈ {{hours}} Std. Lesezeit",

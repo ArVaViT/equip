@@ -2167,6 +2167,14 @@
     }
   },
   "courseDetail": {
+    "tabs": {
+      "label": "Розділи курсу",
+      "about": "Про курс",
+      "program": "Програма",
+      "author": "Автор",
+      "programEmpty": "Уроків поки немає",
+      "authorUnknown": "Автора не вказано"
+    },
     "minutesShort": "{{minutes}} хв",
     "hoursShort": "≈ {{hours}} год",
     "readingHours": "≈ {{hours}} год читання",
