@@ -36,6 +36,7 @@ import type { CalendarEvent } from "@/types";
 import { SelectedDayPanel } from "./SelectedDayPanel";
 import { useCalendarData } from "./useCalendarData";
 import { useMonthGrid } from "./useMonthGrid";
+import { useScrollToSelectedDay } from "./useScrollToSelectedDay";
 
 export default function CalendarPage() {
   const { t, i18n } = useTranslation();
@@ -66,6 +67,7 @@ export default function CalendarPage() {
     goToday,
   } = useMonthGrid(events);
   const [view, setView] = useCalendarView();
+  const { panelRef, selectByTap } = useScrollToSelectedDay(selectedDay, setSelectedDay);
   const [creating, setCreating] = useState(false);
   const prompt = usePrompt();
   const teachingIds = new Set(teaching.map((c) => c.id));
@@ -230,13 +232,13 @@ export default function CalendarPage() {
                   today={zonedToday()}
                   selectedDay={selectedDay}
                   now={now}
-                  onSelectDay={setSelectedDay}
+                  onSelectDay={selectByTap}
                   onPrevWeek={prevWeek}
                   onNextWeek={nextWeek}
                   onGoToday={goToday}
                 />
                 {selectedDay && (
-                  <div className="mx-auto max-w-3xl">
+                  <div ref={panelRef} className="mx-auto max-w-3xl scroll-mt-20">
                     <SelectedDayPanel selectedDay={selectedDay} events={selectedDayEvents} now={now} />
                   </div>
                 )}
@@ -252,7 +254,7 @@ export default function CalendarPage() {
                     calendarDays={calendarDays}
                     eventsByDate={eventsByDate}
                     selectedDay={selectedDay}
-                    onSelectDay={setSelectedDay}
+                    onSelectDay={selectByTap}
                     onPrevMonth={prevMonth}
                     onNextMonth={nextMonth}
                     onGoToday={goToday}
@@ -265,7 +267,9 @@ export default function CalendarPage() {
                 <div data-tour="calendar-upcoming" className="space-y-4">
                   <NextUpCard events={events} now={now} hideOnDay={selectedDay} compact />
                   {selectedDay && (
-                    <SelectedDayPanel selectedDay={selectedDay} events={selectedDayEvents} now={now} compact />
+                    <div ref={panelRef} className="scroll-mt-20">
+                      <SelectedDayPanel selectedDay={selectedDay} events={selectedDayEvents} now={now} compact />
+                    </div>
                   )}
                 </div>
               </div>

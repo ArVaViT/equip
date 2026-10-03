@@ -45,6 +45,11 @@ export function MonthGrid({
   // Mon Tue" regardless of the user's language.
   // Monday first: ``getDayShortName`` counts from Sunday = 0.
   const dayLabels = Array.from({ length: 7 }, (_, i) => getDayShortName((i + 1) % 7, locale));
+  // In the palette's order, so the legend reads the same from month to month.
+  const present = new Set<string>(
+    calendarDays.flatMap(({ date }) => (eventsByDate.get(calendarDayKey(date)) ?? []).map((evt) => evt.event_type)),
+  );
+  const legendTypes = Object.keys(EVENT_COLORS).filter((type) => present.has(type));
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -175,16 +180,21 @@ export function MonthGrid({
           })}
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
-          {Object.entries(EVENT_COLORS).map(([type, color]) => (
-            <span key={type} className="flex items-center gap-1.5">
-              <span className={`h-2 w-2 shrink-0 rounded-full ${color.dot}`} aria-hidden />
-              <span className="text-ink-muted">
-                {t(`calendar.eventTypes.${type}`, { defaultValue: type.replace("_", " ") })}
+        {/* Only the kinds that are on the grid. Four dots explained under
+            a month of two lessons told the reader to look for deadlines
+            and exams that were not there — and took a line on a phone. */}
+        {legendTypes.length > 0 && (
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+            {legendTypes.map((type) => (
+              <span key={type} className="flex items-center gap-1.5">
+                <span className={`h-2 w-2 shrink-0 rounded-full ${getEventColor(type).dot}`} aria-hidden />
+                <span className="text-ink-muted">
+                  {t(`calendar.eventTypes.${type}`, { defaultValue: type.replace("_", " ") })}
+                </span>
               </span>
-            </span>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
