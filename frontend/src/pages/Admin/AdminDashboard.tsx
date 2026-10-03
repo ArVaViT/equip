@@ -35,6 +35,9 @@ const InvitationsTab = lazyRoute(() =>
 const TranslationReviewTab = lazyRoute(() =>
   import("./translations/TranslationReviewTab").then((m) => ({ default: m.TranslationReviewTab })),
 )
+const OrganizationsTab = lazyRoute(() =>
+  import("./organizations/OrganizationsTab").then((m) => ({ default: m.OrganizationsTab })),
+)
 const DmcaTab = lazyRoute(() =>
   import("./dmca/DmcaTab").then((m) => ({ default: m.DmcaTab })),
 )
@@ -183,6 +186,18 @@ export default function AdminDashboard() {
           )}
           <Suspense fallback={<PageSpinner />}>
             <CohortsTab />
+          </Suspense>
+        </div>
+      )}
+
+      {tab === "organizations" && isAdmin && (
+        <div
+          role="tabpanel"
+          id={ADMIN_TAB_PANEL_ID.organizations}
+          aria-labelledby={ADMIN_TAB_TRIGGER_ID.organizations}
+        >
+          <Suspense fallback={<PageSpinner />}>
+            <OrganizationsTab />
           </Suspense>
         </div>
       )}

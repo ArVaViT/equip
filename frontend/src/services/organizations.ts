@@ -51,7 +51,47 @@ export interface OrganizationProfileUpdate {
   show_member_count?: boolean
 }
 
+export type OrganizationStatus = "pending" | "approved" | "verified" | "suspended"
+
+/** `GET /admin/organizations` row — the platform's own view. */
+export interface AdminOrganization {
+  id: string
+  slug: string
+  public_name: string
+  legal_name: string | null
+  country: string | null
+  status: OrganizationStatus
+  verification_basis: string | null
+  verified_at: string | null
+  created_at: string
+  member_count: number
+  director_emails: string[]
+}
+
 export const organizationsService = {
+  async adminList(): Promise<AdminOrganization[]> {
+    const { data } = await api.get<AdminOrganization[]>("/admin/organizations")
+    return data
+  },
+
+  async adminCreate(body: { slug: string; public_name: string; country?: string; status?: OrganizationStatus }): Promise<AdminOrganization> {
+    const { data } = await api.post<AdminOrganization>("/admin/organizations", body)
+    return data
+  },
+
+  async adminUpdate(
+    id: string,
+    body: { status?: OrganizationStatus; verification_basis?: string | null },
+  ): Promise<AdminOrganization> {
+    const { data } = await api.patch<AdminOrganization>(`/admin/organizations/${id}`, body)
+    return data
+  },
+
+  async adminAppointDirector(id: string, email: string): Promise<AdminOrganization> {
+    const { data } = await api.post<AdminOrganization>(`/admin/organizations/${id}/director`, { email })
+    return data
+  },
+
   async getPage(slug: string): Promise<OrganizationPage> {
     const { data } = await api.get<OrganizationPage>(`/organizations/${encodeURIComponent(slug)}`)
     return data

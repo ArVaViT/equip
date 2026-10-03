@@ -2754,7 +2754,8 @@
         "recorded": "Festgehalten.",
         "failed": "Die Entscheidung konnte nicht festgehalten werden."
       }
-    }
+    },
+    "tabOrganizations": "Organisationen"
   },
   "roles": {
     "student": "Studierende Person",
@@ -3264,5 +3265,33 @@
       "failed": "Speichern fehlgeschlagen",
       "websitePlaceholder": "https://"
     }
+  },
+  "adminOrgs": {
+    "loadError": "Organisationen konnten nicht geladen werden",
+    "empty": "Noch keine Organisationen",
+    "create": "Neue Organisation",
+    "created": "Organisation „{{name}}“ erstellt",
+    "createSave": "Erstellen",
+    "failed": "Speichern fehlgeschlagen",
+    "name": "Name",
+    "slug": "Seitenadresse",
+    "slugHint": "equipbible.com/o/{{slug}} — lateinische Buchstaben, Ziffern und Bindestriche; später nicht änderbar",
+    "country": "Land (Code, z. B. US)",
+    "members_one": "{{count}} Mitglied",
+    "members_other": "{{count}} Mitglieder",
+    "directors": "Leitung: {{list}}",
+    "noDirector": "Keine Leitung ernannt",
+    "status": "Status",
+    "statusSaved": "Status aktualisiert",
+    "statuses": {
+      "pending": "Antrag",
+      "approved": "Zugelassen",
+      "verified": "Geprüft",
+      "suspended": "Ausgesetzt"
+    },
+    "appointLabel": "Leitung ernennen (E-Mail eines registrierten Kontos)",
+    "appointPlaceholder": "director@example.com",
+    "appoint": "Ernennen",
+    "directorAppointed": "{{email}} zur Leitung ernannt"
   }
 }

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next"
-import { Users, GraduationCap, Mail, FileText, Languages, School, Scale } from "lucide-react"
+import { Building2, Users, GraduationCap, Mail, FileText, Languages, School, Scale } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ADMIN_TAB_PANEL_ID, ADMIN_TAB_TRIGGER_ID, type AdminTab } from "./constants"
 
@@ -19,6 +19,7 @@ const TAB_META: Record<AdminTab, { icon: typeof Users; labelKey: string }> = {
   audit: { icon: FileText, labelKey: "admin.tabAudit" },
   school: { icon: School, labelKey: "admin.tabSchool" },
   dmca: { icon: Scale, labelKey: "admin.tabDmca" },
+  organizations: { icon: Building2, labelKey: "admin.tabOrganizations" },
 }
 
 /**

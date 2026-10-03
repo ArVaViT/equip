@@ -2850,7 +2850,8 @@
         "recorded": "Записано.",
         "failed": "Не вдалося записати рішення."
       }
-    }
+    },
+    "tabOrganizations": "Організації"
   },
   "roles": {
     "student": "Студент",
@@ -3388,5 +3389,35 @@
       "failed": "Не вдалося зберегти",
       "websitePlaceholder": "https://"
     }
+  },
+  "adminOrgs": {
+    "loadError": "Не вдалося завантажити організації",
+    "empty": "Організацій поки немає",
+    "create": "Нова організація",
+    "created": "Організацію «{{name}}» створено",
+    "createSave": "Створити",
+    "failed": "Не вдалося зберегти",
+    "name": "Назва",
+    "slug": "Адреса сторінки",
+    "slugHint": "equipbible.com/o/{{slug}} — латиниця, цифри й дефіс; змінити потім не можна",
+    "country": "Країна (код, наприклад US)",
+    "members_one": "{{count}} учасник",
+    "members_few": "{{count}} учасники",
+    "members_many": "{{count}} учасників",
+    "members_other": "{{count}} учасника",
+    "directors": "Директор: {{list}}",
+    "noDirector": "Директора не призначено",
+    "status": "Статус",
+    "statusSaved": "Статус оновлено",
+    "statuses": {
+      "pending": "Заявка",
+      "approved": "Допущена",
+      "verified": "Перевірена",
+      "suspended": "Призупинена"
+    },
+    "appointLabel": "Призначити директора (пошта зареєстрованого акаунта)",
+    "appointPlaceholder": "director@example.com",
+    "appoint": "Призначити",
+    "directorAppointed": "{{email}} призначено директором"
   }
 }

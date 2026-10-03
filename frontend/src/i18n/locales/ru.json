@@ -2419,7 +2419,8 @@
         "recorded": "Записано.",
         "failed": "Не удалось записать решение."
       }
-    }
+    },
+    "tabOrganizations": "Организации"
   },
   "roles": {
     "student": "Студент",
@@ -3388,5 +3389,35 @@
       "failed": "Не удалось сохранить",
       "websitePlaceholder": "https://"
     }
+  },
+  "adminOrgs": {
+    "loadError": "Не удалось загрузить организации",
+    "empty": "Организаций пока нет",
+    "create": "Новая организация",
+    "created": "Организация «{{name}}» создана",
+    "createSave": "Создать",
+    "failed": "Не удалось сохранить",
+    "name": "Название",
+    "slug": "Адрес страницы",
+    "slugHint": "equipbible.com/o/{{slug}} — латиница, цифры и дефис; изменить потом нельзя",
+    "country": "Страна (код, например US)",
+    "members_one": "{{count}} участник",
+    "members_few": "{{count}} участника",
+    "members_many": "{{count}} участников",
+    "members_other": "{{count}} участника",
+    "directors": "Директор: {{list}}",
+    "noDirector": "Директор не назначен",
+    "status": "Статус",
+    "statusSaved": "Статус обновлён",
+    "statuses": {
+      "pending": "Заявка",
+      "approved": "Допущена",
+      "verified": "Проверена",
+      "suspended": "Приостановлена"
+    },
+    "appointLabel": "Назначить директора (почта зарегистрированного аккаунта)",
+    "appointPlaceholder": "director@example.com",
+    "appoint": "Назначить",
+    "directorAppointed": "{{email}} назначен директором"
   }
 }
