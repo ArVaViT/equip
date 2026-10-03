@@ -202,9 +202,10 @@ class TestTheOrganizationIntroducesItself:
     def test_the_director_is_named_and_never_addressed(
         self, stranger_client: TestClient, db: Session, school: Organization
     ):
-        _person(db, "Дмитрий Константинов", "director", email="director@ucoat.example")
+        director = _person(db, "Дмитрий Константинов", "director", email="director@ucoat.example")
         body = stranger_client.get("/api/v1/organizations/ucoat").json()
-        assert body["directors"] == [{"full_name": "Дмитрий Константинов", "avatar_url": None}]
+        # The id is a key for the list, not an address.
+        assert body["directors"] == [{"id": str(director.id), "full_name": "Дмитрий Константинов", "avatar_url": None}]
         assert "director@ucoat.example" not in str(body)
 
     def test_a_deactivated_account_is_not_counted(self, stranger_client: TestClient, db: Session, school: Organization):

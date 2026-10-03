@@ -2,6 +2,8 @@ import api from "./api"
 import type { Course } from "@/types"
 
 export interface OrganizationPerson {
+  /** The profile id — a key for the list, never an address. */
+  id: string
   full_name: string
   avatar_url: string | null
 }

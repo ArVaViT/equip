@@ -81,6 +81,9 @@ class OrganizationResponse(BaseModel):
 
 
 class OrganizationPerson(BaseModel):
+    #: The profile id — a stable key for a list of people, two of whom may
+    #: share a name. Never the address.
+    id: UUID
     full_name: str
     avatar_url: str | None = None
 

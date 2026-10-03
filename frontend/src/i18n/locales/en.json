@@ -3253,7 +3253,9 @@
       "certificates_one": "certificate issued",
       "certificates_other": "certificates issued",
       "members_one": "member",
-      "members_other": "members"
+      "members_other": "members",
+      "teachers_one": "teacher",
+      "teachers_other": "teachers"
     },
     "form": {
       "description": "About the organization",

@@ -208,7 +208,7 @@ def get_organization_page(
     members = _active_members(db, organization.id, ("director", "teacher", "student"))
     teachers = _active_members(db, organization.id, ("director", "teacher"))
     directors = (
-        db.query(User.full_name, User.avatar_url)
+        db.query(User.id, User.full_name, User.avatar_url)
         .join(OrganizationMember, OrganizationMember.user_id == User.id)
         .filter(
             OrganizationMember.organization_id == organization.id,
@@ -235,7 +235,11 @@ def get_organization_page(
         city=settings_row.city if settings_row is not None else None,
         # A director without a name on their profile is not shown by
         # address instead: no name, no line.
-        directors=[OrganizationPerson(full_name=name, avatar_url=avatar) for name, avatar in directors if name],
+        directors=[
+            OrganizationPerson(id=person_id, full_name=name, avatar_url=avatar)
+            for person_id, name, avatar in directors
+            if name
+        ],
         stats=OrganizationStats(
             courses=len(published),
             lessons=lessons,

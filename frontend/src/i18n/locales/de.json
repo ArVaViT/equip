@@ -3253,7 +3253,9 @@
       "certificates_one": "Zertifikat ausgestellt",
       "certificates_other": "Zertifikate ausgestellt",
       "members_one": "Mitglied",
-      "members_other": "Mitglieder"
+      "members_other": "Mitglieder",
+      "teachers_one": "Lehrkraft",
+      "teachers_other": "Lehrkräfte"
     },
     "form": {
       "description": "Über die Organisation",

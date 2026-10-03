@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { BadgeCheck, BookOpen, ExternalLink, GraduationCap, Library, Lock, Pencil, ScrollText, Users } from "lucide-react"
+import { BadgeCheck, BookOpen, ExternalLink, GraduationCap, Library, Lock, Pencil, ScrollText, UserRound, Users } from "lucide-react"
 
 import CourseCard from "@/components/course/CourseCard"
 import { CourseCoverFallback } from "@/components/course/CourseCoverFallback"
@@ -14,6 +14,7 @@ import { useNamedPageTitle } from "@/hooks/usePageTitle"
 import { activeIntlTag } from "@/i18n/config"
 import { toProxyImage } from "@/lib/images"
 import { getErrorCode } from "@/lib/errorCode"
+import { cn } from "@/lib/utils"
 import { organizationsService, type OrganizationPage as Page } from "@/services/organizations"
 import { OrganizationProfileForm } from "./OrganizationProfileForm"
 
@@ -112,7 +113,7 @@ export default function OrganizationPage() {
           </h2>
           <ul className="flex flex-wrap gap-4">
             {data.directors.map((d) => (
-              <li key={d.full_name} className="flex items-center gap-3">
+              <li key={d.id} className="flex items-center gap-3">
                 <PersonFace person={d} />
                 <div>
                   <p className="text-sm font-medium">{d.full_name}</p>
@@ -208,9 +209,16 @@ function Stats({ page }: { page: Page }) {
     page.stats.members !== null
       ? { icon: Users, value: page.stats.members, label: t("organization.stats.members", { count: page.stats.members }) }
       : null,
+    // Same contract as members: the server sends null below its threshold,
+    // and null is "not shown", not zero.
+    page.stats.teachers !== null
+      ? { icon: UserRound, value: page.stats.teachers, label: t("organization.stats.teachers", { count: page.stats.teachers }) }
+      : null,
   ].filter((x): x is NonNullable<typeof x> => x !== null)
   return (
-    <dl className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
+    // Up to five tiles. Four or fewer sit in one row from sm; five need
+    // a wider screen for that, and fall into 3 + 2 in between.
+    <dl className={cn("mt-10 grid grid-cols-2 gap-4", items.length > 4 ? "sm:grid-cols-3 lg:grid-cols-5" : "sm:grid-cols-4")}>
       {items.map(({ icon: Icon, value, label }) => (
         // The number, then its word: «3 / курса» reads as "3 courses".
         <div key={label} className="flex flex-col-reverse rounded-card border border-edge bg-surface p-4">

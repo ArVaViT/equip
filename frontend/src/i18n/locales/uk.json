@@ -3377,7 +3377,11 @@
       "members_one": "учасник",
       "members_few": "учасники",
       "members_many": "учасників",
-      "members_other": "учасника"
+      "members_other": "учасника",
+      "teachers_one": "викладач",
+      "teachers_few": "викладачі",
+      "teachers_many": "викладачів",
+      "teachers_other": "викладача"
     },
     "form": {
       "description": "Про організацію",
