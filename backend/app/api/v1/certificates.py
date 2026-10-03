@@ -17,7 +17,7 @@ from app.models.certificate import Certificate, CertificateStatus
 from app.models.course import Course
 from app.models.enrollment import Enrollment
 from app.models.user import User, UserRole
-from app.schemas.certificate import CertificateResponse, CertificateVerifyResponse
+from app.schemas.certificate import CertificateBlockerOut, CertificateResponse, CertificateVerifyResponse
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services import certificate_service
 from app.services.certificate_readiness import certificate_blockers
@@ -326,7 +326,9 @@ def _enrich_pending_certs(
                         or (course_titles.get(str(cert.course_id)) if cert.course_id else cert.archived_course_title)
                     ),
                     "teacher_approver_name": ((approver[0] or approver[1]) if approver else None),
-                    "blockers": blockers_by_cert.get(cert.id, []),
+                    # ``model_copy`` does not validate: dicts passed straight in
+                    # stayed dicts and every serialisation warned about it.
+                    "blockers": [CertificateBlockerOut(**b) for b in blockers_by_cert.get(cert.id, [])],
                 }
             )
         )
