@@ -3293,5 +3293,15 @@
     "appointPlaceholder": "director@example.com",
     "appoint": "Ernennen",
     "directorAppointed": "{{email}} zur Leitung ernannt"
+  },
+  "organizations": {
+    "eyebrow": "Auf Equip",
+    "title": "Organisationen auf Equip",
+    "lead": "Bibelschulen, Gemeinden und Dienste, die hier unterrichten. Jede ist von Equip geprüft, hat eine Leitung und eigene Kurse.",
+    "empty": "Noch leer",
+    "joinTitle": "Ihre Organisation ist noch nicht auf Equip?",
+    "joinBody": "Organisationen kommen per Vereinbarung dazu: Schreiben Sie uns, wer Sie sind und wen Sie unterrichten — wir richten Ihre Seite, Ihre Kurse und einen Leitungsbereich ein.",
+    "landingTitle": "Hier unterrichten Organisationen",
+    "all": "Alle Organisationen"
   }
 }

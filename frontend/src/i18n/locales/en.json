@@ -3293,5 +3293,15 @@
     "appointPlaceholder": "director@example.com",
     "appoint": "Appoint",
     "directorAppointed": "{{email}} appointed director"
+  },
+  "organizations": {
+    "eyebrow": "On Equip",
+    "title": "Organizations on Equip",
+    "lead": "Bible schools, churches and ministries teaching here. Each one is verified by Equip, has a director and its own courses.",
+    "empty": "Nothing here yet",
+    "joinTitle": "Is your organization not on Equip yet?",
+    "joinBody": "Organizations join by agreement: write to us who you are and whom you teach, and we will open your page, your courses and a director's workspace.",
+    "landingTitle": "Organizations teach here",
+    "all": "All organizations"
   }
 }

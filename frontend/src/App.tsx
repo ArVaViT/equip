@@ -68,6 +68,7 @@ const DashboardPage = lazyRoute(() => {
 })
 const CoursesPage = lazyRoute(() => import("./pages/Courses/CoursesPage"))
 const OrganizationPage = lazyRoute(() => import("./pages/Organization/OrganizationPage"))
+const OrganizationsPage = lazyRoute(() => import("./pages/Organization/OrganizationsPage"))
 const VerifyCertificatePage = lazyRoute(() => import("./pages/Verify/VerifyCertificatePage"))
 const UnsubscribePage = lazyRoute(() => import("./pages/Unsubscribe/UnsubscribePage"))
 const LegalDocumentPage = lazyRoute(() => import("./pages/Legal/LegalDocumentPage"))
@@ -289,6 +290,7 @@ function AppRoutes() {
               <Route path="/courses" element={<CoursesPage />} />
               {/* An organization's own page: public, where certificates point. */}
               <Route path="/o/:slug" element={<OrganizationPage />} />
+              <Route path="/organizations" element={<OrganizationsPage />} />
               {/* Public. A policy you can only read after accepting it is not
                   a policy, and the consent checkbox has been naming these two
                   documents since long before they existed. */}

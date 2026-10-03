@@ -38,6 +38,7 @@ export function matchTitleKey(pathname: string): string | null {
     "/invite/accept": "invite.heading",
     "/teach/grading": "grading.title",
     "/daily-challenge/archive": "dailyChallenge.archive.title",
+    "/organizations": "organizations.title",
   }
   if (exact[pathname]) return exact[pathname]
 

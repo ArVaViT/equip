@@ -68,7 +68,22 @@ export interface AdminOrganization {
   director_emails: string[]
 }
 
+/** `GET /organizations` — one card on the showcase. */
+export interface OrganizationCard {
+  slug: string
+  public_name: string
+  country: string | null
+  logo_url: string | null
+  description: string | null
+  courses: number
+}
+
 export const organizationsService = {
+  async list(): Promise<OrganizationCard[]> {
+    const { data } = await api.get<OrganizationCard[]>("/organizations")
+    return data
+  },
+
   async adminList(): Promise<AdminOrganization[]> {
     const { data } = await api.get<AdminOrganization[]>("/admin/organizations")
     return data
