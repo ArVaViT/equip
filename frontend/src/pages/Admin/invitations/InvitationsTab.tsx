@@ -112,7 +112,15 @@ export function InvitationsTab() {
     if (!restated) return
     setResendingId(inv.id)
     try {
-      await invitationsService.createInvitation(inv.email, inv.role, true)
+      // The row's own scope: without it the server takes the school's
+      // default, and resending an "account only" invitation would write a
+      // second one that admits the person to the school.
+      await invitationsService.createInvitation(
+        inv.email,
+        inv.role,
+        true,
+        inv.scope ? { scope: inv.scope, courseId: inv.course_id } : undefined,
+      )
       toast({ title: t("admin.invitations.toast.resent"), variant: "success" })
       reload()
     } catch (err) {
@@ -274,6 +282,7 @@ function InvitationsTable({
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1.5">
                   <Badge variant={ROLE_BADGE_VARIANT[inv.role]}>{t(ROLE_I18N_KEY[inv.role])}</Badge>
+                  <ScopeBadge scope={inv.scope} />
                   <Badge variant={STATUS_BADGE[status]}>{t(STATUS_LABEL_KEYS[status])}</Badge>
                 </div>
               </div>
@@ -331,7 +340,10 @@ function InvitationsTable({
                     {inv.email}
                   </td>
                   <td className="px-5 py-3">
-                    <Badge variant={ROLE_BADGE_VARIANT[inv.role]}>{t(ROLE_I18N_KEY[inv.role])}</Badge>
+                    <span className="inline-flex flex-wrap gap-1.5">
+                      <Badge variant={ROLE_BADGE_VARIANT[inv.role]}>{t(ROLE_I18N_KEY[inv.role])}</Badge>
+                      <ScopeBadge scope={inv.scope} />
+                    </span>
                   </td>
                   <td className="px-5 py-3">
                     <Badge variant={STATUS_BADGE[status]}>{t(STATUS_LABEL_KEYS[status])}</Badge>
@@ -400,4 +412,15 @@ function InvitationsTableSkeleton() {
       </div>
     </div>
   )
+}
+
+/**
+ * What the invitation grants, when it is not the school's place — the
+ * default nobody needs told. One address can hold an "account only" and a
+ * school invitation at once; without this the two rows read the same.
+ */
+function ScopeBadge({ scope }: { scope: Invitation["scope"] }) {
+  const { t } = useTranslation()
+  if (scope !== "platform" && scope !== "course") return null
+  return <Badge variant="outline">{t(`admin.invitations.scope.${scope}`)}</Badge>
 }

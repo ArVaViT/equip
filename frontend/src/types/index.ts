@@ -543,6 +543,10 @@ export interface Invitation {
   // invitation written before the statement was asked for — a record of
   // nothing, which is the honest value; it is never backfilled.
   age_attested_at?: string | null
+  /** What accepting grants: an account only, a place in the school, or a
+   *  course seat. Older clients read every row as the school's. */
+  scope?: "platform" | "organization" | "course"
+  course_id?: string | null
 }
 
 /**

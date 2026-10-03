@@ -2757,6 +2757,10 @@
         "title": "Einladung erneut senden?",
         "body": "Der bereits an {{email}} gesendete Link bleibt mit seiner ursprünglichen Frist gültig. Mit dem erneuten Senden bestätigen Sie zugleich, dass diese Person 13 Jahre oder älter ist.",
         "confirm": "Erneut senden"
+      },
+      "scope": {
+        "platform": "Nur Konto",
+        "course": "Kurs"
       }
     },
     "tabSchool": "Schule",

@@ -2757,6 +2757,10 @@
         "title": "Send this invitation again?",
         "body": "The link already sent to {{email}} stays valid on its original clock. Sending again also records you as confirming this person is 13 or older.",
         "confirm": "Send again"
+      },
+      "scope": {
+        "platform": "Account only",
+        "course": "Course"
       }
     },
     "tabSchool": "School",
