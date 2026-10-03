@@ -207,12 +207,13 @@ const BlockRenderer = memo(function BlockRenderer({
   // and a file are things to keep or hand in, and those need an account.
   // In the preview — a guest's, or a reader not enrolled yet — the server
   // sends a test, an assignment or a file without its ids and path.
+  const kind = block.block_type === "text" ? null : block.block_type
   const withheld =
-    (block.block_type === "quiz" && !block.quiz_id) ||
-    (block.block_type === "assignment" && !block.assignment_id) ||
-    (block.block_type === "file" && !block.file_path)
-  if (withheld || (guest && (block.block_type === "quiz" || block.block_type === "assignment" || block.block_type === "file"))) {
-    return <LockedBlock />
+    (kind === "quiz" && !block.quiz_id) ||
+    (kind === "assignment" && !block.assignment_id) ||
+    (kind === "file" && !block.file_path)
+  if (kind && (withheld || guest)) {
+    return <LockedBlock kind={kind} />
   }
 
   switch (block.block_type) {

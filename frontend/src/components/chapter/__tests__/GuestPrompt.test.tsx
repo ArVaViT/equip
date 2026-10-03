@@ -49,14 +49,20 @@ describe("GuestPrompt", () => {
     expect(screen.getByTestId("where").textContent).toBe('/login|{"from":"/courses/c1/chapters/ch2"}')
   })
 
-  it("inside the lesson is one quiet line with no buttons", () => {
+  it("inside the lesson is one quiet line with no buttons, naming what is there", async () => {
+    await i18n.changeLanguage("ru")
     render(
       <I18nextProvider i18n={i18n}>
-        <LockedBlock />
+        <LockedBlock kind="quiz" />
+        <LockedBlock kind="assignment" />
+        <LockedBlock kind="file" />
       </I18nextProvider>,
     )
     expect(screen.queryByRole("link")).toBeNull()
-    expect(screen.getByText(i18n.t("guest.block.title"))).toBeInTheDocument()
+    expect(screen.queryByRole("button")).toBeNull()
+    expect(screen.getByText("Здесь тест — он откроется после записи")).toBeInTheDocument()
+    expect(screen.getByText("Здесь задание — оно откроется после записи")).toBeInTheDocument()
+    expect(screen.getByText("Здесь файл — он откроется после записи")).toBeInTheDocument()
   })
 })
 

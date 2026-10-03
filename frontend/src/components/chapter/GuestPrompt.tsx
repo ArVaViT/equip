@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "@/lib/toast"
 import { coursesService } from "@/services/courses"
 import { planEnrollment } from "@/pages/Course/detail/enrollPlan"
-import type { Cohort, Course } from "@/types"
+import type { BlockType, Cohort, Course } from "@/types"
 
 type Variant = "finish" | "wall" | "enrollFinish" | "enrollWall"
 
@@ -31,13 +31,17 @@ export interface EnrollOffer {
  * one quiet line, no buttons — those wait at the lesson's end. On its own
  * because a block renders in places with no router at all (tests, previews),
  * and the card below reads the location.
+ *
+ * It names what is there. «Тест, задание или файл» listed all three because
+ * the line did not look; the block knows its kind, and «здесь тест» tells a
+ * reader what enrolling would open at this very spot.
  */
-export function LockedBlock({ className }: { className?: string }) {
+export function LockedBlock({ kind, className }: { kind: Exclude<BlockType, "text">; className?: string }) {
   const { t } = useTranslation()
   return (
     <p className={cn("flex items-center gap-2 rounded-md border border-dashed border-edge px-3 py-2.5 text-sm text-ink-muted", className)}>
       <Lock className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-      {t("guest.block.title")}
+      {t(`guest.block.${kind}`)}
     </p>
   )
 }

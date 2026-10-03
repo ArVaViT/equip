@@ -16,7 +16,9 @@
     "register": "Konto erstellen",
     "signIn": "Anmelden",
     "block": {
-      "title": "Test, Aufgabe oder Datei — für Eingeschriebene"
+      "quiz": "Hier ist ein Test — er öffnet sich nach der Einschreibung",
+      "assignment": "Hier ist eine Aufgabe — sie öffnet sich nach der Einschreibung",
+      "file": "Hier ist eine Datei — sie öffnet sich nach der Einschreibung"
     },
     "finish": {
       "title": "Gefallen? Mit einem Konto weiterlesen",
