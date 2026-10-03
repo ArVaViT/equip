@@ -108,7 +108,7 @@ export function WeekView({
                             {evt.title}
                           </span>
                           {evt.course_title && (
-                            <span className="mt-0.5 block truncate text-ink-muted">{evt.course_title}</span>
+                            <span className="mt-0.5 block truncate text-ink">{evt.course_title}</span>
                           )}
                         </button>
                       </li>

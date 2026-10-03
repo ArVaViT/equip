@@ -122,12 +122,14 @@ export function EventsModal({
           />
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">{t("teacherEditor.modals.events.type")}</Label>
+              <Label className="text-xs" htmlFor={`${ids}-type`}>
+                {t("teacherEditor.modals.events.type")}
+              </Label>
               <Select
                 value={form.event_type}
                 onValueChange={(v) => patch({ event_type: v })}
               >
-                <SelectTrigger size="sm">
+                <SelectTrigger size="sm" id={`${ids}-type`}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
