@@ -100,8 +100,14 @@ jobs:
       # react-router-dom entirely and requires React 19.2.7+ — a real migration,
       # tracked separately, not a same-day dependency bump. Re-check this
       # allowlist whenever react-router-dom, react, or react-dom is bumped.
+      #
+      # GHSA-vfj7-8cjw-p6xm (braces <= 3.0.3, stack exhaustion on deeply nested
+      # glob patterns) is allowlisted from 2026-10-02: it arrives only through
+      # tailwindcss (chokidar, micromatch), which runs at build time on our own
+      # globs — nothing of it reaches a browser or takes input from a user. No
+      # patched braces exists yet; drop this the day one does.
       - name: Audit production dependencies
-        run: npx --yes audit-ci@7.1.0 --high --skip-dev --allowlist GHSA-qwww-vcr4-c8h2
+        run: npx --yes audit-ci@7.1.0 --high --skip-dev --allowlist GHSA-qwww-vcr4-c8h2 GHSA-vfj7-8cjw-p6xm
 
       # ESLint 10 flat config resolves file patterns via its own config;
       # the legacy --ext flag was removed, and `tsx`/`ts` file matching is
