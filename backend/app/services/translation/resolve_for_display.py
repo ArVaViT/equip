@@ -1296,6 +1296,8 @@ def localize_course_event_rows(
                     # German reader as for a Russian one.
                     "meeting_url": e.meeting_url,
                     "recording_url": e.recording_url,
+                    "duration_minutes": e.duration_minutes,
+                    "series_id": e.series_id,
                     "created_by": e.created_by,
                     "created_at": e.created_at,
                 }

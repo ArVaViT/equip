@@ -249,6 +249,8 @@ def build_calendar_events(
                 # ``None``: a module's due date is a moment, not a room.
                 meeting_url=ce.meeting_url,
                 recording_url=ce.recording_url,
+                duration_minutes=ce.duration_minutes,
+                series_id=str(ce.series_id) if ce.series_id else None,
                 course_id=ce.course_id,
                 course_title=course_titles.get(ce.course_id),
                 source="course_event",
