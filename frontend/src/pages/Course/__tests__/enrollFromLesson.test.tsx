@@ -116,7 +116,7 @@ describe("enrolling from the lesson", () => {
     await screen.findByRole("heading", { level: 1, name: "The first sermon" })
     expect(screen.getByText("This lesson is for enrolled readers")).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole("button", { name: "Enroll in the course" }))
+    await userEvent.click(await screen.findByRole("button", { name: "Enroll in the course" }))
 
     expect(enrollInCourse).toHaveBeenCalledWith("c1", undefined)
     expect(await screen.findByText("Peter stood up.")).toBeInTheDocument()
@@ -131,7 +131,7 @@ describe("enrolling from the lesson", () => {
     await screen.findByText("Tongues of fire.")
     expect(screen.getByText("Enjoyed it? Enroll in the course")).toBeInTheDocument()
 
-    await userEvent.click(screen.getByRole("button", { name: "Enroll in the course" }))
+    await userEvent.click(await screen.findByRole("button", { name: "Enroll in the course" }))
 
     expect(await screen.findByRole("heading", { level: 1, name: "The first sermon" })).toBeInTheDocument()
     expect(await screen.findByText("Peter stood up.")).toBeInTheDocument()

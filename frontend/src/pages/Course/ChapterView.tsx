@@ -579,7 +579,9 @@ export default function ChapterView() {
   const [hasAssignments, setHasAssignments] = useState(false)
   // For the «Записаться на курс» button at the end of the preview and on the
   // wall: whether one press can enrol, or a cohort has to be chosen first.
-  const [cohorts, setCohorts] = useState<Cohort[]>([])
+  // ``null`` until asked: a button pressed before the answer would enrol
+  // outside any cohort where the course page would have seated or asked.
+  const [cohorts, setCohorts] = useState<Cohort[] | null>(null)
 
   useUserTour({
     tourId: "chapter-view-v1",
@@ -877,7 +879,7 @@ export default function ChapterView() {
         <GuestPrompt
           variant={user ? "enrollWall" : "wall"}
           offer={
-            user && course
+            user && course && cohorts
               ? { course, cohorts, then: chapterHref(courseId, chapter.id), onEnrolled: handleEnrolled }
               : undefined
           }
@@ -1033,7 +1035,7 @@ export default function ChapterView() {
           variant={user ? "enrollFinish" : "finish"}
           className="mt-8"
           offer={
-            user && course
+            user && course && cohorts
               ? {
                   course,
                   cohorts,

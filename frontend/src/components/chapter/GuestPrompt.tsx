@@ -59,6 +59,7 @@ export function LockedBlock({ kind, className }: { kind: Exclude<BlockType, "tex
 function EnrollButton({ offer, courseHref }: { offer?: EnrollOffer; courseHref: string }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const location = useLocation()
   const [enrolling, setEnrolling] = useState(false)
   const plan = offer ? planEnrollment(offer.course, offer.cohorts) : null
   if (!offer || !plan || plan.kind !== "enroll") {
@@ -74,7 +75,9 @@ function EnrollButton({ offer, courseHref }: { offer?: EnrollOffer; courseHref: 
       await coursesService.enrollInCourse(offer.course.id, plan.cohortId)
       offer.onEnrolled()
       toast({ title: t("toast.enrolledSuccess"), variant: "success" })
-      navigate(offer.then)
+      // From the wall the next page is this one: replace it, or Back
+      // would have to be pressed twice.
+      navigate(offer.then, { replace: offer.then === `${location.pathname}${location.search}` })
     } catch {
       toast({ title: t("toast.enrolledFailed"), variant: "destructive" })
     } finally {
