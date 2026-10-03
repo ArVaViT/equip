@@ -202,14 +202,18 @@ export function UsersCard({
             <span className="text-xs font-medium">
               {t("admin.users.selected", { count: selectedIds.size })}
             </span>
+            {/* The same one decision the row's RoleSelector offers: platform
+                staff or not. Teacher and director are held in an
+                organization, and the server leaves such people alone
+                (``held_by_membership``). "student" here is the request to
+                stop being admin; what is left is what the memberships say. */}
             <Select value={bulkRole} onValueChange={(v) => onBulkRoleChange(v as UserRole)}>
               <SelectTrigger size="sm" className="w-auto">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="student">{t("roles.student")}</SelectItem>
-                <SelectItem value="teacher">{t("roles.teacher")}</SelectItem>
-                <SelectItem value="admin">{t("roles.admin")}</SelectItem>
+                <SelectItem value="admin">{t("admin.users.bulkMakeAdmin")}</SelectItem>
+                <SelectItem value="student">{t("admin.users.bulkRevokeAdmin")}</SelectItem>
               </SelectContent>
             </Select>
             <Button

@@ -11,7 +11,7 @@ import { useConfirm } from "@/components/ui/alert-dialog"
 import { type UserRole } from "@/types"
 import type { AdminCert } from "./PendingCertsCard"
 import { displayNameOf } from "@/lib/userDisplay"
-import { ROLE_I18N_KEY, type AdminStats, type ProfileRow } from "./constants"
+import type { AdminStats, ProfileRow } from "./constants"
 
 const ROLE_FILTER_VALUES = ["admin", "teacher", "student"] as const
 type RoleFilter = (typeof ROLE_FILTER_VALUES)[number] | ""
@@ -292,29 +292,40 @@ export function useAdminOverview({ currentUserId, enabled = true, certsOnly = fa
     // themselves mid-action would lock them out.
     const ids = [...selectedIds].filter((id) => id !== currentUserId)
     if (ids.length === 0) return
-    const localizedRole = t(ROLE_I18N_KEY[bulkRole])
+    // Two requests exist: make platform admin, or stop being one. The
+    // picker offers nothing else (teacher and director are held in an
+    // organization), so the copy can say what will actually happen.
+    const makingAdmin = bulkRole === "admin"
     const ok = await confirm({
       title: t("admin.overview.confirm.bulkRoleTitle"),
-      description: t("admin.overview.confirm.bulkRoleDescription", {
-        count: ids.length,
-        role: localizedRole,
-      }),
+      description: t(
+        makingAdmin
+          ? "admin.overview.confirm.bulkMakeAdminDescription"
+          : "admin.overview.confirm.bulkRevokeAdminDescription",
+        { count: ids.length },
+      ),
       confirmLabel: t("admin.overview.confirm.bulkRoleAction"),
     })
     if (!ok) return
     setBulkUpdating(true)
     try {
       const result = await coursesService.bulkUpdateUserRoles(ids, bulkRole)
+      // The server leaves alone anyone whose role is held by a membership
+      // and names them; painting the asked-for role over those rows would
+      // show a change that did not happen. Until 2026-10-03 it did.
+      const held = new Set(result.held_by_membership)
+      const changed = ids.filter((id) => !held.has(id))
       setUsers((prev) =>
-        prev.map((u) => (ids.includes(u.id) ? { ...u, role: bulkRole } : u)),
+        prev.map((u) => (changed.includes(u.id) ? { ...u, role: bulkRole } : u)),
       )
       setSelectedIds(new Set())
       toast({
-        title: t("admin.overview.toast.bulkUpdated", {
-          count: result.updated,
-          role: localizedRole,
-        }),
-        variant: "success",
+        title: t("admin.overview.toast.bulkUpdated", { count: result.updated }),
+        description:
+          held.size > 0
+            ? t("admin.overview.toast.bulkHeldByMembership", { count: held.size })
+            : undefined,
+        variant: held.size > 0 ? "warning" : "success",
       })
     } catch (err) {
       toast({

@@ -19,11 +19,14 @@ export const adminUsersService = {
     return response.data.role
   },
 
+  /** ``held_by_membership`` names the people the server left alone: their
+   *  role is held by an organization membership and is not this route's
+   *  to change. They are not counted in ``updated``. */
   async bulkUpdateUserRoles(
     userIds: string[],
     role: string,
-  ): Promise<{ updated: number; role: string }> {
-    const response = await api.put<{ updated: number; role: string }>(
+  ): Promise<{ updated: number; role: string; held_by_membership: string[] }> {
+    const response = await api.put<{ updated: number; role: string; held_by_membership: string[] }>(
       "/users/admin/users/bulk-role",
       { user_ids: userIds, role },
     )
