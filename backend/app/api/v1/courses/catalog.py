@@ -10,7 +10,7 @@ from app.core.errors import ErrorCode, equip_error
 from app.models.course import Course, CourseStatus
 from app.models.organization import Organization
 from app.models.user import User, UserRole
-from app.schemas.course import CourseResponse, CourseSummary, ModuleResponse
+from app.schemas.course import CourseResponse, CourseSummary, ModuleResponse, OrganizationCourses
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.course_service import (
     get_course,
@@ -18,6 +18,7 @@ from app.services.course_service import (
     get_module,
     get_teacher_courses,
 )
+from app.services.memberships import active_memberships, belongs_to
 from app.services.reading_time import course_reading_minutes
 from app.services.translation.resolve_for_display import (
     build_localized_course_response_with_tree,
@@ -54,41 +55,54 @@ def list_courses(
     return build_localized_course_summaries(db, courses, display_locale)
 
 
-@router.get("/my-organization", response_model=list[CourseSummary])
-def list_my_organization_courses(
+@router.get("/my-organizations", response_model=list[OrganizationCourses])
+def list_my_organizations_courses(
     response: Response,
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
-    skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
-    search: str | None = Query(None, min_length=1, max_length=200),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> list[CourseSummary]:
-    """Everything published inside the caller's own organization.
+) -> list[OrganizationCourses]:
+    """Everything published inside the organizations the caller belongs to,
+    one block per organization — closed (``institute``) courses included,
+    which is the point: the catalogue shows only ``public`` ones.
 
     A separate route rather than widening ``GET /courses``. That one is
     public and cached at the edge; making its answer depend on whether a
     token was sent would make the cache a liability — one reader's
     organization served to the next.
 
-    Platform staff belong to no organization and get an empty list here,
-    not an error: there is nothing wrong with the request, there is
-    simply no "my organization" for them.
+    Replaces ``GET /courses/my-organization`` (singular), which read the
+    one column and which no client ever called: a member's closed courses
+    were reachable only by a link somebody sent them. Platform staff get
+    the organizations they are members of, like anyone else — there is no
+    "my organization" for the platform itself.
     """
     response.headers["Vary"] = "Accept-Language"
-    if current_user.organization_id is None:
+    memberships = active_memberships(db, current_user.id)
+    if not memberships:
         return []
     display_locale: LocaleCode = normalize_locale(accept_language)
-    courses = get_courses(
-        db,
-        skip=skip,
-        limit=limit,
-        search=search,
-        organization_id=current_user.organization_id,
-    )
-    if not courses:
-        return []
-    return build_localized_course_summaries(db, courses, display_locale)
+    organizations = {
+        o.id: o
+        for o in db.query(Organization).filter(Organization.id.in_([m.organization_id for m in memberships])).all()
+    }
+    out: list[OrganizationCourses] = []
+    for membership in sorted(memberships, key=lambda m: organizations[m.organization_id].public_name):
+        organization = organizations.get(membership.organization_id)
+        if organization is None:
+            continue
+        courses = get_courses(db, limit=limit, organization_id=organization.id)
+        out.append(
+            OrganizationCourses(
+                organization_id=organization.id,
+                organization_slug=organization.slug,
+                organization_name=organization.public_name,
+                role=membership.role,
+                courses=build_localized_course_summaries(db, courses, display_locale) if courses else [],
+            )
+        )
+    return out
 
 
 @router.get("/my", response_model=list[CourseSummary])
@@ -144,7 +158,9 @@ def _course_a_reader_may_see(db: Session, course_id: str, current_user: User | N
         )
     # An ``institute`` course belongs to its organization and to nobody
     # else. Until 2026-08-27 anyone with the id could read the whole tree
-    # of one, because there were no organizations to belong to.
+    # of one, because there were no organizations to belong to; since
+    # 2026-10-03 "belongs" is a membership (``belongs_to``), in any role,
+    # and a person may belong to several.
     #
     # 404 rather than 403, deliberately. A 403 answers the question the
     # request was really asking — does this course exist — and a course id
@@ -154,11 +170,7 @@ def _course_a_reader_may_see(db: Session, course_id: str, current_user: User | N
     if (
         course.access_mode == "institute"
         and not is_owner_or_admin(course, current_user)
-        and not (
-            current_user is not None
-            and current_user.organization_id is not None
-            and current_user.organization_id == course.organization_id
-        )
+        and not belongs_to(db, current_user, course.organization_id)
     ):
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
@@ -246,6 +258,10 @@ class CourseAuthor(BaseModel):
     avatar_url: str | None = None
     #: The school's public name — what its certificates print, not localized.
     school: str | None = None
+    #: Where the name leads: the organization's page and its logo, so the
+    #: «Автор» tab can link the school rather than only print it.
+    organization_slug: str | None = None
+    organization_logo_url: str | None = None
 
 
 @router.get("/{course_id}/author", response_model=CourseAuthor)
@@ -263,13 +279,19 @@ def get_course_author(
     """
     course = _course_a_reader_may_see(db, course_id, current_user)
     author = db.query(User.full_name, User.avatar_url).filter(User.id == course.created_by).first()
-    school = None
+    organization = None
     if course.organization_id is not None:
-        school = db.query(Organization.public_name).filter(Organization.id == course.organization_id).scalar()
+        organization = (
+            db.query(Organization.public_name, Organization.slug, Organization.logo_url)
+            .filter(Organization.id == course.organization_id)
+            .first()
+        )
     return CourseAuthor(
         name=author.full_name if author else None,
         avatar_url=author.avatar_url if author else None,
-        school=school,
+        school=organization.public_name if organization else None,
+        organization_slug=organization.slug if organization else None,
+        organization_logo_url=organization.logo_url if organization else None,
     )
 
 

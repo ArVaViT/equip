@@ -8,8 +8,8 @@ and answer without a token.
 What it serves: the organization's name and country, whether it is
 active, and its public courses. What it does not serve is anything
 marked ``institute`` — those belong to the organization's own people and
-are reached through ``GET /courses/my-organization``, which requires
-being one of them.
+are reached through ``GET /courses/my-organizations``, which lists them
+for its members.
 
 A suspended organization keeps its page and loses its courses. Deleting
 the page would break every certificate it ever issued, and a certificate

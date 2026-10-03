@@ -18,6 +18,7 @@ from app.schemas.locale import normalize_locale
 from app.services.audit_service import log_action
 from app.services.cohort_capacity import assert_cohort_has_capacity
 from app.services.course_service import enroll_user_in_course
+from app.services.memberships import belongs_to
 from app.services.translation.resolve_for_display import populate_spine_texts
 
 from ._router import router
@@ -133,10 +134,21 @@ def enroll_course(
             Course.access_mode,
             Course.enrollment_start,
             Course.enrollment_end,
+            Course.organization_id,
+            Course.created_by,
         )
         .filter(Course.id == course_id, Course.deleted_at.is_(None))
         .first()
     )
+    # A closed («institute») course exists for its organization's members,
+    # its author and platform staff, and for nobody else — the same 404 the
+    # course page gives (``_course_a_reader_may_see``). Until 2026-10-03 this
+    # route answered a stranger with a 403 that named the course as
+    # institute, confirming what the page had just refused to confirm.
+    if course_row is not None and course_row.access_mode == CourseAccessMode.INSTITUTE:
+        is_author = str(course_row.created_by) == str(current_user.id)
+        if not is_author and not belongs_to(db, current_user, course_row.organization_id):
+            course_row = None
     if course_row is None:
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
@@ -144,7 +156,7 @@ def enroll_course(
             message=f"Course '{course_id}' not found",
             context={"resource_type": "course", "resource_id": course_id},
         )
-    course_status, access_mode, enrollment_start, enrollment_end = course_row
+    course_status, _access_mode, enrollment_start, enrollment_end, _organization_id, _created_by = course_row
     if course_status != CourseStatus.PUBLISHED:
         raise equip_error(
             ErrorCode.COURSE_NOT_PUBLISHED,
@@ -162,17 +174,15 @@ def enroll_course(
         _enforce_cohort_gates(db, course_id, body.cohort_id, str(current_user.id), now)
         cohort_id = body.cohort_id
     else:
-        # Solo (no-cohort) enrollment. Institute courses block this path
-        # entirely (ADR-010): admin must add the student directly via
-        # the cohort endpoints or the admin-direct enrollment endpoint.
-        if access_mode == CourseAccessMode.INSTITUTE:
-            raise equip_error(
-                ErrorCode.COURSE_ENROLMENT_CLOSED,
-                status_code=status.HTTP_403_FORBIDDEN,
-                message="This course is available only by invitation from the institute",
-                context={"resource_type": "course", "course_id": course_id, "access_mode": "institute"},
-            )
-        # Public courses are gated by the course-level enrollment window.
+        # Solo (no-cohort) enrollment. For a closed course the reader has
+        # already been found to belong to its organization (above), and a
+        # member may join it by themselves inside the course's window —
+        # the 2026-10-03 amendment to ADR-010, which had closed courses
+        # to cohorts only. Otherwise a join link or an invitation into the
+        # organization would hand a person a list of courses they could not
+        # take, and the director would still seat every one of them by
+        # hand. Cohorts remain the way to run a class with dates.
+        # Every course is gated by its enrollment window.
         if enrollment_start and now < enrollment_start:
             raise equip_error(
                 ErrorCode.COURSE_ENROLMENT_CLOSED,

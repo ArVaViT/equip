@@ -11,6 +11,7 @@ from app.api.dependencies import get_current_user, require_admin
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.enrollment import Enrollment
+from app.models.organization import Organization, OrganizationMember
 from app.models.user import User, UserRole
 from app.schemas.course import CourseDashboardSummary, EnrollmentSummaryResponse
 from app.schemas.locale import LocaleCode, normalize_locale
@@ -232,16 +233,29 @@ def complete_my_onboarding(
     return current_user
 
 
+class AdminUserMembership(BaseModel):
+    """One organization a person is in, as the admin's user list shows it."""
+
+    organization_id: str
+    organization_slug: str
+    organization_name: str
+    role: str
+    status: str
+
+
 class AdminUserRow(BaseModel):
     id: str
     email: str
     full_name: str | None
+    #: The platform-wide role — ``admin``, or the mirror of the highest
+    #: membership role. *Where* the person holds it is ``memberships``.
     role: str
     avatar_url: str | None
     created_at: datetime | None
     # Non-null when the account is soft-deleted; the admin panel surfaces this
     # so a deactivated user can be told apart and restored.
     deactivated_at: datetime | None
+    memberships: list[AdminUserMembership] = []
 
 
 @router.get("/admin/users", response_model=list[AdminUserRow])
@@ -252,6 +266,26 @@ def list_all_users(
     db: Session = Depends(get_db),
 ) -> list[AdminUserRow]:
     users = db.query(User).order_by(User.created_at.desc()).offset(skip).limit(limit).all()
+    # One grouped query for the page's memberships rather than one per row.
+    memberships: dict[UUID, list[AdminUserMembership]] = {}
+    if users:
+        rows = (
+            db.query(OrganizationMember, Organization)
+            .join(Organization, Organization.id == OrganizationMember.organization_id)
+            .filter(OrganizationMember.user_id.in_([u.id for u in users]))
+            .order_by(Organization.public_name)
+            .all()
+        )
+        for membership, organization in rows:
+            memberships.setdefault(membership.user_id, []).append(
+                AdminUserMembership(
+                    organization_id=str(organization.id),
+                    organization_slug=organization.slug,
+                    organization_name=organization.public_name,
+                    role=membership.role,
+                    status=membership.status,
+                )
+            )
     return [
         AdminUserRow(
             id=str(u.id),
@@ -261,6 +295,7 @@ def list_all_users(
             avatar_url=u.avatar_url,
             created_at=u.created_at,
             deactivated_at=u.deactivated_at,
+            memberships=memberships.get(u.id, []),
         )
         for u in users
     ]

@@ -272,6 +272,7 @@ class CourseSummary(_ReadTitle):
     #: missing school is better than a card with a borrowed one.
     organization_name: str | None = None
     organization_slug: str | None = None
+    organization_logo_url: str | None = None
     status: str = "draft"
     access_mode: Literal["public", "institute"] = "public"
     created_by: UUID | None = None
@@ -451,3 +452,18 @@ class ResyncProgressResponse(BaseModel):
 
     course_id: str
     enrollments_updated: int
+
+
+class OrganizationCourses(BaseModel):
+    """One organization's published courses, for a person who belongs to it.
+
+    The block ``GET /courses/my-organizations`` returns per membership:
+    which organization, in what role the caller is there, and its courses
+    — closed ones included, which the public catalogue never shows.
+    """
+
+    organization_id: UUID
+    organization_slug: str
+    organization_name: str
+    role: str
+    courses: list[CourseSummary] = []

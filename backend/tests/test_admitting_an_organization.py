@@ -27,8 +27,9 @@ from fastapi.testclient import TestClient
 from app.api.dependencies import get_current_user, get_optional_user
 from app.core.database import get_db
 from app.main import app
-from app.models.organization import Organization
+from app.models.organization import Organization, OrganizationMember
 from app.models.user import User, UserRole
+from tests.conftest import TEST_ORGANIZATION_ID
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -180,7 +181,11 @@ class TestStates:
 
 
 class TestAppointingADirector:
-    def test_the_appointment_sets_both_role_and_organization(self, staff_client: TestClient, db: Session):
+    def test_the_appointment_is_a_membership_and_moves_nobody(self, staff_client: TestClient, db: Session):
+        """A teacher of the test organization appointed to direct a second one
+        directs the second and still teaches in the first. Until 2026-10-03
+        the appointment *moved* the person — the one-organization column —
+        which is how UCOAT's director had to stop directing to teach."""
         created = _create(staff_client, slug="needs-a-head", public_name="Needs A Head")
         person = User(
             id=uuid.uuid4(),
@@ -198,10 +203,30 @@ class TestAppointingADirector:
 
         assert resp.status_code == 200, resp.text
         assert resp.json()["director_emails"] == ["new-head@example.com"]
+        assert resp.json()["member_count"] == 1
 
         db.refresh(person)
-        assert person.role == UserRole.DIRECTOR.value
-        assert str(person.organization_id) == created["id"], "a director filed under the wrong organization"
+        roles = {
+            str(m.organization_id): m.role
+            for m in db.query(OrganizationMember).filter(OrganizationMember.user_id == person.id)
+        }
+        assert roles == {created["id"]: UserRole.DIRECTOR.value, str(TEST_ORGANIZATION_ID): UserRole.TEACHER.value}
+        assert person.role == UserRole.DIRECTOR.value, "profiles.role mirrors the highest membership"
+        # The deprecated column is left where it was: the person's first
+        # organization. It is written only when empty.
+        assert person.organization_id == TEST_ORGANIZATION_ID
+
+    def test_appointing_twice_changes_nothing(self, staff_client: TestClient, db: Session):
+        created = _create(staff_client, slug="twice", public_name="Twice")
+        db.add(User(id=uuid.uuid4(), email="head@example.com", role=UserRole.STUDENT.value))
+        db.commit()
+        for _ in range(2):
+            resp = staff_client.post(
+                f"/api/v1/admin/organizations/{created['id']}/director", json={"email": "head@example.com"}
+            )
+            assert resp.status_code == 200, resp.text
+        assert resp.json()["director_emails"] == ["head@example.com"]
+        assert resp.json()["member_count"] == 1
 
     def test_an_unknown_email_is_a_404(self, staff_client: TestClient):
         created = _create(staff_client, slug="nobody-here", public_name="Nobody Here")

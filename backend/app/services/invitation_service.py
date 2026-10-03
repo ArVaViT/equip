@@ -3,7 +3,7 @@ from __future__ import annotations
 import secrets
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from fastapi import status
 
@@ -12,10 +12,12 @@ from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import increment, timing
 from app.models.course import Course
 from app.models.invitation import Invitation, InvitationScope, InvitationStatus
-from app.models.user import User, UserRole, higher_role
+from app.models.organization import MembershipSource
+from app.models.user import User, higher_role
 from app.services.audit_service import log_action
 from app.services.course_service._enrollment import enroll_user_in_course
 from app.services.email.invitation import send_invitation_email
+from app.services.memberships import grant_membership
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 from app.services.user_locale import preferred_locale_of
 
@@ -349,6 +351,16 @@ def get_invitation_by_token(db: Session, token: str) -> Invitation:
     return invitation
 
 
+def get_invitation_by_id(db: Session, invitation_id: UUID | str) -> Invitation | None:
+    """The row, or ``None`` — for a malformed id too, which is "no such
+    invitation" rather than a 500 from the driver."""
+    try:
+        ident = uuid.UUID(str(invitation_id))
+    except ValueError:
+        return None
+    return db.query(Invitation).filter(Invitation.id == ident).first()
+
+
 def revoke_invitation(
     db: Session,
     *,
@@ -482,31 +494,6 @@ def accept_invitation(
             context={"resource_type": "invitation"},
         )
 
-    # Accepting moves the person to the inviting school, and the role never
-    # moves down. Across schools those two cannot both hold for somebody who
-    # holds more where they are than they are offered here: keeping the role
-    # carried a director or teacher of school A into school B as B's director
-    # or teacher; taking the offered one would silently cost them school A
-    # (a stale course link was enough). Neither is the inviter's call, so the
-    # invitation is refused before anything is written (2026-10-03).
-    # Platform staff are not a school's to give or take.
-    person = db.query(User).filter(User.id == current_user_id).first()
-    if (
-        person is not None
-        and invitation.scope != InvitationScope.PLATFORM.value
-        and person.organization_id is not None
-        and person.organization_id != invitation.organization_id
-        and person.role != UserRole.ADMIN.value
-        and higher_role(person.role, invitation.role) != invitation.role
-    ):
-        increment("equip.invitations.refused_total", reason="other_school", scope=invitation.scope)
-        raise equip_error(
-            ErrorCode.INVITATION_OTHER_SCHOOL,
-            status_code=status.HTTP_409_CONFLICT,
-            message="This account holds a higher role in another school",
-            context={"resource_type": "invitation"},
-        )
-
     # Everything that can refuse comes before anything that changes.
     # The course is re-checked here even though creation checked it:
     # seven days is long enough for it to be deleted or moved, and a
@@ -554,14 +541,33 @@ def accept_invitation(
         )
 
     previous_role = user.role
-    previous_organization_id = user.organization_id
-    granted_role = higher_role(previous_role, invitation.role)
-
-    changes: dict[Any, Any] = {}
-    if granted_role != previous_role:
-        changes[User.role] = granted_role
-    if invitation.scope != InvitationScope.PLATFORM.value:
-        changes[User.organization_id] = invitation.organization_id
+    membership_created = False
+    if invitation.scope == InvitationScope.PLATFORM.value:
+        # An account and nothing else — no organization to be a member of.
+        # The role offered still counts platform-wide, and never down.
+        granted_role = higher_role(previous_role, invitation.role)
+        if granted_role != previous_role:
+            user.role = granted_role
+    else:
+        # Membership in the inviting organization, in the offered role —
+        # a *second* membership for somebody who already belongs elsewhere,
+        # which until 2026-10-03 was a move (the column held one place) and
+        # so had to be refused for anyone who held more where they were.
+        # Within this organization the role never moves down
+        # (``grant_membership``): a director accepting a student seat on one
+        # of their own courses stays its director. ``profiles.role`` is the
+        # mirror of the highest membership and follows. Platform staff keep
+        # their role whatever they are offered: it is not a school's to give
+        # or take.
+        _membership, membership_created = grant_membership(
+            db,
+            user=user,
+            organization_id=invitation.organization_id,
+            role=invitation.role,
+            joined_via=MembershipSource.INVITATION.value,
+            invited_by=invitation.invited_by,
+        )
+        granted_role = user.role
     if course is not None and user.onboarding_completed_at is None:
         # First-run exists to turn an empty dashboard into a course to
         # open, and the invitation is about to do exactly that. Left
@@ -570,10 +576,7 @@ def accept_invitation(
         #
         # Only the picker is skipped. Legal consent is a separate gate,
         # checked before this flag is ever read, and untouched here.
-        changes[User.onboarding_completed_at] = datetime.now(UTC)
-
-    if changes:
-        db.query(User).filter(User.id == current_user_id).update(changes)
+        user.onboarding_completed_at = datetime.now(UTC)
 
     enrolled_course_id: str | None = None
     if course is not None:
@@ -591,7 +594,7 @@ def accept_invitation(
         # is the difference between "a new teacher" and "somebody who
         # was already one accepting a course invitation".
         role_changed=str(granted_role != previous_role).lower(),
-        joined_organization=str(previous_organization_id != invitation.organization_id).lower(),
+        joined_organization=str(membership_created).lower(),
     )
     # How long an invitation sits before it is used. The tail of this is
     # what tells us a seven-day life is too short or too long.
@@ -620,7 +623,10 @@ def accept_invitation(
             "organization_id": str(invitation.organization_id)
             if invitation.scope != InvitationScope.PLATFORM.value
             else None,
-            "previous_organization_id": str(previous_organization_id) if previous_organization_id else None,
+            # Whether this acceptance is how the person came to belong here,
+            # or they were already a member and the invitation added a seat
+            # or a role.
+            "membership_created": membership_created,
             "enrolled_course_id": enrolled_course_id,
         },
     )

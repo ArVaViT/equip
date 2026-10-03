@@ -34,6 +34,7 @@ from app.services.audit_service import log_action
 from app.services.certificate_grade_snapshot import snapshot_certificate_grade
 from app.services.domain_access import assert_course_owner
 from app.services.email.certificate import send_certificate_email
+from app.services.memberships import directs
 from app.services.notification_service import create_notification, notification_text
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 from app.services.user_locale import preferred_locale_of
@@ -137,7 +138,7 @@ def _load_active_course_or_403(
     return course
 
 
-def _assert_same_organization(cert: Certificate, reviewer: User) -> None:
+def _assert_same_organization(db: Session, cert: Certificate, reviewer: User) -> None:
     """A director issues their own organization's certificates only.
 
     Issuance is the one certificate action that cannot be undone — it
@@ -146,15 +147,18 @@ def _assert_same_organization(cert: Certificate, reviewer: User) -> None:
     could sign a diploma for a student they have never taught, under a
     school name that is not theirs.
 
-    Platform staff pass: they administer every organization, and a
-    certificate with no organization at all (issued before the column
-    existed) is nobody's to gate.
+    "Their own" is a membership: ``directs`` — the reviewer holds the
+    director role in the certificate's organization. A director of one
+    school who also teaches in another is not that other school's
+    signatory. Platform staff pass: they administer every organization,
+    and a certificate with no organization at all (issued before the
+    column existed) is nobody's to gate.
     """
     if reviewer.role == UserRole.ADMIN.value:
         return
     if cert.organization_id is None:
         return
-    if reviewer.organization_id is None or cert.organization_id != reviewer.organization_id:
+    if not directs(db, reviewer, cert.organization_id):
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
@@ -231,7 +235,7 @@ def teacher_approve(db: Session, cert_id: UUID, teacher: User) -> Certificate:
 
 def admin_approve(db: Session, cert_id: UUID, admin: User) -> Certificate:
     cert = _load_cert_or_404(db, cert_id, for_update=True)
-    _assert_same_organization(cert, admin)
+    _assert_same_organization(db, cert, admin)
     _assert_status(cert, CertificateStatus.TEACHER_APPROVED)
     _assert_not_self_approval(cert, admin)
     _assert_student_active(db, cert)
