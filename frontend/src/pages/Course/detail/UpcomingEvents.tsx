@@ -86,8 +86,12 @@ export function UpcomingEvents({ events }: Props) {
                   two buttons beside the title pushed the row off the
                   screen. Renders nothing when there is nothing to open. */}
               <span className="order-last flex basis-full flex-wrap gap-2 pl-4 empty:hidden sm:order-none sm:basis-auto sm:pl-0">
-                {!isOver(evt) && (
-                  <JoinMeetingLink url={evt.meeting_url} title={evt.title} prominent={isJoinableNow(evt)} />
+                {!isOver(evt, now.getTime()) && (
+                  <JoinMeetingLink
+                    url={evt.meeting_url}
+                    title={evt.title}
+                    prominent={isJoinableNow(evt, now.getTime())}
+                  />
                 )}
                 <RecordingLink url={evt.recording_url} title={evt.title} />
               </span>

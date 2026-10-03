@@ -108,4 +108,35 @@ describe("UpcomingEvents", () => {
     })
     expect(screen.getByText("Эссе")).toBeInTheDocument()
   })
+
+  it("keeps a class with no length while it may still be on, and lets it go after", () => {
+    // Older events carry no length: "over" is three hours after the start.
+    const startedAnHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+    const { unmount } = render(<UpcomingEvents events={[eventAt(startedAnHourAgo, { title: "Без длительности" })]} />, {
+      wrapper: Wrapper,
+    })
+    expect(screen.getByText("Без длительности")).toBeInTheDocument()
+    unmount()
+    const startedFourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000)
+    const { container } = render(<UpcomingEvents events={[eventAt(startedFourHoursAgo)]} />, { wrapper: Wrapper })
+    expect(container.firstChild).toBeNull()
+  })
+
+  it("shows a group's first day on that day, and not the day after", () => {
+    const today = new Date()
+    const key = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
+    render(
+      <UpcomingEvents
+        events={[
+          eventAt(yesterday, { id: "y", title: "Вчера начало", event_type: "other", all_day: true, day: key(yesterday) }),
+          eventAt(today, { id: "t", title: "Сегодня начало", event_type: "other", all_day: true, day: key(today) }),
+        ]}
+      />,
+      { wrapper: Wrapper },
+    )
+    expect(screen.getByText("Сегодня начало")).toBeInTheDocument()
+    expect(screen.queryByText("Вчера начало")).toBeNull()
+  })
 })
