@@ -280,6 +280,7 @@ export default function CalendarPage() {
           <CalendarEventDialog
             open={creating}
             courses={teaching}
+            events={events}
             initialCourseId={filterCourseId || undefined}
             onClose={() => {
               setCreating(false);

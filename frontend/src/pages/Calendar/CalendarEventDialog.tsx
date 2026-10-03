@@ -1,39 +1,59 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { Course } from "@/types";
+import type { CalendarEvent, Course } from "@/types";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useConfirm } from "@/components/ui/alert-dialog";
+import { useNow } from "@/hooks/useNow";
 import { EventsModal } from "@/pages/Teacher/editor/EventsModal";
 import { useEventsSection } from "@/pages/Teacher/editor/useEventsSection";
+import { courseOfRecentLiveSession, newEventDefaults } from "./newEventDefaults";
 
 /**
  * The course editor's events dialog, opened from the calendar: a teacher
  * looking at next week should not have to leave it, find the course, open
  * the editor and find the button to put a class on Saturday. The same form,
- * the same series and scope rules — with the course picked here.
+ * the same series and scope rules — with the course picked here, and the
+ * form started from the course's last class (see `newEventDefaults`).
  */
 export function CalendarEventDialog({
   open,
   courses,
+  events,
   initialCourseId,
   onClose,
 }: {
   open: boolean;
   courses: Course[];
+  /** What the calendar already holds: the course's last class is read off it. */
+  events: CalendarEvent[];
   initialCourseId?: string;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const confirm = useConfirm();
   const pickerId = useId();
-  const firstOwned = courses.find((c) => c.id === initialCourseId)?.id ?? courses[0]?.id;
+  const now = useNow();
+  // The course the calendar is filtered to; else the one the teacher last
+  // held a class on; else the first they teach.
+  const teachingIds = useMemo(() => new Set(courses.map((c) => c.id)), [courses]);
+  const firstOwned =
+    courses.find((c) => c.id === initialCourseId)?.id ??
+    courseOfRecentLiveSession(events, teachingIds, now) ??
+    courses[0]?.id;
   const [courseId, setCourseId] = useState<string | undefined>(firstOwned);
   useEffect(() => {
     if (open) setCourseId(firstOwned);
   }, [open, firstOwned]);
-  const section = useEventsSection(open ? courseId : undefined, confirm);
+  const defaults = useMemo(() => newEventDefaults(events, courseId, now), [events, courseId, now]);
+  const section = useEventsSection(open ? courseId : undefined, confirm, defaults.form);
+  // A blank form for the course that is open now — not the one the
+  // dialog was first rendered for, before the calendar had loaded.
+  const { resetForm } = section;
+  useEffect(() => {
+    if (open) resetForm();
+  }, [open, courseId, resetForm]);
 
   return (
     <EventsModal
@@ -42,6 +62,7 @@ export function CalendarEventDialog({
         section.resetForm();
         onClose();
       }}
+      defaultTime={defaults.defaultTime}
       header={
         courses.length > 1 ? (
           <div className="space-y-1">

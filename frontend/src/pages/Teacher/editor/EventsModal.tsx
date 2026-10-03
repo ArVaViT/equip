@@ -14,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { CalendarDays, Pencil, Repeat, Save, Trash2 } from "lucide-react"
 import { EmptyState, Modal } from "@/components/patterns"
 import { EventTypeBadge } from "./badges"
-import { DURATION_CHOICES, MAX_SERIES, takesTime, type EventFormState } from "./types"
+import { DURATION_CHOICES, MAX_SERIES, takesTime, withEventType, type EventFormState } from "./types"
 import type { PendingScope } from "./useEventsSection"
 import type { CourseEvent } from "@/types"
 import type { SeriesScope } from "@/services/calendar"
@@ -50,6 +50,9 @@ interface Props {
   onCancelScope?: () => void
   /** Above the form — the calendar puts its course picker here. */
   header?: ReactNode
+  /** The hour a freshly picked day starts at — the course's usual class
+   *  time, when the calendar knows it. */
+  defaultTime?: { hh: number; mm: number }
 }
 
 import { EVENT_TYPE_LABEL_KEYS } from "./eventTypes"
@@ -72,6 +75,7 @@ export function EventsModal({
   onChooseScope,
   onCancelScope,
   header,
+  defaultTime,
 }: Props) {
   const { t, i18n } = useTranslation()
   const ids = useId()
@@ -127,7 +131,7 @@ export function EventsModal({
               </Label>
               <Select
                 value={form.event_type}
-                onValueChange={(v) => patch({ event_type: v })}
+                onValueChange={(v) => onFormChange(withEventType(form, v))}
               >
                 <SelectTrigger size="sm" id={`${ids}-type`}>
                   <SelectValue />
@@ -147,6 +151,7 @@ export function EventsModal({
                 value={form.event_date}
                 onChange={(next) => patch({ event_date: next })}
                 className="w-full"
+                defaultTime={defaultTime}
               />
             </div>
           </div>

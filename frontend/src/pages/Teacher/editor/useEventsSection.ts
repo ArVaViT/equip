@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
@@ -50,10 +50,21 @@ interface EventsSection {
 export function useEventsSection(
   courseId: string | undefined,
   confirm: Confirm,
+  /** What a blank form starts with — the calendar prefills a class from
+   *  the course's last one. Read when the form is (re)set, never pushed
+   *  into a form the teacher is typing in. */
+  defaults?: Partial<EventFormState>,
 ): EventsSection {
   const { t } = useTranslation()
   const [events, setEvents] = useState<CourseEvent[]>([])
-  const [form, setForm] = useState<EventFormState>(EMPTY_EVENT_FORM)
+  const [form, setForm] = useState<EventFormState>(() => ({ ...EMPTY_EVENT_FORM, ...defaults }))
+  // Read when the form is reset (an event handler), so the latest
+  // defaults apply without re-creating every callback below.
+  const defaultsRef = useRef(defaults)
+  useEffect(() => {
+    defaultsRef.current = defaults
+  }, [defaults])
+  const blankForm = useCallback((): EventFormState => ({ ...EMPTY_EVENT_FORM, ...defaultsRef.current }), [])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [pendingScope, setPendingScope] = useState<PendingScope | null>(null)
@@ -91,9 +102,9 @@ export function useEventsSection(
   }, [courseId])
 
   const resetForm = useCallback(() => {
-    setForm(EMPTY_EVENT_FORM)
+    setForm(blankForm())
     setEditingId(null)
-  }, [])
+  }, [blankForm])
 
   const startEdit = useCallback((ev: CourseEvent) => {
     setForm({

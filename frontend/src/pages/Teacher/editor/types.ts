@@ -34,6 +34,21 @@ export function takesTime(eventType: string): boolean {
   return eventType !== "deadline"
 }
 
+/** The length a class gets when the teacher has not said: an hour and a half. */
+export const DEFAULT_LIVE_SESSION_MINUTES = 90
+
+/**
+ * The form after the teacher picks a kind. A live session with no length
+ * yet gets the usual one — nearly every class is 90 minutes, and «Не
+ * указана» on a class made the feed guess an hour and the app call it
+ * over three hours in. A length already chosen is kept.
+ */
+export function withEventType(form: EventFormState, eventType: string): EventFormState {
+  const duration_minutes =
+    eventType === "live_session" && !form.duration_minutes ? String(DEFAULT_LIVE_SESSION_MINUTES) : form.duration_minutes
+  return { ...form, event_type: eventType, duration_minutes }
+}
+
 export const EMPTY_EVENT_FORM: EventFormState = {
   title: "",
   description: "",
