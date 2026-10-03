@@ -3235,7 +3235,7 @@
     "joinAria": "Dem Meeting beitreten — {{title}}",
     "linkLabel": "Link zum Meeting",
     "linkPlaceholder": "https://zoom.us/j/…",
-    "linkHint": "Optional. Zoom, Google Meet — ein beliebiger Link. Studenten sehen dann eine Schaltfläche „Beitreten“."
+    "linkHint": "Optional. Zoom, Google Meet — ein beliebiger Link. Studenten sehen dann eine Schaltfläche zum Beitreten — bei Zoom „Über Zoom beitreten“."
   },
   "dmca": {
     "title": "Urheberrechtsbeschwerden",

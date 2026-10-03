@@ -3235,7 +3235,7 @@
     "joinAria": "Join the meeting for {{title}}",
     "linkLabel": "Meeting link",
     "linkPlaceholder": "https://zoom.us/j/…",
-    "linkHint": "Optional. Zoom, Google Meet — any link. Students will see a “Join” button."
+    "linkHint": "Optional. Zoom, Google Meet — any link. Students will see a button to join — “Join on Zoom” for a Zoom link."
   },
   "dmca": {
     "title": "Copyright complaints",
