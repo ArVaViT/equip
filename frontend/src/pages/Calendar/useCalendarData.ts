@@ -3,11 +3,15 @@ import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { coursesService } from "@/services/courses";
-import type { CalendarEvent, Enrollment } from "@/types";
+import type { CalendarEvent, Course, Enrollment } from "@/types";
+import { useAuth } from "@/context/useAuth";
+import { canTeach } from "@/lib/roles";
 
 interface CalendarData {
   events: CalendarEvent[];
   enrollments: Enrollment[];
+  /** Courses the reader teaches — they can put events on these from here. */
+  teaching: Course[];
   loading: boolean;
   fetchError: string | null;
   retry: () => void;
@@ -24,6 +28,8 @@ interface CalendarData {
  */
 export function useCalendarData(): CalendarData {
   const { t, i18n } = useTranslation();
+  const { user } = useAuth();
+  const teacher = canTeach(user?.role);
   const [retryCount, setRetryCount] = useState(0);
   const [params, setParams] = useSearchParams();
 
@@ -40,17 +46,18 @@ export function useCalendarData(): CalendarData {
 
   const { data: fetchedData, loading, error } = useAsyncData(
     async (isCancelled) => {
-      const [evts, enrolls] = await Promise.all([
+      const [evts, enrolls, teaching] = await Promise.all([
         coursesService.getCalendarEvents(filterCourseId || undefined),
         coursesService.getMyCourses().catch(() => []),
+        teacher ? coursesService.getTeacherCourses().catch(() => []) : Promise.resolve([] as Course[]),
       ]);
       if (isCancelled()) return undefined;
-      return { events: evts, enrollments: enrolls };
+      return { events: evts, enrollments: enrolls, teaching };
     },
     // The language too: event and course titles arrive translated, and
     // without it they stayed in the previous language after a switch
     // until the reader left the page.
-    [filterCourseId, retryCount, i18n.language],
+    [filterCourseId, retryCount, i18n.language, teacher],
   );
 
   // The CalendarData interface promises a `string | null` user-facing message.
@@ -61,6 +68,7 @@ export function useCalendarData(): CalendarData {
   return {
     events: fetchedData?.events ?? [],
     enrollments: fetchedData?.enrollments ?? [],
+    teaching: fetchedData?.teaching ?? [],
     loading,
     fetchError,
     retry: () => setRetryCount((c) => c + 1),

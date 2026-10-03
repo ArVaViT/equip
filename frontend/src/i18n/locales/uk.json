@@ -1802,7 +1802,11 @@
       "inMinutes_many": "За {{count}} хвилин",
       "inMinutes_other": "За {{count}} хвилини"
     },
-    "yesterday": "Учора"
+    "yesterday": "Учора",
+    "newEvent": {
+      "open": "Нова подія",
+      "course": "Курс"
+    }
   },
   "teacher": {
     "dashboardTitle": "Мої курси",

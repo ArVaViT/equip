@@ -1,7 +1,8 @@
 import { zonedToday } from "@/i18n/timeZone";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { CalendarDays, Filter, RefreshCw } from "lucide-react";
+import { CalendarDays, CalendarPlus, Filter, RefreshCw } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { CalendarSubscribe } from "./CalendarSubscribe";
@@ -24,6 +25,7 @@ import { NextUpCard } from "./NextUpCard";
 import { ViewSwitch } from "./ViewSwitch";
 import { useCalendarView } from "./useCalendarView";
 import { WeekView } from "./WeekView";
+import { CalendarEventDialog } from "./CalendarEventDialog";
 import { SelectedDayPanel } from "./SelectedDayPanel";
 import { useCalendarData } from "./useCalendarData";
 import { useMonthGrid } from "./useMonthGrid";
@@ -33,6 +35,7 @@ export default function CalendarPage() {
   const {
     events,
     enrollments,
+    teaching,
     loading,
     fetchError,
     retry,
@@ -56,15 +59,18 @@ export default function CalendarPage() {
     goToday,
   } = useMonthGrid(events);
   const [view, setView] = useCalendarView();
+  const [creating, setCreating] = useState(false);
   const now = useNow();
 
   useUserTour({
     tourId: "calendar-v1",
     steps: calendarSteps(t),
-    ready: !loading && !fetchError && enrollments.length > 0,
+    ready: !loading && !fetchError && (enrollments.length > 0 || teaching.length > 0),
   });
 
-  if (loading) {
+  // Only the first load blanks the page. A refresh after the teacher adds
+  // a class keeps what is on screen until the new list arrives.
+  if (loading && events.length === 0 && enrollments.length === 0 && teaching.length === 0) {
     return <PageSpinner />;
   }
 
@@ -88,7 +94,16 @@ export default function CalendarPage() {
   // empty month grid + empty sidebar (two "no events" blocks stacked) and
   // show a single page-level empty state that points to the courses
   // catalog — same pattern as HomePage's noEnrollments empty state.
-  const hasNoEnrollments = enrollments.length === 0 && events.length === 0;
+  const hasNoEnrollments = enrollments.length === 0 && teaching.length === 0 && events.length === 0;
+  // The filter lists what the reader studies and what they teach: a
+  // teacher's own courses are on this calendar too, and were missing
+  // from the one control that narrows it.
+  const filterCourses = [
+    ...enrollments.map((e) => ({ id: e.course_id, title: e.course?.title ?? e.course_id })),
+    ...teaching
+      .filter((c) => !enrollments.some((e) => e.course_id === c.id))
+      .map((c) => ({ id: c.id, title: c.title })),
+  ];
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -102,8 +117,14 @@ export default function CalendarPage() {
           </h1>
         </div>
 
-        {enrollments.length > 0 && (
+        {filterCourses.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
+            {teaching.length > 0 && (
+              <Button size="sm" onClick={() => setCreating(true)}>
+                <CalendarPlus className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                {t("calendar.newEvent.open")}
+              </Button>
+            )}
             <CalendarSubscribe />
             <div className="flex items-center gap-2">
               <Filter className="h-3.5 w-3.5 text-ink-muted" strokeWidth={1.75} aria-hidden />
@@ -120,9 +141,9 @@ export default function CalendarPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t("calendar.allCourses")}</SelectItem>
-                  {enrollments.map((e) => (
-                    <SelectItem key={e.course_id} value={e.course_id}>
-                      {e.course?.title ?? e.course_id}
+                  {filterCourses.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.title}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -206,6 +227,18 @@ export default function CalendarPage() {
             </div>
           )}
         </div>
+      )}
+      {teaching.length > 0 && (
+        <CalendarEventDialog
+          open={creating}
+          courses={teaching}
+          initialCourseId={filterCourseId || undefined}
+          onClose={() => {
+            setCreating(false);
+            // What was just scheduled belongs on the page now.
+            retry();
+          }}
+        />
       )}
     </div>
   );

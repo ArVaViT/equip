@@ -1371,7 +1371,11 @@
       "inMinutes_many": "Через {{count}} минут",
       "inMinutes_other": "Через {{count}} минуты"
     },
-    "yesterday": "Вчера"
+    "yesterday": "Вчера",
+    "newEvent": {
+      "open": "Новое событие",
+      "course": "Курс"
+    }
   },
   "teacher": {
     "dashboardTitle": "Мои курсы",

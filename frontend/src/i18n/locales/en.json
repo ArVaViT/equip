@@ -1732,7 +1732,11 @@
       "inMinutes_one": "In {{count}} minute",
       "inMinutes_other": "In {{count}} minutes"
     },
-    "yesterday": "Yesterday"
+    "yesterday": "Yesterday",
+    "newEvent": {
+      "open": "New event",
+      "course": "Course"
+    }
   },
   "teacher": {
     "dashboardTitle": "My Courses",

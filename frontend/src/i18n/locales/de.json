@@ -1732,7 +1732,11 @@
       "inMinutes_one": "In {{count}} Minute",
       "inMinutes_other": "In {{count}} Minuten"
     },
-    "yesterday": "Gestern"
+    "yesterday": "Gestern",
+    "newEvent": {
+      "open": "Neuer Termin",
+      "course": "Kurs"
+    }
   },
   "teacher": {
     "dashboardTitle": "Meine Kurse",

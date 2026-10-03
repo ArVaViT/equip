@@ -38,8 +38,14 @@ const DialogContent = React.forwardRef<
           //
           // ADR-0011 Wave 5 — bg-surface -> bg-surface.
           "fixed inset-x-0 bottom-0 z-50 grid w-full max-h-[90dvh] gap-4 overflow-y-auto rounded-t-xl border bg-surface p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-          // sm+: classic centered modal restored.
-          "sm:inset-x-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-h-none sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:overflow-visible sm:rounded-lg sm:pb-6 sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=closed]:slide-out-to-top-[48%] sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=open]:slide-in-from-top-[48%] sm:data-[state=open]:zoom-in-95",
+          // sm+: classic centered modal restored, capped at 85% of the
+          // viewport and scrolling inside. It used to be ``max-h-none
+          // overflow-visible`` here with the cap added by ``Modal`` — and
+          // the generated CSS put ``max-h-none`` last, so a tall dialog
+          // (the events editor with a few events in it) ran off the top
+          // of the screen with its title and no way to scroll to it.
+          // Menus and pickers inside are portalled, so nothing is clipped.
+          "sm:inset-x-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-h-[85vh] sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:overflow-y-auto sm:rounded-lg sm:pb-6 sm:data-[state=closed]:slide-out-to-left-1/2 sm:data-[state=closed]:slide-out-to-top-[48%] sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:slide-in-from-left-1/2 sm:data-[state=open]:slide-in-from-top-[48%] sm:data-[state=open]:zoom-in-95",
           className,
         )}
         {...props}

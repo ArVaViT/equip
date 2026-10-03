@@ -25,7 +25,7 @@ import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
 import { RecordingLink } from "@/components/calendar/RecordingLink"
 import { isAbsoluteHttpUrl } from "@/lib/url"
 import { formatDateLong, formatDateTime } from "@/i18n/format"
-import { useId } from "react"
+import { useId, type ReactNode } from "react"
 
 /** Mirrors ``CourseEventCreate`` on the server (``max_length``). */
 const TITLE_MAX = 255
@@ -48,6 +48,8 @@ interface Props {
   pendingScope?: PendingScope | null
   onChooseScope?: (scope: SeriesScope) => void
   onCancelScope?: () => void
+  /** Above the form — the calendar puts its course picker here. */
+  header?: ReactNode
 }
 
 import { EVENT_TYPE_LABEL_KEYS } from "./eventTypes"
@@ -69,6 +71,7 @@ export function EventsModal({
   pendingScope = null,
   onChooseScope,
   onCancelScope,
+  header,
 }: Props) {
   const { t, i18n } = useTranslation()
   const ids = useId()
@@ -97,6 +100,7 @@ export function EventsModal({
   return (
     <Modal open={open} onClose={onClose} title={t("teacherEditor.modals.events.title")}>
       <div className="space-y-4">
+        {header}
         <div className="space-y-3 rounded-md border bg-muted/30 p-3">
           <p className="text-xs font-medium text-ink-muted uppercase tracking-wide">
             {editingId
