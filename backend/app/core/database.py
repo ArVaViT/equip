@@ -240,7 +240,7 @@ def _create_engine_and_session_factory() -> Engine:
             # for the 2min cluster default.
             event.listen(engine, "begin", open_the_transaction_the_way_we_mean_it)
 
-        logger.info("Database engine created successfully")
+        logger.debug("Database engine created successfully")
 
         _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
         # Last, and only once the factory exists.
