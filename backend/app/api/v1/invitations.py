@@ -183,9 +183,14 @@ def _where_a_platform_invitation_is_filed(db: Session, admin: User, requested: U
     * the one they sit in, highest role first, if they sit anywhere;
     * the platform's first organization — the oldest row, the school the
       platform grew out of — for an admin who sits nowhere. This is the
-      documented choice, not a leak: a platform invitation offers nothing
-      of that organization's, and its director already sees staff-written
-      invitations in their list.
+      documented choice, and the organization is told nothing by it: a
+      platform invitation offers nothing of that organization's, its
+      director neither sees it nor can withdraw it (``list_invitations``,
+      ``revoke_invitation_route``), and it is kept out of the director's
+      own dedupe (``create_or_resend_invitation``). Until 2026-10-03 all
+      three held the other way, and the filing *was* a leak: the row sat
+      in the director's list, their revoke reached it, and their next
+      invitation to the same address resent it in their name.
 
     Only a platform with no organization at all has nowhere to file it,
     and says so.
