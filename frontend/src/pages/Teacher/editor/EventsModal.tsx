@@ -310,7 +310,9 @@ export function EventsModal({
             title={t("teacherEditor.modals.events.empty")}
           />
         ) : (
-          <div className="space-y-2 max-h-72 overflow-y-auto">
+          // No scroll of its own: the dialog scrolls (capped at 85vh), and a list
+          // scrolling inside a scrolling sheet trapped the thumb on a phone.
+          <div className="space-y-2">
             {events.map((event) => (
               <EventRow key={event.id} event={event} onEdit={onEdit} onDelete={onDelete} />
             ))}
