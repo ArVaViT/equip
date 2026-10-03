@@ -13,6 +13,16 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
+    // Never the real backend. A developer's `.env.local` points VITE_API_URL
+    // at production, and Vite loads it for tests too: unit tests sent
+    // ~850 requests a week to api.equipbible.com (404 /courses/c-1, 401
+    // /daily-challenge/streak — 2026-10-03). Port 9 is discard; the
+    // Supabase pair only has to exist for `lib/supabase.ts` to import.
+    env: {
+      VITE_API_URL: 'http://127.0.0.1:9',
+      VITE_SUPABASE_URL: 'http://127.0.0.1:9',
+      VITE_SUPABASE_ANON_KEY: 'test-anon-key-not-real',
+    },
     css: false,
     // Scope Vitest to ``src/`` so Playwright's ``e2e/*.spec.ts``
     // files don't get sucked in — Playwright's ``test.describe`` API
