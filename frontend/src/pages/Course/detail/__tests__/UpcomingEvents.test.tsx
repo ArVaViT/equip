@@ -80,4 +80,32 @@ describe("UpcomingEvents", () => {
     })
     expect(screen.queryByRole("link")).toBeNull()
   })
+
+  it("leads with the class on now, not with yesterday's", () => {
+    // Yesterday's lesson, an hour long, with its recording; today's class
+    // started ten minutes ago. The first row is the one going on.
+    const yesterday = new Date(Date.now() - 20 * 60 * 60 * 1000)
+    const started = new Date(Date.now() - 10 * 60 * 1000)
+    const zoom = "https://zoom.us/j/1234567890"
+    render(
+      <UpcomingEvents
+        events={[
+          eventAt(yesterday, { id: "past", title: "Вчерашний урок", duration_minutes: 60, recording_url: "https://youtu.be/x" }),
+          eventAt(started, { id: "now", title: "Сегодняшний урок", duration_minutes: 90, meeting_url: zoom }),
+        ]}
+      />,
+      { wrapper: Wrapper },
+    )
+    expect(screen.queryByText("Вчерашний урок")).toBeNull()
+    expect(screen.getByText("Сегодняшний урок")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /Присоединиться/ }).className).toContain("bg-brand ")
+  })
+
+  it("keeps a deadline missed today on top as a warning", () => {
+    const missed = new Date(Date.now() - 2 * 60 * 60 * 1000)
+    render(<UpcomingEvents events={[eventAt(missed, { event_type: "deadline", title: "Эссе" })]} />, {
+      wrapper: Wrapper,
+    })
+    expect(screen.getByText("Эссе")).toBeInTheDocument()
+  })
 })
