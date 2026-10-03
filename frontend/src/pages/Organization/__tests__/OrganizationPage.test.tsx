@@ -71,6 +71,16 @@ describe("an organization's page", () => {
     expect(screen.getByText("участников")).toBeInTheDocument()
   })
 
+  it("leaves out a count that is still zero", async () => {
+    vi.spyOn(organizationsService, "getPage").mockResolvedValue(
+      page({ stats: { courses: 3, lessons: 0, certificates: 0, members: null, teachers: null } }),
+    )
+    renderPage()
+    expect(await screen.findByText("курса")).toBeInTheDocument()
+    expect(screen.queryByText(/^уроков$/)).toBeNull()
+    expect(screen.queryByText(/сертификатов выдано/)).toBeNull()
+  })
+
   it("offers its director the edit form", async () => {
     vi.spyOn(organizationsService, "getPage").mockResolvedValue(page({ viewer_can_edit: true, id: "o1", show_member_count: true }))
     renderPage()
