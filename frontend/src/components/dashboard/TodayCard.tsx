@@ -84,7 +84,9 @@ export function TodayCard() {
 
   // Once the last class of the day has ended, today is answered: the next
   // question is "what comes next", the same as on an empty day.
-  const allOver = todayEvents.length > 0 && todayEvents.every((e) => isOver(e, now))
+  // A missed deadline is not "done" — the work is still owed — so it keeps
+  // the day open; only classes and exams that have ended let it move on.
+  const allOver = todayEvents.length > 0 && todayEvents.every((e) => e.event_type !== "deadline" && isOver(e, now))
 
   // What comes next, for the day that has nothing. The card used to answer
   // an empty day with a large empty state — an icon, «На сегодня нет
@@ -182,12 +184,13 @@ export function TodayCard() {
           <div className="space-y-2.5 text-xs">
             <ul className="space-y-2">
               {todayEvents.map((e) => {
-                const over = isOver(e, now)
+                const missed = e.event_type === "deadline" && isOver(e, now)
+                const over = !missed && isOver(e, now)
                 return (
                   <li key={e.id} className="flex items-start gap-2.5 text-xs">
                     <span
                       aria-hidden
-                      className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${over ? "bg-ink-muted/50" : "bg-brand"}`}
+                      className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${over ? "bg-ink-muted/50" : missed ? "bg-destructive" : "bg-brand"}`}
                     />
                     <div className="min-w-0">
                       {/* The time first: on the day itself it is the question.
@@ -204,6 +207,11 @@ export function TodayCard() {
                         {over && (
                           <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-medium text-ink-muted">
                             {t("dashboard.today.over")}
+                          </span>
+                        )}
+                        {missed && (
+                          <span className="ml-1.5 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[11px] font-medium text-destructive-ink">
+                            {t("calendar.overdue")}
                           </span>
                         )}
                       </p>

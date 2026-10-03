@@ -188,6 +188,21 @@ describe("TodayCard", () => {
       expect(screen.getByRole("link", { name: /Урок 3/ })).toHaveAttribute("href", "https://youtu.be/abc")
     })
 
+    it("calls a deadline missed today overdue, and keeps the day open for it", async () => {
+      // The work is still owed: not «Прошло», and not a reason to move on
+      // to what comes next.
+      useAuthMock.mockReturnValue({ user: { id: "u-1" } })
+      getCalendarEventsMock.mockResolvedValueOnce([
+        makeEvent({ id: "due", title: "Эссе", event_type: "deadline", event_date: hoursAgo(1) }),
+        makeEvent({ id: "next", title: "Урок 4", event_type: "live_session", event_date: inDays(7), duration_minutes: 60 }),
+      ])
+      render(<TodayCard />, { wrapper: Wrapper })
+      await waitFor(() => expect(screen.getByText("Эссе")).toBeInTheDocument())
+      expect(screen.getByText(/^(overdue|просрочено)$/i)).toBeInTheDocument()
+      expect(screen.queryByText(/^(over|прошло)$/i)).toBeNull()
+      expect(screen.queryByText("Урок 4")).toBeNull()
+    })
+
     it("lists what comes next beneath, once everything today is over", async () => {
       useAuthMock.mockReturnValue({ user: { id: "u-1" } })
       getCalendarEventsMock.mockResolvedValueOnce([
