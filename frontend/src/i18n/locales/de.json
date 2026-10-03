@@ -2206,6 +2206,12 @@
       "heading": "Inhalt",
       "emptyModule": "Dieses Modul hat noch keine Lektionen.",
       "empty": "Noch keine Lektionen — fügen Sie sie im Editor hinzu."
+    },
+    "recordings": {
+      "heading": "Aufzeichnungen",
+      "showAll_one": "Alle Aufzeichnungen — {{count}}",
+      "showAll_other": "Alle Aufzeichnungen — {{count}}",
+      "showLess": "Weniger anzeigen"
     }
   },
   "gradebook": {

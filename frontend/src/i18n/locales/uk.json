@@ -2294,6 +2294,14 @@
       "heading": "Зміст",
       "emptyModule": "У цьому модулі поки немає уроків.",
       "empty": "Уроків поки немає — додайте їх у редакторі."
+    },
+    "recordings": {
+      "heading": "Записи занять",
+      "showAll_one": "Усі записи — {{count}}",
+      "showAll_few": "Усі записи — {{count}}",
+      "showAll_many": "Усі записи — {{count}}",
+      "showAll_other": "Усі записи — {{count}}",
+      "showLess": "Згорнути"
     }
   },
   "gradebook": {

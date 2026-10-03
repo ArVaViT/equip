@@ -2206,6 +2206,12 @@
       "heading": "Contents",
       "emptyModule": "This module has no lessons yet.",
       "empty": "No lessons yet — add them in the editor."
+    },
+    "recordings": {
+      "heading": "Class recordings",
+      "showAll_one": "All recordings — {{count}}",
+      "showAll_other": "All recordings — {{count}}",
+      "showLess": "Show less"
     }
   },
   "gradebook": {
