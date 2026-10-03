@@ -1,25 +1,20 @@
-import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { BookOpen, CalendarDays, Clock } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/patterns";
 import type { CalendarEvent } from "@/types";
-import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
-import { RecordingLink } from "@/components/calendar/RecordingLink"
-import { AddToCalendarButton } from "@/components/calendar/AddToCalendarButton"
-import { isOver } from "@/lib/eventTime"
-import { LinkifiedText } from "@/components/calendar/LinkifiedText";
-import { getEventColor } from "./constants";
-import { formatTime } from "./utils";
+import { EventCard } from "@/components/calendar/EventCard";
 import { formatCalendarDay } from "@/i18n/format";
 
 interface SelectedDayPanelProps {
   selectedDay: Date;
   events: CalendarEvent[];
+  now: number;
+  compact?: boolean;
 }
 
-export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps) {
+export function SelectedDayPanel({ selectedDay, events, now, compact = false }: SelectedDayPanelProps) {
   const { t } = useTranslation();
   const weekday = formatCalendarDay(selectedDay, {
     year: undefined,
@@ -58,52 +53,9 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
           />
         ) : (
           <div className="space-y-2">
-            {events.map((evt) => {
-              const color = getEventColor(evt.event_type);
-              return (
-                <div
-                  key={evt.id}
-                  className={`rounded-md border p-3 ${color.border} ${color.bg}`}
-                >
-                  <div className="flex items-start gap-2.5">
-                    <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${color.dot}`} aria-hidden />
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-sm font-medium text-wrap-safe ${color.text}`}>{evt.title}</p>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-ink-muted">
-                        <span className="flex items-center gap-1 tabular-nums">
-                          <Clock className="h-3 w-3" strokeWidth={1.75} aria-hidden />
-                          {formatTime(evt.event_date)}
-                        </span>
-                        <span aria-hidden className="text-ink-muted">·</span>
-                        <span>{t(`calendar.eventTypes.${evt.event_type}`, { defaultValue: evt.event_type.replace("_", " ") })}</span>
-                      </div>
-                      {evt.course_title && (
-                        <Link
-                          to={`/courses/${evt.course_id}`}
-                          className="mt-1.5 inline-flex items-center gap-1 text-xs text-brand underline-offset-4 hover:underline"
-                        >
-                          <BookOpen className="h-3 w-3" strokeWidth={1.75} aria-hidden />
-                          {evt.course_title}
-                        </Link>
-                      )}
-                      {evt.description && (
-                        <p className="mt-1.5 text-xs text-ink-muted line-clamp-3 whitespace-pre-line">
-                          <LinkifiedText text={evt.description} />
-                        </p>
-                      )}
-                      {/* Last in the card, under the description: this
-                          is the day's detail panel, and the action to
-                          take belongs after what the event is. */}
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        {!isOver(evt) && <JoinMeetingLink url={evt.meeting_url} title={evt.title} />}
-                        <RecordingLink url={evt.recording_url} title={evt.title} />
-                        {!isOver(evt) && <AddToCalendarButton event={evt} />}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {events.map((evt) => (
+              <EventCard key={evt.id} event={evt} now={now} compact={compact} />
+            ))}
           </div>
         )}
       </CardContent>

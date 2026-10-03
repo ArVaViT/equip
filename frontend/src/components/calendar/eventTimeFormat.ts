@@ -27,7 +27,9 @@ export function formatDurationMinutes(minutes: number, language: string = i18n.l
 export function formatEventTimeRange(event: Timed, language: string = i18n.language): string {
   const locale = activeIntlTag(language)
   const fmt = new Intl.DateTimeFormat(locale, {
-    hour: "2-digit",
+    // "numeric", not "2-digit": a 24-hour clock still reads «09:00», and
+    // a 12-hour one reads "1:22 PM" rather than "01:22 PM".
+    hour: "numeric",
     minute: "2-digit",
     timeZone: getDisplayTimeZone(),
   })

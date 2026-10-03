@@ -1341,7 +1341,36 @@
       "live_session": "Живое занятие",
       "exam": "Экзамен",
       "other": "Другое"
-    }
+    },
+    "tomorrow": "Завтра",
+    "prevWeek": "Предыдущая неделя",
+    "nextWeek": "Следующая неделя",
+    "nextUp": "Ближайшее занятие",
+    "week": {
+      "free": "Свободно"
+    },
+    "views": {
+      "label": "Вид календаря",
+      "agenda": "Расписание",
+      "week": "Неделя",
+      "month": "Месяц"
+    },
+    "agenda": {
+      "emptyTitle": "Впереди ничего нет",
+      "emptyDescription": "Когда учитель назначит занятие или срок, они появятся здесь.",
+      "past_one": "Прошедшее — {{count}} событие",
+      "past_few": "Прошедшие — {{count}} события",
+      "past_many": "Прошедшие — {{count}} событий",
+      "past_other": "Прошедшие — {{count}} события"
+    },
+    "card": {
+      "onNow": "Идёт сейчас",
+      "inMinutes_one": "Через {{count}} минуту",
+      "inMinutes_few": "Через {{count}} минуты",
+      "inMinutes_many": "Через {{count}} минут",
+      "inMinutes_other": "Через {{count}} минуты"
+    },
+    "yesterday": "Вчера"
   },
   "teacher": {
     "dashboardTitle": "Мои курсы",

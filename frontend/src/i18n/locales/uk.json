@@ -1772,7 +1772,36 @@
       "live_session": "Жива зустріч",
       "exam": "Іспит",
       "other": "Інше"
-    }
+    },
+    "tomorrow": "Завтра",
+    "prevWeek": "Попередній тиждень",
+    "nextWeek": "Наступний тиждень",
+    "nextUp": "Найближче заняття",
+    "week": {
+      "free": "Вільно"
+    },
+    "views": {
+      "label": "Вигляд календаря",
+      "agenda": "Розклад",
+      "week": "Тиждень",
+      "month": "Місяць"
+    },
+    "agenda": {
+      "emptyTitle": "Попереду нічого немає",
+      "emptyDescription": "Коли викладач призначить заняття чи термін, вони з'являться тут.",
+      "past_one": "Минуле — {{count}} подія",
+      "past_few": "Минулі — {{count}} події",
+      "past_many": "Минулі — {{count}} подій",
+      "past_other": "Минулі — {{count}} події"
+    },
+    "card": {
+      "onNow": "Триває зараз",
+      "inMinutes_one": "За {{count}} хвилину",
+      "inMinutes_few": "За {{count}} хвилини",
+      "inMinutes_many": "За {{count}} хвилин",
+      "inMinutes_other": "За {{count}} хвилини"
+    },
+    "yesterday": "Учора"
   },
   "teacher": {
     "dashboardTitle": "Мої курси",

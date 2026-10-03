@@ -17,9 +17,14 @@ import { EmptyState, ErrorState } from "@/components/patterns";
 import { useUserTour } from "@/hooks/useUserTour";
 import { calendarSteps } from "@/lib/tourSteps";
 
+import { useNow } from "@/hooks/useNow";
+import { AgendaView } from "./AgendaView";
 import { MonthGrid } from "./MonthGrid";
+import { NextUpCard } from "./NextUpCard";
+import { ViewSwitch } from "./ViewSwitch";
+import { useCalendarView } from "./useCalendarView";
+import { WeekView } from "./WeekView";
 import { SelectedDayPanel } from "./SelectedDayPanel";
-import { UpcomingEventsPanel } from "./UpcomingEventsPanel";
 import { useCalendarData } from "./useCalendarData";
 import { useMonthGrid } from "./useMonthGrid";
 
@@ -39,15 +44,19 @@ export default function CalendarPage() {
     year,
     month,
     calendarDays,
+    weekDays,
     eventsByDate,
     selectedDay,
     setSelectedDay,
     selectedDayEvents,
-    upcomingEvents,
     prevMonth,
     nextMonth,
+    prevWeek,
+    nextWeek,
     goToday,
   } = useMonthGrid(events);
+  const [view, setView] = useCalendarView();
+  const now = useNow();
 
   useUserTour({
     tourId: "calendar-v1",
@@ -138,28 +147,64 @@ export default function CalendarPage() {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div data-tour="calendar-grid" className="lg:col-span-2">
-            <MonthGrid
-              year={year}
-              month={month}
-              today={zonedToday()}
-              calendarDays={calendarDays}
-              eventsByDate={eventsByDate}
-              selectedDay={selectedDay}
-              onSelectDay={setSelectedDay}
-              onPrevMonth={prevMonth}
-              onNextMonth={nextMonth}
-              onGoToday={goToday}
-            />
-          </div>
+        <div className="space-y-6">
+          <ViewSwitch value={view} onChange={setView} />
+          {view === "agenda" && (
+            // No "next class" card here: the list is already "what is next",
+            // and the card would repeat its first entry.
+            <div data-tour="calendar-upcoming" className="mx-auto max-w-3xl space-y-6">
+              <AgendaView events={events} now={now} />
+            </div>
+          )}
+          {view === "week" && (
+            <div data-tour="calendar-grid" className="space-y-6">
+              <NextUpCard events={events} now={now} hideOnDay={selectedDay} />
+              <WeekView
+                weekDays={weekDays}
+                eventsByDate={eventsByDate}
+                today={zonedToday()}
+                selectedDay={selectedDay}
+                now={now}
+                onSelectDay={setSelectedDay}
+                onPrevWeek={prevWeek}
+                onNextWeek={nextWeek}
+                onGoToday={goToday}
+              />
+              {selectedDay && (
+                <div className="mx-auto max-w-3xl">
+                  <SelectedDayPanel selectedDay={selectedDay} events={selectedDayEvents} now={now} />
+                </div>
+              )}
+            </div>
+          )}
+          {view === "month" && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div data-tour="calendar-grid" className="lg:col-span-2">
+                <MonthGrid
+                  year={year}
+                  month={month}
+                  today={zonedToday()}
+                  calendarDays={calendarDays}
+                  eventsByDate={eventsByDate}
+                  selectedDay={selectedDay}
+                  onSelectDay={setSelectedDay}
+                  onPrevMonth={prevMonth}
+                  onNextMonth={nextMonth}
+                  onGoToday={goToday}
+                />
+              </div>
 
-          <div data-tour="calendar-upcoming" className="space-y-4">
-            {selectedDay && (
-              <SelectedDayPanel selectedDay={selectedDay} events={selectedDayEvents} />
-            )}
-            <UpcomingEventsPanel events={upcomingEvents} />
-          </div>
+              {/* Beside the month: the day the reader opened, and the next
+                  class when it is on another day. The full list of what is
+                  ahead is the "Schedule" view, not a third copy here. */}
+              <div data-tour="calendar-upcoming" className="space-y-4">
+                <NextUpCard events={events} now={now} hideOnDay={selectedDay} compact />
+                {selectedDay && (
+                  <SelectedDayPanel selectedDay={selectedDay} events={selectedDayEvents} now={now} compact />
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

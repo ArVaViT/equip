@@ -1706,7 +1706,32 @@
       "live_session": "Live-Termin",
       "exam": "Prüfung",
       "other": "Sonstiges"
-    }
+    },
+    "tomorrow": "Morgen",
+    "prevWeek": "Vorherige Woche",
+    "nextWeek": "Nächste Woche",
+    "nextUp": "Nächster Termin",
+    "week": {
+      "free": "Frei"
+    },
+    "views": {
+      "label": "Kalenderansicht",
+      "agenda": "Termine",
+      "week": "Woche",
+      "month": "Monat"
+    },
+    "agenda": {
+      "emptyTitle": "Nichts geplant",
+      "emptyDescription": "Sobald Ihre Lehrkraft einen Termin oder eine Frist festlegt, erscheint sie hier.",
+      "past_one": "Vergangen — {{count}} Termin",
+      "past_other": "Vergangen — {{count}} Termine"
+    },
+    "card": {
+      "onNow": "Läuft gerade",
+      "inMinutes_one": "In {{count}} Minute",
+      "inMinutes_other": "In {{count}} Minuten"
+    },
+    "yesterday": "Gestern"
   },
   "teacher": {
     "dashboardTitle": "Meine Kurse",

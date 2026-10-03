@@ -1706,7 +1706,32 @@
       "live_session": "Live session",
       "exam": "Exam",
       "other": "Other"
-    }
+    },
+    "tomorrow": "Tomorrow",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week",
+    "nextUp": "Next class",
+    "week": {
+      "free": "Free"
+    },
+    "views": {
+      "label": "Calendar view",
+      "agenda": "Schedule",
+      "week": "Week",
+      "month": "Month"
+    },
+    "agenda": {
+      "emptyTitle": "Nothing ahead",
+      "emptyDescription": "When your teacher schedules a class or a deadline, it will appear here.",
+      "past_one": "Past — {{count}} event",
+      "past_other": "Past — {{count}} events"
+    },
+    "card": {
+      "onNow": "On now",
+      "inMinutes_one": "In {{count}} minute",
+      "inMinutes_other": "In {{count}} minutes"
+    },
+    "yesterday": "Yesterday"
   },
   "teacher": {
     "dashboardTitle": "My Courses",
