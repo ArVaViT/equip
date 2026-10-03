@@ -2,7 +2,7 @@
   "name": "[Equip] Daily Challenge generator produced nothing",
   "type": "log alert",
   "query": "logs(\"service:equip-backend status:warn \\\"replenish: no survivors\\\"\").index(\"*\").rollup(\"count\").last(\"3d\") >= 2",
-  "message": "The nightly generator ran and every candidate question was rejected — twice in three days. Nothing breaks today: the schedule is filled months ahead and the «schedule ran dry» monitor stays green until then, which is exactly why this one exists. On 2026-09-29..10-02 it failed four nights running and nobody was told.\n\nThe log line names the gate that emptied the run: `scripture=… doctrinal=… bilingual=…`. Then read that run's rows in `daily_challenge_question_events` (event_type `scripture_validated` / `doctrinally_reviewed` / `bilingually_reviewed`, details.reason) for the passage named in the line.\n\n@supportequip@gmail.com @arvavitcorp@gmail.com",
+  "message": "The nightly generator ran and every candidate question was rejected — twice in three days. Nothing breaks today: the schedule is filled months ahead and the «schedule ran dry» monitor stays green until then, which is exactly why this one exists. On 2026-09-29..10-02 it failed four nights running and nobody was told.\n\nThe log line names the gate that emptied the run: `scripture=… doctrinal=… bilingual=…`. Then read that run's rows in `daily_challenge_question_events` (event_type `scripture_validated` / `doctrinally_reviewed` / `bilingually_reviewed`, details.reason) for the passage named in the line.\n\n@supportequip@gmail.com",
   "tags": [],
   "priority": 3,
   "options": {

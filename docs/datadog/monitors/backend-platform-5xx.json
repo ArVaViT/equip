@@ -2,7 +2,7 @@
   "name": "[Equip] Backend platform errors (Vercel 5xx)",
   "type": "log alert",
   "query": "logs(\"service:equip-backend source:vercel status:error\").index(\"*\").rollup(\"count\").last(\"15m\") >= 2",
-  "message": "Vercel itself answered 5xx for the backend — a crash, a timeout, a cold start that never came up. These never pass through the app's own logger, so the error-spike monitor (source:python) cannot see them; this is the only signal. One in thirty days on record (a 503 from the platform).\n\nOpen the Vercel deployment's runtime logs for the request ids in the alert, then `GET https://api.equipbible.com/health`.\n\n@supportequip@gmail.com @arvavitcorp@gmail.com",
+  "message": "Vercel itself answered 5xx for the backend — a crash, a timeout, a cold start that never came up. These never pass through the app's own logger, so the error-spike monitor (source:python) cannot see them; this is the only signal. One in thirty days on record (a 503 from the platform).\n\nOpen the Vercel deployment's runtime logs for the request ids in the alert, then `GET https://api.equipbible.com/health`.\n\n@supportequip@gmail.com",
   "tags": [],
   "priority": 3,
   "options": {
