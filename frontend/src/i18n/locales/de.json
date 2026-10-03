@@ -10,6 +10,9 @@
   },
   "guest": {
     "readFirst": "Erste Lektion lesen",
+    "readFirstFree": "Erste Lektion lesen — ohne Konto",
+    "openToAll": "Für alle offen",
+    "afterEnrolling": "Nach der Einschreibung",
     "register": "Konto erstellen",
     "signIn": "Anmelden",
     "block": {

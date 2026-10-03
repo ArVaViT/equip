@@ -315,24 +315,36 @@ export function NotEnrolledView({
               </p>
             )}
           </div>
-        ) : (
-          // Back to this course after signing in — a visitor who came by a
-          // pastor's link otherwise lands on the home screen (`Gate` reads
+        ) : course.preview_chapter_id ? (
+          // A guest on a course whose first lesson is open: reading it is the
+          // thing that costs nothing, so it leads. The page used to lead with
+          // «Войти для записи» and never said the lesson was free; the one
+          // fact that would have kept a visitor on the page was in the
+          // smaller button. Enrolling means an account first, so the second
+          // button starts one — and comes back here (`Gate` reads
           // `state.from`, see lib/authRedirect).
+          <div className="flex flex-wrap gap-2">
+            <Button asChild size="lg">
+              <Link to={`/courses/${course.id}/chapters/${course.preview_chapter_id}`}>
+                {t("guest.readFirstFree")}
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link to="/register" state={{ from: `${location.pathname}${location.search}` }}>
+                {t("courseDetail.enrollInCourse")}
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          // Nothing to read without an account: back to this course after
+          // signing in — a visitor who came by a pastor's link otherwise
+          // lands on the home screen.
           <div className="flex flex-wrap gap-2">
             <Button asChild size="lg">
               <Link to="/login" state={{ from: `${location.pathname}${location.search}` }}>
                 {t("courseDetail.signInToEnroll")}
               </Link>
             </Button>
-            {/* Read before deciding: the first lesson is open to a guest. */}
-            {course.preview_chapter_id && (
-              <Button asChild size="lg" variant="outline">
-                <Link to={`/courses/${course.id}/chapters/${course.preview_chapter_id}`}>
-                  {t("guest.readFirst")}
-                </Link>
-              </Button>
-            )}
           </div>
         )}
       </div>
@@ -340,6 +352,7 @@ export function NotEnrolledView({
       {!isOwnerPreview && <CourseTabs
           courseId={course.id}
           structure={structure}
+          previewChapterId={course.preview_chapter_id ?? null}
           about={aboutContent}
           hasAbout={Boolean(course.description || activeCohort || course.enrollment_start || course.enrollment_end)}
         />}

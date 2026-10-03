@@ -24,10 +24,16 @@ const structure = {
   ],
 } as unknown as CourseStructure
 
-function renderTabs(hasAbout = true) {
+function renderTabs(hasAbout = true, previewChapterId: string | null = null) {
   return render(
     <I18nextProvider i18n={i18n}>
-      <CourseTabs courseId="k1" structure={structure} about={<p>Как Дух собрал церковь</p>} hasAbout={hasAbout} />
+      <CourseTabs
+        courseId="k1"
+        structure={structure}
+        previewChapterId={previewChapterId}
+        about={<p>Как Дух собрал церковь</p>}
+        hasAbout={hasAbout}
+      />
     </I18nextProvider>,
   )
 }
@@ -50,6 +56,25 @@ describe("the course before enrolling", () => {
     expect(screen.getByText("Эссе о Пятидесятнице")).toBeInTheDocument()
     // Names, not doors: the lessons open once the reader is enrolled.
     expect(screen.queryByRole("link")).not.toBeInTheDocument()
+  })
+
+  it("marks the one lesson a guest may open, and locks the rest with a name, not a sentence", async () => {
+    renderTabs(true, "c1")
+    await userEvent.click(screen.getByRole("tab", { name: "Программа" }))
+    const rows = screen.getAllByRole("listitem").filter((li) => li.closest("ul"))
+    expect(rows[0]).toHaveTextContent("Открыт для всех")
+    expect(rows[0]?.querySelector('[aria-label="После записи"]')).toBeNull()
+    expect(rows[1]).not.toHaveTextContent("Открыт для всех")
+    expect(screen.getByRole("img", { name: "После записи" })).toBeInTheDocument()
+    // Still names, not doors.
+    expect(screen.queryByRole("link")).not.toBeInTheDocument()
+  })
+
+  it("marks nothing when no lesson is open before enrolling", async () => {
+    renderTabs()
+    await userEvent.click(screen.getByRole("tab", { name: "Программа" }))
+    expect(screen.queryByText("Открыт для всех")).not.toBeInTheDocument()
+    expect(screen.queryByRole("img", { name: "После записи" })).not.toBeInTheDocument()
   })
 
   it("names the author and the school", async () => {

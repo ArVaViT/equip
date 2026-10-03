@@ -10,6 +10,9 @@
   },
   "guest": {
     "readFirst": "Read the first lesson",
+    "readFirstFree": "Read the first lesson — no account needed",
+    "openToAll": "Open to everyone",
+    "afterEnrolling": "After enrolling",
     "register": "Create an account",
     "signIn": "Sign in",
     "block": {

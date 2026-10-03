@@ -273,6 +273,62 @@ describe("NotEnrolledView — a visitor who is not signed in", () => {
   })
 })
 
+describe("NotEnrolledView — a visitor on a course whose first lesson is open", () => {
+  // The page led with «Войти для записи» and never said the lesson was free:
+  // the one fact that would keep a visitor on the page was in the smaller
+  // button (UX critique, 2026-10-03).
+  async function renderGuest(preview: string | null) {
+    const { MemoryRouter: Router, Routes, Route, useLocation } = await import("react-router-dom")
+    function RegisterProbe() {
+      const state = useLocation().state as { from?: string } | null
+      return <p>register, back to {state?.from ?? "nowhere"}</p>
+    }
+    await i18n.changeLanguage("en")
+    render(
+      <I18nextProvider i18n={i18n}>
+        <Router initialEntries={["/courses/c-1?ref=pastor"]}>
+          <Routes>
+            <Route
+              path="/courses/:id"
+              element={
+                <NotEnrolledView
+                  course={makeCourse({ status: "published", preview_chapter_id: preview })}
+                  cohorts={[]}
+                  isOwner={false}
+                  isSignedIn={false}
+                  enrolling={false}
+                  onEnroll={() => {}}
+                />
+              }
+            />
+            <Route path="/register" element={<RegisterProbe />} />
+          </Routes>
+        </Router>
+      </I18nextProvider>,
+    )
+  }
+
+  it("leads with reading the first lesson, and says it needs no account", async () => {
+    await renderGuest("ch-1")
+    const read = screen.getByRole("link", { name: "Read the first lesson — no account needed" })
+    expect(read).toHaveAttribute("href", "/courses/c-1/chapters/ch-1")
+    expect(screen.queryByRole("link", { name: /sign in to enroll/i })).not.toBeInTheDocument()
+  })
+
+  it("offers enrolling second, through a new account that comes back to this course", async () => {
+    const { default: userEvent } = await import("@testing-library/user-event")
+    await renderGuest("ch-1")
+    await userEvent.setup().click(screen.getByRole("link", { name: "Enroll in Course" }))
+    expect(screen.getByText("register, back to /courses/c-1?ref=pastor")).toBeInTheDocument()
+  })
+
+  it("falls back to «sign in to enroll» when there is nothing to read without an account", async () => {
+    await renderGuest(null)
+    expect(screen.getByRole("link", { name: /sign in to enroll/i })).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: /first lesson/i })).not.toBeInTheDocument()
+  })
+})
+
 describe("NotEnrolledView — the course's own enrolment window", () => {
   // The catalog card said «Enrollment closed» while this page offered the
   // button, and the server refused the click (2026-10-03).

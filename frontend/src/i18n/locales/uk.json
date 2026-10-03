@@ -10,6 +10,9 @@
   },
   "guest": {
     "readFirst": "Читати перший урок",
+    "readFirstFree": "Читати перший урок — без реєстрації",
+    "openToAll": "Відкритий для всіх",
+    "afterEnrolling": "Після запису",
     "register": "Створити акаунт",
     "signIn": "Увійти",
     "block": {
