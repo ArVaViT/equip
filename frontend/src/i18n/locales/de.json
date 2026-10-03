@@ -889,7 +889,8 @@
       "quiz_option_repeated": "dieselbe Option ist zweimal aufgeführt",
       "meeting_url_not_a_web_address": "muss mit http:// oder https:// beginnen — fügen Sie die vollständige Adresse aus der Adresszeile des Browsers ein, zum Beispiel https://zoom.us/j/1234567890",
       "meeting_url_credentials_in_url": "darf kein @ vor der Adresse der Website enthalten — ein solcher Link öffnet eine andere Website, als er vorgibt. Kopieren Sie die Adresse des Meetings erneut",
-      "meeting_url_too_long": "ist zu lang — höchstens 2048 Zeichen"
+      "meeting_url_too_long": "ist zu lang — höchstens 2048 Zeichen",
+      "time_zone_unknown": "unbekannte Zeitzone — wählen Sie eine in Ihrem Profil"
     },
     "storage": {
       "tooLarge": "Die Datei ist {{sizeMb}} MB groß, erlaubt sind {{maxMb}} MB.",

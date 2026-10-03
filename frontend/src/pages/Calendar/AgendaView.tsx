@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/patterns"
 import { EventCard } from "@/components/calendar/EventCard"
 import { formatDateLong } from "@/i18n/format"
 import { zonedDayKey } from "@/i18n/timeZone"
-import { isOver } from "@/lib/eventTime"
+import { isJoinableNow, isOver } from "@/lib/eventTime"
 
 /** How far back "past classes" reaches: a term's worth of recordings. */
 const PAST_DAYS = 120
@@ -67,7 +67,9 @@ export function AgendaView({ events, now }: { events: CalendarEvent[]; now: numb
       const at = Date.parse(evt.event_date)
       if (!Number.isFinite(at)) continue
       const recentlyMissed = evt.event_type === "deadline" && at >= now - OVERDUE_STAYS_DAYS * DAY_MS
-      if (!isOver(evt, now) || recentlyMissed) ahead.push(evt)
+      // A class running over is still "on" while its door is open.
+      const stillOpen = Boolean(evt.meeting_url) && isJoinableNow(evt, now)
+      if (!isOver(evt, now) || recentlyMissed || stillOpen) ahead.push(evt)
       else if (at >= floor) past.push(evt)
     }
     ahead.sort((a, b) => a.event_date.localeCompare(b.event_date))

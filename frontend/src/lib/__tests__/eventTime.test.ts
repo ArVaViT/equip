@@ -19,12 +19,14 @@ describe("event time", () => {
     expect(isOver(e, t("2026-10-25T03:01:00Z"))).toBe(true)
   })
 
-  it("can be joined from fifteen minutes before the start until it ends", () => {
+  it("can be joined from fifteen minutes before the start until ten minutes past the end", () => {
     const e = { event_date: start, event_type: "live_session" as const, duration_minutes: 60 }
     expect(isJoinableNow(e, t("2026-10-24T23:44:00Z"))).toBe(false)
     expect(isJoinableNow(e, t("2026-10-24T23:45:00Z"))).toBe(true)
     expect(isJoinableNow(e, t("2026-10-25T00:59:00Z"))).toBe(true)
-    expect(isJoinableNow(e, t("2026-10-25T01:00:00Z"))).toBe(false)
+    // Ten minutes of grace past the end: a class that runs over keeps its door.
+    expect(isJoinableNow(e, t("2026-10-25T01:09:00Z"))).toBe(true)
+    expect(isJoinableNow(e, t("2026-10-25T01:10:00Z"))).toBe(false)
   })
 
   it("counts whole minutes until the start, and none once it began", () => {

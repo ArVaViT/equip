@@ -13,6 +13,8 @@ const MINUTE = 60 * 1000
 
 /** A join button lights up this long before the start. */
 export const JOIN_OPENS_BEFORE_MS = 15 * MINUTE
+/** …and stays this long past the scheduled end: classes run over. */
+export const JOIN_STAYS_AFTER_MS = 10 * MINUTE
 
 /** When the event ends, or `null` for a moment (a deadline) or an unknown length. */
 export function eventEnd(event: Timed): Date | null {
@@ -30,11 +32,15 @@ export function isOver(event: Timed, now = Date.now()): boolean {
   return now - start > UNKNOWN_LENGTH_OVER_AFTER_MS
 }
 
-/** Under way, or about to be: the moment "Join" is the one thing on the card. */
+/** Under way, or about to be: the moment "Join" is the one thing on the card.
+ *  A class with a length stays joinable a little past its end — the one that
+ *  runs ten minutes over still has a door. */
 export function isJoinableNow(event: Timed, now = Date.now()): boolean {
   const start = Date.parse(event.event_date)
   if (!Number.isFinite(start)) return false
-  return now >= start - JOIN_OPENS_BEFORE_MS && !isOver(event, now)
+  if (now < start - JOIN_OPENS_BEFORE_MS) return false
+  const end = eventEnd(event)
+  return end ? now < end.getTime() + JOIN_STAYS_AFTER_MS : !isOver(event, now)
 }
 
 /** Whole minutes until the start, or `null` once it has started. */

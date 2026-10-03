@@ -28,7 +28,15 @@ export function SeriesScopeDialog({
   const [scope, setScope] = useState<SeriesScope>("this")
   const title = action === "save" ? t("eventSeries.scope.saveTitle") : t("eventSeries.scope.deleteTitle")
   return (
-    <Modal open={open} onClose={onCancel} title={title}>
+    <Modal
+      open={open}
+      onClose={() => {
+        // A choice abandoned is not a default for next time.
+        setScope("this")
+        onCancel()
+      }}
+      title={title}
+    >
       <RadioGroup value={scope} onValueChange={(v) => setScope(v as SeriesScope)} className="space-y-2">
         {SCOPES.map((value) => (
           <div key={value} className="flex items-center gap-2">
@@ -40,7 +48,14 @@ export function SeriesScopeDialog({
         ))}
       </RadioGroup>
       <div className="mt-5 flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={onCancel}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setScope("this")
+            onCancel()
+          }}
+        >
           {t("common.cancel")}
         </Button>
         <Button

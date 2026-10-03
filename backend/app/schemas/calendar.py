@@ -1,6 +1,7 @@
 from datetime import UTC, date, datetime
 from typing import Literal
 from uuid import UUID
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_core import PydanticCustomError
@@ -47,6 +48,22 @@ def _as_utc_instant(value: datetime | None) -> datetime | None:
     return value.replace(tzinfo=UTC)
 
 
+def _known_time_zone(value: str | None) -> str | None:
+    """An IANA zone the server can step a series in, or ``None``.
+
+    Refused rather than read as UTC: a series stepped in the wrong zone
+    drifts by an hour at the next clock change, months after the save
+    that caused it, with nothing to say why.
+    """
+    if value is None:
+        return None
+    try:
+        ZoneInfo(value)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise PydanticCustomError("time_zone_unknown", "Unknown time zone: {zone}", {"zone": value}) from exc
+    return value
+
+
 class EventRepeat(RequestModel):
     """Repeat the new event every ``every_weeks`` weeks through ``until``.
 
@@ -59,6 +76,8 @@ class EventRepeat(RequestModel):
     every_weeks: int = Field(1, ge=1, le=4)
     until: date
     time_zone: str | None = Field(None, max_length=64)
+
+    _time_zone = field_validator("time_zone")(_known_time_zone)
 
 
 class CourseEventCreate(RequestModel):
@@ -105,6 +124,7 @@ class CourseEventUpdate(RequestModel):
 
     _event_date_utc = field_validator("event_date")(_as_utc_instant)
     _meeting_url = field_validator("meeting_url", "recording_url")(_validated_meeting_url)
+    _time_zone = field_validator("time_zone")(_known_time_zone)
 
 
 #: Which occurrences of a series an edit or a delete reaches.

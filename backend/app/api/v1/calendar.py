@@ -253,6 +253,17 @@ def _has_ended(event: CourseEvent, now: datetime | None = None) -> bool:
     return end <= (now or datetime.now(UTC))
 
 
+def _mark_announced_within_the_hour(db: Session, event: CourseEvent) -> None:
+    """A class posted or moved to within the next hour is announced by that
+    notice, Join link and all; the hour-before reminder five minutes later
+    would be the same news twice. Committed by the notifier."""
+    from app.services.event_reminders import REMIND_WITHIN
+
+    now = datetime.now(UTC)
+    if _as_aware(event.event_date) - now <= REMIND_WITHIN:
+        event.reminded_at = now
+
+
 def _series_rejected(reason: str) -> Exception:
     return equip_error(
         ErrorCode.VALIDATION_FAILED,
@@ -322,6 +333,10 @@ def create_course_event(
     # prose that gets tags stripped out of it, and a URL is not prose
     # (the schema validator already refused anything but http(s)).
     meeting_url = data.meeting_url or find_meeting_url(description)
+    if data.repeat is not None and data.event_type == "deadline":
+        # A deadline is a moment in a course, not a weekly meeting; twelve
+        # copies of one is a slip in the form, not a plan.
+        raise _series_rejected("not_for_deadline")
     if data.repeat is None:
         starts = [data.event_date]
         series_id = None
@@ -374,6 +389,7 @@ def create_course_event(
     # teacher is filling in the past and the class hears nothing.
     upcoming = next((e for e in events if not _has_ended(e)), None)
     if upcoming is not None:
+        _mark_announced_within_the_hour(db, upcoming)
         notify_students_about_event(db, course=course, event=upcoming, author=teacher, rescheduled=False)
     elif events[0].recording_url:
         notify_students_about_event(
@@ -560,6 +576,7 @@ def update_course_event(
     # term's worth of Saturdays is one piece of news, not twelve. Moving
     # a class that is over (correcting the record) is no news at all.
     if rescheduled and not _has_ended(event):
+        _mark_announced_within_the_hour(db, event)
         notify_students_about_event(db, course=course, event=event, author=teacher, rescheduled=True)
     if recording_added:
         notify_students_about_event(db, course=course, event=event, author=teacher, rescheduled=False, recording=True)
@@ -596,7 +613,9 @@ def _series_siblings(db: Session, event: CourseEvent, scope: SeriesScope) -> lis
         CourseEvent.id != event.id,
     )
     if scope == "following":
-        q = q.filter(CourseEvent.event_date > event.event_date)
+        # ``>=``: a lesson moved onto this one's exact time is still not
+        # before it. The anchor itself is excluded by id above.
+        q = q.filter(CourseEvent.event_date >= event.event_date)
     return q.order_by(CourseEvent.event_date).all()
 
 
@@ -613,16 +632,17 @@ def delete_course_event(
 ) -> None:
     verify_course_owner(db, course_id, teacher)
     event = _event_or_404(db, course_id, event_id)
-    for target in [event, *_series_siblings(db, event, scope)]:
+    targets = [event, *_series_siblings(db, event, scope)]
+    # The bell must not keep advertising an event that no longer exists.
+    delete_notifications_about(
+        db,
+        types=("new_event", "event_rescheduled", "recording_ready", "event_reminder"),
+        link=_event_link(course_id),
+        meta_key="event_id",
+        target_ids=[target.id for target in targets],
+    )
+    for target in targets:
         # cv polymorphic — drop rows explicitly.
         delete_entity_cv_rows(db, entity_type="course_event", entity_id=target.id)
-        # The bell must not keep advertising an event that no longer exists.
-        delete_notifications_about(
-            db,
-            types=("new_event", "event_rescheduled", "recording_ready", "event_reminder"),
-            link=_event_link(course_id),
-            meta_key="event_id",
-            target_id=target.id,
-        )
         db.delete(target)
     db.commit()

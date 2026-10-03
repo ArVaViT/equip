@@ -113,7 +113,7 @@ export function EventCard({
             </p>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-2 empty:hidden">
-            {!over && (
+            {(!over || joinable) && (
               <JoinMeetingLink
                 url={event.meeting_url}
                 title={event.title}

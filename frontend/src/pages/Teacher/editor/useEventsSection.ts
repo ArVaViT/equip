@@ -58,12 +58,15 @@ export function useEventsSection(
   const [saving, setSaving] = useState(false)
   const [pendingScope, setPendingScope] = useState<PendingScope | null>(null)
 
-  const reload = useCallback(async () => {
-    if (!courseId) return
+  const reload = useCallback(async (): Promise<CourseEvent[] | null> => {
+    if (!courseId) return null
     try {
-      setEvents(await coursesService.getCourseEventsForEdit(courseId))
+      const fresh = await coursesService.getCourseEventsForEdit(courseId)
+      setEvents(fresh)
+      return fresh
     } catch {
       // The list stays as it was; the save itself already succeeded.
+      return null
     }
   }, [courseId])
 
@@ -132,7 +135,10 @@ export function useEventsSection(
         duration_minutes:
           takesTime(form.event_type) && form.duration_minutes ? Number(form.duration_minutes) : null,
       }
-      const every = Number(form.repeat_every)
+      // Hidden controls keep their values: a teacher who picked "every
+      // week" and then turned the class into a deadline must not get
+      // eight deadlines.
+      const every = takesTime(form.event_type) ? Number(form.repeat_every) : 0
       const count = Math.min(MAX_SERIES, Math.max(1, Number(form.repeat_count) || 1))
       const lastDay = every > 0 && count > 1 ? seriesLastDay(form.event_date, every, count) : null
       try {
@@ -195,9 +201,17 @@ export function useEventsSection(
       if (!courseId) return
       try {
         await coursesService.deleteCourseEvent(courseId, id, scope)
-        if (scope === "this") setEvents((p) => p.filter((e) => e.id !== id))
-        else await reload()
-        if (editingId === id) resetForm()
+        let remaining: CourseEvent[] | null
+        if (scope === "this") {
+          setEvents((p) => p.filter((e) => e.id !== id))
+          remaining = null
+        } else {
+          remaining = await reload()
+        }
+        // The lesson open in the form may have gone with the series —
+        // saving it then would answer 404.
+        const editedGone = editingId === id || (remaining !== null && !remaining.some((e) => e.id === editingId))
+        if (editingId && editedGone) resetForm()
         toast({ title: t("teacherEditor.toast.eventDeleted"), variant: "success" })
       } catch {
         toast({ title: t("teacherEditor.toast.eventDeleteFailed"), variant: "destructive" })

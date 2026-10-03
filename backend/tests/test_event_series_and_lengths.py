@@ -341,11 +341,56 @@ class TestTheHourBefore:
         course_id = _course(db, student)
         event = self._event(db, course_id, starts_in=timedelta(minutes=30))
         send_due_reminders(db)
-        later = (datetime.now(UTC) + timedelta(minutes=50)).replace(microsecond=0)
+        later = (datetime.now(UTC) + timedelta(hours=3)).replace(microsecond=0)
         r = client.put(f"{COURSES}/{course_id}/events/{event.id}", json={"event_date": later.isoformat()})
         assert r.status_code == 200
-        assert send_due_reminders(db) == 1
-        assert len(_notices(db, "event_reminder")) == 2
+        db.expire_all()
+        assert db.get(CourseEvent, event.id).reminded_at is None
+        # An hour before the new time it rings again.
+        assert send_due_reminders(db, now=datetime.now(UTC) + timedelta(hours=2, minutes=10)) == 1
+
+    def test_a_class_posted_inside_the_hour_is_announced_once(
+        self, client: TestClient, db: Session, student: User
+    ) -> None:
+        """The "new event" notice carries the Join link already; a reminder
+        five minutes later would be the same news twice."""
+        from app.services.event_reminders import send_due_reminders
+
+        course_id = _course(db, student)
+        soon = (datetime.now(UTC) + timedelta(minutes=40)).replace(microsecond=0)
+        client.post(
+            f"{COURSES}/{course_id}/events",
+            json={"title": "Урок", "event_type": "live_session", "event_date": soon.isoformat()},
+        )
+        assert len(_notices(db, "new_event")) == 1
+        assert send_due_reminders(db) == 0
+
+    def test_a_deadline_does_not_repeat_and_a_zone_must_exist(
+        self, client: TestClient, db: Session, student: User
+    ) -> None:
+        course_id = _course(db, student)
+        r = client.post(
+            f"{COURSES}/{course_id}/events",
+            json={
+                "title": "Эссе",
+                "event_type": "deadline",
+                "event_date": "2099-10-24T00:00:00Z",
+                "repeat": {"every_weeks": 1, "until": "2099-11-14"},
+            },
+        )
+        assert r.status_code == 422
+        r = client.post(
+            f"{COURSES}/{course_id}/events",
+            json={
+                "title": "Урок",
+                "event_type": "live_session",
+                "event_date": "2099-10-24T00:00:00Z",
+                "repeat": {"every_weeks": 1, "until": "2099-11-14", "time_zone": "America/Indianapolis_typo"},
+            },
+        )
+        assert r.status_code == 422
+        assert r.json()["detail"][0]["type"] == "time_zone_unknown" or "time_zone_unknown" in r.text
+        assert db.query(CourseEvent).filter(CourseEvent.course_id == course_id).count() == 0
 
     def test_deleting_the_class_takes_its_reminder_off_the_bell(
         self, client: TestClient, db: Session, student: User
