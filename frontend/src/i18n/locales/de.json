@@ -8,6 +8,31 @@
     "invalid": "Dieser Link funktioniert nicht. E-Mails schalten Sie im Profil unter „Einstellungen“ ab.",
     "toProfile": "Profil öffnen"
   },
+  "guest": {
+    "readFirst": "Erste Lektion lesen",
+    "register": "Konto erstellen",
+    "signIn": "Anmelden",
+    "block": {
+      "title": "Test, Aufgabe oder Datei — für Eingeschriebene"
+    },
+    "finish": {
+      "title": "Gefallen? Mit einem Konto weiterlesen",
+      "body": "Erstellen Sie ein kostenloses Konto, um sich einzuschreiben, weiterzulesen und Gelesenes zu markieren."
+    },
+    "wall": {
+      "title": "Diese Lektion ist für Eingeschriebene",
+      "body": "Die erste Lektion ist für alle offen. Um weiterzulesen, erstellen Sie ein kostenloses Konto und schreiben Sie sich ein."
+    },
+    "toCourse": "Kurs belegen",
+    "enrollFinish": {
+      "title": "Gefallen? Belegen Sie den Kurs",
+      "body": "Mit der Einschreibung öffnen sich die weiteren Lektionen, Tests und das Markieren als gelesen."
+    },
+    "enrollWall": {
+      "title": "Diese Lektion ist für Eingeschriebene",
+      "body": "Die erste Lektion ist für alle offen. Belegen Sie den Kurs, um weiterzulesen."
+    }
+  },
   "common": {
     "late": "Verspätet",
     "appName": "Equip",
@@ -3223,30 +3248,5 @@
   "theme": {
     "switchToLight": "Helles Design",
     "switchToDark": "Dunkles Design"
-  },
-  "guest": {
-    "readFirst": "Erste Lektion lesen",
-    "register": "Konto erstellen",
-    "signIn": "Anmelden",
-    "block": {
-      "title": "Test, Aufgabe oder Datei — für Eingeschriebene"
-    },
-    "finish": {
-      "title": "Gefallen? Mit einem Konto weiterlesen",
-      "body": "Erstellen Sie ein kostenloses Konto, um sich einzuschreiben, weiterzulesen und Gelesenes zu markieren."
-    },
-    "wall": {
-      "title": "Diese Lektion ist für Eingeschriebene",
-      "body": "Die erste Lektion ist für alle offen. Um weiterzulesen, erstellen Sie ein kostenloses Konto und schreiben Sie sich ein."
-    },
-    "toCourse": "Kurs belegen",
-    "enrollFinish": {
-      "title": "Gefallen? Belegen Sie den Kurs",
-      "body": "Mit der Einschreibung öffnen sich die weiteren Lektionen, Tests und das Markieren als gelesen."
-    },
-    "enrollWall": {
-      "title": "Diese Lektion ist für Eingeschriebene",
-      "body": "Die erste Lektion ist für alle offen. Belegen Sie den Kurs, um weiterzulesen."
-    }
   }
 }

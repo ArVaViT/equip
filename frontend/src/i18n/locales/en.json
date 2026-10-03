@@ -8,6 +8,31 @@
     "invalid": "This link does not work. Turn email off in your profile, under Settings.",
     "toProfile": "Open profile"
   },
+  "guest": {
+    "readFirst": "Read the first lesson",
+    "register": "Create an account",
+    "signIn": "Sign in",
+    "block": {
+      "title": "A test, assignment or file — for those enrolled in the course"
+    },
+    "finish": {
+      "title": "Enjoyed it? Keep going with an account",
+      "body": "Create a free account to enroll, read on and mark lessons as read."
+    },
+    "wall": {
+      "title": "This lesson is for enrolled readers",
+      "body": "The first lesson is open to everyone. To read on, create a free account and enroll in the course."
+    },
+    "toCourse": "Enroll in the course",
+    "enrollFinish": {
+      "title": "Enjoyed it? Enroll in the course",
+      "body": "Enrolling opens the other lessons, the tests and marking lessons as read."
+    },
+    "enrollWall": {
+      "title": "This lesson is for enrolled readers",
+      "body": "The first lesson is open to everyone. Enroll in the course to read on."
+    }
+  },
   "common": {
     "late": "Late",
     "appName": "Equip",
@@ -3223,30 +3248,5 @@
   "theme": {
     "switchToLight": "Light theme",
     "switchToDark": "Dark theme"
-  },
-  "guest": {
-    "readFirst": "Read the first lesson",
-    "register": "Create an account",
-    "signIn": "Sign in",
-    "block": {
-      "title": "A test, assignment or file — for those enrolled in the course"
-    },
-    "finish": {
-      "title": "Enjoyed it? Keep going with an account",
-      "body": "Create a free account to enroll, read on and mark lessons as read."
-    },
-    "wall": {
-      "title": "This lesson is for enrolled readers",
-      "body": "The first lesson is open to everyone. To read on, create a free account and enroll in the course."
-    },
-    "toCourse": "Enroll in the course",
-    "enrollFinish": {
-      "title": "Enjoyed it? Enroll in the course",
-      "body": "Enrolling opens the other lessons, the tests and marking lessons as read."
-    },
-    "enrollWall": {
-      "title": "This lesson is for enrolled readers",
-      "body": "The first lesson is open to everyone. Enroll in the course to read on."
-    }
   }
 }
