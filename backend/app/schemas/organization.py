@@ -102,8 +102,19 @@ class OrganizationStats(BaseModel):
 
 
 class LockedCourse(BaseModel):
+    """A closed course as a stranger sees it: what it is, not what is in it.
+
+    The title and the blurb are what a published course already shows the
+    whole catalog about itself; the lessons, the modules and everything a
+    seat opens stay out. Until 2026-10-03 the blurb stayed out too, and a
+    locked card was a title a visitor could not act on.
+    """
+
     id: str
     title: str
+    #: The course's released description in the reader's language, as the
+    #: open cards carry it. ``None`` when the course has written none.
+    description: str | None = None
     image_url: str | None = None
 
 

@@ -1,21 +1,22 @@
 import { useState } from "react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useLocation, useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { BadgeCheck, BookOpen, ExternalLink, GraduationCap, Library, Lock, Pencil, ScrollText, UserRound, Users } from "lucide-react"
+import { ArrowRight, BadgeCheck, BookOpen, ExternalLink, GraduationCap, Library, Lock, LogIn, Pencil, ScrollText, UserRound, Users } from "lucide-react"
 
 import CourseCard from "@/components/course/CourseCard"
 import { CourseCoverFallback } from "@/components/course/CourseCoverFallback"
-import { EmptyState, ErrorState, PageHeader } from "@/components/patterns"
+import { EmptyState, ErrorState, Modal, PageHeader } from "@/components/patterns"
 import { Section } from "@/components/layout/Section"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/context/useAuth"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import { useNamedPageTitle } from "@/hooks/usePageTitle"
 import { activeIntlTag } from "@/i18n/config"
 import { toProxyImage } from "@/lib/images"
 import { getErrorCode } from "@/lib/errorCode"
 import { cn } from "@/lib/utils"
-import { organizationsService, type OrganizationPage as Page } from "@/services/organizations"
+import { organizationsService, type LockedCourse, type OrganizationPage as Page } from "@/services/organizations"
 import { OrganizationProfileForm } from "./OrganizationProfileForm"
 
 /**
@@ -147,12 +148,9 @@ export default function OrganizationPage() {
                 <CourseCard key={course.id} course={course} />
               ))}
               {data.locked_courses.map((course) => (
-                <LockedCourseCard key={course.id} course={course} />
+                <LockedCourseCard key={course.id} course={course} page={data} />
               ))}
             </div>
-          )}
-          {data.locked_courses.length > 0 && !data.viewer_is_member && (
-            <p className="mt-4 text-sm text-ink-muted">{t("organization.lockedHint")}</p>
           )}
         </section>
       )}
@@ -238,24 +236,79 @@ function Stats({ page }: { page: Page }) {
   )
 }
 
-function LockedCourseCard({ course }: { course: { id: string; title: string; image_url: string | null } }) {
+/**
+ * A closed course, to somebody who is not a member. Until 2026-10-03 this
+ * was a card that did nothing when tapped, with one line under the whole
+ * grid saying who gives access — a dead end on a phone, where the line sat
+ * below the fold. Now the card is a button, and the answer is in a dialog
+ * that names the organization and its director, links its website, and
+ * offers a member who is simply signed out the way back in.
+ */
+function LockedCourseCard({ course, page }: { course: LockedCourse; page: Page }) {
   const { t } = useTranslation()
+  const { user } = useAuth()
+  const location = useLocation()
+  const [open, setOpen] = useState(false)
   const src = toProxyImage(course.image_url)
+  const directors = page.directors.map((d) => d.full_name).join(", ")
   return (
-    <div className="overflow-hidden rounded-card border border-edge bg-surface">
-      <div className="relative aspect-[16/9] bg-muted/40">
-        {src ? (
-          <img src={src} alt="" className="h-full w-full object-cover opacity-70" />
-        ) : (
-          <CourseCoverFallback courseId={course.id} title={course.title} size="md" />
-        )}
-        <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-surface/90 px-2 py-1 text-xs font-medium text-ink">
-          <Lock className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-          {t("organization.byInvitation")}
-        </span>
-      </div>
-      <p className="p-5 font-serif text-lg font-semibold tracking-tight text-wrap-safe">{course.title}</p>
-    </div>
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex flex-col overflow-hidden rounded-card border border-edge bg-surface text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+      >
+        <div className="relative aspect-[16/9] w-full bg-muted/40">
+          {src ? (
+            <img src={src} alt="" className="h-full w-full object-cover opacity-70" />
+          ) : (
+            <CourseCoverFallback courseId={course.id} title={course.title} size="md" />
+          )}
+          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-surface/90 px-2 py-1 text-xs font-medium text-ink">
+            <Lock className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            {t("organization.byInvitation")}
+          </span>
+        </div>
+        <div className="flex flex-1 flex-col gap-2 p-5">
+          <p className="font-serif text-lg font-semibold tracking-tight text-wrap-safe">{course.title}</p>
+          {course.description && <p className="line-clamp-3 text-sm text-ink-muted">{course.description}</p>}
+          <span className="mt-auto inline-flex items-center gap-1 pt-1 text-sm font-medium text-brand">
+            {t("organization.locked.how")}
+            <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          </span>
+        </div>
+      </button>
+      <Modal open={open} onClose={() => setOpen(false)} title={course.title}>
+        <div className="space-y-4 text-sm">
+          <p className="text-ink">
+            {directors
+              ? t("organization.locked.body", { org: page.public_name, director: directors })
+              : t("organization.locked.bodyNoDirector", { org: page.public_name })}
+          </p>
+          {page.website_url && (
+            <a
+              href={page.website_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-ink-muted underline-offset-4 hover:text-ink hover:underline"
+            >
+              <ExternalLink className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              {t("organization.locked.website")}: {websiteLabel(page.website_url)}
+            </a>
+          )}
+          {/* A member who is merely signed out: back here after the sign-in
+              (`state.from`, see lib/authRedirect), not to the dashboard. */}
+          {!user && (
+            <Button asChild variant="outline" size="sm">
+              <Link to="/login" state={{ from: `${location.pathname}${location.search}` }}>
+                <LogIn className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                {t("organization.locked.signIn")}
+              </Link>
+            </Button>
+          )}
+        </div>
+      </Modal>
+    </>
   )
 }
 

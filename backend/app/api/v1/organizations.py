@@ -182,12 +182,14 @@ def get_organization_page(
     locked: list[LockedCourse] = []
     if active:
         # A member's closed courses are theirs: full cards. Everybody else
-        # sees a closed course as its cover, its title and a lock.
+        # sees a closed course as its cover, its title, its blurb and a lock.
         open_rows = [c for c in published if c.access_mode == "public" or member or is_admin]
         closed_rows = [c for c in published if c not in open_rows]
         courses = build_localized_course_summaries(db, open_rows, display_locale)
         locked = [
-            LockedCourse(id=summary.id, title=summary.title, image_url=summary.image_url)
+            LockedCourse(
+                id=summary.id, title=summary.title, description=summary.description, image_url=summary.image_url
+            )
             for summary in build_localized_course_summaries(db, closed_rows, display_locale)
         ]
 

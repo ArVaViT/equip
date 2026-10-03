@@ -74,12 +74,14 @@ def stranger_client(db: Session):
     app.dependency_overrides.clear()
 
 
-def _course(db: Session, owner: User, course_id: str, *, access_mode: str, status: str = "published"):
+def _course(
+    db: Session, owner: User, course_id: str, *, access_mode: str, status: str = "published", description: str = ""
+):
     course = make_course_with_text(
         db,
         course_id=course_id,
         title=f"Course {course_id}",
-        description="",
+        description=description,
         status=status,
         created_by=owner.id,
     )
@@ -247,11 +249,14 @@ class TestTheOrganizationIntroducesItself:
     def test_a_closed_course_is_a_title_and_a_lock_to_a_stranger_and_a_course_to_a_member(
         self, stranger_client: TestClient, db: Session, their_teacher: User
     ):
-        _course(db, their_teacher, "ucoat-institute", access_mode="institute")
+        _course(db, their_teacher, "ucoat-institute", access_mode="institute", description="Twelve evenings on Acts.")
         body = stranger_client.get("/api/v1/organizations/ucoat").json()
         assert body["courses"] == []
         assert [c["id"] for c in body["locked_courses"]] == ["ucoat-institute"]
-        assert set(body["locked_courses"][0]) == {"id", "title", "image_url"}
+        # The blurb is what the catalog already says about a published
+        # course; the lessons and everything a seat opens stay out.
+        assert set(body["locked_courses"][0]) == {"id", "title", "description", "image_url"}
+        assert body["locked_courses"][0]["description"] == "Twelve evenings on Acts."
 
         member = _person(db, "Member", "student")
         with _client_as(db, member) as c:

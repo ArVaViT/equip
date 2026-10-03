@@ -58,7 +58,6 @@
     "director_other": "Directors",
     "courses": "Courses",
     "noCourses": "No courses yet",
-    "lockedHint": "Courses with a lock are open to the organization's members — its director grants access.",
     "byInvitation": "By invitation",
     "inactive": "This organization no longer runs courses on Equip. Certificates it issued remain valid.",
     "since": "On Equip since {{date}}",
@@ -88,6 +87,13 @@
       "saved": "The organization's page is updated",
       "failed": "Could not save",
       "websitePlaceholder": "https://"
+    },
+    "locked": {
+      "how": "How to get access",
+      "body": "A course for members of {{org}}. Access is granted by the director, {{director}}.",
+      "bodyNoDirector": "A course for members of {{org}}. Access is granted by its director.",
+      "website": "Organization website",
+      "signIn": "Sign in if you are already a member"
     }
   },
   "adminOrgs": {

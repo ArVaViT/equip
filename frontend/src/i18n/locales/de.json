@@ -58,7 +58,6 @@
     "director_other": "Leitung",
     "courses": "Kurse",
     "noCourses": "Noch keine Kurse",
-    "lockedHint": "Kurse mit Schloss sind für Mitglieder der Organisation offen — den Zugang gibt ihre Leitung.",
     "byInvitation": "Auf Einladung",
     "inactive": "Diese Organisation bietet keine Kurse mehr auf Equip an. Ausgestellte Zertifikate bleiben gültig.",
     "since": "Auf Equip seit {{date}}",
@@ -88,6 +87,13 @@
       "saved": "Die Seite der Organisation ist aktualisiert",
       "failed": "Speichern fehlgeschlagen",
       "websitePlaceholder": "https://"
+    },
+    "locked": {
+      "how": "So erhalten Sie Zugang",
+      "body": "Ein Kurs für Mitglieder von {{org}}. Den Zugang gibt die Leitung: {{director}}.",
+      "bodyNoDirector": "Ein Kurs für Mitglieder von {{org}}. Den Zugang gibt die Leitung der Organisation.",
+      "website": "Website der Organisation",
+      "signIn": "Anmelden, wenn Sie bereits Mitglied sind"
     }
   },
   "adminOrgs": {

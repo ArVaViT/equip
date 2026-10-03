@@ -17,9 +17,11 @@ export interface OrganizationStats {
   teachers: number | null
 }
 
+/** A closed course as a visitor sees it: title, blurb and cover — nothing of what a seat opens. */
 export interface LockedCourse {
   id: string
   title: string
+  description: string | null
   image_url: string | null
 }
 
