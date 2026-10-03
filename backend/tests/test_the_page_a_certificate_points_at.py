@@ -278,3 +278,20 @@ class TestTheDirectorWritesThePage:
                 == 422
             )
         app.dependency_overrides.clear()
+
+
+class TestTheShowcase:
+    def test_lists_only_verified_organizations_with_a_director_and_a_course(
+        self, stranger_client: TestClient, db: Session, their_teacher: User
+    ):
+        listed = lambda: [c["slug"] for c in stranger_client.get("/api/v1/organizations").json()]  # noqa: E731
+        assert listed() == [], "no director, no course yet"
+        _person(db, "Director", "director")
+        assert listed() == [], "a director but no course"
+        _course(db, their_teacher, "ucoat-public", access_mode="public")
+        assert listed() == ["ucoat"]
+        school = db.get(Organization, SCHOOL_ID)
+        assert school is not None
+        school.status = "suspended"
+        db.commit()
+        assert listed() == []

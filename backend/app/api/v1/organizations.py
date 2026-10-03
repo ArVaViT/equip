@@ -36,6 +36,7 @@ from app.models.user import User, UserRole
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.schemas.organization import (
     LockedCourse,
+    OrganizationCard,
     OrganizationPerson,
     OrganizationProfileUpdate,
     OrganizationPublicResponse,
@@ -79,6 +80,49 @@ def _active_members(db: Session, organization_id: UUID, roles: tuple[str, ...]) 
         .scalar()
         or 0
     )
+
+
+@router.get("", response_model=list[OrganizationCard])
+def list_organizations(
+    limit: int = Query(60, ge=1, le=200),
+    db: Session = Depends(get_db),
+) -> list[OrganizationCard]:
+    """ "Organizations on Equip" — the showcase. No token required.
+
+    Only what the platform stands behind and somebody runs: verified, at
+    least one active director, at least one published course. Verified
+    first is the filter itself; then the ones teaching most. The paragraph
+    is not translated, so the answer does not vary by language.
+    """
+    course_counts = (
+        db.query(Course.organization_id, func.count(Course.id))
+        .filter(Course.status == CourseStatus.PUBLISHED, Course.deleted_at.is_(None))
+        .group_by(Course.organization_id)
+        .all()
+    )
+    courses_by_org = {org_id: n for org_id, n in course_counts if org_id is not None}
+    directed = {
+        row[0]
+        for row in db.query(OrganizationMember.organization_id)
+        .filter(OrganizationMember.role == "director", OrganizationMember.status == "active")
+        .distinct()
+        .all()
+    }
+    rows = db.query(Organization).filter(Organization.status == "verified").all()
+    cards = [
+        OrganizationCard(
+            slug=o.slug,
+            public_name=o.public_name,
+            country=o.country,
+            logo_url=o.logo_url,
+            description=o.description,
+            courses=courses_by_org.get(o.id, 0),
+        )
+        for o in rows
+        if o.id in directed and courses_by_org.get(o.id, 0) > 0
+    ]
+    cards.sort(key=lambda c: (-c.courses, c.public_name.lower()))
+    return cards[:limit]
 
 
 @router.get("/{slug}", response_model=OrganizationPublicResponse)

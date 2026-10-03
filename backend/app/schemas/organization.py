@@ -104,6 +104,17 @@ class LockedCourse(BaseModel):
     image_url: str | None = None
 
 
+class OrganizationCard(BaseModel):
+    """One organization on the "Organizations on Equip" showcase."""
+
+    slug: str
+    public_name: str
+    country: str | None = None
+    logo_url: str | None = None
+    description: str | None = None
+    courses: int
+
+
 class OrganizationProfileUpdate(RequestModel):
     """What the organization's director writes about it."""
 
