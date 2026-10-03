@@ -7,6 +7,7 @@ import i18n from "@/i18n/config"
 import { setDisplayTimeZone } from "@/i18n/timeZone"
 import { EventsModal } from "../EventsModal"
 import { EMPTY_EVENT_FORM, type EventFormState } from "../types"
+import type { CourseEvent } from "@/types"
 
 /** A class has a length and can repeat; a deadline has neither. */
 
@@ -14,12 +15,12 @@ function Wrapper({ children }: { children: React.ReactNode }) {
   return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
 }
 
-function renderForm(form: Partial<EventFormState>, editingId: string | null = null) {
+function renderForm(form: Partial<EventFormState>, editingId: string | null = null, events: CourseEvent[] = []) {
   render(
     <EventsModal
       open
       onClose={vi.fn()}
-      events={[]}
+      events={events}
       form={{ ...EMPTY_EVENT_FORM, title: "Урок", event_date: "2026-10-24T20:00", ...form }}
       onFormChange={vi.fn()}
       editingId={editingId}
@@ -72,5 +73,18 @@ describe("EventsModal — length and repetition", () => {
     renderForm({ event_type: "live_session", repeat_every: "1", repeat_count: "60" })
     expect(screen.getByText("От 2 до 52")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /Создать/ })).toBeDisabled()
+  })
+
+  it("numbers each lesson of a series in the list", () => {
+    const lesson = (id: string, index: number): CourseEvent => ({
+      id, course_id: "c1", title: "Урок", description: null, event_type: "live_session",
+      event_date: `2026-10-${10 + 7 * (index - 1)}T20:00:00Z`, meeting_url: null, recording_url: null,
+      duration_minutes: 90, series_id: "s1", series_index: index, series_count: 3,
+      created_by: "t", created_at: "2026-10-01T00:00:00Z",
+    })
+    renderForm({ event_type: "live_session" }, null, [lesson("a", 1), lesson("b", 2), lesson("c", 3)])
+    expect(screen.getByText("1 из 3")).toBeInTheDocument()
+    expect(screen.getByText("2 из 3")).toBeInTheDocument()
+    expect(screen.getByText("3 из 3")).toBeInTheDocument()
   })
 })

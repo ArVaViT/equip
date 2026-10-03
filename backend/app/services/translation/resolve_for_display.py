@@ -1287,9 +1287,13 @@ def localize_course_event_rows(
         ).items():
             if not texts.get(key):
                 texts[key] = text
+    from app.services.event_series import series_positions
+
+    positions = series_positions(db, events)
     out: list[CourseEventResponse] = []
     for e in events:
         eid = str(e.id)
+        index, count = positions.get(eid, (None, None))
         out.append(
             CourseEventResponse.model_validate(
                 {
@@ -1311,6 +1315,8 @@ def localize_course_event_rows(
                     "recording_url": e.recording_url,
                     "duration_minutes": e.duration_minutes,
                     "series_id": e.series_id,
+                    "series_index": index,
+                    "series_count": count,
                     "created_by": e.created_by,
                     "created_at": e.created_at,
                 }

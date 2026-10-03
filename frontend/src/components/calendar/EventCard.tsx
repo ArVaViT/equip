@@ -86,9 +86,15 @@ export function EventCard({
               {typeLabel}
             </span>
             {event.series_id && (
-              <span className="inline-flex items-center text-ink-muted" title={t("eventSeries.partOfSeries")}>
+              <span className="inline-flex items-center gap-1 text-xs text-ink-muted" title={t("eventSeries.partOfSeries")}>
                 <Repeat className="h-3 w-3" strokeWidth={1.75} aria-hidden />
                 <span className="sr-only">{t("eventSeries.partOfSeries")}</span>
+                {/* Eight Saturdays all read «Урок»; which one this is. */}
+                {event.series_index && event.series_count && (
+                  <span className="tabular-nums">
+                    {t("eventSeries.position", { index: event.series_index, count: event.series_count })}
+                  </span>
+                )}
               </span>
             )}
             {joinable && (

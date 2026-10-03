@@ -144,6 +144,10 @@ class CourseEventResponse(BaseModel):
     recording_url: str | None = None
     duration_minutes: int | None = None
     series_id: UUID | None = None
+    #: This lesson's place in its series, 1-based, and the series' length —
+    #: «2 из 4» beside the repeat mark, where eight lessons all read «Урок».
+    series_index: int | None = None
+    series_count: int | None = None
     created_by: UUID
     created_at: datetime
 
@@ -166,6 +170,9 @@ class CalendarEvent(BaseModel):
     duration_minutes: int | None = None
     #: Shared by the occurrences of one weekly series.
     series_id: str | None = None
+    #: This lesson's place in its series, 1-based, and the series' length.
+    series_index: int | None = None
+    series_count: int | None = None
     course_id: str
     course_title: str | None = None
     source: Literal["module_deadline", "assignment_deadline", "course_event", "cohort_start", "cohort_end"]

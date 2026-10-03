@@ -56,4 +56,20 @@ describe("EventCard — the title line", () => {
     expect(screen.queryByRole("heading", { level: 3 })).toBeNull()
     expect(screen.getAllByText("Живое занятие")).toHaveLength(1)
   })
+
+  it("says which lesson of the series this is, beside the repeat mark", () => {
+    // Eight Saturdays all read «Урок»; the fourth could not be told from the first.
+    render(
+      <EventCard event={session({ title: "Урок", series_id: "s1", series_index: 2, series_count: 4 })} now={NOW} />,
+      { wrapper: Wrapper },
+    )
+    expect(screen.getByText("2 из 4")).toBeInTheDocument()
+    expect(screen.getByText("Повторяющееся занятие")).toBeInTheDocument()
+  })
+
+  it("shows the repeat mark alone when the server did not number the lesson", () => {
+    render(<EventCard event={session({ title: "Урок", series_id: "s1" })} now={NOW} />, { wrapper: Wrapper })
+    expect(screen.getByText("Повторяющееся занятие")).toBeInTheDocument()
+    expect(screen.queryByText(/из/)).toBeNull()
+  })
 })

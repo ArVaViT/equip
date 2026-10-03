@@ -12,7 +12,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
+from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from sqlalchemy.orm import Session
+
+    from app.models.course_event import CourseEvent
 
 #: A school year of weekly classes. Past it, a typo in the end date
 #: ("2027" for "2026") would quietly write hundreds of rows.
@@ -90,3 +98,34 @@ def shift_on_wall_clock(instant: datetime, *, old_anchor: datetime, new_anchor: 
     delta = new_local - old_local
     moved = instant.astimezone(zone).replace(tzinfo=None) + delta
     return moved.replace(tzinfo=zone).astimezone(UTC)
+
+
+def series_positions(db: Session, events: Iterable[CourseEvent]) -> dict[str, tuple[int, int]]:
+    """``{event_id: (index, count)}`` — each lesson's place in its series, 1-based.
+
+    Eight Saturday lessons all read «Урок»; a student opening the fourth
+    could not tell it from the first. The whole series is asked of the
+    database rather than of ``events``: a course page has every lesson of
+    the course, but a filtered calendar or a single saved lesson may not,
+    and «3 из 3» for the third of eight would be a lie.
+    """
+    from app.models.course_event import CourseEvent
+
+    series_ids = {e.series_id for e in events if e.series_id}
+    if not series_ids:
+        return {}
+    rows = (
+        db.query(CourseEvent.id, CourseEvent.series_id)
+        .filter(CourseEvent.series_id.in_(series_ids))
+        # The tie-break keeps the order stable when two lessons share an instant.
+        .order_by(CourseEvent.series_id, CourseEvent.event_date, CourseEvent.id)
+        .all()
+    )
+    by_series: dict[object, list[str]] = {}
+    for event_id, series_id in rows:
+        by_series.setdefault(series_id, []).append(str(event_id))
+    positions: dict[str, tuple[int, int]] = {}
+    for members in by_series.values():
+        for index, event_id in enumerate(members, start=1):
+            positions[event_id] = (index, len(members))
+    return positions

@@ -158,7 +158,8 @@
       "openFull": "Увесь календар",
       "empty": "Сьогодні нічого не заплановано. Далі:",
       "nothingAhead": "Найближчих подій немає.",
-      "ahead": "Найближчі події"
+      "ahead": "Найближчі події",
+      "over": "Минуло"
     },
     "readingProgress_one": "Прочитано {{read}} із {{count}} уроку",
     "readingProgress_few": "Прочитано {{read}} із {{count}} уроків",
@@ -3407,6 +3408,7 @@
     "countRange": "Від 2 до {{max}}",
     "lastOn": "останнє — {{date}}",
     "partOfSeries": "Повторюване заняття",
+    "position": "{{index}} з {{count}}",
     "created_one": "Створено {{count}} заняття",
     "created_few": "Створено {{count}} заняття",
     "created_many": "Створено {{count}} занять",

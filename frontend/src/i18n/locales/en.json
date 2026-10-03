@@ -152,7 +152,8 @@
       "openFull": "Full calendar",
       "empty": "Nothing scheduled today. Coming up:",
       "nothingAhead": "Nothing coming up.",
-      "ahead": "Coming up"
+      "ahead": "Coming up",
+      "over": "Over"
     },
     "readingProgress_one": "{{read}} of {{count}} lesson read",
     "readingProgress_other": "{{read}} of {{count}} lessons read",
@@ -3287,6 +3288,7 @@
     "countRange": "From 2 to {{max}}",
     "lastOn": "the last on {{date}}",
     "partOfSeries": "Repeating class",
+    "position": "{{index}} of {{count}}",
     "created_one": "{{count}} class created",
     "created_other": "{{count}} classes created",
     "scope": {

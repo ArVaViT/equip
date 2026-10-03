@@ -20,6 +20,7 @@ from app.models.enrollment import Enrollment
 from app.models.user import User
 from app.schemas.calendar import CalendarEvent
 from app.schemas.locale import LocaleCode, normalize_locale
+from app.services.event_series import series_positions
 from app.services.staged_edits.read import author_texts_in_locale
 from app.services.staged_edits.visibility import chapter_awaits_first_release
 from app.services.translation.resolve_for_display import (
@@ -282,6 +283,7 @@ def build_calendar_events(
             )
 
     course_events = db.query(CourseEvent).filter(CourseEvent.course_id.in_(enrolled_course_ids)).all()
+    positions = series_positions(db, course_events)
 
     # course_events.title + description columns dropped — one
     # cv read covers every event, with the picker applying the
@@ -354,6 +356,8 @@ def build_calendar_events(
                 recording_url=ce.recording_url,
                 duration_minutes=ce.duration_minutes,
                 series_id=str(ce.series_id) if ce.series_id else None,
+                series_index=positions.get(ce_id, (None, None))[0],
+                series_count=positions.get(ce_id, (None, None))[1],
                 course_id=ce.course_id,
                 course_title=course_titles.get(ce.course_id),
                 source="course_event",

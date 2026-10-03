@@ -524,3 +524,58 @@ class TestTheGroupsDays:
         # Read in the subscriber's zone it would have been the 4th.
         if expected.day == 5:
             assert "DTSTART;VALUE=DATE:20991004" not in ics
+
+
+class TestEachLessonKnowsItsPlace:
+    """Eight Saturdays all read «Урок». The server says which one each is —
+    the client may hold a filtered calendar or one saved row, not the series."""
+
+    def _create_series(self, client: TestClient, course_id: str) -> dict:
+        r = client.post(
+            f"{COURSES}/{course_id}/events",
+            json={
+                "title": "Урок",
+                "event_type": "live_session",
+                "event_date": "2099-10-24T00:00:00Z",
+                "duration_minutes": 90,
+                "repeat": {"every_weeks": 1, "until": "2099-11-14", "time_zone": "UTC"},
+            },
+        )
+        assert r.status_code == 201, r.text
+        return r.json()
+
+    def test_the_course_list_and_the_calendar_number_the_lessons_by_date(
+        self, client: TestClient, db: Session, student: User
+    ) -> None:
+        from app.services.calendar_service import build_calendar_events
+
+        course_id = _course(db, student)
+        self._create_series(client, course_id)
+        listed = client.get(f"{COURSES}/{course_id}/events").json()
+        assert [(e["series_index"], e["series_count"]) for e in listed] == [(1, 4), (2, 4), (3, 4), (4, 4)]
+        feed = build_calendar_events(db=db, user=student, course_id=None, limit=100, display_locale="ru")
+        lessons = [e for e in feed if e.source == "course_event"]
+        assert [(e.series_index, e.series_count) for e in lessons] == [(1, 4), (2, 4), (3, 4), (4, 4)]
+
+    def test_a_saved_lesson_answers_with_its_place_and_a_single_event_has_none(
+        self, client: TestClient, db: Session, student: User
+    ) -> None:
+        course_id = _course(db, student)
+        first = self._create_series(client, course_id)
+        assert (first["series_index"], first["series_count"]) == (1, 4)
+        third = client.get(f"{COURSES}/{course_id}/events").json()[2]
+        saved = client.put(f"{COURSES}/{course_id}/events/{third['id']}", json={"title": "Урок 3"}).json()
+        assert (saved["series_index"], saved["series_count"]) == (3, 4)
+        single = client.post(
+            f"{COURSES}/{course_id}/events",
+            json={"title": "Экзамен", "event_type": "exam", "event_date": "2099-12-01T10:00:00Z"},
+        ).json()
+        assert single["series_index"] is None and single["series_count"] is None
+
+    def test_deleting_a_lesson_renumbers_the_rest(self, client: TestClient, db: Session, student: User) -> None:
+        course_id = _course(db, student)
+        self._create_series(client, course_id)
+        second = client.get(f"{COURSES}/{course_id}/events").json()[1]
+        assert client.delete(f"{COURSES}/{course_id}/events/{second['id']}").status_code in (200, 204)
+        listed = client.get(f"{COURSES}/{course_id}/events").json()
+        assert [(e["series_index"], e["series_count"]) for e in listed] == [(1, 3), (2, 3), (3, 3)]

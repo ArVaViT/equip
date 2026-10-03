@@ -359,9 +359,12 @@ function EventRow({
         >
           {formatDateLong(event.event_date, { weekday: "short" })}, {formatEventTimeRange(event)}
           {event.series_id && (
-            <span className="ml-1.5 inline-flex items-center gap-0.5 align-middle" title={t("eventSeries.partOfSeries")}>
+            <span className="ml-1.5 inline-flex items-center gap-1 align-middle" title={t("eventSeries.partOfSeries")}>
               <Repeat className="h-3 w-3" strokeWidth={1.75} aria-hidden />
               <span className="sr-only">{t("eventSeries.partOfSeries")}</span>
+              {event.series_index && event.series_count && (
+                <span>{t("eventSeries.position", { index: event.series_index, count: event.series_count })}</span>
+              )}
             </span>
           )}
         </time>

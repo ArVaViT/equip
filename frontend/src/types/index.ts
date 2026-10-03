@@ -611,6 +611,10 @@ export interface CalendarEvent {
   duration_minutes?: number | null
   /** Shared by the occurrences of one weekly series. */
   series_id?: string | null
+  /** This lesson's place in its series (1-based) and the series' length,
+   *  from the server — the client may not hold the whole series. */
+  series_index?: number | null
+  series_count?: number | null
   /** A day rather than a moment — a group's first or last day. Shown as
    *  "all day", never as 00:00. */
   all_day?: boolean
@@ -792,6 +796,9 @@ export interface CourseEvent {
   recording_url?: string | null
   duration_minutes?: number | null
   series_id?: string | null
+  /** As on `CalendarEvent`: «2 из 4» next to the repeat mark. */
+  series_index?: number | null
+  series_count?: number | null
   created_by: string
   created_at: string
 }

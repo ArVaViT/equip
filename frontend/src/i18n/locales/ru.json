@@ -2675,7 +2675,8 @@
       "openFull": "Весь календарь",
       "empty": "Сегодня ничего не запланировано. Дальше:",
       "nothingAhead": "Ближайших событий нет.",
-      "ahead": "Ближайшие события"
+      "ahead": "Ближайшие события",
+      "over": "Прошло"
     },
     "readingProgress_one": "Прочитано {{read}} из {{count}} урока",
     "readingProgress_few": "Прочитано {{read}} из {{count}} уроков",
@@ -3407,6 +3408,7 @@
     "countRange": "От 2 до {{max}}",
     "lastOn": "последнее — {{date}}",
     "partOfSeries": "Повторяющееся занятие",
+    "position": "{{index}} из {{count}}",
     "created_one": "Создано {{count}} занятие",
     "created_few": "Создано {{count}} занятия",
     "created_many": "Создано {{count}} занятий",

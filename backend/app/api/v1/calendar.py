@@ -37,7 +37,7 @@ from app.services.course_notifications import (
     enrolled_recipients_by_locale,
     entity_title_for_locale,
 )
-from app.services.event_series import SeriesRejected, WeeklySeries, shift_on_wall_clock, zone_or_utc
+from app.services.event_series import SeriesRejected, WeeklySeries, series_positions, shift_on_wall_clock, zone_or_utc
 from app.services.notification_service import (
     create_notifications_bulk,
     notification_text,
@@ -220,6 +220,9 @@ def _course_event_to_response(db: Session, event: CourseEvent, *, source_locale:
     )
     title = texts.get((str(event.id), "title")) or ""
     description = texts.get((str(event.id), "description"))
+    # The editor swaps the saved row into its list in place; without its
+    # place in the series the «2 из 4» would vanish from that one row.
+    index, count = series_positions(db, [event]).get(str(event.id), (None, None))
     return CourseEventResponse.model_validate(
         {
             "id": event.id,
@@ -232,6 +235,8 @@ def _course_event_to_response(db: Session, event: CourseEvent, *, source_locale:
             "recording_url": event.recording_url,
             "duration_minutes": event.duration_minutes,
             "series_id": event.series_id,
+            "series_index": index,
+            "series_count": count,
             "created_by": event.created_by,
             "created_at": event.created_at,
         }

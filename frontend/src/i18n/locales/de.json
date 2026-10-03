@@ -152,7 +152,8 @@
       "openFull": "Ganzer Kalender",
       "empty": "Heute ist nichts geplant. Als Nächstes:",
       "nothingAhead": "Nichts Anstehendes.",
-      "ahead": "Als Nächstes"
+      "ahead": "Als Nächstes",
+      "over": "Vorbei"
     },
     "readingProgress_one": "{{read}} von {{count}} Lektion gelesen",
     "readingProgress_other": "{{read}} von {{count}} Lektionen gelesen",
@@ -3287,6 +3288,7 @@
     "countRange": "Von 2 bis {{max}}",
     "lastOn": "der letzte am {{date}}",
     "partOfSeries": "Wiederkehrender Termin",
+    "position": "{{index}} von {{count}}",
     "created_one": "{{count}} Termin erstellt",
     "created_other": "{{count}} Termine erstellt",
     "scope": {
