@@ -237,6 +237,24 @@ class TestTheDoorDidNotSwingTooFar:
         course_id = _teachers_course(db, teacher)
         assert client.put(f"/api/v1/courses/{course_id}", json={"access_mode": "institute"}).status_code == 403
 
+    def test_the_access_mode_cannot_be_cleared(
+        self, director_client: TestClient, client: TestClient, db: Session, teacher: User
+    ) -> None:
+        """``null`` is not a mode. It used to reach the NOT NULL column and come
+        back as a bare 409 — from the director, and from the owner too, whose
+        request slipped past the director check because it carried no value
+        to guard (2026-10-03)."""
+        course_id = _teachers_course(db, teacher)
+
+        for who in (director_client, client):
+            resp = who.put(f"/api/v1/courses/{course_id}", json={"access_mode": None})
+            assert resp.status_code == 422, resp.text
+
+        db.expire_all()
+        course = db.get(Course, course_id)
+        assert course is not None
+        assert course.access_mode == "public"
+
     def test_a_director_is_still_not_platform_staff(self, director_client: TestClient) -> None:
         # Site-wide announcements and the audit log belong to Equip, not
         # to any one school; a director gets the same answer a teacher does.

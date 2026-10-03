@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from app.schemas._media_url import validate_safe_media_url
 from app.schemas._request import RequestModel
@@ -179,6 +179,19 @@ class CourseUpdate(RequestModel):
     @classmethod
     def _validate_image_url(cls, value: str | None) -> str | None:
         return validate_safe_media_url(value)
+
+    @field_validator("access_mode", "status", mode="before")
+    @classmethod
+    def _a_choice_is_not_cleared(cls, value: object, info: ValidationInfo) -> object:
+        # ``None`` here means "not sent", never "clear it": a course is always
+        # draft or published, public or institute, and both columns are NOT
+        # NULL. An explicit ``null`` passed the type (``X | None``), was
+        # written as the column's value and came back as the handler's bare
+        # 409 — and for ``access_mode`` it slipped past the director check,
+        # which looked for a value to guard (2026-10-03).
+        if value is None:
+            raise ValueError(f"{info.field_name} cannot be null; leave it out to keep the current value")
+        return value
 
     @model_validator(mode="after")
     def _window_opens_before_it_closes(self) -> "CourseUpdate":
