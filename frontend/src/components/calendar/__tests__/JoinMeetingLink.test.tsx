@@ -55,6 +55,13 @@ describe("JoinMeetingLink", () => {
     expect(screen.getByRole("link")).toHaveTextContent(new RegExp(`^${label}$`))
   })
 
+  it("is the solid button only when asked — while the class is on", () => {
+    const { rerender } = render(<JoinMeetingLink url={ZOOM} title="Занятие" />, { wrapper: Wrapper })
+    expect(screen.getByRole("link").className).not.toContain("bg-brand ")
+    rerender(<JoinMeetingLink url={ZOOM} title="Занятие" prominent />)
+    expect(screen.getByRole("link").className).toContain("bg-brand ")
+  })
+
   it("opens beside the lesson and hands the opened page no way back", () => {
     render(<JoinMeetingLink url={ZOOM} title="Занятие" />, { wrapper: Wrapper })
     const link = screen.getByRole("link")

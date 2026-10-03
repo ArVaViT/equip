@@ -10,6 +10,8 @@ interface Props {
   /** The event's title, for the screen-reader label. A row can hold
    *  several of these and "Join" alone does not say which class. */
   title: string
+  /** The class is on now, or about to be: Join is the one thing to do. */
+  prominent?: boolean
   className?: string
 }
 
@@ -42,7 +44,10 @@ interface Props {
  * beside the lesson rather than on top of it, and the page that opens
  * gets no `window.opener` handle back to Equip.
  */
-export function JoinMeetingLink({ url, title, className }: Props) {
+/** Solid, a size up: the way in while the class is on. */
+const PROMINENT = "border-brand bg-brand px-3 py-1.5 text-sm text-brand-foreground hover:bg-brand/90 [&_svg]:h-4 [&_svg]:w-4"
+
+export function JoinMeetingLink({ url, title, prominent = false, className }: Props) {
   const { t } = useTranslation()
   if (!isAbsoluteHttpUrl(url)) return null
   const provider = meetingProvider(url)
@@ -60,6 +65,7 @@ export function JoinMeetingLink({ url, title, className }: Props) {
         "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-brand/30 bg-brand/5 px-2 py-1",
         "text-xs font-medium text-brand transition-colors hover:bg-brand/10",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2",
+        prominent && PROMINENT,
         className,
       )}
     >

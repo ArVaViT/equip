@@ -200,7 +200,9 @@ export function TodayCard() {
                       for a Saturday Zoom class the answer is a button,
                       not an instruction to go and find one. */}
                   <div className="mt-1.5 flex flex-wrap gap-1.5 empty:hidden">
-                    {!isOver(e, now) && <JoinMeetingLink url={e.meeting_url} title={e.title} />}
+                    {!isOver(e, now) && (
+                      <JoinMeetingLink url={e.meeting_url} title={e.title} prominent={isJoinableNow(e, now)} />
+                    )}
                     <RecordingLink url={e.recording_url} title={e.title} />
                   </div>
                 </div>

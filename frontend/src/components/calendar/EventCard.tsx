@@ -14,10 +14,6 @@ import { RecordingLink } from "./RecordingLink"
 import { formatEventTimeRange } from "./eventTimeFormat"
 import { useCalendarEditing } from "./calendarEditing"
 
-/** The join button when it is the one thing on the card. */
-const PROMINENT_JOIN =
-  "border-brand bg-brand px-3 py-1.5 text-sm text-brand-foreground hover:bg-brand/90 [&_svg]:h-4 [&_svg]:w-4"
-
 /**
  * One event as the reader needs it at this moment.
  *
@@ -130,7 +126,7 @@ export function EventCard({
               <JoinMeetingLink
                 url={event.meeting_url}
                 title={event.title}
-                className={joinable ? PROMINENT_JOIN : undefined}
+                prominent={joinable}
               />
             )}
             <RecordingLink url={event.recording_url} title={event.title} />
