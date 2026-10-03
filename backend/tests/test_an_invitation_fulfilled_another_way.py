@@ -199,5 +199,7 @@ class TestOneValueInFourPlaces:
             "TRIGGER trg_profiles_created_fulfil_invitations",
             "TRIGGER trg_profiles_changed_fulfil_invitations",
             "TRIGGER trg_invitations_created_fulfil",
+            # 20261003203000: a membership written or raised is a door too.
+            "TRIGGER trg_organization_members_fulfil_invitations",
         ):
             assert name in schema, name

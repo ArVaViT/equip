@@ -7,6 +7,12 @@
 -- forgets to ask for it must not be able to leave an invitation pending.
 -- The backend's own tests run on SQLite and cannot see a trigger.
 --
+-- Since 20261003203000 "the person has the role" is read from
+-- organization_members -- the role held in the inviting organization -- and
+-- a membership written or raised is one of the doors (the trigger on that
+-- table). profiles.role is a mirror of the highest role held anywhere and
+-- no longer a condition.
+--
 -- Every check RAISEs on failure, so ON_ERROR_STOP aborts the job.
 
 \set ON_ERROR_STOP on
@@ -22,7 +28,7 @@ INSERT INTO public.courses (id, organization_id) VALUES
   ('course-b', 'a0000000-0000-0000-0000-00000000000a');
 
 INSERT INTO auth.users (id)
-SELECT ('10000000-0000-0000-0000-00000000000' || n)::uuid FROM generate_series(1, 7) AS n;
+SELECT ('10000000-0000-0000-0000-00000000000' || n)::uuid FROM generate_series(1, 8) AS n;
 
 INSERT INTO public.profiles (id, email, role) VALUES
   ('10000000-0000-0000-0000-000000000001', 'enrols@test.local', 'student'),
@@ -31,7 +37,8 @@ INSERT INTO public.profiles (id, email, role) VALUES
   ('10000000-0000-0000-0000-000000000003', 'Joins.Org@Test.Local', 'student'),
   ('10000000-0000-0000-0000-000000000004', 'late@test.local', 'student'),
   ('10000000-0000-0000-0000-000000000005', 'wrong-course@test.local', 'student'),
-  ('10000000-0000-0000-0000-000000000006', 'backfill@test.local', 'student');
+  ('10000000-0000-0000-0000-000000000006', 'backfill@test.local', 'student'),
+  ('10000000-0000-0000-0000-000000000008', 'promoted-elsewhere@test.local', 'student');
 
 -- A helper that reads one invitation's status by email + scope.
 CREATE FUNCTION pg_temp.status_of(p_email text, p_scope text, p_course text DEFAULT NULL) RETURNS text
@@ -64,29 +71,71 @@ SELECT pg_temp.expect(
   (SELECT (fulfilled_at IS NOT NULL AND accepted_at IS NULL)::text FROM public.invitations WHERE token = 't1'),
   'true', 'a fulfilled invitation records when, and does not claim its link was used');
 
--- 2) A teacher invitation is not fulfilled by enrolling as a student, and is
---    by becoming a teacher.
+-- 2) A teacher invitation is not fulfilled by enrolling as a student, nor by
+--    teaching *somewhere else*; it is by teaching in the course's
+--    organization. (Since 20261003203000 the role is read from
+--    organization_members, not from profiles.role, which mirrors the highest
+--    role held anywhere.)
 INSERT INTO public.invitations (email, role, token, organization_id, scope, course_id)
 VALUES ('wants-teaching@test.local', 'teacher', 't2', 'a0000000-0000-0000-0000-00000000000a', 'course', 'course-a');
 INSERT INTO public.enrollments (id, user_id, course_id)
 VALUES ('e2', '10000000-0000-0000-0000-000000000002', 'course-a');
 SELECT pg_temp.expect(pg_temp.status_of('wants-teaching@test.local', 'course', 'course-a'), 'pending',
   'a student enrolment does not fulfil a teacher invitation');
-UPDATE public.profiles SET role = 'teacher' WHERE id = '10000000-0000-0000-0000-000000000002';
+INSERT INTO public.organization_members (user_id, organization_id, role, joined_via)
+VALUES ('10000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-00000000000b', 'teacher', 'appointment');
+SELECT pg_temp.expect((SELECT role FROM public.profiles WHERE id = '10000000-0000-0000-0000-000000000002'), 'teacher',
+  'precondition: the mirror now says teacher');
+SELECT pg_temp.expect(pg_temp.status_of('wants-teaching@test.local', 'course', 'course-a'), 'pending',
+  'teaching in another organization does not fulfil a teacher invitation onto this one''s course');
+INSERT INTO public.organization_members (user_id, organization_id, role, joined_via)
+VALUES ('10000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-00000000000a', 'teacher', 'appointment');
 SELECT pg_temp.expect(pg_temp.status_of('wants-teaching@test.local', 'course', 'course-a'), 'fulfilled',
-  'gaining the role completes it');
+  'gaining the role in the course''s organization completes it');
 
--- 3) Organization invitations: the right organization, matched without case.
+-- 3) Organization invitations: an active membership of the right
+--    organization, matched without case.
 INSERT INTO public.invitations (email, role, token, organization_id, scope)
 VALUES ('joins.org@test.local', 'student', 't3', 'a0000000-0000-0000-0000-00000000000a', 'organization');
-UPDATE public.profiles SET organization_id = 'b0000000-0000-0000-0000-00000000000b'
-WHERE id = '10000000-0000-0000-0000-000000000003';
+INSERT INTO public.organization_members (user_id, organization_id, role, joined_via)
+VALUES ('10000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-00000000000b', 'student', 'invitation');
 SELECT pg_temp.expect(pg_temp.status_of('joins.org@test.local', 'organization'), 'pending',
   'joining a different organization does not fulfil it');
+-- The column alone, as the old rule read it, is not membership either.
 UPDATE public.profiles SET organization_id = 'a0000000-0000-0000-0000-00000000000a'
 WHERE id = '10000000-0000-0000-0000-000000000003';
+SELECT pg_temp.expect(pg_temp.status_of('joins.org@test.local', 'organization'), 'pending',
+  'the deprecated column saying A is not membership of A');
+INSERT INTO public.organization_members (user_id, organization_id, role, status, joined_via)
+VALUES ('10000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-00000000000a', 'student', 'suspended', 'invitation');
+SELECT pg_temp.expect(pg_temp.status_of('joins.org@test.local', 'organization'), 'pending',
+  'a suspended membership of the inviting organization fulfils nothing');
+UPDATE public.organization_members SET status = 'active'
+WHERE user_id = '10000000-0000-0000-0000-000000000003' AND organization_id = 'a0000000-0000-0000-0000-00000000000a';
 SELECT pg_temp.expect(pg_temp.status_of('joins.org@test.local', 'organization'), 'fulfilled',
   'joining the inviting organization fulfils it, whatever the case of the stored email');
+
+-- 3b) A promotion elsewhere closes nothing here. A student of A holds a
+--     pending *teacher* invitation into A; being made a director of B
+--     mirrors `director` onto the profile — the shape the review found
+--     closing the invitation — and must leave it pending. Teaching in A
+--     closes it.
+INSERT INTO public.organization_members (user_id, organization_id, role, joined_via)
+VALUES ('10000000-0000-0000-0000-000000000008', 'a0000000-0000-0000-0000-00000000000a', 'student', 'invitation');
+INSERT INTO public.invitations (email, role, token, organization_id, scope)
+VALUES ('promoted-elsewhere@test.local', 'teacher', 't3b', 'a0000000-0000-0000-0000-00000000000a', 'organization');
+SELECT pg_temp.expect(pg_temp.status_of('promoted-elsewhere@test.local', 'organization'), 'pending',
+  'a student of A holds a teacher invitation into A');
+INSERT INTO public.organization_members (user_id, organization_id, role, joined_via)
+VALUES ('10000000-0000-0000-0000-000000000008', 'b0000000-0000-0000-0000-00000000000b', 'director', 'appointment');
+SELECT pg_temp.expect((SELECT role FROM public.profiles WHERE id = '10000000-0000-0000-0000-000000000008'), 'director',
+  'precondition: the mirror says director');
+SELECT pg_temp.expect(pg_temp.status_of('promoted-elsewhere@test.local', 'organization'), 'pending',
+  'directing B does not fulfil a teacher invitation into A');
+UPDATE public.organization_members SET role = 'teacher'
+WHERE user_id = '10000000-0000-0000-0000-000000000008' AND organization_id = 'a0000000-0000-0000-0000-00000000000a';
+SELECT pg_temp.expect(pg_temp.status_of('promoted-elsewhere@test.local', 'organization'), 'fulfilled',
+  'teaching in A does');
 
 -- 4) A platform invitation is an account, so creating the account fulfils it
 --    (handle_new_user inserts the profile; the backend never sees that).
@@ -121,8 +170,8 @@ INSERT INTO public.invitations (email, role, token, organization_id, scope, cour
 VALUES ('wrong-course@test.local', 'student', 't7', 'a0000000-0000-0000-0000-00000000000a', 'course', 'course-b', 'revoked');
 INSERT INTO public.invitations (email, role, token, organization_id, scope, course_id, status, accepted_at)
 VALUES ('wrong-course@test.local', 'student', 't7b', 'a0000000-0000-0000-0000-00000000000a', 'course', 'course-b', 'accepted', now());
-UPDATE public.profiles SET organization_id = 'a0000000-0000-0000-0000-00000000000a'
-WHERE id = '10000000-0000-0000-0000-000000000005';
+INSERT INTO public.organization_members (user_id, organization_id, role, joined_via)
+VALUES ('10000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-00000000000a', 'student', 'invitation');
 SELECT pg_temp.expect((SELECT status FROM public.invitations WHERE token = 't7'), 'revoked',
   'a revoked invitation stays revoked');
 SELECT pg_temp.expect((SELECT status FROM public.invitations WHERE token = 't7b'), 'accepted',

@@ -77,18 +77,6 @@ $$;
 
 
 --
--- Name: current_organization_id(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.current_organization_id() RETURNS uuid
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public', 'pg_temp'
-    AS $$
-    SELECT organization_id FROM public.profiles WHERE id = (SELECT auth.uid());
-$$;
-
-
---
 -- Name: custom_access_token_hook(jsonb); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -136,6 +124,8 @@ DECLARE
   person uuid;
 BEGIN
   IF TG_TABLE_NAME = 'enrollments' THEN
+    PERFORM public.fulfil_pending_invitations(NEW.user_id);
+  ELSIF TG_TABLE_NAME = 'organization_members' THEN
     PERFORM public.fulfil_pending_invitations(NEW.user_id);
   ELSIF TG_TABLE_NAME = 'profiles' THEN
     PERFORM public.fulfil_pending_invitations(NEW.id);
@@ -200,14 +190,29 @@ BEGIN
   WHERE i.status = 'pending'
     AND (p_profile_id IS NULL OR p.id = p_profile_id)
     AND lower(p.email) = lower(i.email)
-    AND (CASE p.role WHEN 'student' THEN 0 WHEN 'teacher' THEN 1 WHEN 'director' THEN 2 WHEN 'admin' THEN 3 ELSE -1 END)
-        >= (CASE i.role WHEN 'student' THEN 0 WHEN 'teacher' THEN 1 WHEN 'director' THEN 2 WHEN 'admin' THEN 3 ELSE 4 END)
     AND CASE i.scope
           WHEN 'platform' THEN true
-          WHEN 'organization' THEN p.organization_id IS NOT DISTINCT FROM i.organization_id
+          WHEN 'organization' THEN EXISTS (
+            SELECT 1 FROM public.organization_members AS m
+            WHERE m.user_id = p.id
+              AND m.organization_id = i.organization_id
+              AND m.status = 'active'
+              AND (CASE m.role WHEN 'student' THEN 0 WHEN 'teacher' THEN 1 WHEN 'director' THEN 2 ELSE -1 END)
+                  >= (CASE i.role WHEN 'student' THEN 0 WHEN 'teacher' THEN 1 WHEN 'director' THEN 2 ELSE 4 END)
+          )
           WHEN 'course' THEN EXISTS (
             SELECT 1 FROM public.enrollments AS e
             WHERE e.user_id = p.id AND e.course_id = i.course_id
+          ) AND (
+            i.role = 'student'
+            OR EXISTS (
+              SELECT 1 FROM public.organization_members AS m
+              WHERE m.user_id = p.id
+                AND m.organization_id = i.organization_id
+                AND m.status = 'active'
+                AND (CASE m.role WHEN 'student' THEN 0 WHEN 'teacher' THEN 1 WHEN 'director' THEN 2 ELSE -1 END)
+                    >= (CASE i.role WHEN 'student' THEN 0 WHEN 'teacher' THEN 1 WHEN 'director' THEN 2 ELSE 4 END)
+            )
           )
           ELSE false
         END;
@@ -281,6 +286,13 @@ $$;
 
 
 --
+-- Name: FUNCTION is_director_of(org uuid); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.is_director_of(org uuid) IS 'Active director of this organization. false for NULL. Platform admin is not a membership role: policies say is_platform_staff() OR is_director_of().';
+
+
+--
 -- Name: is_member_of(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -293,6 +305,13 @@ CREATE FUNCTION public.is_member_of(org uuid) RETURNS boolean
         WHERE user_id = (SELECT auth.uid()) AND organization_id = org AND status = 'active'
     );
 $$;
+
+
+--
+-- Name: FUNCTION is_member_of(org uuid); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.is_member_of(org uuid) IS 'Active member of this organization in any role. false for NULL — a NULL organization must never satisfy a comparison.';
 
 
 --
@@ -327,6 +346,13 @@ $$;
 
 
 --
+-- Name: FUNCTION is_staff_of(org uuid); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.is_staff_of(org uuid) IS 'Active teacher or director of this organization. false for NULL.';
+
+
+--
 -- Name: member_organization_ids(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -337,6 +363,13 @@ CREATE FUNCTION public.member_organization_ids() RETURNS SETOF uuid
     SELECT organization_id FROM public.organization_members
     WHERE user_id = (SELECT auth.uid()) AND status = 'active';
 $$;
+
+
+--
+-- Name: FUNCTION member_organization_ids(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.member_organization_ids() IS 'Every organization the signed-in account is an active member of, in any role.';
 
 
 --
@@ -361,6 +394,13 @@ BEGIN
    WHERE id = p_user AND role <> 'admin' AND role <> mirrored;
 END;
 $$;
+
+
+--
+-- Name: FUNCTION mirror_profile_role(p_user uuid); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.mirror_profile_role(p_user uuid) IS 'profiles.role := highest active organization_members.role (director > teacher > student), student with none; admin is never touched. See 20261003165050.';
 
 
 --
@@ -1181,6 +1221,13 @@ CREATE TABLE public.organization_members (
 
 
 --
+-- Name: TABLE organization_members; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.organization_members IS 'One row per (person, organization). The role is held here; profiles.role mirrors the highest active one (see mirror_profile_role). Written only by the backend; a client reads its own rows.';
+
+
+--
 -- Name: organizations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1245,6 +1292,20 @@ CREATE TABLE public.profiles (
     CONSTRAINT profiles_time_zone_source_check CHECK ((time_zone_source = ANY (ARRAY['default'::text, 'detected'::text, 'chosen'::text])))
 )
 WITH (autovacuum_vacuum_threshold='25', autovacuum_analyze_threshold='25');
+
+
+--
+-- Name: COLUMN profiles.role; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.profiles.role IS 'The most this account may do anywhere: admin (platform staff, set only by the admin route) or the highest active organization_members.role, kept by mirror_profile_role(). Which organization: organization_members.';
+
+
+--
+-- Name: COLUMN profiles.organization_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.profiles.organization_id IS 'Deprecated 2026-10-03: membership lives in organization_members. Still written (when empty) by the phase-2 backend so the previous release keeps working on rollback; dropped in phase 4 of the same plan.';
 
 
 --
@@ -2887,6 +2948,13 @@ CREATE TRIGGER trg_invitations_created_fulfil AFTER INSERT ON public.invitations
 
 
 --
+-- Name: organization_members trg_organization_members_fulfil_invitations; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_organization_members_fulfil_invitations AFTER INSERT OR UPDATE ON public.organization_members FOR EACH ROW WHEN ((new.status = 'active'::text)) EXECUTE FUNCTION public.fulfil_invitations_after_change();
+
+
+--
 -- Name: organization_members trg_organization_members_mirror_profile_role; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3914,9 +3982,7 @@ ALTER TABLE public.certificates ENABLE ROW LEVEL SECURITY;
 -- Name: certificates certificates_select_own_or_reviewer; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY certificates_select_own_or_reviewer ON public.certificates FOR SELECT TO authenticated USING (((user_id = ( SELECT auth.uid() AS uid)) OR public.is_platform_staff() OR ((public.current_organization_id() IS NOT NULL) AND (organization_id = public.current_organization_id()) AND (EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'director'::text, 'admin'::text]))))))));
+CREATE POLICY certificates_select_own_or_reviewer ON public.certificates FOR SELECT TO authenticated USING (((user_id = ( SELECT auth.uid() AS uid)) OR public.is_platform_staff() OR public.is_staff_of(organization_id)));
 
 
 --
@@ -3981,7 +4047,7 @@ ALTER TABLE public.cohorts ENABLE ROW LEVEL SECURITY;
 -- Name: cohorts cohorts_select_own_organization; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY cohorts_select_own_organization ON public.cohorts FOR SELECT TO authenticated USING ((public.is_platform_staff() OR ((public.current_organization_id() IS NOT NULL) AND (organization_id = public.current_organization_id()))));
+CREATE POLICY cohorts_select_own_organization ON public.cohorts FOR SELECT TO authenticated USING ((public.is_platform_staff() OR public.is_staff_of(organization_id)));
 
 
 --
@@ -4036,7 +4102,7 @@ ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
 -- Name: courses courses_select_published; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY courses_select_published ON public.courses FOR SELECT TO authenticated USING (((created_by = ( SELECT auth.uid() AS uid)) OR public.is_platform_staff() OR ((status = 'published'::text) AND ((access_mode = 'public'::text) OR ((public.current_organization_id() IS NOT NULL) AND (organization_id = public.current_organization_id()))))));
+CREATE POLICY courses_select_published ON public.courses FOR SELECT TO authenticated USING (((created_by = ( SELECT auth.uid() AS uid)) OR public.is_platform_staff() OR ((status = 'published'::text) AND ((access_mode = 'public'::text) OR public.is_member_of(organization_id)))));
 
 
 --
