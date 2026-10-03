@@ -163,3 +163,118 @@ class TestSuspension:
         assert body["active"] is False
         assert body["verified"] is False
         assert body["courses"] == []
+
+
+# ── the page an organization is sold by (phase 4, 2026-10-03) ──────────
+
+
+def _person(db: Session, name: str | None, role: str, *, email: str | None = None) -> User:
+    from app.services.memberships import grant_membership
+
+    user = User(
+        id=uuid.uuid4(),
+        email=email or f"{uuid.uuid4().hex[:8]}@ucoat.example",
+        full_name=name,
+        role=UserRole.STUDENT.value,
+    )
+    db.add(user)
+    db.flush()
+    grant_membership(db, user=user, organization_id=SCHOOL_ID, role=role, joined_via="appointment")
+    db.commit()
+    return user
+
+
+def _client_as(db: Session, user: User | None):
+    from app.api.dependencies import get_current_user, get_optional_user
+
+    def _db():
+        yield db
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_optional_user] = lambda: user
+    if user is not None:
+        app.dependency_overrides[get_current_user] = lambda: user
+    return TestClient(app, raise_server_exceptions=False)
+
+
+class TestTheOrganizationIntroducesItself:
+    def test_the_director_is_named_and_never_addressed(
+        self, stranger_client: TestClient, db: Session, school: Organization
+    ):
+        _person(db, "Дмитрий Константинов", "director", email="director@ucoat.example")
+        body = stranger_client.get("/api/v1/organizations/ucoat").json()
+        assert body["directors"] == [{"full_name": "Дмитрий Константинов", "avatar_url": None}]
+        assert "director@ucoat.example" not in str(body)
+
+    def test_small_numbers_about_people_are_not_shown(
+        self, stranger_client: TestClient, db: Session, school: Organization
+    ):
+        for i in range(4):
+            _person(db, f"S{i}", "student")
+        _person(db, "T", "teacher")
+        stats = stranger_client.get("/api/v1/organizations/ucoat").json()["stats"]
+        assert stats["members"] is None, "4 people next to a director's name is nearly a list"
+        assert stats["teachers"] is None
+        for i in range(6):
+            _person(db, f"S{i + 4}", "student")
+        _person(db, "T2", "teacher")
+        _person(db, "T3", "teacher")
+        stats = stranger_client.get("/api/v1/organizations/ucoat").json()["stats"]
+        assert stats["members"] == 13
+        assert stats["teachers"] == 3
+
+    def test_a_closed_course_is_a_title_and_a_lock_to_a_stranger_and_a_course_to_a_member(
+        self, stranger_client: TestClient, db: Session, their_teacher: User
+    ):
+        _course(db, their_teacher, "ucoat-institute", access_mode="institute")
+        body = stranger_client.get("/api/v1/organizations/ucoat").json()
+        assert body["courses"] == []
+        assert [c["id"] for c in body["locked_courses"]] == ["ucoat-institute"]
+        assert set(body["locked_courses"][0]) == {"id", "title", "image_url"}
+
+        member = _person(db, "Member", "student")
+        with _client_as(db, member) as c:
+            body = c.get("/api/v1/organizations/ucoat").json()
+        app.dependency_overrides.clear()
+        assert body["viewer_is_member"] is True
+        assert [x["id"] for x in body["courses"]] == ["ucoat-institute"]
+        assert body["locked_courses"] == []
+
+    def test_an_organization_not_yet_verified_is_its_own_people_s_to_see(
+        self, stranger_client: TestClient, db: Session, school: Organization
+    ):
+        school.status = "approved"
+        db.commit()
+        assert stranger_client.get("/api/v1/organizations/ucoat").status_code == 404
+        member = _person(db, "Member", "student")
+        with _client_as(db, member) as c:
+            assert c.get("/api/v1/organizations/ucoat").status_code == 200
+        app.dependency_overrides.clear()
+
+
+class TestTheDirectorWritesThePage:
+    def test_the_director_writes_the_paragraph_and_nobody_else_can(self, db: Session, school: Organization):
+        director = _person(db, "Director", "director")
+        teacher = _person(db, "Teacher", "teacher")
+        payload = {"description": "Библейская школа при церкви.", "website_url": "https://ucoat.example"}
+        with _client_as(db, teacher) as c:
+            assert c.patch(f"/api/v1/organizations/{SCHOOL_ID}/profile", json=payload).status_code == 404
+        with _client_as(db, director) as c:
+            r = c.patch(f"/api/v1/organizations/{SCHOOL_ID}/profile", json=payload)
+        app.dependency_overrides.clear()
+        assert r.status_code == 200, r.text
+        assert r.json()["description"] == "Библейская школа при церкви."
+        assert r.json()["website_url"] == "https://ucoat.example"
+
+    def test_a_website_must_be_https_and_a_paragraph_short(self, db: Session, school: Organization):
+        director = _person(db, "Director", "director")
+        with _client_as(db, director) as c:
+            assert (
+                c.patch(f"/api/v1/organizations/{SCHOOL_ID}/profile", json={"website_url": "http://x"}).status_code
+                == 422
+            )
+            assert (
+                c.patch(f"/api/v1/organizations/{SCHOOL_ID}/profile", json={"description": "x" * 281}).status_code
+                == 422
+            )
+        app.dependency_overrides.clear()

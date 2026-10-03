@@ -2957,6 +2957,25 @@
     "body": false
   },
   {
+    "method": "PATCH",
+    "path": "/api/v1/organizations/{organization_id}/profile",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "organization_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
     "method": "GET",
     "path": "/api/v1/organizations/{slug}",
     "params": [

@@ -80,6 +80,38 @@ class OrganizationResponse(BaseModel):
     director_emails: list[str] = []
 
 
+class OrganizationPerson(BaseModel):
+    full_name: str
+    avatar_url: str | None = None
+
+
+class OrganizationStats(BaseModel):
+    """Numbers that say something about the organization and nothing about
+    a person in it. ``None`` is "not shown", not zero: a member count below
+    ten next to a director's name is nearly a list of people, and a teacher
+    count below three is a name."""
+
+    courses: int
+    lessons: int
+    certificates: int
+    members: int | None = None
+    teachers: int | None = None
+
+
+class LockedCourse(BaseModel):
+    id: str
+    title: str
+    image_url: str | None = None
+
+
+class OrganizationProfileUpdate(RequestModel):
+    """What the organization's director writes about it."""
+
+    description: str | None = Field(None, max_length=280)
+    website_url: str | None = Field(None, max_length=300, pattern=r"^https://")
+    show_member_count: bool | None = None
+
+
 class OrganizationPublicResponse(BaseModel):
     """What a stranger sees at ``/s/<slug>``.
 
@@ -101,3 +133,19 @@ class OrganizationPublicResponse(BaseModel):
     active: bool
     verified: bool
     courses: list[CourseSummary] = []
+    #: The organization's own paragraph, in its own language (not translated).
+    description: str | None = None
+    logo_url: str | None = None
+    website_url: str | None = None
+    city: str | None = None
+    #: Who runs it, by name and face — never by address. A page with no
+    #: director to stand behind it is not on the showcase.
+    directors: list[OrganizationPerson] = []
+    stats: OrganizationStats
+    #: Courses for members only: shown as a title, a cover and a lock, so
+    #: a visitor sees what membership opens — and nothing of what is inside.
+    locked_courses: list[LockedCourse] = []
+    #: Whether the reader belongs here (their closed courses are open to them).
+    viewer_is_member: bool = False
+    #: "On Equip since …".
+    since: datetime
