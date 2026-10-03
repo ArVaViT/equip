@@ -24,7 +24,7 @@ from app.services.user_locale import preferred_locale_of
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from sqlalchemy.orm import Session
+    from sqlalchemy.orm import Query, Session
 
     from app.schemas.locale import LocaleCode
 
@@ -148,14 +148,22 @@ def course_title_for_invitation(db: Session, invitation: Invitation, *, display_
 def _subsumes_scope(outer_scope: str, outer_course: str | None, inner_scope: str, inner_course: str | None) -> bool:
     """Does a grant of ``outer`` already include everything ``inner`` gives?
 
-    Platform covers everything; a course covers its school; a school
-    covers itself, and covers nothing about a course. Two courses cover
-    each other only when they are the same course.
+    A course covers its school; a school covers itself, and covers
+    nothing about a course. Two courses cover each other only when they
+    are the same course.
+
+    The platform is not in this order at all. Since 2026-10-03 a platform
+    invitation grants an account and nothing else, so it contains no
+    school's offer and no school's offer contains it: it covers only
+    itself. Until then it read as the widest grant, and a platform
+    invitation to an address a director had already invited revoked the
+    director's row — or, asked the other way round, was handed to the
+    director as "the invitation already sent", with no membership behind
+    it (``_of_the_same_kind`` keeps the two apart before this is
+    even asked).
     """
-    if outer_scope == InvitationScope.PLATFORM.value:
-        return True
-    if inner_scope == InvitationScope.PLATFORM.value:
-        return False
+    if InvitationScope.PLATFORM.value in (outer_scope, inner_scope):
+        return outer_scope == inner_scope
     if inner_scope == InvitationScope.ORGANIZATION.value:
         # Both course and organization grants carry school membership.
         return True
@@ -165,6 +173,19 @@ def _subsumes_scope(outer_scope: str, outer_course: str | None, inner_scope: str
 def _subsumes(existing: Invitation, *, scope: str, course_id: str | None) -> bool:
     """Whether the invitation already sent covers what is being asked for."""
     return _subsumes_scope(existing.scope, existing.course_id, scope, course_id)
+
+
+def _of_the_same_kind(query: Query[Invitation], scope: str) -> Query[Invitation]:
+    """Only the rows a request for ``scope`` may stand in for or retire.
+
+    Two kinds, not three: platform rows, and a school's rows (organization
+    and course), which are nested among themselves and nowhere else. The
+    platform admin's invitation and the director's are filed under the same
+    organization, and the one must never be the other's "already sent".
+    """
+    if scope == InvitationScope.PLATFORM.value:
+        return query.filter(Invitation.scope == InvitationScope.PLATFORM.value)
+    return query.filter(Invitation.scope != InvitationScope.PLATFORM.value)
 
 
 def create_or_resend_invitation(
@@ -212,6 +233,14 @@ def create_or_resend_invitation(
     one person holds one link. Two invitations to two *different*
     courses stay two invitations: those are genuinely different offers,
     and each email names its course.
+
+    A platform invitation is outside that order (``_subsumes_scope``) and
+    outside the lookups here: a platform request sees only platform rows
+    and a school's request only the school's. The two are filed under the
+    same organization (``_where_a_platform_invitation_is_filed``), and
+    until 2026-10-03 a platform invitation written over a director's
+    pending one revoked it — and written before it, was returned to the
+    director as "already sent".
     """
     normalized_email = email.strip().lower()
     if scope == InvitationScope.COURSE.value:
@@ -226,19 +255,18 @@ def create_or_resend_invitation(
         )
 
     # Every live invitation this school already holds for this person in
-    # this role. The exact match is one of them; a course invitation
-    # standing in for a requested school one is another.
+    # this role, of the same kind as the one being asked for. The exact
+    # match is one of them; a course invitation standing in for a requested
+    # school one is another. A platform row is never one of them for a
+    # school's request, nor a school's row for a platform request.
+    pending_here = db.query(Invitation).filter(
+        Invitation.organization_id == organization_id,
+        Invitation.email == normalized_email,
+        Invitation.role == role,
+        Invitation.status == InvitationStatus.PENDING.value,
+    )
     live = [
-        candidate
-        for candidate in db.query(Invitation)
-        .filter(
-            Invitation.organization_id == organization_id,
-            Invitation.email == normalized_email,
-            Invitation.role == role,
-            Invitation.status == InvitationStatus.PENDING.value,
-        )
-        .all()
-        if not is_invitation_expired(candidate)
+        candidate for candidate in _of_the_same_kind(pending_here, scope).all() if not is_invitation_expired(candidate)
     ]
 
     standing = next((row for row in live if _subsumes(row, scope=scope, course_id=course_id)), None)
@@ -254,6 +282,29 @@ def create_or_resend_invitation(
         _mail_the_invitation(db, standing, invited_by=invited_by)
         return standing, False
 
+    # The index that guards the insert, ``ix_invitations_one_pending_per_scope``,
+    # is keyed on (organization, email, role, course) and knows nothing of
+    # the scope. A platform row and a school row name no course, so the two
+    # kinds this function now keeps apart still share a key there, and the
+    # insert below would meet the handler's bare 409. Until the index carries
+    # the scope the collision is met here, by name: an expired row of the
+    # other kind is dead already and is retired so the fresh one can be
+    # written; a live one is refused, saying whose it is. The row itself is
+    # never revoked for being in the way — that is the defect this replaces.
+    # A course row carries its course in the key and never collides with a
+    # platform row.
+    if course_id is None:
+        in_the_way = pending_here.filter(Invitation.course_id.is_(None), Invitation.scope != scope).all()
+        for row in in_the_way:
+            if not is_invitation_expired(row):
+                raise equip_error(
+                    ErrorCode.VALIDATION_FAILED,
+                    status_code=status.HTTP_409_CONFLICT,
+                    message=f"A {row.scope} invitation to this address is already pending under this organization",
+                    context={"resource_type": "invitation", "field": "scope", "pending_scope": row.scope},
+                )
+            row.status = InvitationStatus.REVOKED.value
+
     # Nothing outstanding covers what is being offered now, so whatever
     # the new one subsumes is retired rather than left to arrive as a
     # second, weaker link.
@@ -261,17 +312,10 @@ def create_or_resend_invitation(
         if _subsumes_scope(scope, course_id, row.scope, row.course_id):
             row.status = InvitationStatus.REVOKED.value
 
-    expired_exact = (
-        db.query(Invitation)
-        .filter(
-            Invitation.organization_id == organization_id,
-            Invitation.email == normalized_email,
-            Invitation.role == role,
-            Invitation.course_id == course_id if course_id is not None else Invitation.course_id.is_(None),
-            Invitation.status == InvitationStatus.PENDING.value,
-        )
-        .first()
-    )
+    expired_exact = pending_here.filter(
+        Invitation.scope == scope,
+        Invitation.course_id == course_id if course_id is not None else Invitation.course_id.is_(None),
+    ).first()
     if expired_exact is not None:
         expired_exact.status = InvitationStatus.REVOKED.value
 

@@ -354,6 +354,109 @@ class TestAPlatformInvitation:
         assert _as(db, newcomer).get("/api/v1/courses/my").status_code == 403
 
 
+def _invite(db: Session, who: User, **body: object):
+    return _as(db, who).post("/api/v1/invitations", json={"age_attested": True, **body})
+
+
+def _rows(db: Session, email: str) -> list[tuple[str, str]]:
+    """``(scope, status)`` of every invitation to ``email``, sorted — ``created_at``
+    has one-second resolution here and two rows written in one test tie."""
+    return sorted((row.scope, row.status) for row in db.query(Invitation).filter(Invitation.email == email))
+
+
+class TestThePlatformInvitationIsNotTheDirectors:
+    """A platform invitation grants an account and nothing else, and is filed
+    under an organization only for bookkeeping. It used to rank as the widest
+    grant in the dedupe order, so written after a director's invitation to the
+    same address it revoked the director's row, and written before it was
+    handed to the director as "already sent" — a link that would have put the
+    person in no school at all.
+
+    The admin here sits nowhere, so the platform invitation is filed under the
+    first organization — A, whose director is the one being stepped on.
+    """
+
+    NEWCOMER = "new@example.com"
+
+    def test_the_admins_platform_invitation_leaves_the_directors_pending(self, db: Session, world: dict) -> None:
+        assert (
+            _invite(db, world["director_a"], email=self.NEWCOMER, role="student", scope="organization").status_code
+            == 201
+        )
+
+        resp = _invite(db, world["admin"], email=self.NEWCOMER, role="student", scope="platform")
+
+        # Refused, not written over it: the unique index behind the table
+        # does not know the scope, so until it does the two cannot both be
+        # pending under one organization — but the director's stays.
+        assert resp.status_code == 409, resp.text
+        assert resp.json()["detail"]["context"]["pending_scope"] == "organization"
+        assert _rows(db, self.NEWCOMER) == [("organization", "pending")]
+
+    def test_the_director_is_not_handed_the_platform_invitation(self, db: Session, world: dict) -> None:
+        assert _invite(db, world["admin"], email=self.NEWCOMER, role="student", scope="platform").status_code == 201
+
+        resp = _invite(db, world["director_a"], email=self.NEWCOMER, role="student", scope="organization")
+
+        # A 201 here used to carry ``scope: platform`` — the admin's row,
+        # resent in the director's name, admitting the person to nothing.
+        assert resp.status_code == 409, resp.text
+        assert resp.json()["detail"]["context"]["pending_scope"] == "platform"
+        assert _rows(db, self.NEWCOMER) == [("platform", "pending")]
+
+    def test_a_course_invitation_and_a_platform_invitation_stand_together(self, db: Session, world: dict) -> None:
+        # A course row names its course in the index key, so nothing stops
+        # the two from both being pending — and nothing retires either.
+        assert _invite(db, world["admin"], email=self.NEWCOMER, role="student", scope="platform").status_code == 201
+
+        resp = _invite(db, world["director_a"], email=self.NEWCOMER, role="student", scope="course", course_id="inst-a")
+
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["scope"] == "course"
+        assert _rows(db, self.NEWCOMER) == [("course", "pending"), ("platform", "pending")]
+
+    def test_a_course_invitation_already_sent_is_not_resent_for_the_platform(self, db: Session, world: dict) -> None:
+        # The other order: the school's offer is live, the platform asks.
+        # The course row covers nothing about the platform, so this is a new
+        # row, not the director's token in the admin's letter.
+        assert (
+            _invite(
+                db, world["director_a"], email=self.NEWCOMER, role="student", scope="course", course_id="inst-a"
+            ).status_code
+            == 201
+        )
+
+        resp = _invite(db, world["admin"], email=self.NEWCOMER, role="student", scope="platform")
+
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["scope"] == "platform"
+        assert _rows(db, self.NEWCOMER) == [("course", "pending"), ("platform", "pending")]
+
+    def test_an_expired_platform_row_is_not_in_the_directors_way(self, db: Session, world: dict) -> None:
+        # Dead already; retired so the fresh row can be written, which is
+        # what happens to an expired row of the director's own kind too.
+        db.add(
+            Invitation(
+                id=uuid.uuid4(),
+                email=self.NEWCOMER,
+                role="student",
+                scope="platform",
+                organization_id=A_ID,
+                token=uuid.uuid4().hex,
+                invited_by=world["admin"].id,
+                status="pending",
+                expires_at=datetime.now(UTC) - timedelta(days=1),
+            )
+        )
+        db.commit()
+
+        resp = _invite(db, world["director_a"], email=self.NEWCOMER, role="student", scope="organization")
+
+        assert resp.status_code == 201, resp.text
+        assert resp.json()["scope"] == "organization"
+        assert _rows(db, self.NEWCOMER) == [("organization", "pending"), ("platform", "revoked")]
+
+
 class TestASuspendedTeacher:
     def test_keeps_the_course_but_not_the_door(self, db: Session, world: dict) -> None:
         """Owning a course let a teacher invite students into the organization

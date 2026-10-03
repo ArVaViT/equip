@@ -21,12 +21,13 @@ import uuid
 from typing import TYPE_CHECKING
 
 import pytest
+from fastapi import HTTPException
 
 from app.models.course import Course
 from app.models.invitation import Invitation, InvitationScope, InvitationStatus
 from app.models.organization import Organization
 from app.models.user import User, UserRole
-from app.services.invitation_service import create_or_resend_invitation
+from app.services.invitation_service import _subsumes_scope, create_or_resend_invitation
 from tests.conftest import ADMIN_ID, TEST_ORGANIZATION_ID
 
 if TYPE_CHECKING:
@@ -171,3 +172,42 @@ class TestWhatStaysSeparate:
         assert is_new is True
         assert other.organization_id == elsewhere
         assert len(_live(db)) == 2
+
+
+class TestThePlatformIsOutsideTheOrder:
+    """A platform invitation grants an account and nothing else (2026-10-03),
+    so it sits in no school's offer and no school's offer sits in it. It used
+    to rank above everything, which let it retire a director's invitation or
+    be resent in the director's name."""
+
+    @pytest.mark.parametrize(
+        ("outer", "outer_course", "inner", "inner_course", "covers"),
+        [
+            ("platform", None, "platform", None, True),
+            ("platform", None, "organization", None, False),
+            ("platform", None, "course", "preaching-1", False),
+            ("organization", None, "platform", None, False),
+            ("course", "preaching-1", "platform", None, False),
+            # The school's own order is untouched.
+            ("course", "preaching-1", "organization", None, True),
+            ("organization", None, "course", "preaching-1", False),
+        ],
+    )
+    def test_the_platform_covers_only_itself(
+        self, outer: str, outer_course: str | None, inner: str, inner_course: str | None, covers: bool
+    ) -> None:
+        assert _subsumes_scope(outer, outer_course, inner, inner_course) is covers
+
+    def test_a_platform_row_is_not_what_a_school_resends(self, db: Session, admin: User) -> None:
+        platform, _ = _invite(db, scope=InvitationScope.PLATFORM.value)
+
+        with pytest.raises(HTTPException) as refused:
+            _invite(db, scope=InvitationScope.ORGANIZATION.value)
+
+        # Refused rather than resent, and refused rather than retired: the
+        # unique index does not carry the scope, so the two cannot both be
+        # pending under one organization yet.
+        assert refused.value.status_code == 409
+        db.refresh(platform)
+        assert platform.status == InvitationStatus.PENDING.value
+        assert [row.id for row in _live(db)] == [platform.id]
