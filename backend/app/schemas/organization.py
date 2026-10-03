@@ -119,7 +119,10 @@ class OrganizationProfileUpdate(RequestModel):
     """What the organization's director writes about it."""
 
     description: str | None = Field(None, max_length=280)
-    website_url: str | None = Field(None, max_length=300, pattern=r"^https://")
+    # The same shape the form checks before it sends: https, then a host
+    # with a dot in it, and no whitespace anywhere. ``^https://`` alone
+    # accepted "https://" as a website (2026-10-03).
+    website_url: str | None = Field(None, max_length=300, pattern=r"^https://\S+\.\S+$")
     show_member_count: bool | None = None
 
 

@@ -289,10 +289,11 @@ class TestTheDirectorWritesThePage:
     def test_a_website_must_be_https_and_a_paragraph_short(self, db: Session, school: Organization):
         director = _person(db, "Director", "director")
         with _client_as(db, director) as c:
-            assert (
-                c.patch(f"/api/v1/organizations/{SCHOOL_ID}/profile", json={"website_url": "http://x"}).status_code
-                == 422
-            )
+            # The form's rule, held by the API too: https, a host with a dot,
+            # no whitespace. "https://" alone used to pass (2026-10-03).
+            for broken in ("http://x", "https://", "https://ucoat", "https://uco at.example", "https://x.y z"):
+                resp = c.patch(f"/api/v1/organizations/{SCHOOL_ID}/profile", json={"website_url": broken})
+                assert resp.status_code == 422, (broken, resp.text)
             assert (
                 c.patch(f"/api/v1/organizations/{SCHOOL_ID}/profile", json={"description": "x" * 281}).status_code
                 == 422
