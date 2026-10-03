@@ -51,6 +51,8 @@ export type ErrorCode =
   | "quiz.not_translated"
   | "quiz.question_already_answered"
   | "quiz.has_attempts"
+  | "quiz.already_exists"
+  | "quiz.options_changed"
   // daily challenge
   | "daily_challenge.not_scheduled"
   | "daily_challenge.not_translated"

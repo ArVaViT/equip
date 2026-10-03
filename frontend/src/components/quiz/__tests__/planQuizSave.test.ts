@@ -1,9 +1,11 @@
 /**
  * Saving a quiz used to mean: create a new one, delete the old one — and
  * ``quiz_attempts.quiz_id`` cascades. These pin the plan the editor makes
- * instead: what it sends to the in-place routes, that it sends only what
- * changed, and that adding or removing a question or an option is
- * recognised as the one shape those routes cannot reach.
+ * instead: what it sends to the in-place routes, that it sends only the
+ * questions that changed — each one whole, with every option, so the
+ * server never sees a question half-edited (2026-10-03) — and that adding
+ * or removing a question or an option is recognised as the one shape
+ * those routes cannot reach.
  */
 
 import { describe, expect, it } from "vitest"
@@ -85,27 +87,57 @@ describe("the plan for saving a quiz in place", () => {
     expect(isEmptyPlan(plan!)).toBe(true)
   })
 
-  it("a typo fix is one PATCH with one field", () => {
+  it("a typo fix sends that question whole, with its options, and nothing else", () => {
     const quiz = savedQuiz()
     const draft = draftOf(quiz)
     draft.questions[0]!.question_text = "Сколько было дней творения?"
 
     expect(planInPlaceSave(quiz, draft)).toEqual({
       quiz: null,
-      questions: [{ id: "q1", patch: { question_text: "Сколько было дней творения?" } }],
-      options: [],
+      questions: [
+        {
+          id: "q1",
+          question: {
+            question_text: "Сколько было дней творения?",
+            question_type: "multiple_choice",
+            order_index: 0,
+            points: 1,
+            min_words: null,
+            options: [
+              { id: "o1", option_text: "Шесть", is_correct: true, order_index: 0 },
+              { id: "o2", option_text: "Семь", is_correct: false, order_index: 1 },
+            ],
+          },
+        },
+      ],
     })
   })
 
-  it("moving the right answer is two option PATCHes — one on, one off", () => {
+  it("moving the right answer is one request carrying both options — never a question with none", () => {
     const quiz = savedQuiz()
     const draft = draftOf(quiz)
     draft.questions[0]!.options[0]!.is_correct = false
     draft.questions[0]!.options[1]!.is_correct = true
 
-    expect(planInPlaceSave(quiz, draft)!.options).toEqual([
-      { id: "o1", patch: { is_correct: false } },
-      { id: "o2", patch: { is_correct: true } },
+    const plan = planInPlaceSave(quiz, draft)!
+    expect(plan.questions).toHaveLength(1)
+    expect(plan.questions[0]!.id).toBe("q1")
+    expect(plan.questions[0]!.question.options.map((o) => [o.id, o.is_correct])).toEqual([
+      ["o1", false],
+      ["o2", true],
+    ])
+  })
+
+  it("an option's wording sends its question whole, by the server's option ids", () => {
+    const quiz = savedQuiz()
+    const draft = draftOf(quiz)
+    draft.questions[0]!.options[1]!.option_text = "Восемь"
+
+    const plan = planInPlaceSave(quiz, draft)!
+    expect(plan.questions.map((q) => q.id)).toEqual(["q1"])
+    expect(plan.questions[0]!.question.options).toEqual([
+      { id: "o1", option_text: "Шесть", is_correct: true, order_index: 0 },
+      { id: "o2", option_text: "Восемь", is_correct: false, order_index: 1 },
     ])
   })
 
@@ -129,15 +161,16 @@ describe("the plan for saving a quiz in place", () => {
     expect(planInPlaceSave(quiz, draft)!.quiz).toEqual({ max_attempts: 1, quiz_type: "exam" })
   })
 
-  it("reordering questions patches their positions", () => {
+  it("reordering questions sends both with their new positions", () => {
     const quiz = savedQuiz()
     const draft = draftOf(quiz)
     draft.questions[0]!.order_index = 1
     draft.questions[1]!.order_index = 0
 
-    expect(planInPlaceSave(quiz, draft)!.questions).toEqual([
-      { id: "q1", patch: { order_index: 1 } },
-      { id: "q2", patch: { order_index: 0 } },
+    const plan = planInPlaceSave(quiz, draft)!
+    expect(plan.questions.map((q) => [q.id, q.question.order_index])).toEqual([
+      ["q1", 1],
+      ["q2", 0],
     ])
   })
 
@@ -145,7 +178,9 @@ describe("the plan for saving a quiz in place", () => {
     const quiz = savedQuiz()
     const draft = draftOf(quiz)
     draft.questions[1]!.min_words = null
-    expect(planInPlaceSave(quiz, draft)!.questions).toEqual([{ id: "q2", patch: { min_words: null } }])
+    const plan = planInPlaceSave(quiz, draft)!
+    expect(plan.questions.map((q) => q.id)).toEqual(["q2"])
+    expect(plan.questions[0]!.question.min_words).toBeNull()
   })
 
   it("a new question is a rebuild", () => {
@@ -181,13 +216,14 @@ describe("the plan for saving a quiz in place", () => {
     expect(planInPlaceSave(quiz, removed)).toBeNull()
   })
 
-  it("a type change that keeps the option list is a PATCH the server may still refuse", () => {
+  it("a type change that keeps the option list is an in-place save the server may still refuse", () => {
     const quiz = savedQuiz()
     const draft = draftOf(quiz)
     draft.questions[1]!.question_type = "short_answer"
     draft.questions[1]!.min_words = null
-    expect(planInPlaceSave(quiz, draft)!.questions).toEqual([
-      { id: "q2", patch: { question_type: "short_answer", min_words: null } },
+    const plan = planInPlaceSave(quiz, draft)!
+    expect(plan.questions.map((q) => [q.id, q.question.question_type, q.question.min_words])).toEqual([
+      ["q2", "short_answer", null],
     ])
   })
 })

@@ -128,6 +128,21 @@ class ErrorCode(enum.StrEnum):
     there are; ``context.attempt_count`` carries the number so the client
     can put it in the sentence it shows."""
 
+    QUIZ_ALREADY_EXISTS = "quiz.already_exists"
+    """The chapter already has a quiz. Everything downstream assumes one
+    per chapter — students are handed ``.first()``, the grade sheet counts
+    every quiz in the chapter — so a second one is refused at creation;
+    ``context.existing_quiz_id`` says which to edit or replace
+    (``POST /quizzes/{id}/replace``) instead."""
+
+    QUIZ_OPTIONS_CHANGED = "quiz.options_changed"
+    """A whole-question save named options the question does not have.
+    Nothing is added or removed in place, so the only way to get here is
+    an editor that loaded the quiz before somebody rebuilt it. The client
+    reloads rather than writes over the newer quiz;
+    ``context.unknown_option_ids`` / ``missing_option_ids`` say what
+    differed."""
+
     # ── Daily Challenge ─────────────────────────────────────────────────
     DAILY_CHALLENGE_NOT_SCHEDULED = "daily_challenge.not_scheduled"
     """No question is scheduled for the requested UTC date — usually

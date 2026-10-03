@@ -3191,6 +3191,21 @@
     "body": true
   },
   {
+    "method": "PUT",
+    "path": "/api/v1/quizzes/questions/{question_id}",
+    "params": [
+      [
+        "question_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
     "method": "DELETE",
     "path": "/api/v1/quizzes/{quiz_id}",
     "params": [
@@ -3353,6 +3368,25 @@
       "422"
     ],
     "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/quizzes/{quiz_id}/replace",
+    "params": [
+      [
+        "force",
+        "query"
+      ],
+      [
+        "quiz_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
   },
   {
     "method": "POST",

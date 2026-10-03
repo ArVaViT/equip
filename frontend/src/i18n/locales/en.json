@@ -812,6 +812,8 @@
       "quiz_question_already_answered": "Students have already answered this question, so its type can't change. You can still correct the wording, points and the right answer; for a different kind of question, add a new one.",
       "quiz_has_attempts_one": "This quiz already has {{count}} attempt. Deleting it would delete that attempt and its grade.",
       "quiz_has_attempts_other": "This quiz already has {{count}} attempts. Deleting it would delete every attempt and grade.",
+      "quiz_already_exists": "This lesson already has a quiz. Edit it instead of adding another.",
+      "quiz_options_changed": "The quiz was changed elsewhere since you opened it. Reload it and make your edit again.",
       "daily_challenge_not_scheduled": "There's no question for today.",
       "daily_challenge_not_translated": "Today's question isn't in your language yet.",
       "daily_challenge_already_attempted": "You've already answered today.",
@@ -884,6 +886,7 @@
       "quiz_no_correct_option": "mark one option as correct",
       "quiz_many_correct_options": "only one option can be correct",
       "quiz_options_not_allowed": "a written-answer question has no options",
+      "quiz_option_repeated": "the same option is listed twice",
       "meeting_url_not_a_web_address": "must start with http:// or https:// — paste the whole address from the browser's address bar, for example https://zoom.us/j/1234567890",
       "meeting_url_credentials_in_url": "must not have an @ before the site address — a link like that opens a different site from the one it appears to name. Copy the meeting address again",
       "meeting_url_too_long": "is too long — no more than 2048 characters"
@@ -1106,7 +1109,8 @@
     "toast": {
       "quizSaved": "Quiz saved",
       "quizSaveFailed": "Failed to save quiz",
-      "oldQuizNotDeleted": "The new quiz is saved, but the old one couldn't be deleted",
+      "existingQuizLoaded": "This lesson already has a quiz — it is loaded here now. Your draft was not saved.",
+      "quizReloaded": "The quiz was changed elsewhere and has been reloaded. Your edits were not saved; make them again.",
       "quizDeleted": "Quiz deleted",
       "quizDeleteFailed": "Failed to delete quiz",
       "gradeSaved": "Grade saved",

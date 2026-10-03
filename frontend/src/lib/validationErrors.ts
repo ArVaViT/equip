@@ -75,6 +75,7 @@ const TYPE_KEYS = new Set([
   "quiz_no_correct_option",
   "quiz_many_correct_options",
   "quiz_options_not_allowed",
+  "quiz_option_repeated",
   // Raised by ``_validated_meeting_url`` in ``schemas/calendar.py``.
   // Three types rather than one because the three need different
   // advice: a teacher shown "must start with https://" under a link

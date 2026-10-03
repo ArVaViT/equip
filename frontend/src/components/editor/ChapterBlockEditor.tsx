@@ -259,7 +259,7 @@ export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
         ))}
       </div>
 
-      <AddBlockMenu onAdd={addBlock} adding={adding} />
+      <AddBlockMenu onAdd={addBlock} adding={adding} hasQuiz={blocks.some((b) => b.block_type === "quiz")} />
     </div>
   )
 }

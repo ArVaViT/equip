@@ -812,6 +812,8 @@
       "quiz_question_already_answered": "Diese Frage wurde bereits beantwortet, daher lässt sich ihr Typ nicht mehr ändern. Wortlaut, Punkte und richtige Antwort können Sie weiterhin korrigieren; für einen anderen Fragetyp fügen Sie eine neue Frage hinzu.",
       "quiz_has_attempts_one": "Dieser Test hat bereits {{count}} Versuch. Ihn zu löschen würde auch diesen Versuch und die Note löschen.",
       "quiz_has_attempts_other": "Dieser Test hat bereits {{count}} Versuche. Ihn zu löschen würde alle Versuche und Noten löschen.",
+      "quiz_already_exists": "Diese Lektion hat bereits einen Test. Bearbeiten Sie ihn, statt einen zweiten anzulegen.",
+      "quiz_options_changed": "Der Test wurde inzwischen anderswo geändert. Laden Sie ihn neu und wiederholen Sie die Änderung.",
       "daily_challenge_not_scheduled": "Für heute gibt es keine Frage.",
       "daily_challenge_not_translated": "Die heutige Frage gibt es noch nicht in Ihrer Sprache.",
       "daily_challenge_already_attempted": "Sie haben heute bereits geantwortet.",
@@ -884,6 +886,7 @@
       "quiz_no_correct_option": "markieren Sie eine Option als richtig",
       "quiz_many_correct_options": "nur eine Option kann richtig sein",
       "quiz_options_not_allowed": "eine Frage mit schriftlicher Antwort hat keine Optionen",
+      "quiz_option_repeated": "dieselbe Option ist zweimal aufgeführt",
       "meeting_url_not_a_web_address": "muss mit http:// oder https:// beginnen — fügen Sie die vollständige Adresse aus der Adresszeile des Browsers ein, zum Beispiel https://zoom.us/j/1234567890",
       "meeting_url_credentials_in_url": "darf kein @ vor der Adresse der Website enthalten — ein solcher Link öffnet eine andere Website, als er vorgibt. Kopieren Sie die Adresse des Meetings erneut",
       "meeting_url_too_long": "ist zu lang — höchstens 2048 Zeichen"
@@ -1106,7 +1109,8 @@
     "toast": {
       "quizSaved": "Test gespeichert",
       "quizSaveFailed": "Test konnte nicht gespeichert werden",
-      "oldQuizNotDeleted": "Der neue Test ist gespeichert, der alte konnte aber nicht gelöscht werden",
+      "existingQuizLoaded": "Diese Lektion hat bereits einen Test – er ist jetzt hier geladen. Der Entwurf wurde nicht gespeichert.",
+      "quizReloaded": "Der Test wurde anderswo geändert und neu geladen. Ihre Änderungen wurden nicht gespeichert; nehmen Sie sie erneut vor.",
       "quizDeleted": "Test gelöscht",
       "quizDeleteFailed": "Test konnte nicht gelöscht werden",
       "gradeSaved": "Note gespeichert",

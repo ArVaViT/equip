@@ -50,6 +50,15 @@ def _seed_chapter(db: Session) -> str:
 
 
 def _make_quiz(client: TestClient, chapter_id: str, *, question_type: str = "multiple_choice") -> dict:
+    # A written-answer question has no options; creation refuses them.
+    options = (
+        [
+            {"option_text": "Бог", "is_correct": True, "order_index": 0},
+            {"option_text": "Никто", "is_correct": False, "order_index": 1},
+        ]
+        if question_type in ("multiple_choice", "true_false")
+        else []
+    )
     payload = {
         "chapter_id": chapter_id,
         "title": "Тест по Бытию",
@@ -61,10 +70,7 @@ def _make_quiz(client: TestClient, chapter_id: str, *, question_type: str = "mul
                 "question_type": question_type,
                 "order_index": 0,
                 "points": 2,
-                "options": [
-                    {"option_text": "Бог", "is_correct": True, "order_index": 0},
-                    {"option_text": "Никто", "is_correct": False, "order_index": 1},
-                ],
+                "options": options,
             },
         ],
     }
@@ -155,16 +161,34 @@ class TestTheGradedWorkSurvives:
         assert (survived.score, survived.max_score) == (2, 2)
 
     def test_fixing_the_answer_key_keeps_the_old_verdict(self, client: TestClient, db: Session, student):
+        # Moving the right answer is two changes — one option off, one on —
+        # and no single-option request can carry both without passing
+        # through a question with no right answer or two. So the key is
+        # fixed by saving the question whole (2026-10-03).
         chapter_id = _seed_chapter(db)
         quiz = _make_quiz(client, chapter_id)
         question = quiz["questions"][0]
-        wrong_option = question["options"][1]
-        attempt_id = _grade_an_attempt(db, quiz["id"], question["id"], question["options"][0]["id"])
+        right_option, wrong_option = question["options"]
+        attempt_id = _grade_an_attempt(db, quiz["id"], question["id"], right_option["id"])
 
-        resp = client.patch(f"/api/v1/quizzes/options/{wrong_option['id']}", json={"is_correct": True})
+        resp = client.put(
+            f"/api/v1/quizzes/questions/{question['id']}",
+            json={
+                "question_text": question["question_text"],
+                "question_type": "multiple_choice",
+                "order_index": 0,
+                "points": 2,
+                "min_words": None,
+                "options": [
+                    {"id": right_option["id"], "option_text": "Бог", "is_correct": False, "order_index": 0},
+                    {"id": wrong_option["id"], "option_text": "Никто", "is_correct": True, "order_index": 1},
+                ],
+            },
+        )
         assert resp.status_code == 200, resp.text
         options = {o["id"]: o for o in resp.json()["questions"][0]["options"]}
         assert options[wrong_option["id"]]["is_correct"] is True
+        assert options[right_option["id"]]["is_correct"] is False
 
         answer = db.query(QuizAnswer).filter(QuizAnswer.attempt_id == attempt_id).first()
         assert answer.is_correct is True
@@ -190,8 +214,11 @@ class TestWhatAnEditMayNotDo:
         assert again.json()["questions"][0]["question_type"] == "multiple_choice"
 
     def test_changing_the_type_before_anyone_answers_is_allowed(self, client: TestClient, db: Session):
+        # Between the two written kinds: the option list stays empty, which
+        # is the one type change the in-place route can make without
+        # leaving options under a question that has none (2026-10-03).
         chapter_id = _seed_chapter(db)
-        quiz = _make_quiz(client, chapter_id)
+        quiz = _make_quiz(client, chapter_id, question_type="short_answer")
         question = quiz["questions"][0]
 
         resp = client.patch(

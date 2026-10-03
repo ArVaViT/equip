@@ -7,8 +7,13 @@
  * сохранён». These pin the new behaviour from the teacher's side, in
  * Russian, which is who is saving a quiz tomorrow:
  *
- * - a correction goes to the quiz that exists (PATCH), nothing is deleted;
- * - a change that needs a rebuild asks first, with the number of attempts;
+ * - a correction goes to the quiz that exists, each changed question sent
+ *   whole with its options (``PUT /quizzes/questions/{id}``), nothing is
+ *   deleted;
+ * - a change that needs a rebuild asks first, with the number of attempts,
+ *   and then replaces the quiz in one request — never create-then-delete,
+ *   which left two quizzes on the lesson when the delete was refused
+ *   (2026-10-03);
  * - a quiz nobody can pass is not sent, and the toast names the question;
  * - a 422 comes back as a Russian sentence naming the field;
  * - the type of an answered question cannot be changed, and says why.
@@ -31,23 +36,25 @@ import type { Quiz, QuizAttempt } from "@/types"
 const getChapterQuizForEdit = vi.fn()
 const getQuizAttempts = vi.fn()
 const createQuiz = vi.fn()
+const replaceQuiz = vi.fn()
 const deleteQuiz = vi.fn()
 const updateQuiz = vi.fn()
-const updateQuizQuestion = vi.fn()
-const updateQuizOption = vi.fn()
+const saveQuizQuestion = vi.fn()
 
 /** Swapped in by a test that needs the create to fail. */
 let createImpl: (...a: unknown[]) => Promise<unknown> = async (...a) => createQuiz(...a)
+/** Swapped in by a test that needs the whole-question save to fail. */
+let saveQuestionImpl: (...a: unknown[]) => Promise<unknown> = async (...a) => saveQuizQuestion(...a)
 
 vi.mock("@/services/courses", () => ({
   coursesService: {
     getChapterQuizForEdit: (...a: unknown[]) => getChapterQuizForEdit(...a),
     getQuizAttempts: (...a: unknown[]) => getQuizAttempts(...a),
     createQuiz: (...a: unknown[]) => createImpl(...a),
+    replaceQuiz: (...a: unknown[]) => replaceQuiz(...a),
     deleteQuiz: (...a: unknown[]) => deleteQuiz(...a),
     updateQuiz: (...a: unknown[]) => updateQuiz(...a),
-    updateQuizQuestion: (...a: unknown[]) => updateQuizQuestion(...a),
-    updateQuizOption: (...a: unknown[]) => updateQuizOption(...a),
+    saveQuizQuestion: (...a: unknown[]) => saveQuestionImpl(...a),
   },
 }))
 
@@ -145,6 +152,12 @@ function pydantic422(entries: unknown[]): AxiosError {
   return err
 }
 
+function equipError(status: number, detail: { code: string; message: string; context: Record<string, unknown> }) {
+  const err = new AxiosError("request failed")
+  err.response = { status, statusText: "", headers: {}, config: { headers: undefined } as never, data: { detail } }
+  return err
+}
+
 async function renderSavedQuiz(attempts: QuizAttempt[] = twoAttemptsOnQ1()) {
   getChapterQuizForEdit.mockResolvedValue(savedQuiz())
   getQuizAttempts.mockResolvedValue(attempts)
@@ -164,48 +177,94 @@ describe("saving a quiz students have already taken", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     createImpl = async (...a) => createQuiz(...a)
+    saveQuestionImpl = async (...a) => saveQuizQuestion(...a)
     confirm.mockResolvedValue(true)
   })
 
-  it("sends a typo fix to the question that exists and deletes nothing", async () => {
+  it("sends a typo fix to the question that exists — whole, with its options — and deletes nothing", async () => {
     const user = userEvent.setup()
     await renderSavedQuiz()
     const corrected = { ...savedQuiz() }
     corrected.questions[0]!.question_text = "Сколько было дней творения?"
-    updateQuizQuestion.mockResolvedValue(corrected)
+    saveQuizQuestion.mockResolvedValue(corrected)
 
     const input = screen.getByDisplayValue("Сколько дней творения?")
     await user.clear(input)
     await user.type(input, "Сколько было дней творения?")
     await user.click(saveButton())
 
-    await waitFor(() =>
-      expect(updateQuizQuestion).toHaveBeenCalledWith(
-        "q1",
-        { question_text: "Сколько было дней творения?" },
-        "chap-1",
-      ),
+    await waitFor(() => expect(saveQuizQuestion).toHaveBeenCalledTimes(1))
+    expect(saveQuizQuestion).toHaveBeenCalledWith(
+      "q1",
+      {
+        question_text: "Сколько было дней творения?",
+        question_type: "multiple_choice",
+        order_index: 0,
+        points: 1,
+        min_words: null,
+        options: [
+          { id: "o1", option_text: "Пять", is_correct: false, order_index: 0 },
+          { id: "o2", option_text: "Шесть", is_correct: true, order_index: 1 },
+          { id: "o3", option_text: "Семь", is_correct: false, order_index: 2 },
+        ],
+      },
+      "chap-1",
     )
     expect(createQuiz).not.toHaveBeenCalled()
+    expect(replaceQuiz).not.toHaveBeenCalled()
     expect(deleteQuiz).not.toHaveBeenCalled()
     expect(confirm).not.toHaveBeenCalled()
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Тест сохранён", variant: "success" }))
   })
 
-  it("moving the right answer patches the two options, not the quiz", async () => {
+  it("moving the right answer is one request with both options — the server never sees a question without one", async () => {
     const user = userEvent.setup()
     await renderSavedQuiz()
-    updateQuizOption.mockResolvedValue(savedQuiz())
+    saveQuizQuestion.mockResolvedValue(savedQuiz())
 
     const radios = screen.getAllByRole("radio", { name: "Отметить как правильный" })
     await user.click(radios[2]!)
     await user.click(saveButton())
 
-    await waitFor(() => expect(updateQuizOption).toHaveBeenCalledTimes(2))
-    expect(updateQuizOption).toHaveBeenCalledWith("o2", { is_correct: false }, "chap-1")
-    expect(updateQuizOption).toHaveBeenCalledWith("o3", { is_correct: true }, "chap-1")
+    await waitFor(() => expect(saveQuizQuestion).toHaveBeenCalledTimes(1))
+    const [id, question, chapterId] = saveQuizQuestion.mock.calls[0]! as [
+      string,
+      { options: Array<{ id: string; is_correct: boolean }> },
+      string,
+    ]
+    expect(id).toBe("q1")
+    expect(chapterId).toBe("chap-1")
+    expect(question.options.map((o) => [o.id, o.is_correct])).toEqual([
+      ["o1", false],
+      ["o2", false],
+      ["o3", true],
+    ])
     expect(createQuiz).not.toHaveBeenCalled()
+    expect(replaceQuiz).not.toHaveBeenCalled()
     expect(deleteQuiz).not.toHaveBeenCalled()
+  })
+
+  it("a question the server refuses stays as typed, and the toast says why", async () => {
+    const user = userEvent.setup()
+    await renderSavedQuiz()
+    saveQuestionImpl = async () => {
+      throw pydantic422([
+        { type: "quiz_no_correct_option", loc: ["body", "options"], msg: "Exactly one option must be marked correct" },
+      ])
+    }
+
+    await user.type(screen.getByDisplayValue("Сколько дней творения?"), "!")
+    await user.click(saveButton())
+
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith({
+        title: "Не удалось сохранить тест",
+        description: "отметьте правильный ответ",
+        variant: "destructive",
+      }),
+    )
+    expect(screen.getByDisplayValue("Сколько дней творения?!")).toBeInTheDocument()
+    expect(screen.getByText("Есть несохранённые изменения")).toBeInTheDocument()
   })
 
   it("asks before a rebuild, naming the number of attempts, and does nothing on «cancel»", async () => {
@@ -227,32 +286,109 @@ describe("saving a quiz students have already taken", () => {
     expect(deleteQuiz).not.toHaveBeenCalled()
   })
 
-  it("after «yes» rebuilds, then deletes the old quiz with force — the teacher has agreed", async () => {
+  it("after «yes» replaces the quiz in one request, with force — the teacher has agreed", async () => {
     const user = userEvent.setup()
     await renderSavedQuiz()
     const rebuilt = { ...savedQuiz(), id: "quiz-2" }
-    createQuiz.mockResolvedValue(rebuilt)
-    deleteQuiz.mockResolvedValue(undefined)
+    replaceQuiz.mockResolvedValue(rebuilt)
 
     await user.click(screen.getByRole("button", { name: "Удалить вариант 3" }))
     await user.click(saveButton())
 
-    await waitFor(() => expect(deleteQuiz).toHaveBeenCalledWith("quiz-1", "chap-1", { force: true }))
-    expect(createQuiz).toHaveBeenCalledTimes(1)
-    expect(createQuiz.mock.invocationCallOrder[0]).toBeLessThan(deleteQuiz.mock.invocationCallOrder[0]!)
+    await waitFor(() => expect(replaceQuiz).toHaveBeenCalledTimes(1))
+    const [oldId, body, chapterId, opts] = replaceQuiz.mock.calls[0]! as [
+      string,
+      { title: string; questions: Array<{ options: unknown[] }> },
+      string,
+      { force: boolean },
+    ]
+    expect(oldId).toBe("quiz-1")
+    expect(chapterId).toBe("chap-1")
+    expect(opts).toEqual({ force: true })
+    expect(body.title).toBe("Бытие 1")
+    expect(body.questions[0]!.options).toHaveLength(2)
+    expect(body).not.toHaveProperty("chapter_id")
+    // Never the two-step rebuild that could leave two quizzes on the lesson.
+    expect(createQuiz).not.toHaveBeenCalled()
+    expect(deleteQuiz).not.toHaveBeenCalled()
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "Тест сохранён", variant: "success" }))
   })
 
-  it("does not ask when there are no attempts to lose", async () => {
+  it("does not ask when there are no attempts to lose, and replaces without force", async () => {
     const user = userEvent.setup()
     await renderSavedQuiz([])
-    createQuiz.mockResolvedValue({ ...savedQuiz(), id: "quiz-2" })
-    deleteQuiz.mockResolvedValue(undefined)
+    replaceQuiz.mockResolvedValue({ ...savedQuiz(), id: "quiz-2" })
 
     await user.click(screen.getByRole("button", { name: "Удалить вариант 3" }))
     await user.click(saveButton())
 
-    await waitFor(() => expect(deleteQuiz).toHaveBeenCalledWith("quiz-1", "chap-1", { force: false }))
+    await waitFor(() => expect(replaceQuiz).toHaveBeenCalledTimes(1))
+    expect(replaceQuiz.mock.calls[0]![3]).toEqual({ force: false })
     expect(confirm).not.toHaveBeenCalled()
+    expect(createQuiz).not.toHaveBeenCalled()
+    expect(deleteQuiz).not.toHaveBeenCalled()
+  })
+
+  it("a refused replacement leaves the draft as typed and shows the server's reason", async () => {
+    // A student finished an attempt between the editor's count and the
+    // save: the server refuses, nothing was written, and the teacher is
+    // told — not shown «Тест сохранён» over a lesson that still has the
+    // old quiz.
+    const user = userEvent.setup()
+    await renderSavedQuiz([])
+    const refused = new AxiosError("request failed")
+    refused.response = {
+      status: 409,
+      statusText: "",
+      headers: {},
+      config: { headers: undefined } as never,
+      data: { detail: { code: "quiz.has_attempts", message: "has attempts", context: { attempt_count: 1 } } },
+    }
+    replaceQuiz.mockRejectedValue(refused)
+
+    await user.click(screen.getByRole("button", { name: "Удалить вариант 3" }))
+    await user.click(saveButton())
+
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Не удалось сохранить тест", variant: "destructive" }),
+      ),
+    )
+    expect(toast).not.toHaveBeenCalledWith(expect.objectContaining({ title: "Тест сохранён" }))
+    expect(screen.getByText("Есть несохранённые изменения")).toBeInTheDocument()
+    expect(createQuiz).not.toHaveBeenCalled()
+    expect(deleteQuiz).not.toHaveBeenCalled()
+  })
+
+  it("when the quiz was rebuilt elsewhere, loads the server's quiz instead of retrying the draft", async () => {
+    // ``quiz.options_changed``: the option ids this editor holds are not
+    // the question's any more. The newer quiz is shown, the lesson is told
+    // its id, and the toast says the edits were not saved.
+    const user = userEvent.setup()
+    const onQuizSaved = vi.fn()
+    getChapterQuizForEdit.mockResolvedValueOnce(savedQuiz())
+    getQuizAttempts.mockResolvedValue([])
+    render(<QuizEditor chapterId="chap-1" onQuizSaved={onQuizSaved} />, { wrapper: Wrapper })
+    await screen.findByDisplayValue("Сколько дней творения?")
+    saveQuestionImpl = async () => {
+      throw equipError(409, { code: "quiz.options_changed", message: "changed", context: {} })
+    }
+    const rebuilt = { ...savedQuiz(), id: "quiz-2", title: "Бытие 1 (новая версия)" }
+    getChapterQuizForEdit.mockResolvedValueOnce(rebuilt)
+
+    await user.type(screen.getByDisplayValue("Сколько дней творения?"), "!")
+    await user.click(saveButton())
+
+    await waitFor(() => expect(screen.getByDisplayValue("Бытие 1 (новая версия)")).toBeInTheDocument())
+    expect(onQuizSaved).toHaveBeenCalledWith("quiz-2")
+    expect(toast).toHaveBeenCalledWith({
+      title: "Тест изменили в другом месте, и он перезагружен. Правки не сохранены — внесите их заново.",
+      variant: "destructive",
+    })
+    expect(toast).not.toHaveBeenCalledWith(expect.objectContaining({ title: "Не удалось сохранить тест" }))
+    expect(screen.queryByText("Есть несохранённые изменения")).not.toBeInTheDocument()
+    expect(createQuiz).not.toHaveBeenCalled()
+    expect(replaceQuiz).not.toHaveBeenCalled()
   })
 
   it("locks the type of a question somebody has answered, and says why", async () => {
@@ -290,6 +426,7 @@ describe("a quiz nobody could pass", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     createImpl = async (...a) => createQuiz(...a)
+    saveQuestionImpl = async (...a) => saveQuizQuestion(...a)
     getChapterQuizForEdit.mockResolvedValue(null)
   })
 
@@ -322,6 +459,8 @@ describe("a quiz nobody could pass", () => {
     await user.click(saveButton())
 
     await waitFor(() => expect(createQuiz).toHaveBeenCalledTimes(1))
+    expect(createQuiz.mock.calls[0]![0]).toMatchObject({ chapter_id: "chap-1", title: "Бытие 1" })
+    expect(replaceQuiz).not.toHaveBeenCalled()
     expect(deleteQuiz).not.toHaveBeenCalled()
   })
 
@@ -349,7 +488,7 @@ describe("a quiz nobody could pass", () => {
         },
       ],
     })
-    updateQuizQuestion.mockResolvedValue({ ...savedQuiz(), id: "quiz-9" })
+    saveQuizQuestion.mockResolvedValue({ ...savedQuiz(), id: "quiz-9" })
     await user.click(screen.getAllByRole("radio", { name: "Отметить как правильный" })[0]!)
     await user.click(saveButton())
     await waitFor(() => expect(createQuiz).toHaveBeenCalledTimes(1))
@@ -357,9 +496,50 @@ describe("a quiz nobody could pass", () => {
     await user.type(screen.getByDisplayValue("Сколько дней творения?"), "!")
     await user.click(saveButton())
 
-    await waitFor(() => expect(updateQuizQuestion).toHaveBeenCalled())
-    expect(updateQuizQuestion.mock.calls[0]![0]).toBe("srv-q")
+    await waitFor(() => expect(saveQuizQuestion).toHaveBeenCalled())
+    const [id, question] = saveQuizQuestion.mock.calls[0]! as [string, { options: Array<{ id: string }> }]
+    expect(id).toBe("srv-q")
+    expect(question.options.map((o) => o.id)).toEqual(["srv-o1", "srv-o2"])
     expect(createQuiz).toHaveBeenCalledTimes(1)
+    expect(replaceQuiz).not.toHaveBeenCalled()
+  })
+
+  it("when the lesson already has a quiz, shows that quiz instead of an empty block", async () => {
+    // A second quiz block, or an editor opened before the first save
+    // landed: the server refuses to create another (``quiz.already_exists``).
+    // The existing quiz is loaded here and the block is pointed at it.
+    const onQuizSaved = vi.fn()
+    const user = userEvent.setup()
+    render(<QuizEditor chapterId="chap-1" onQuizSaved={onQuizSaved} />, { wrapper: Wrapper })
+    await screen.findByText("Создать тест")
+    await user.type(screen.getByPlaceholderText("напр. Тест по уроку"), "Черновик")
+    await user.click(screen.getByRole("button", { name: "Добавить вопрос" }))
+    await user.type(screen.getByPlaceholderText("Текст вопроса..."), "Сколько дней творения?")
+    await user.type(screen.getByPlaceholderText("Вариант 1"), "Шесть")
+    await user.type(screen.getByPlaceholderText("Вариант 2"), "Семь")
+    await user.click(screen.getAllByRole("radio", { name: "Отметить как правильный" })[0]!)
+    createImpl = async () => {
+      throw equipError(409, {
+        code: "quiz.already_exists",
+        message: "exists",
+        context: { chapter_id: "chap-1", existing_quiz_id: "quiz-1" },
+      })
+    }
+    getChapterQuizForEdit.mockResolvedValueOnce(savedQuiz())
+    getQuizAttempts.mockResolvedValue([])
+
+    await user.click(saveButton())
+
+    await waitFor(() => expect(screen.getByDisplayValue("Бытие 1")).toBeInTheDocument())
+    expect(screen.getByText("Изменить тест")).toBeInTheDocument()
+    expect(onQuizSaved).toHaveBeenCalledWith("quiz-1")
+    expect(toast).toHaveBeenCalledWith({
+      title: "В этом уроке уже есть тест — теперь он загружен здесь. Черновик не сохранён.",
+      variant: "destructive",
+    })
+    expect(toast).not.toHaveBeenCalledWith(expect.objectContaining({ title: "Не удалось сохранить тест" }))
+    expect(replaceQuiz).not.toHaveBeenCalled()
+    expect(deleteQuiz).not.toHaveBeenCalled()
   })
 
   it("shows a 422 as a Russian sentence naming the field, not pydantic's English", async () => {
