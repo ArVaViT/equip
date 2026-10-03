@@ -147,5 +147,11 @@ class OrganizationPublicResponse(BaseModel):
     locked_courses: list[LockedCourse] = []
     #: Whether the reader belongs here (their closed courses are open to them).
     viewer_is_member: bool = False
+    #: Whether the reader may write this page (its director, or platform staff),
+    #: and the id they write it under.
+    viewer_can_edit: bool = False
+    id: UUID | None = None
+    #: The organization's own setting, for the reader who may change it.
+    show_member_count: bool | None = None
     #: "On Equip since …".
     since: datetime

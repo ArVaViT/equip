@@ -160,6 +160,7 @@ def get_organization_page(
         .all()
     )
     settings_row = db.get(OrgSettings, organization.id)
+    can_edit = current_user is not None and directs(db, current_user, organization.id)
 
     return OrganizationPublicResponse(
         slug=organization.slug,
@@ -184,6 +185,9 @@ def get_organization_page(
         ),
         locked_courses=locked,
         viewer_is_member=member,
+        viewer_can_edit=can_edit,
+        id=organization.id if can_edit else None,
+        show_member_count=organization.show_member_count if can_edit else None,
         since=organization.created_at,
     )
 
