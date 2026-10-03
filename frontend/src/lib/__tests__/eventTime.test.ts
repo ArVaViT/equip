@@ -42,3 +42,11 @@ describe("event time", () => {
     expect(seriesLastDay("garbage", 1, 4)).toBeNull()
   })
 })
+
+describe("a deadline", () => {
+  it("is missed the minute it passes, not three hours later", () => {
+    const e = { event_date: start, event_type: "deadline" as const }
+    expect(isOver(e, t("2026-10-24T23:59:00Z"))).toBe(false)
+    expect(isOver(e, t("2026-10-25T00:00:00Z"))).toBe(true)
+  })
+})

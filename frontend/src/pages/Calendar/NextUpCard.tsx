@@ -56,7 +56,7 @@ export function NextUpCard({
     : formatDateLong(next.event_date, { year: undefined, weekday: "long", month: "long", day: "numeric" })
   return (
     <section aria-labelledby="calendar-next-up" className="rounded-card border border-edge bg-muted/30 p-4">
-      <Eyebrow id="calendar-next-up" className="mb-3 flex items-center gap-1.5">
+      <Eyebrow as="h2" id="calendar-next-up" className="mb-3 flex items-center gap-1.5">
         <Video className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
         {t("calendar.nextUp")}
       </Eyebrow>

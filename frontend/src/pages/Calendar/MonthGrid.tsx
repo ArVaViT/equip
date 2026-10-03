@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -56,9 +56,10 @@ export function MonthGrid({
             {/* ``Intl`` gives «сентябрь» in lower case, and a heading
                 wants «Сентябрь». `first-letter:uppercase`, never
                 `capitalize` — see datesAreNotCssCapitalized. */}
-            <CardTitle className="first-letter:uppercase">
+            {/* An h2: the month is the page's section, its days' cards beside it are h3. */}
+            <h2 className="font-serif text-lg font-semibold leading-none tracking-tight first-letter:uppercase">
               {getMonthName(month, locale)}
-            </CardTitle>
+            </h2>
           </div>
           <div className="flex items-center gap-1">
             <Button

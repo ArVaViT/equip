@@ -27,6 +27,8 @@ export function eventEnd(event: Timed): Date | null {
 export function isOver(event: Timed, now = Date.now()): boolean {
   const start = Date.parse(event.event_date)
   if (!Number.isFinite(start)) return false
+  // A deadline is a moment: a minute past it, it is missed.
+  if (event.event_type === "deadline") return now >= start
   const end = eventEnd(event)
   if (end) return now >= end.getTime()
   return now - start > UNKNOWN_LENGTH_OVER_AFTER_MS

@@ -99,8 +99,10 @@ export function useMonthGrid(events: CalendarEvent[]) {
     // the destination month; ``goToday`` snaps both back to today.
     prevMonth: () => goTo(new Date(year, month - 1, 1)),
     nextMonth: () => goTo(new Date(year, month + 1, 1)),
-    prevWeek: () => goTo(addDays(weekStart, -7)),
-    nextWeek: () => goTo(addDays(weekStart, 7)),
+    // From the selected day, not from Monday: a week on keeps Thursday
+    // selected, and the month follows the day the reader is looking at.
+    prevWeek: () => goTo(addDays(selectedDay ?? weekStart, -7)),
+    nextWeek: () => goTo(addDays(selectedDay ?? weekStart, 7)),
     goToday: () => goTo(zonedToday()),
   };
 }

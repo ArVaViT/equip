@@ -23,10 +23,18 @@ interface DayGroup {
   events: CalendarEvent[]
 }
 
+function shiftDayKey(key: string, days: number): string {
+  const [y, m, d] = key.split("-").map(Number)
+  const day = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + days))
+  return day.toISOString().slice(0, 10)
+}
+
 function groupByDay(events: CalendarEvent[], now: number, t: (k: string) => string): DayGroup[] {
+  // Neighbouring days by the calendar, not by 24 hours: on the night the
+  // clocks change, now + 24h lands two days on.
   const today = zonedDayKey(new Date(now))
-  const tomorrow = zonedDayKey(new Date(now + DAY_MS))
-  const yesterday = zonedDayKey(new Date(now - DAY_MS))
+  const tomorrow = shiftDayKey(today, 1)
+  const yesterday = shiftDayKey(today, -1)
   const groups = new Map<string, DayGroup>()
   for (const evt of events) {
     const key = zonedDayKey(new Date(evt.event_date))
@@ -125,7 +133,7 @@ export function AgendaView({ events, now }: { events: CalendarEvent[]; now: numb
 
 function DaySection({ group, now }: { group: DayGroup; now: number }) {
   return (
-    <section aria-label={group.label}>
+    <section>
       <h2 className="mb-2 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted first-letter:uppercase">
         {group.label}
       </h2>

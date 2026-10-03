@@ -26,10 +26,12 @@ export function formatDurationMinutes(minutes: number, language: string = i18n.l
  */
 export function formatEventTimeRange(event: Timed, language: string = i18n.language): string {
   const locale = activeIntlTag(language)
+  // A 24-hour clock reads «09:00» and «00:30», as everywhere else in the
+  // app; a 12-hour one reads "9:00 PM", not "09:00 PM". ``hour: "numeric"``
+  // alone gave «9:05» in ru/uk/de, so the digits follow the clock.
+  const hour12 = new Intl.DateTimeFormat(locale, { hour: "numeric" }).resolvedOptions().hour12
   const fmt = new Intl.DateTimeFormat(locale, {
-    // "numeric", not "2-digit": a 24-hour clock still reads «09:00», and
-    // a 12-hour one reads "1:22 PM" rather than "01:22 PM".
-    hour: "numeric",
+    hour: hour12 ? "numeric" : "2-digit",
     minute: "2-digit",
     timeZone: getDisplayTimeZone(),
   })

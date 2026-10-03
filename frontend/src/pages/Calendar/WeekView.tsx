@@ -90,6 +90,7 @@ export function WeekView({
                   {events.map((evt) => {
                     const color = getEventColor(evt.event_type)
                     const live = Boolean(evt.meeting_url) && isJoinableNow(evt, now)
+                    const past = isOver(evt, now) && !live
                     return (
                       <li key={evt.id}>
                         <button
@@ -97,13 +98,15 @@ export function WeekView({
                           onClick={() => onSelectDay(day)}
                           className={cn(
                             "w-full rounded-md border-l-2 px-2 py-1.5 text-left text-xs transition-colors hover:brightness-95",
-                            color.bg,
+                            // Past chips go grey by colour; opacity took the text below AA.
+                            past ? "bg-muted" : color.bg,
                             live ? "border-l-brand ring-1 ring-brand/40" : color.bar,
-                            isOver(evt, now) && "opacity-60",
                           )}
                         >
                           <span className="block font-medium tabular-nums text-ink">{formatEventTimeRange(evt)}</span>
-                          <span className={cn("block text-wrap-safe line-clamp-2", color.text)}>{evt.title}</span>
+                          <span className={cn("block text-wrap-safe line-clamp-2", past ? "text-ink-muted" : color.text)}>
+                            {evt.title}
+                          </span>
                           {evt.course_title && (
                             <span className="mt-0.5 block truncate text-ink-muted">{evt.course_title}</span>
                           )}

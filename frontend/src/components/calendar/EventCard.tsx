@@ -53,11 +53,18 @@ export function EventCard({
 
   return (
     <article
+      // ``className`` first, the state after it: the "next class" card hands
+      // in its own background, and the live green must still win over it.
       className={cn(
         "rounded-lg border p-3 transition-colors",
-        joinable ? "border-success/40 bg-success/5" : overdue ? "border-destructive/30 bg-destructive/5" : "border-edge bg-surface",
-        over && !overdue && "opacity-80",
         className,
+        joinable
+          ? "border-success/40 bg-success/5"
+          : overdue
+            ? "border-destructive/30 bg-destructive/5"
+            : over
+              ? "border-edge bg-muted/40"
+              : "border-edge bg-surface",
       )}
     >
       <div className="flex items-start gap-3">
@@ -97,7 +104,10 @@ export function EventCard({
               </span>
             )}
           </div>
-          <h3 className="mt-1 text-sm font-semibold text-wrap-safe">{event.title}</h3>
+          {/* Past: quieter by colour, not by opacity — faded text fell below 4.5:1. */}
+          <h3 className={cn("mt-1 text-sm font-semibold text-wrap-safe", over && !overdue && "text-ink-muted")}>
+            {event.title}
+          </h3>
           {event.course_title && (
             <Link
               to={`/courses/${event.course_id}`}
