@@ -1,7 +1,7 @@
 import { Video } from "lucide-react"
 import { useTranslation } from "react-i18next"
 
-import { isAbsoluteHttpUrl } from "@/lib/url"
+import { isAbsoluteHttpUrl, meetingProvider } from "@/lib/url"
 import { cn } from "@/lib/utils"
 
 interface Props {
@@ -35,6 +35,9 @@ interface Props {
  * something that says "Join". The cost of checking again is one
  * `new URL()`; the cost of not checking is every student who clicks.
  *
+ * A link to a service the student knows says which — "Join on Zoom" —
+ * so they know what is about to open; any other address keeps the verb.
+ *
  * `rel="noopener noreferrer"` with `target="_blank"`: the meeting opens
  * beside the lesson rather than on top of it, and the page that opens
  * gets no `window.opener` handle back to Equip.
@@ -42,6 +45,7 @@ interface Props {
 export function JoinMeetingLink({ url, title, className }: Props) {
   const { t } = useTranslation()
   if (!isAbsoluteHttpUrl(url)) return null
+  const provider = meetingProvider(url)
   return (
     <a
       href={url as string}
@@ -60,7 +64,7 @@ export function JoinMeetingLink({ url, title, className }: Props) {
       )}
     >
       <Video className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-      {t("meeting.join")}
+      {provider ? t("meeting.joinVia", { provider }) : t("meeting.join")}
     </a>
   )
 }

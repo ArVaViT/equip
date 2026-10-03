@@ -3351,6 +3351,7 @@
     "recordingLabel": "Посилання на запис",
     "recordingHint": "YouTube, Vimeo, Google Диск",
     "join": "Приєднатися",
+    "joinVia": "Увійти в {{provider}}",
     "joinAria": "Приєднатися до зустрічі — {{title}}",
     "linkLabel": "Посилання на зустріч",
     "linkPlaceholder": "https://zoom.us/j/…",

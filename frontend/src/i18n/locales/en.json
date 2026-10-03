@@ -3231,6 +3231,7 @@
     "recordingLabel": "Recording link",
     "recordingHint": "YouTube, Vimeo, Google Drive",
     "join": "Join",
+    "joinVia": "Join on {{provider}}",
     "joinAria": "Join the meeting for {{title}}",
     "linkLabel": "Meeting link",
     "linkPlaceholder": "https://zoom.us/j/…",

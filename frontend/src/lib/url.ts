@@ -49,3 +49,23 @@ export function isAbsoluteHttpUrl(url: string | null | undefined): boolean {
     return false
   }
 }
+
+/** The meeting services a teacher's link is recognised as, by host. */
+export type MeetingProvider = "Zoom" | "Google Meet" | "Microsoft Teams"
+
+const MEETING_HOSTS: readonly [RegExp, MeetingProvider][] = [
+  [/(^|\.)zoom(gov)?\.(us|com)$/, "Zoom"],
+  [/^meet\.google\.com$/, "Google Meet"],
+  [/^teams\.(microsoft|live)\.com$/, "Microsoft Teams"],
+]
+
+/**
+ * Which service a meeting link opens, or `null` for any other address.
+ * Read from the host alone — `https://evil.com/zoom.us` is not Zoom — and
+ * only for a link `isAbsoluteHttpUrl` would let through at all.
+ */
+export function meetingProvider(url: string | null | undefined): MeetingProvider | null {
+  if (!isAbsoluteHttpUrl(url)) return null
+  const host = new URL(url as string).hostname.toLowerCase()
+  return MEETING_HOSTS.find(([re]) => re.test(host))?.[1] ?? null
+}

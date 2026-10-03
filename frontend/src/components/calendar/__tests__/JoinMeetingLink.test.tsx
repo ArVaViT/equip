@@ -37,9 +37,22 @@ describe("JoinMeetingLink", () => {
     const link = screen.getByRole("link")
     // The label is the verb. The URL itself is never printed — on a
     // phone a bare address had to be copied character by character.
-    expect(link).toHaveTextContent("Присоединиться")
+    expect(link).toHaveTextContent("Войти в Zoom")
     expect(link.textContent).not.toContain("zoom.us")
     expect(link).toHaveAttribute("href", ZOOM)
+  })
+
+  it.each([
+    ["https://us02web.zoom.us/j/4959692097", "Войти в Zoom"],
+    ["https://meet.google.com/abc-defg-hij", "Войти в Google Meet"],
+    ["https://teams.microsoft.com/l/meetup-join/19%3a", "Войти в Microsoft Teams"],
+    ["https://jitsi.example.org/class", "Присоединиться"],
+    // The host decides, not the path: this is not Zoom.
+    ["https://example.com/zoom.us/j/1", "Присоединиться"],
+    ["https://zoom.us.example.com/j/1", "Присоединиться"],
+  ])("says which service %s opens", (url, label) => {
+    render(<JoinMeetingLink url={url} title="Занятие" />, { wrapper: Wrapper })
+    expect(screen.getByRole("link")).toHaveTextContent(new RegExp(`^${label}$`))
   })
 
   it("opens beside the lesson and hands the opened page no way back", () => {
@@ -80,6 +93,6 @@ describe("JoinMeetingLink", () => {
   it("speaks the reader's language", async () => {
     await i18n.changeLanguage("de")
     render(<JoinMeetingLink url={ZOOM} title="Predigtstunde" />, { wrapper: Wrapper })
-    expect(screen.getByRole("link")).toHaveTextContent("Beitreten")
+    expect(screen.getByRole("link")).toHaveTextContent("Über Zoom beitreten")
   })
 })
