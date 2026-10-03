@@ -41,7 +41,7 @@ export function OrganizationCards({ cards }: { cards: OrganizationCard[] }) {
                   {`${card.courses} ${t("organization.stats.courses", { count: card.courses })}`}
                 </span>
                 {card.description && (
-                  <span className="mt-2 line-clamp-3 block text-sm text-ink-muted">{card.description}</span>
+                  <span className="mt-2 line-clamp-3 text-sm text-ink-muted">{card.description}</span>
                 )}
               </span>
             </Link>
