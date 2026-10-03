@@ -100,6 +100,7 @@ export function CalendarSubscribe() {
                 )}
                 {copied ? t("calendar.subscribe.copied") : t("calendar.subscribe.copy")}
               </Button>
+              <p className="text-xs text-ink-muted">{t("calendar.subscribe.delay")}</p>
               <p className="text-xs text-ink-muted">{t("calendar.subscribe.private")}</p>
             </div>
           ) : (

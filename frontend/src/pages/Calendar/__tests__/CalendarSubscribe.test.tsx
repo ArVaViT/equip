@@ -52,5 +52,8 @@ describe("calendar subscription", () => {
     )
     const google = screen.getByRole("link", { name: "Google Calendar" }).getAttribute("href")!
     expect(new URL(google).searchParams.get("cid")).toBe("webcal://equipbible.com/api/v1/calendar/ical/feed?token=abc.def")
+    // Google refreshes a subscription every few hours: a moved class shows
+    // there late, and the student is told so before they rely on it.
+    expect(screen.getByText(/Google checks every few hours/)).toBeInTheDocument()
   })
 })

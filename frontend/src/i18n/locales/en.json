@@ -1681,6 +1681,7 @@
       "copy": "Copy link",
       "copied": "Copied",
       "private": "Don't forward the link: it shows your schedule.",
+      "delay": "Calendars pick up changes on their own, but not at once: Google checks every few hours. A moved class shows in Equip right away.",
       "failed": "Couldn't create the link. Please try again.",
       "copyFailed": "Couldn't copy the link."
     },

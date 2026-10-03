@@ -1681,6 +1681,7 @@
       "copy": "Link kopieren",
       "copied": "Kopiert",
       "private": "Leiten Sie den Link nicht weiter: Er zeigt Ihren Stundenplan.",
+      "delay": "Kalender übernehmen Änderungen selbst, aber nicht sofort: Google prüft alle paar Stunden. Eine verschobene Stunde sehen Sie in Equip sofort.",
       "failed": "Der Link konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
       "copyFailed": "Der Link konnte nicht kopiert werden."
     },
