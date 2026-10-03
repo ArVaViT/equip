@@ -3337,5 +3337,56 @@
   "theme": {
     "switchToLight": "Светлая тема",
     "switchToDark": "Тёмная тема"
+  },
+  "organization": {
+    "eyebrow": "Организация",
+    "verified": "Проверена Equip",
+    "edit": "Редактировать страницу",
+    "notFound": "Такой организации нет",
+    "loadError": "Не удалось загрузить страницу организации",
+    "toCatalog": "К курсам",
+    "director_one": "Директор",
+    "director_few": "Директора",
+    "director_many": "Директора",
+    "director_other": "Директора",
+    "courses": "Курсы",
+    "noCourses": "Курсов пока нет",
+    "lockedHint": "Курсы с замком открыты участникам организации — доступ даёт её директор.",
+    "byInvitation": "По приглашению",
+    "inactive": "Организация больше не ведёт курсы на Equip. Выданные сертификаты остаются действительными.",
+    "since": "На Equip с {{date}}",
+    "verifyCertificate": "Проверить сертификат",
+    "stats": {
+      "courses_one": "курс",
+      "courses_few": "курса",
+      "courses_many": "курсов",
+      "courses_other": "курса",
+      "lessons_one": "урок",
+      "lessons_few": "урока",
+      "lessons_many": "уроков",
+      "lessons_other": "урока",
+      "certificates_one": "сертификат выдан",
+      "certificates_few": "сертификата выдано",
+      "certificates_many": "сертификатов выдано",
+      "certificates_other": "сертификата выдано",
+      "members_one": "участник",
+      "members_few": "участника",
+      "members_many": "участников",
+      "members_other": "участника"
+    },
+    "form": {
+      "description": "О организации",
+      "descriptionPlaceholder": "Кто вы, кого учите и чему — в двух-трёх предложениях.",
+      "website": "Сайт",
+      "websiteHint": "Необязательно. Адрес, начинающийся с https://",
+      "websiteBroken": "Адрес должен начинаться с https://",
+      "showMembers": "Показывать число участников",
+      "showMembersHint": "Число появится, когда участников будет не меньше десяти.",
+      "save": "Сохранить",
+      "saving": "Сохраняем…",
+      "saved": "Страница организации обновлена",
+      "failed": "Не удалось сохранить",
+      "websitePlaceholder": "https://"
+    }
   }
 }

@@ -3337,5 +3337,56 @@
   "theme": {
     "switchToLight": "Світла тема",
     "switchToDark": "Темна тема"
+  },
+  "organization": {
+    "eyebrow": "Організація",
+    "verified": "Перевірено Equip",
+    "edit": "Редагувати сторінку",
+    "notFound": "Такої організації немає",
+    "loadError": "Не вдалося завантажити сторінку організації",
+    "toCatalog": "До курсів",
+    "director_one": "Директор",
+    "director_few": "Директори",
+    "director_many": "Директори",
+    "director_other": "Директори",
+    "courses": "Курси",
+    "noCourses": "Курсів поки немає",
+    "lockedHint": "Курси із замком відкриті учасникам організації — доступ дає її директор.",
+    "byInvitation": "За запрошенням",
+    "inactive": "Організація більше не веде курси на Equip. Видані сертифікати залишаються дійсними.",
+    "since": "На Equip з {{date}}",
+    "verifyCertificate": "Перевірити сертифікат",
+    "stats": {
+      "courses_one": "курс",
+      "courses_few": "курси",
+      "courses_many": "курсів",
+      "courses_other": "курсу",
+      "lessons_one": "урок",
+      "lessons_few": "уроки",
+      "lessons_many": "уроків",
+      "lessons_other": "уроку",
+      "certificates_one": "сертифікат видано",
+      "certificates_few": "сертифікати видано",
+      "certificates_many": "сертифікатів видано",
+      "certificates_other": "сертифіката видано",
+      "members_one": "учасник",
+      "members_few": "учасники",
+      "members_many": "учасників",
+      "members_other": "учасника"
+    },
+    "form": {
+      "description": "Про організацію",
+      "descriptionPlaceholder": "Хто ви, кого навчаєте і чого — у двох-трьох реченнях.",
+      "website": "Сайт",
+      "websiteHint": "Необов'язково. Адреса, що починається з https://",
+      "websiteBroken": "Адреса має починатися з https://",
+      "showMembers": "Показувати кількість учасників",
+      "showMembersHint": "Число з'явиться, коли учасників буде щонайменше десять.",
+      "save": "Зберегти",
+      "saving": "Зберігаємо…",
+      "saved": "Сторінку організації оновлено",
+      "failed": "Не вдалося зберегти",
+      "websitePlaceholder": "https://"
+    }
   }
 }

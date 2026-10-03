@@ -3223,5 +3223,46 @@
   "theme": {
     "switchToLight": "Helles Design",
     "switchToDark": "Dunkles Design"
+  },
+  "organization": {
+    "eyebrow": "Organisation",
+    "verified": "Von Equip geprüft",
+    "edit": "Seite bearbeiten",
+    "notFound": "Diese Organisation gibt es nicht",
+    "loadError": "Die Seite der Organisation konnte nicht geladen werden",
+    "toCatalog": "Zu den Kursen",
+    "director_one": "Leitung",
+    "director_other": "Leitung",
+    "courses": "Kurse",
+    "noCourses": "Noch keine Kurse",
+    "lockedHint": "Kurse mit Schloss sind für Mitglieder der Organisation offen — den Zugang gibt ihre Leitung.",
+    "byInvitation": "Auf Einladung",
+    "inactive": "Diese Organisation bietet keine Kurse mehr auf Equip an. Ausgestellte Zertifikate bleiben gültig.",
+    "since": "Auf Equip seit {{date}}",
+    "verifyCertificate": "Zertifikat prüfen",
+    "stats": {
+      "courses_one": "Kurs",
+      "courses_other": "Kurse",
+      "lessons_one": "Lektion",
+      "lessons_other": "Lektionen",
+      "certificates_one": "Zertifikat ausgestellt",
+      "certificates_other": "Zertifikate ausgestellt",
+      "members_one": "Mitglied",
+      "members_other": "Mitglieder"
+    },
+    "form": {
+      "description": "Über die Organisation",
+      "descriptionPlaceholder": "Wer Sie sind, wen Sie unterrichten und was — in zwei, drei Sätzen.",
+      "website": "Website",
+      "websiteHint": "Optional. Eine Adresse, die mit https:// beginnt",
+      "websiteBroken": "Die Adresse muss mit https:// beginnen",
+      "showMembers": "Anzahl der Mitglieder zeigen",
+      "showMembersHint": "Die Zahl erscheint ab zehn Mitgliedern.",
+      "save": "Speichern",
+      "saving": "Wird gespeichert…",
+      "saved": "Die Seite der Organisation ist aktualisiert",
+      "failed": "Speichern fehlgeschlagen",
+      "websitePlaceholder": "https://"
+    }
   }
 }

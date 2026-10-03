@@ -3223,5 +3223,46 @@
   "theme": {
     "switchToLight": "Light theme",
     "switchToDark": "Dark theme"
+  },
+  "organization": {
+    "eyebrow": "Organization",
+    "verified": "Verified by Equip",
+    "edit": "Edit the page",
+    "notFound": "No such organization",
+    "loadError": "Could not load the organization's page",
+    "toCatalog": "To courses",
+    "director_one": "Director",
+    "director_other": "Directors",
+    "courses": "Courses",
+    "noCourses": "No courses yet",
+    "lockedHint": "Courses with a lock are open to the organization's members — its director grants access.",
+    "byInvitation": "By invitation",
+    "inactive": "This organization no longer runs courses on Equip. Certificates it issued remain valid.",
+    "since": "On Equip since {{date}}",
+    "verifyCertificate": "Verify a certificate",
+    "stats": {
+      "courses_one": "course",
+      "courses_other": "courses",
+      "lessons_one": "lesson",
+      "lessons_other": "lessons",
+      "certificates_one": "certificate issued",
+      "certificates_other": "certificates issued",
+      "members_one": "member",
+      "members_other": "members"
+    },
+    "form": {
+      "description": "About the organization",
+      "descriptionPlaceholder": "Who you are, whom you teach and what — in two or three sentences.",
+      "website": "Website",
+      "websiteHint": "Optional. An address starting with https://",
+      "websiteBroken": "The address must start with https://",
+      "showMembers": "Show the number of members",
+      "showMembersHint": "The number appears once there are at least ten members.",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "The organization's page is updated",
+      "failed": "Could not save",
+      "websitePlaceholder": "https://"
+    }
   }
 }
