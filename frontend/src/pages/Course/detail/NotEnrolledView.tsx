@@ -322,11 +322,16 @@ export function NotEnrolledView({
                 {t("guest.readFirstFree")}
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link to="/register" state={{ from: `${location.pathname}${location.search}` }}>
-                {t("courseDetail.enrollInCourse")}
-              </Link>
-            </Button>
+            {/* Only where an account leads to a seat: a course by
+                invitation or with its window shut would greet the new
+                account with "not for you". */}
+            {canEnroll && (
+              <Button asChild size="lg" variant="outline">
+                <Link to="/register" state={{ from: `${location.pathname}${location.search}` }}>
+                  {t("courseDetail.enrollInCourse")}
+                </Link>
+              </Button>
+            )}
           </div>
         ) : (
           // Nothing to read without an account: back to this course after

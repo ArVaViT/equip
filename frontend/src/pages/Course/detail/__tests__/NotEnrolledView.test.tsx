@@ -277,7 +277,7 @@ describe("NotEnrolledView — a visitor on a course whose first lesson is open",
   // The page led with «Войти для записи» and never said the lesson was free:
   // the one fact that would keep a visitor on the page was in the smaller
   // button (UX critique, 2026-10-03).
-  async function renderGuest(preview: string | null) {
+  async function renderGuest(preview: string | null, extra: Partial<Course> = {}) {
     const { MemoryRouter: Router, Routes, Route, useLocation } = await import("react-router-dom")
     function RegisterProbe() {
       const state = useLocation().state as { from?: string } | null
@@ -292,7 +292,7 @@ describe("NotEnrolledView — a visitor on a course whose first lesson is open",
               path="/courses/:id"
               element={
                 <NotEnrolledView
-                  course={makeCourse({ status: "published", preview_chapter_id: preview })}
+                  course={makeCourse({ status: "published", preview_chapter_id: preview, ...extra })}
                   cohorts={[]}
                   isOwner={false}
                   isSignedIn={false}
@@ -320,6 +320,13 @@ describe("NotEnrolledView — a visitor on a course whose first lesson is open",
     await renderGuest("ch-1")
     await userEvent.setup().click(screen.getByRole("link", { name: "Enroll in Course" }))
     expect(screen.getByText("register, back to /courses/c-1?ref=pastor")).toBeInTheDocument()
+  })
+
+  it("does not offer an account as the way in once enrolment has closed", async () => {
+    // The new account would meet "enrolment closed" on arrival.
+    await renderGuest("ch-1", { enrollment_end: "2000-01-01T00:00:00Z" } as Partial<Course>)
+    expect(screen.getByRole("link", { name: "Read the first lesson — no account needed" })).toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "Enroll in Course" })).not.toBeInTheDocument()
   })
 
   it("falls back to «sign in to enroll» when there is nothing to read without an account", async () => {
