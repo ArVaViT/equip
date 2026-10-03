@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge"
 import { toProxyImage } from "@/lib/images"
 import { countChapters, countModules, readCourseStructure } from "@/lib/courseStructure"
 import type { Course, Cohort } from "@/types"
-import { formatDate, isEnrollableCohort } from "./types"
+import { formatDate } from "./types"
+import { planEnrollment } from "./enrollPlan"
 import { CohortSelectModal } from "./CohortSelectModal"
 import { DraftOutline } from "./DraftOutline"
 import { orNotTranslated } from "@/lib/untranslated"
@@ -64,18 +65,14 @@ export function NotEnrolledView({
   const isOwnerPreview = isOwner && course.status !== "published"
 
   const activeCohort = cohorts.find((c) => c.status === "active")
-  const enrollableCohorts = cohorts.filter(isEnrollableCohort)
-  // Institute courses (ADR-010): students can't self-enroll. Directors
-  // add them via the admin cohort UI. Owners (teacher/admin viewing
-  // their own course) still get the normal flow so they can preview.
-  const isInstituteGate = course.access_mode === "institute" && !isOwner
-  // Without cohorts the course's own window decides, as on the server and on
-  // the catalog card — which said «Enrollment closed» while this button
-  // offered to enrol (2026-10-03).
+  // Whether and how this reader may enrol — one answer, shared with the
+  // lesson page's own button (see enrollPlan.ts).
+  const plan = planEnrollment(course, cohorts, isOwner)
+  const isInstituteGate = plan.kind === "invitation"
+  const canEnroll = plan.kind === "enroll" || plan.kind === "choose"
+  const enrollableCohorts = plan.kind === "choose" ? plan.cohorts : []
+  // For the sentence under a disabled button: why not, and until when.
   const courseWindow = enrollmentState(course.enrollment_start, course.enrollment_end)
-  const courseWindowOpen = courseWindow.state === null || courseWindow.state === "open"
-  const canEnroll =
-    !isInstituteGate && (enrollableCohorts.length > 0 || (cohorts.length === 0 && courseWindowOpen))
 
   // Course-at-a-glance counts, and the outline the owner previews.
   //
@@ -92,16 +89,12 @@ export function NotEnrolledView({
   )
 
   const handleEnrollClick = () => {
-    if (enrollableCohorts.length === 0) {
-      void onEnroll(undefined)
+    if (plan.kind === "enroll") {
+      void onEnroll(plan.cohortId)
       return
     }
-    if (enrollableCohorts.length === 1) {
-      const first = enrollableCohorts[0]
-      if (first) void onEnroll(first.id)
-      return
-    }
-    const first = enrollableCohorts[0]
+    if (plan.kind !== "choose") return
+    const first = plan.cohorts[0]
     if (first) setSelectedCohortId(first.id)
     setCohortSelectModal(true)
   }

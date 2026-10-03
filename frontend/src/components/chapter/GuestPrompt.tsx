@@ -1,11 +1,30 @@
-import { Link, useLocation, useParams } from "react-router-dom"
+import { useState } from "react"
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { BookOpen, Lock } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { toast } from "@/lib/toast"
+import { coursesService } from "@/services/courses"
+import { planEnrollment } from "@/pages/Course/detail/enrollPlan"
+import type { Cohort, Course } from "@/types"
 
 type Variant = "finish" | "wall" | "enrollFinish" | "enrollWall"
+
+/**
+ * What a signed-in reader may do about enrolling without leaving the lesson.
+ *
+ * `then` is where to go once enrolled: the lesson they were refused (from
+ * the wall) or the one after this (from the end of the preview).
+ * `onEnrolled` lets the page forget it was previewing before the step.
+ */
+export interface EnrollOffer {
+  course: Course
+  cohorts: Cohort[]
+  then: string
+  onEnrolled: () => void
+}
 
 /**
  * Inside the preview lesson, where a test, an assignment or a file would be:
@@ -24,6 +43,48 @@ export function LockedBlock({ className }: { className?: string }) {
 }
 
 /**
+ * «Записаться на курс» for a reader who is signed in but not enrolled.
+ *
+ * It was a link to the course page, where enrolling is — and the course
+ * page, once there, offered the same button and then sent the reader back
+ * to find the lesson again. One press enrols here and steps on, with the
+ * same call and the same two toasts the course page uses. The course page
+ * keeps the cases a button cannot settle: a choice between cohorts, a course
+ * by invitation, a closed window — each has a sentence or a dialog there.
+ */
+function EnrollButton({ offer, courseHref }: { offer?: EnrollOffer; courseHref: string }) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const [enrolling, setEnrolling] = useState(false)
+  const plan = offer ? planEnrollment(offer.course, offer.cohorts) : null
+  if (!offer || !plan || plan.kind !== "enroll") {
+    return (
+      <Button asChild size="sm">
+        <Link to={courseHref}>{t("guest.toCourse")}</Link>
+      </Button>
+    )
+  }
+  const enroll = async () => {
+    setEnrolling(true)
+    try {
+      await coursesService.enrollInCourse(offer.course.id, plan.cohortId)
+      offer.onEnrolled()
+      toast({ title: t("toast.enrolledSuccess"), variant: "success" })
+      navigate(offer.then)
+    } catch {
+      toast({ title: t("toast.enrolledFailed"), variant: "destructive" })
+    } finally {
+      setEnrolling(false)
+    }
+  }
+  return (
+    <Button size="sm" disabled={enrolling} onClick={() => void enroll()}>
+      {enrolling ? t("courseDetail.enrolling") : t("guest.toCourse")}
+    </Button>
+  )
+}
+
+/**
  * What a guest sees where a signed-in reader would act: the end of the
  * preview lesson ("finish"), or any other lesson ("wall").
  *
@@ -35,7 +96,16 @@ export function LockedBlock({ className }: { className?: string }) {
  * location rather than built from the params, so a module-shaped address
  * comes back as itself (`lib/authRedirect` validates it either way).
  */
-export function GuestPrompt({ variant, className }: { variant: Variant; className?: string }) {
+export function GuestPrompt({
+  variant,
+  className,
+  offer,
+}: {
+  variant: Variant
+  className?: string
+  /** For the «enroll…» variants: what enrolling here would do. Without it, the course page. */
+  offer?: EnrollOffer
+}) {
   const { t } = useTranslation()
   const { courseId } = useParams<{ courseId: string }>()
   const location = useLocation()
@@ -60,11 +130,7 @@ export function GuestPrompt({ variant, className }: { variant: Variant; classNam
           <p className="mt-1 text-sm text-ink-muted">{t(`guest.${variant}.body`)}</p>
           <div className={cn("mt-4 flex flex-wrap gap-2", wall && "justify-center")}>
             {enrolling ? (
-              // Signed in already: what is missing is the enrolment, and the
-              // course page is where it happens.
-              <Button asChild size="sm">
-                <Link to={courseId ? `/courses/${courseId}` : "/"}>{t("guest.toCourse")}</Link>
-              </Button>
+              <EnrollButton offer={offer} courseHref={courseId ? `/courses/${courseId}` : "/"} />
             ) : (
               <>
                 <Button asChild size="sm">

@@ -25,7 +25,7 @@ import {
   readCourseStructure,
 } from "@/lib/courseStructure"
 import { isChapterLocked } from "./moduleProgress"
-import type { Course, Chapter, ChapterBlock } from "@/types"
+import type { Cohort, Course, Chapter, ChapterBlock } from "@/types"
 import {
   ArrowLeft,
   ArrowRight,
@@ -576,6 +576,9 @@ export default function ChapterView() {
     setBlocksReloadKey((k) => k + 1)
   }, [])
   const [hasAssignments, setHasAssignments] = useState(false)
+  // For the «Записаться на курс» button at the end of the preview and on the
+  // wall: whether one press can enrol, or a cohort has to be chosen first.
+  const [cohorts, setCohorts] = useState<Cohort[]>([])
 
   useUserTour({
     tourId: "chapter-view-v1",
@@ -635,6 +638,34 @@ export default function ChapterView() {
     // every step through it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, user?.id, i18n.language])
+
+  // Only a signed-in reader who is not enrolled yet is offered the button,
+  // and only such a reader is sent a preview — so the cohorts are asked for
+  // exactly then. Unknown cohorts enrol into the course itself, as the course
+  // page does when the same request fails.
+  const offersEnrolling = Boolean(user && course?.preview_chapter_id)
+  useEffect(() => {
+    if (!courseId || !offersEnrolling) return
+    let cancelled = false
+    coursesService
+      .getCourseCohorts(courseId)
+      .catch(() => [] as Cohort[])
+      .then((list) => {
+        if (!cancelled) setCohorts(list)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [courseId, offersEnrolling])
+
+  // Enrolled from the lesson: the course in hand still names a preview
+  // lesson, and that is what makes this page ask to enrol. Forget it, and
+  // ask for the blocks again — the first request for a walled lesson was
+  // refused, and its refusal is what would show once the wall is gone.
+  const handleEnrolled = useCallback(() => {
+    setCourse((current) => (current ? { ...current, preview_chapter_id: null } : current))
+    setBlocksReloadKey((k) => k + 1)
+  }, [])
 
   // Studying a chapter counts as opening the course for the dashboard's
   // "recently viewed" row. Signed-in only; filtered against real
@@ -842,7 +873,14 @@ export default function ChapterView() {
         <h1 className="mb-6 font-serif text-3xl font-semibold tracking-tight text-wrap-safe">
           {orNotTranslated(t, chapter.title)}
         </h1>
-        <GuestPrompt variant={user ? "enrollWall" : "wall"} />
+        <GuestPrompt
+          variant={user ? "enrollWall" : "wall"}
+          offer={
+            user && course
+              ? { course, cohorts, then: chapterHref(courseId, chapter.id), onEnrolled: handleEnrolled }
+              : undefined
+          }
+        />
       </div>
     )
   }
@@ -989,7 +1027,23 @@ export default function ChapterView() {
           heuristic: a heuristic credits the skimmer who reaches the bottom and
           misses the careful reader on a phone who closes the tab. */}
       {/* The end of the preview: what reading on and keeping a mark takes. */}
-      {previewing && <GuestPrompt variant={user ? "enrollFinish" : "finish"} className="mt-8" />}
+      {previewing && (
+        <GuestPrompt
+          variant={user ? "enrollFinish" : "finish"}
+          className="mt-8"
+          offer={
+            user && course
+              ? {
+                  course,
+                  cohorts,
+                  // On to the next lesson; a course of one lesson goes to its page.
+                  then: nextChapter ? chapterHref(courseId, nextChapter.id) : `/courses/${courseId}`,
+                  onEnrolled: handleEnrolled,
+                }
+              : undefined
+          }
+        />
+      )}
 
       {chapterType === "reading" && !hasAssignments && !previewing && (
         <div className="mt-8 border-t border-edge pt-5">
