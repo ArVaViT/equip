@@ -1,6 +1,6 @@
+import { Lock } from "lucide-react"
 import { useId, useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
-import { Lock } from "lucide-react"
 
 import { ReadingMinutes } from "@/components/course/ReadingMinutes"
 import { Badge } from "@/components/ui/badge"
