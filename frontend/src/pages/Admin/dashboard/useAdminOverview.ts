@@ -192,8 +192,8 @@ export function useAdminOverview({ currentUserId, enabled = true, certsOnly = fa
   const handleRoleChange = async (userId: string, newRole: UserRole) => {
     setUpdatingId(userId)
     try {
-      await coursesService.updateUserRole(userId, newRole)
-      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)))
+      const role = (await coursesService.updateUserRole(userId, newRole)) as UserRole
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)))
       toast({ title: t("admin.overview.toast.roleUpdated"), variant: "success" })
     } catch {
       toast({ title: t("admin.overview.toast.roleUpdateFailed"), variant: "destructive" })

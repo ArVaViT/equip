@@ -823,7 +823,6 @@
       "invitation_expired": "Diese Einladung ist abgelaufen.",
       "invitation_already_used": "Diese Einladung wurde bereits verwendet.",
       "invitation_email_mismatch": "Diese Einladung wurde an eine andere Adresse geschickt.",
-      "invitation_other_school": "Sie haben in einer anderen Schule auf Equip eine höhere Rolle. Wenn Sie diese Einladung annehmen, wechseln Sie hierher und verlieren diese Rolle – deshalb kann sie mit diesem Konto nicht angenommen werden. Bitten Sie die Person, die Sie eingeladen hat, sich bei uns zu melden.",
       "plan_limit_reached": "Sie haben bereits {{limit}} Kurse — mehr kann eine Lehrkraft nicht gleichzeitig führen. Löschen Sie einen, den Sie nicht mehr brauchen, oder wenden Sie sich an eine Administratorin oder einen Administrator.",
       "validation_failed": "Etwas an Ihrer Eingabe stimmt nicht.",
       "legal_consent_required": "Bitte akzeptieren Sie die aktuellen Nutzungsbedingungen und die Datenschutzerklärung, bevor Sie etwas ändern.",
@@ -2755,7 +2754,12 @@
         "failed": "Die Entscheidung konnte nicht festgehalten werden."
       }
     },
-    "tabOrganizations": "Organisationen"
+    "tabOrganizations": "Organisationen",
+    "roleSelector": {
+      "makeAdmin": "Zum Plattform-Admin machen",
+      "revokeAdmin": "Plattform-Admin entziehen",
+      "heldByMembership": "Lehrkraft und Leitung sind Rollen in einer Organisation: Ernennungen und Einladungen vergeben sie."
+    }
   },
   "roles": {
     "student": "Studierende Person",
@@ -2942,7 +2946,6 @@
       "unusable": "Diese Einladung wurde bereits genutzt, zurückgezogen oder ist abgelaufen. Bitten Sie um eine neue.",
       "emailMismatch": "Diese Einladung ging an eine andere E-Mail-Adresse.",
       "emailMismatchDetail": "Diese Einladung ging an <strong>{{invited}}</strong>, angemeldet sind Sie aber als <strong>{{current}}</strong>.",
-      "otherSchool": "Sie haben in einer anderen Schule auf Equip eine höhere Rolle. Wenn Sie diese Einladung annehmen, wechseln Sie hierher und verlieren diese Rolle – deshalb kann sie mit diesem Konto nicht angenommen werden. Bitten Sie die Person, die Sie eingeladen hat, sich bei uns zu melden.",
       "acceptFailed": "Die Einladung konnte nicht angenommen werden. Bitte erneut versuchen.",
       "accountExists": "Sie haben mit dieser Adresse bereits ein Equip-Konto. Melden Sie sich an und öffnen Sie den Einladungslink dann erneut."
     },
