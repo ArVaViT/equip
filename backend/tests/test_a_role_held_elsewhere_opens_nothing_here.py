@@ -444,11 +444,16 @@ class TestASuspendedMembershipAndAnInvitation:
 
         resp = _as(db, person).post("/api/v1/invitations/accept", json={"token": token})
 
-        assert resp.status_code == 200, resp.text
+        # Refused outright, and told why — not a 200 that quietly changed
+        # nothing (which is what this answered until 2026-10-03, while the
+        # same link still admitted anyone who was not yet a member).
+        assert resp.status_code == 403, resp.text
+        assert resp.json()["detail"]["code"] == "invitation.inviter_not_staff"
         row = _membership(db, person, A_ID)
         assert row is not None and row.status == "suspended"
         db.refresh(person)
         assert person.role == UserRole.STUDENT.value
+        assert db.query(Invitation).filter(Invitation.token == token).one().status == "pending"
 
 
 class TestWhoIsAStudentHere:

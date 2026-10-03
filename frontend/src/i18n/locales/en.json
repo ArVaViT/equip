@@ -2947,6 +2947,7 @@
       "emailMismatch": "This invitation was sent to a different email address.",
       "emailMismatchDetail": "This invitation was sent to <strong>{{invited}}</strong>, but you're signed in as <strong>{{current}}</strong>.",
       "acceptFailed": "Couldn't accept this invitation. Please try again.",
+      "inviterNotStaff": "The person who sent this invitation no longer speaks for the organization. Ask its director for a new one.",
       "accountExists": "You already have an Equip account with this email. Log in, then reopen this invite link to accept it."
     },
     "openCourse": "Open the course"

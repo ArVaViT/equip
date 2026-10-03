@@ -155,7 +155,11 @@ export function useAcceptInvite() {
         // second organization adds a membership instead of moving the person.
         code === "invitation.email_mismatch"
           ? i18n.t("invite.errors.emailMismatch")
-          : i18n.t("invite.errors.acceptFailed"),
+          : code === "invitation.inviter_not_staff"
+            // The person who sent it has since left the organization's
+            // staff; the link is left as it is and a fresh one is the answer.
+            ? i18n.t("invite.errors.inviterNotStaff")
+            : i18n.t("invite.errors.acceptFailed"),
       )
       setPhase("ready")
     }

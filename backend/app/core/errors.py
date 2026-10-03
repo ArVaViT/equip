@@ -189,6 +189,13 @@ class ErrorCode(enum.StrEnum):
     """The authenticated caller's email does not match the email the
     invitation was issued to."""
 
+    INVITATION_INVITER_NOT_STAFF = "invitation.inviter_not_staff"
+    """The person who wrote the invitation no longer speaks for the
+    organization it leads into -- suspended, demoted, or gone -- so the
+    link admits nobody. Still ``status='pending'`` in the DB: the row is
+    left as it is, and a director who wants the person in writes a fresh
+    invitation."""
+
     # ── Organizations ───────────────────────────────────────────────────
     ORGANIZATION_AMBIGUOUS = "organization.ambiguous"
     """The caller acts in more than one organization and the request did not

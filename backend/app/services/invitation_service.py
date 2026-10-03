@@ -12,12 +12,12 @@ from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import increment, timing
 from app.models.course import Course
 from app.models.invitation import Invitation, InvitationScope, InvitationStatus
-from app.models.organization import MembershipSource
+from app.models.organization import STAFF_ROLES, MembershipSource
 from app.models.user import User
 from app.services.audit_service import log_action
 from app.services.course_service._enrollment import enroll_user_in_course
 from app.services.email.invitation import send_invitation_email
-from app.services.memberships import grant_membership, teaches_in
+from app.services.memberships import directs, grant_membership, teaches_in
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 from app.services.user_locale import preferred_locale_of
 
@@ -504,6 +504,30 @@ def accept_invitation(
         else None
     )
 
+    # The person who wrote the invitation must still speak for the
+    # organization it leads into: its staff today for a student seat, its
+    # director today (or platform staff) for a teaching role. An invitation
+    # is good for seven days and a teacher can be let go in less; their
+    # outstanding links must not keep letting people in — not back in
+    # through a suspended membership, and not in for the first time either.
+    # Until 2026-10-03 only the former was checked. The row is left pending:
+    # a director who wants the person in writes a fresh one.
+    if invitation.scope != InvitationScope.PLATFORM.value:
+        inviter = (
+            db.query(User).filter(User.id == invitation.invited_by).first()
+            if invitation.invited_by is not None
+            else None
+        )
+        speaks_for_it = directs if invitation.role in STAFF_ROLES else teaches_in
+        if not speaks_for_it(db, inviter, invitation.organization_id):
+            increment("equip.invitations.refused_total", reason="inviter_not_staff", scope=invitation.scope)
+            raise equip_error(
+                ErrorCode.INVITATION_INVITER_NOT_STAFF,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="The person who sent this invitation no longer speaks for the organization",
+                context={"resource_type": "invitation"},
+            )
+
     # Single-use guard: only flips a row still 'pending'. A concurrent
     # accept (double click, retried request) loses the race here rather
     # than in application logic. A fulfilled row keeps its status: the
@@ -563,15 +587,9 @@ def accept_invitation(
         # or take.
         #
         # A membership the organization *suspended* is reopened by this
-        # link only if the person who wrote it still speaks for the
-        # organization — its staff today. An invitation is good for seven
-        # days and a teacher can be let go in less; their outstanding links
-        # must not keep letting people back in.
-        inviter = (
-            db.query(User).filter(User.id == invitation.invited_by).first()
-            if invitation.invited_by is not None
-            else None
-        )
+        # link: the person who wrote it was checked above to still speak
+        # for the organization, so the grant outranks the suspension
+        # (``grant_membership`` on ``reactivate``).
         _membership, membership_created = grant_membership(
             db,
             user=user,
@@ -579,7 +597,7 @@ def accept_invitation(
             role=invitation.role,
             joined_via=MembershipSource.INVITATION.value,
             invited_by=invitation.invited_by,
-            reactivate=teaches_in(db, inviter, invitation.organization_id),
+            reactivate=True,
         )
         granted_role = user.role
     if course is not None and user.onboarding_completed_at is None:

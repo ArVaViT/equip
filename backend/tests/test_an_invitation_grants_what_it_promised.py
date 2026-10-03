@@ -25,6 +25,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_current_user, get_optional_user
@@ -116,6 +117,7 @@ def _invitation(
     course_id: str | None = None,
     role: str = UserRole.STUDENT.value,
     organization_id: uuid.UUID | None = None,
+    invited_by: uuid.UUID | None = ADMIN_ID,
 ) -> Invitation:
     invitation = Invitation(
         email=INVITEE_EMAIL,
@@ -123,7 +125,7 @@ def _invitation(
         scope=scope,
         course_id=course_id,
         token=uuid.uuid4().hex,
-        invited_by=ADMIN_ID,
+        invited_by=invited_by,
         organization_id=organization_id or TEST_ORGANIZATION_ID,
     )
     db.add(invitation)
@@ -467,3 +469,104 @@ class TestThePreviewSaysWhereItLeads:
 
         assert body["scope"] == "organization"
         assert body["course_title"] is None
+
+
+def _staff(db: Session, role: str, *, membership_status: str = "active") -> User:
+    """A member of the test organization in ``role`` — the conftest listener
+    writes the membership from the column — whose membership the
+    organization may since have suspended."""
+    user = User(
+        id=uuid.uuid4(),
+        email=f"{role}-{uuid.uuid4().hex[:6]}@example.com",
+        full_name=role.title(),
+        role=role,
+        organization_id=TEST_ORGANIZATION_ID,
+    )
+    db.add(user)
+    db.commit()
+    if membership_status != "active":
+        db.query(OrganizationMember).filter(OrganizationMember.user_id == user.id).update(
+            {OrganizationMember.status: membership_status}
+        )
+        db.commit()
+    return user
+
+
+class TestTheInviterMustStillSpeakForTheOrganization:
+    """An outstanding link is only as good as the person who wrote it is
+    today. Until 2026-10-03 a suspended teacher's link still admitted
+    newcomers — the check guarded only the reopening of a suspended
+    membership, never the first one — and a teacher's link could carry a
+    teaching role it was never theirs to give."""
+
+    def test_a_suspended_teachers_link_admits_nobody(self, db: Session, admin: User) -> None:
+        _invitee(db)
+        gone = _staff(db, UserRole.TEACHER.value, membership_status="suspended")
+        invitation = _invitation(db, invited_by=gone.id)
+
+        with pytest.raises(HTTPException) as refused:
+            _accept(db, invitation)
+
+        assert refused.value.status_code == 403
+        assert refused.value.detail["code"] == "invitation.inviter_not_staff"
+        assert _memberships(db) == {}
+        # The row is left as it was: nothing spent, nothing granted.
+        db.refresh(invitation)
+        assert invitation.status == InvitationStatus.PENDING.value
+
+    def test_a_suspended_teachers_link_does_not_let_a_suspended_person_back_in(self, db: Session, admin: User) -> None:
+        _invitee(db, organization_id=TEST_ORGANIZATION_ID)
+        db.query(OrganizationMember).filter(OrganizationMember.user_id == INVITEE_ID).update(
+            {OrganizationMember.status: "suspended"}
+        )
+        db.commit()
+        gone = _staff(db, UserRole.TEACHER.value, membership_status="suspended")
+        invitation = _invitation(db, invited_by=gone.id)
+
+        with pytest.raises(HTTPException):
+            _accept(db, invitation)
+
+        assert _memberships(db) == {}
+
+    def test_a_teaching_role_needs_a_director_behind_it(self, db: Session, admin: User) -> None:
+        _invitee(db)
+        teacher = _staff(db, UserRole.TEACHER.value)
+        invitation = _invitation(db, role=UserRole.TEACHER.value, invited_by=teacher.id)
+
+        with pytest.raises(HTTPException) as refused:
+            _accept(db, invitation)
+
+        assert refused.value.detail["code"] == "invitation.inviter_not_staff"
+        assert _memberships(db) == {}
+
+    def test_an_active_teachers_student_seat_still_opens(self, db: Session, admin: User) -> None:
+        _invitee(db)
+        teacher = _staff(db, UserRole.TEACHER.value)
+        course = _course(db)
+        invitation = _invitation(db, scope=InvitationScope.COURSE.value, course_id=course.id, invited_by=teacher.id)
+
+        _accept(db, invitation)
+
+        assert _memberships(db) == {TEST_ORGANIZATION_ID: UserRole.STUDENT.value}
+
+    def test_a_directors_teaching_role_still_opens_and_reopens(self, db: Session, admin: User) -> None:
+        _invitee(db, organization_id=TEST_ORGANIZATION_ID)
+        db.query(OrganizationMember).filter(OrganizationMember.user_id == INVITEE_ID).update(
+            {OrganizationMember.status: "suspended"}
+        )
+        db.commit()
+        director = _staff(db, UserRole.DIRECTOR.value)
+        invitation = _invitation(db, role=UserRole.TEACHER.value, invited_by=director.id)
+
+        _accept(db, invitation)
+
+        assert _memberships(db) == {TEST_ORGANIZATION_ID: UserRole.TEACHER.value}
+
+    def test_an_inviter_whose_account_is_gone_speaks_for_nobody(self, db: Session, admin: User) -> None:
+        _invitee(db)
+        invitation = _invitation(db, invited_by=None)
+
+        with pytest.raises(HTTPException) as refused:
+            _accept(db, invitation)
+
+        assert refused.value.detail["code"] == "invitation.inviter_not_staff"
