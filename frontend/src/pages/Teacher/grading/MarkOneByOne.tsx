@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react"
+import { CheckCircle2, ChevronRight, FileText, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -12,6 +12,7 @@ import { rubricsService } from "@/services/rubrics"
 import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
+import { isHttpUrl } from "@/lib/url"
 import type { SubmissionRubric, WaitingSubmission } from "@/types"
 
 /**
@@ -29,17 +30,21 @@ import type { SubmissionRubric, WaitingSubmission } from "@/types"
 export function MarkOneByOne({
   assignmentId,
   title,
+  maxScore = null,
   onDone,
 }: {
   assignmentId: string
   title?: string
+  maxScore?: number | null
   onDone: () => void
 }) {
   const { t } = useTranslation()
   const [work, setWork] = useState<WaitingSubmission[] | null>(null)
   const [index, setIndex] = useState(0)
   const [rubric, setRubric] = useState<SubmissionRubric | null>(null)
-  const [grade, setGrade] = useState(0)
+  // Empty until the teacher types a mark. It started at 0, so «Сохранить»
+  // on an essay nobody had scored yet sent the student a zero.
+  const [grade, setGrade] = useState<number | null>(null)
   const [feedback, setFeedback] = useState("")
   const [saving, setSaving] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -73,7 +78,7 @@ export function MarkOneByOne({
     let cancelled = false
     // Each piece of work starts clean. Carrying the previous student's note
     // into the next essay is the one mistake this screen must never make.
-    setGrade(0)
+    setGrade(null)
     setFeedback("")
     setRubric(null)
     setRubricFailed(false)
@@ -118,8 +123,15 @@ export function MarkOneByOne({
     }
   }
 
+  // Until the rubric answer arrives the screen cannot know which kind of
+  // mark this course takes; a number typed in that moment would land where a
+  // rubric was meant.
+  const rubricLoading = rubric === null && !rubricFailed
+  const overMax = maxScore != null && grade != null && grade > maxScore
+  const needsMark = rubricLoading || (!rubric?.rubric && (grade === null || overMax))
+
   const saveAndNext = async () => {
-    if (!current) return
+    if (!current || needsMark) return
     setSaving(true)
     try {
       if (rubric?.rubric) {
@@ -134,7 +146,7 @@ export function MarkOneByOne({
         }
       } else {
         await coursesService.gradeSubmission(current.submission_id, {
-          grade,
+          grade: grade ?? 0,
           feedback: feedback.trim() || undefined,
           status: "graded",
         })
@@ -190,8 +202,8 @@ export function MarkOneByOne({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-baseline justify-between">
-        <h2 className="truncate font-serif text-lg font-semibold">{title}</h2>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="line-clamp-2 min-w-0 break-words font-serif text-lg font-semibold">{title}</h2>
         {/* Where you are, so «дальше» is a known distance rather than an
             open-ended commitment on a Sunday evening. */}
         <span className="shrink-0 text-sm tabular-nums text-ink-muted">
@@ -208,6 +220,19 @@ export function MarkOneByOne({
               14px at full card width, which is the one surface where an
               unreadable line length costs somebody an hour every week. */}
           <div className="prose whitespace-pre-wrap text-wrap-safe">{current.content}</div>
+          {/* The file the student linked. This screen never showed it, so
+              work handed in as a document read as an empty essay. */}
+          {current.file_url && isHttpUrl(current.file_url) && (
+            <a
+              href={current.file_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center gap-1.5 text-sm text-info hover:underline"
+            >
+              <FileText className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+              {t("assignmentEditor.grader.viewFile")}
+            </a>
+          )}
         </CardContent>
       </Card>
 
@@ -222,7 +247,7 @@ export function MarkOneByOne({
             </Button>
           }
         />
-      ) : rubric?.rubric ? (
+      ) : rubricLoading ? null : rubric?.rubric ? (
         <Card>
           <CardContent className="p-4">
             <RubricGrid
@@ -238,12 +263,21 @@ export function MarkOneByOne({
           <Input
             type="number"
             min={0}
-            value={grade}
-            onChange={(e) => setGrade(Math.max(0, Number(e.target.value) || 0))}
-            className="w-24"
+            max={maxScore ?? undefined}
+            step={1}
+            value={grade ?? ""}
+            // Whole points: the grade route takes an integer, and 9.5 came
+            // back as a raw validation error.
+            onChange={(e) =>
+              setGrade(e.target.value === "" ? null : Math.max(0, Math.floor(Number(e.target.value) || 0)))
+            }
+            aria-invalid={overMax || undefined}
+            className={overMax ? "w-24 border-destructive" : "w-24"}
             aria-label={t("grading.gradeAria")}
           />
-          <span className="text-sm text-ink-muted">{t("grading.points")}</span>
+          <span className="text-sm text-ink-muted">
+            {maxScore ? t("grading.outOf", { max: maxScore }) : t("grading.points")}
+          </span>
         </div>
       )}
 
@@ -255,7 +289,7 @@ export function MarkOneByOne({
       />
 
       <div className="flex items-center justify-end gap-2">
-        <Button onClick={saveAndNext} disabled={saving || rubricFailed} className="min-h-11">
+        <Button onClick={saveAndNext} disabled={saving || rubricFailed || needsMark} className="min-h-11">
           {saving ? (
             <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
           ) : (

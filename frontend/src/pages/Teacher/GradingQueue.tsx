@@ -77,7 +77,7 @@ export default function GradingQueue() {
           <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
           {t("grading.backToQueue")}
         </Button>
-        <MarkOneByOne assignmentId={openItem} title={group?.title} onDone={closeItem} />
+        <MarkOneByOne assignmentId={openItem} title={group?.title} maxScore={group?.max_score ?? null} onDone={closeItem} />
       </Section>
     )
   }

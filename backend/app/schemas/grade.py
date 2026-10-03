@@ -571,6 +571,10 @@ class WaitingGroup(BaseModel):
     #: under the assignment twelve people just handed in — and the three-week
     #: one is what somebody is upset about.
     oldest: datetime | None = None
+    #: What a mark is out of, for an assignment. The grade route refuses
+    #: anything above it, so the marking screen says «из 50» up front
+    #: instead of letting 95 come back as an error.
+    max_score: int | None = None
 
 
 class WaitingSubmission(BaseModel):

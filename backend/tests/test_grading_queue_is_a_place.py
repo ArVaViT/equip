@@ -83,6 +83,8 @@ def test_the_queue_lists_the_work_not_the_number(client, db: Session, teacher, s
     assert body[0]["kind"] == "assignment"
     assert body[0]["title"] == "Эссе про благодать"
     assert body[0]["waiting"] == 1
+    # What the mark is out of, so the marking screen can say «из 100».
+    assert body[0]["max_score"] == 100
 
 
 def test_one_prompt_is_one_group_however_many_answered_it(client, db: Session, teacher, student) -> None:

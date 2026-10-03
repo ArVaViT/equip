@@ -168,7 +168,7 @@ def render_text(message: Message) -> str:
 
     Left to the provider, this is produced by stripping tags, and a
     table becomes one run-on line: "First session2026-09-12, 20:00
-    EasternLessons4, 75 minutes each". Anyone whose client prefers text
+    EasternLessons4". Anyone whose client prefers text
     reads that, and so does every filter weighing whether the message
     looks like something a person would send.
 

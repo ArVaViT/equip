@@ -714,7 +714,6 @@
     "updateFailed": "Не вдалося оновити профіль",
     "learningProgress": "Навчальний поступ",
     "coursesCompleted": "Завершені курси",
-    "learningProgressDescription": "Ваші здобутки одним поглядом",
     "certificatesEarned": "Отримані сертифікати",
     "accountDetails": "Дані облікового запису",
     "memberSince": "З нами від",
@@ -3153,6 +3152,7 @@
     "saveAndFinish": "Зберегти й завершити",
     "feedbackPlaceholder": "Що вийшло, що виправити і як",
     "points": "бали",
+    "outOf": "з {{max}}",
     "gradeAria": "Оцінка",
     "loadFailed": "Не вдалося завантажити чергу",
     "saveFailed": "Не вдалося зберегти"

@@ -21,10 +21,10 @@ ICS shape
 - ``UID`` = ``"<source>-<id>@equipbible.com"`` so re-subscribing
   updates the existing entries rather than duplicating.
 - ``DTSTART`` is the UTC instant from the event row. A deadline has
-  no duration (``DURATION:PT0S``); a course event — a live session —
-  has no stored length either, so it gets an hour (``PT1H``), the
-  default every calendar client uses for a new meeting. At zero it
-  rendered as a hairline nobody could tap.
+  no duration (``DURATION:PT0S``). A live session or an exam takes a
+  block of the day but has no stored length, so it gets an hour
+  (``PT1H``), the default every calendar client uses for a new
+  meeting; at zero it rendered as a hairline nobody could tap.
 - Times are emitted in UTC (``...Z``); the client renders in the
   user's timezone.
 """
@@ -41,9 +41,15 @@ if TYPE_CHECKING:
 _PRODID = "-//Equip//Calendar//EN"
 
 
-def _duration(source: str) -> str:
-    """A deadline is a moment; a live session takes a block of the day."""
-    return "PT1H" if source == "course_event" else "PT0S"
+# Keyed on the type, not the source: a teacher's own course event can be
+# a deadline too («Essay due 23:59»), and an hour from 23:59 runs it into
+# the next day.
+_TAKES_TIME = frozenset({"live_session", "exam"})
+
+
+def _duration(event_type: str) -> str:
+    """A deadline is a moment; a session or an exam takes a block of the day."""
+    return "PT1H" if event_type in _TAKES_TIME else "PT0S"
 
 
 _DOMAIN = "equipbible.com"
@@ -127,7 +133,7 @@ def render_calendar(events: list[CalendarEvent], *, locale: str = "en") -> str:
                 _fold(f"UID:{uid}"),
                 f"DTSTAMP:{now_stamp}",
                 f"DTSTART:{_format_dt(event.event_date)}",
-                f"DURATION:{_duration(event.source)}",
+                f"DURATION:{_duration(event.event_type)}",
                 _fold(f"SUMMARY:{_escape(summary)}"),
             ]
         )

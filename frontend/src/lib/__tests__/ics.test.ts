@@ -6,7 +6,7 @@ const event = (over: Partial<CalendarEvent> = {}): CalendarEvent => ({
   id: "e1",
   title: "Тематическая проповедь",
   description: null,
-  event_type: "course_event",
+  event_type: "live_session",
   event_date: "2026-10-11T13:00:00Z",
   meeting_url: null,
   course_id: "c1",
@@ -26,7 +26,9 @@ describe("one event as an .ics file", () => {
     const ics = eventToIcs(event())
     expect(ics).toContain("DTSTART:20261011T130000Z")
     expect(ics).toContain("DURATION:PT1H")
-    expect(eventToIcs(event({ source: "assignment_deadline" }))).toContain("DURATION:PT0S")
+    expect(eventToIcs(event({ source: "assignment_deadline", event_type: "deadline" }))).toContain("DURATION:PT0S")
+    // A teacher's own course event can be a deadline too: it stays a moment.
+    expect(eventToIcs(event({ event_type: "deadline" }))).toContain("DURATION:PT0S")
     expect(formatUtc(new Date("2026-01-02T03:04:05.678Z"))).toBe("20260102T030405Z")
   })
 

@@ -202,6 +202,7 @@ def waiting_groups(db: Session, teacher_id: UUID, *, display_locale: str | None 
             Assignment.id.label("item_id"),
             Chapter.id.label("chapter_id"),
             Chapter.title.label("chapter_title"),
+            Assignment.max_score,
             sqlfunc.count(AssignmentSubmission.id).label("waiting"),
             sqlfunc.min(AssignmentSubmission.submitted_at).label("oldest"),
         )
@@ -218,7 +219,7 @@ def waiting_groups(db: Session, teacher_id: UUID, *, display_locale: str | None 
             AssignmentSubmission.grade.is_(None),
             User.deactivated_at.is_(None),
         )
-        .group_by(Chapter.course_id, Assignment.id, Chapter.id, Chapter.title)
+        .group_by(Chapter.course_id, Assignment.id, Assignment.max_score, Chapter.id, Chapter.title)
         .all()
     )
     for assignment_row in assignment_rows:
@@ -231,6 +232,7 @@ def waiting_groups(db: Session, teacher_id: UUID, *, display_locale: str | None 
                 "title": assignment_row.chapter_title,
                 "waiting": int(assignment_row.waiting or 0),
                 "oldest": assignment_row.oldest,
+                "max_score": assignment_row.max_score,
             }
         )
 

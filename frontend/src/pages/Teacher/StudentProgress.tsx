@@ -198,7 +198,7 @@ export default function StudentProgress() {
         <Link to="/teacher" className="shrink-0 whitespace-nowrap hover:text-ink transition-colors">
           {t("studentProgress.breadcrumb.myCourses")}
         </Link>
-        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.75} />
+        <ChevronRight className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
         <Link
           to={`/teacher/courses/${courseId}`}
           className="min-w-0 truncate hover:text-ink transition-colors"

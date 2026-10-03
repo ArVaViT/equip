@@ -691,7 +691,6 @@
     "imageTooLarge": "Das Bild muss kleiner als 2 MB sein",
     "updateFailed": "Profil konnte nicht aktualisiert werden",
     "learningProgress": "Lernfortschritt",
-    "learningProgressDescription": "Ihre Ergebnisse auf einen Blick",
     "coursesCompleted": "Abgeschlossene Kurse",
     "certificatesEarned": "Erhaltene Zertifikate",
     "accountDetails": "Kontodaten",
@@ -3043,6 +3042,7 @@
     "saveAndFinish": "Speichern und beenden",
     "feedbackPlaceholder": "Was gelungen ist, was zu ändern ist und wie",
     "points": "Punkte",
+    "outOf": "von {{max}}",
     "gradeAria": "Note",
     "loadFailed": "Die Liste konnte nicht geladen werden",
     "saveFailed": "Speichern nicht möglich"

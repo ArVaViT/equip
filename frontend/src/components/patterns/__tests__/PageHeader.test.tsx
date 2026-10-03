@@ -75,7 +75,10 @@ describe("PageHeader", () => {
 // 19 from 2026-10-01: `/certificates/transcript` is a printed document like
 // the certificate and the ведомость — its heading is the student's name on
 // the sheet, not an application masthead.
-const HAND_ROLLED_H1_BUDGET = 19
+// 20 from 2026-10-02: the signed-in home (`/`) is panels with no title on
+// screen, so its h1 is visually hidden — a PageHeader would put a masthead
+// on the one page built to have none.
+const HAND_ROLLED_H1_BUDGET = 20
 
 describe("the page-heading census", () => {
   it("does not grow another hand-rolled page heading", () => {

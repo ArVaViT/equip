@@ -282,7 +282,6 @@
     "imageTooLarge": "Изображение должно быть меньше 2 МБ",
     "updateFailed": "Не удалось обновить профиль",
     "learningProgress": "Учебный прогресс",
-    "learningProgressDescription": "Ваши достижения с одного взгляда",
     "coursesCompleted": "Курсов завершено",
     "certificatesEarned": "Сертификатов получено",
     "accountDetails": "Сведения об аккаунте",
@@ -3153,6 +3152,7 @@
     "saveAndFinish": "Сохранить и закончить",
     "feedbackPlaceholder": "Что удалось, что поправить, как именно",
     "points": "баллов",
+    "outOf": "из {{max}}",
     "gradeAria": "Оценка",
     "loadFailed": "Не удалось загрузить очередь",
     "saveFailed": "Не удалось сохранить"

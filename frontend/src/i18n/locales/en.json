@@ -691,7 +691,6 @@
     "imageTooLarge": "Image must be under 2 MB",
     "updateFailed": "Failed to update profile",
     "learningProgress": "Learning Progress",
-    "learningProgressDescription": "Your achievements at a glance",
     "coursesCompleted": "Courses Completed",
     "certificatesEarned": "Certificates Earned",
     "accountDetails": "Account Details",
@@ -3043,6 +3042,7 @@
     "saveAndFinish": "Save and finish",
     "feedbackPlaceholder": "What worked, what to fix, and how",
     "points": "points",
+    "outOf": "out of {{max}}",
     "gradeAria": "Grade",
     "loadFailed": "Could not load the queue",
     "saveFailed": "Could not save"

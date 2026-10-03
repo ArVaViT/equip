@@ -1,6 +1,7 @@
 import { GraduationCap, HelpCircle } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { Quiz } from "@/types"
+import { repeatsTitle } from "@/lib/repeatsTitle"
 import { orNotTranslated } from "@/lib/untranslated"
 
 interface Props {
@@ -13,6 +14,8 @@ interface Props {
   attemptsUsed: number | null
   /** True when a limit exists but the count behind it could not be read. */
   attemptsUnverified?: boolean
+  /** The page's own title, when the whole lesson is this test. */
+  pageTitle?: string
 }
 
 export function QuizHeader({
@@ -23,6 +26,7 @@ export function QuizHeader({
   maxAttempts,
   attemptsUsed,
   attemptsUnverified = false,
+  pageTitle,
 }: Props) {
   const { t } = useTranslation()
   const totalMaxScore = autoMaxScore + manualMaxScore
@@ -34,13 +38,19 @@ export function QuizHeader({
 
   return (
     <div className="border-b border-edge px-5 py-5">
-      <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
-        <TypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-        {typeLabel}
-      </p>
-      <h3 className="font-serif text-lg font-semibold tracking-tight text-wrap-safe">
-        {orNotTranslated(t, quiz.title)}
-      </h3>
+      {/* Under a page that is the test, the page already says «Тест» and,
+          usually, its name. */}
+      {pageTitle === undefined && (
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
+          <TypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+          {typeLabel}
+        </p>
+      )}
+      {(pageTitle === undefined || !repeatsTitle(pageTitle, orNotTranslated(t, quiz.title))) && (
+        <h2 className="font-serif text-lg font-semibold tracking-tight text-wrap-safe">
+          {orNotTranslated(t, quiz.title)}
+        </h2>
+      )}
       {quiz.description && (
         <p className="mt-1.5 text-sm leading-relaxed text-ink-muted text-wrap-safe whitespace-pre-line">
           {quiz.description}

@@ -14,6 +14,7 @@ import { SubmissionDeclaration, type DeclarationState } from "./SubmissionDeclar
 import { declarationStatement } from "./declarationStatement"
 import { RubricGrid } from "@/components/rubric/RubricGrid"
 import { toast } from "@/lib/toast"
+import { repeatsTitle } from "@/lib/repeatsTitle"
 import type { AiPolicy, Assignment, AssignmentSubmission, SubmissionRubric } from "@/types"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { formatDateTimeZoned } from "@/i18n/format"
@@ -56,14 +57,6 @@ interface AssignmentPanelProps {
    *  page already says «Задание» and its name; the card then drops the
    *  eyebrow, and the name too when it only repeats the page's. */
   pageTitle?: string
-}
-
-/** «Эссе: что изменилось в Пятидесятницу» already says «Что изменилось в
- *  Пятидесятницу». Case and punctuation aside. */
-function repeats(pageTitle: string, title: string): boolean {
-  const norm = (s: string) => s.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()
-  const inner = norm(title)
-  return inner.length > 0 && norm(pageTitle).includes(inner)
 }
 
 export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, onCountLoaded, aiPolicy, pageTitle }: AssignmentPanelProps) {
@@ -317,10 +310,10 @@ function SingleAssignment({
             {t("assignment.eyebrow")}
           </p>
         )}
-        {(pageTitle === undefined || !repeats(pageTitle, orNotTranslated(t, assignment.title))) && (
-          <h3 className="font-serif text-lg font-semibold tracking-tight text-wrap-safe">
+        {(pageTitle === undefined || !repeatsTitle(pageTitle, orNotTranslated(t, assignment.title))) && (
+          <h2 className="font-serif text-lg font-semibold tracking-tight text-wrap-safe">
             {orNotTranslated(t, assignment.title)}
-          </h3>
+          </h2>
         )}
         {assignment.description && (
           <p className="prose-verse mt-1.5 text-sm leading-relaxed text-ink-muted text-wrap-safe whitespace-pre-line">
@@ -377,10 +370,14 @@ function SingleAssignment({
         )}
         {submission && (
           <div className="mb-5 space-y-3">
-            <div className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${statusConfig[submission.status]?.color ?? ""}`}>
-              {statusConfig[submission.status]?.icon}
-              <span className="font-medium">{statusConfig[submission.status]?.label}</span>
-            </div>
+            {/* «Оценено» above «Оценка 90 / 100» said it twice: the grade is
+                the status. */}
+            {!(submission.status === "graded" && submission.grade !== null) && (
+              <div className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${statusConfig[submission.status]?.color ?? ""}`}>
+                {statusConfig[submission.status]?.icon}
+                <span className="font-medium">{statusConfig[submission.status]?.label}</span>
+              </div>
+            )}
 
             {submission.status === "graded" && submission.grade !== null && (
               <div className="rounded-md border border-success/30 bg-success/5 px-4 py-3">
