@@ -71,6 +71,10 @@ export function useEventsSection(
   }, [courseId])
 
   useEffect(() => {
+    // Another course's list and a half-asked series question must not
+    // linger while this one loads (the calendar's course picker).
+    setEvents([])
+    setPendingScope(null)
     if (!courseId) return
     let cancelled = false
     coursesService

@@ -50,3 +50,29 @@ describe("usePrompt", () => {
     await waitFor(() => expect(answers).toEqual(["abc", null]))
   })
 })
+
+describe("usePrompt with a url field", () => {
+  it("keeps the dialog open on a non-address instead of answering it", async () => {
+    const answers: (string | null)[] = []
+    function UrlAsker() {
+      const prompt = usePrompt()
+      return (
+        <button type="button" onClick={async () => answers.push(await prompt({ title: "Link", confirmLabel: "Save", inputType: "url" }))}>
+          ask
+        </button>
+      )
+    }
+    render(
+      <I18nextProvider i18n={i18n}>
+        <ConfirmProvider>
+          <UrlAsker />
+        </ConfirmProvider>
+      </I18nextProvider>,
+    )
+    await userEvent.click(screen.getByText("ask"))
+    await userEvent.type(await screen.findByRole("textbox"), "abc")
+    await userEvent.click(screen.getByRole("button", { name: "Save" }))
+    expect(answers).toEqual([])
+    expect(screen.getByRole("textbox")).toBeInTheDocument()
+  })
+})

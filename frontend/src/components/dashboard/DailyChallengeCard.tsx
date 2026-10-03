@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useContext, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { AuthContext } from "@/context/auth-context"
 import { Link } from "react-router-dom"
 import { ArrowRight, Flame, Sparkles } from "lucide-react"
 import { toast } from "sonner"
@@ -106,6 +107,9 @@ export function DailyChallengeCard() {
   const [submitting, setSubmitting] = useState(false)
   const [streakAfter, setStreakAfter] = useState<number | null>(null)
   const answeredToday = reveal !== null
+  // Read without useAuth's throw: the card is rendered alone in tests.
+  const zone = useContext(AuthContext)?.user?.time_zone ?? null
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -165,14 +169,16 @@ export function DailyChallengeCard() {
     return () => {
       cancelled = true
     }
-  }, [t])
+    // The zone too: it decides which day's question is "today", and it can
+    // be recorded for the first time while this card is loading.
+  }, [t, zone, reloadKey])
 
   const handleSelect = useCallback(
     async (optionId: string) => {
       if (reveal !== null || submitting || !data) return
       setSubmitting(true)
       try {
-        const res = await dailyChallengeService.submitAttempt(optionId)
+        const res = await dailyChallengeService.submitAttempt(optionId, data.challenge_date)
         setReveal(revealFromAttempt(res))
         setStreakAfter(res.streak_after)
         if (res.is_correct) {
@@ -184,6 +190,9 @@ export function DailyChallengeCard() {
         const code = getErrorCode(err)
         if (code === "daily_challenge.invalid_option") {
           toast.error(t("dailyChallenge.toast.invalidOption"))
+          // The day has moved on under the card: fetch the question that
+          // is today's now rather than leave a card no answer fits.
+          setReloadKey((k) => k + 1)
         } else {
           toast.error(t("dailyChallenge.toast.submitError"))
         }

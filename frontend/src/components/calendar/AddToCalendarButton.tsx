@@ -47,7 +47,8 @@ export function AddToCalendarButton({ event, className }: Props) {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          // The calendar cell and the notification row are buttons themselves.
+          // Inside a clickable row (a calendar chip, a notification), opening
+          // the menu must not also open the row.
           onClick={(e) => e.stopPropagation()}
           aria-label={t("calendar.addOne.aria", { title: event.title })}
           className={cn(

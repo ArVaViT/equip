@@ -97,3 +97,40 @@ def test_saturday_is_not_in_the_archive_while_it_is_still_saturday(
     db.commit()
     r = student_client.get("/api/v1/daily-challenge/archive/2026-10-03")
     assert r.status_code == 422
+
+
+def test_an_answer_is_judged_against_the_question_on_screen(
+    frozen: None, db: Session, author: User, student: User, student_client: TestClient
+) -> None:
+    """The card loaded Sunday's question (no zone recorded yet: UTC), then the
+    profile's zone arrived and made it Saturday. The answer to the question on
+    screen is that question's answer — not "invalid option" against Saturday's."""
+    from app.models.daily_challenge import DailyChallengeOption
+
+    saturday = _seed_q(db, author_id=author.id, chapter=3)
+    sunday = _seed_q(db, author_id=author.id, chapter=4)
+    _schedule(db, saturday, date(2026, 10, 3), author.id)
+    _schedule(db, sunday, date(2026, 10, 4), author.id)
+
+    student.time_zone = None
+    db.commit()
+    card = student_client.get("/api/v1/daily-challenge/today").json()
+    assert card["question_id"] == str(sunday.id)
+
+    student.time_zone = "America/Indiana/Indianapolis"
+    db.commit()
+    option = db.query(DailyChallengeOption).filter(DailyChallengeOption.question_id == sunday.id).first()
+    assert option is not None
+    r = student_client.post(
+        "/api/v1/daily-challenge/today/attempt",
+        json={"selected_option_id": str(option.id), "challenge_date": card["challenge_date"]},
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["challenge_date"] == "2026-10-04"
+
+    # A card two days stale answers to today, and today's question has other options.
+    r = student_client.post(
+        "/api/v1/daily-challenge/today/attempt",
+        json={"selected_option_id": str(option.id), "challenge_date": "2026-10-01"},
+    )
+    assert r.status_code == 422

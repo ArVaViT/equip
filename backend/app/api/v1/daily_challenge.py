@@ -184,15 +184,22 @@ def submit_attempt(
     Race-safe — the partial unique constraint catches the two-tab
     race; the service layer re-reads and returns the winning attempt.
     """
+    today = reader_today(current_user.time_zone)
+    # The question on the reader's screen, when it is within a day of their
+    # today; anything further is a stale card and answers to today.
+    day = (
+        data.challenge_date
+        if data.challenge_date is not None and abs((data.challenge_date - today).days) <= 1
+        else today
+    )
     try:
         outcome = submit_today_attempt(
             db,
             user_id=current_user.id,
             selected_option_id=data.selected_option_id,
-            today=reader_today(current_user.time_zone),
+            today=day,
         )
     except NoScheduleError:
-        today = reader_today(current_user.time_zone)
         raise equip_error(
             ErrorCode.DAILY_CHALLENGE_NOT_SCHEDULED,
             status_code=status.HTTP_404_NOT_FOUND,

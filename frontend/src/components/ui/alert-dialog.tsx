@@ -276,6 +276,9 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                   type="submit"
                   onClick={(e) => {
                     e.preventDefault()
+                    // The form's own check first — a url prompt refuses "abc"
+                    // in place, as it did when the form's submit decided.
+                    if (e.currentTarget.form && !e.currentTarget.form.reportValidity()) return
                     handlePromptDone(promptState.value)
                   }}
                 >

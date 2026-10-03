@@ -113,10 +113,12 @@ export const dailyChallengeService = {
     return data
   },
 
-  async submitAttempt(selectedOptionId: string): Promise<DailyChallengeAttemptResponse> {
+  /** `challengeDate` is the day of the question on screen: the reader's day
+   *  can turn under an open card, and the answer belongs to that question. */
+  async submitAttempt(selectedOptionId: string, challengeDate?: string): Promise<DailyChallengeAttemptResponse> {
     const { data } = await api.post<DailyChallengeAttemptResponse>(
       "/daily-challenge/today/attempt",
-      { selected_option_id: selectedOptionId },
+      { selected_option_id: selectedOptionId, ...(challengeDate ? { challenge_date: challengeDate } : {}) },
     )
     return data
   },
