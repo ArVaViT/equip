@@ -45,8 +45,10 @@ Pipeline (per Agent C's design)
     ``daily_challenge_questions`` using the existing
     ``create_question`` service. The editorial team then walks the
     drafts through ``promote_status`` (or rejects them outright). The
-    AI flow never auto-publishes — humans always gate the final
-    transition.
+    orchestrator itself never publishes. The daily replenish worker
+    (``replenish.py``) is the one exception: it promotes a survivor of
+    all six rounds straight to published, so the schedule never runs
+    dry.
 
 Every round writes a row to ``daily_challenge_question_events`` with
 the same ``generation_run_id``. Editorial UI can later replay the

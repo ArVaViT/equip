@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Link } from "react-router-dom"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
@@ -10,7 +9,7 @@ import { useAsyncData } from "@/hooks/useAsyncData"
 import { useDebouncedSearchParam } from "@/hooks/useDebouncedSearchParam"
 import CourseCard from "@/components/course/CourseCard"
 import CourseCardSkeleton from "@/components/skeletons/CourseCardSkeleton"
-import { Search, BookOpen, LogIn } from "lucide-react"
+import { Search, BookOpen } from "lucide-react"
 import { EmptyState, ErrorState } from "@/components/patterns"
 import { useUserTour } from "@/hooks/useUserTour"
 import { coursesCatalogSteps } from "@/lib/tourSteps"
@@ -135,21 +134,6 @@ export default function CoursesPage() {
           </div>
         </div>
       </section>
-
-      {!user && (
-        <div className="mb-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-md border-l-[3px] border-l-info bg-info/5 px-4 py-3 text-center sm:text-left">
-          <LogIn className="h-4 w-4 shrink-0 text-info-ink" strokeWidth={1.75} aria-hidden="true" />
-          <p className="text-sm text-ink">
-            <Link
-              to="/login"
-              className="-my-2 inline-flex min-h-[44px] items-center font-medium underline underline-offset-2 hover:no-underline sm:my-0 sm:min-h-0"
-            >
-              {t("courses.signInLink")}
-            </Link>{" "}
-            {t("courses.signInToEnroll")}
-          </p>
-        </div>
-      )}
 
       {loading ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3">

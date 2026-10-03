@@ -98,6 +98,15 @@ def test_render_calendar_uses_utc_timestamps() -> None:
     assert "DTSTART:20260601T120000Z\r\n" in ics
 
 
+def test_a_deadline_is_a_moment_and_a_live_session_an_hour() -> None:
+    deadline = _calendar_event()
+    session = deadline.model_copy(update={"id": "s-1", "source": "course_event", "event_type": "lecture"})
+    ics = render_calendar([deadline, session])
+    first, second = ics.split("BEGIN:VEVENT")[1:]
+    assert "DURATION:PT0S\r\n" in first
+    assert "DURATION:PT1H\r\n" in second
+
+
 def test_render_calendar_includes_categories() -> None:
     ics = render_calendar([_calendar_event()])
     assert "CATEGORIES:deadline\r\n" in ics

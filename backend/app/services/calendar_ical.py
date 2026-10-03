@@ -20,8 +20,11 @@ ICS shape
   assignments, course events).
 - ``UID`` = ``"<source>-<id>@equipbible.com"`` so re-subscribing
   updates the existing entries rather than duplicating.
-- ``DTSTART`` is the UTC instant from the event row; deadlines have
-  no duration (``DURATION:PT0S``).
+- ``DTSTART`` is the UTC instant from the event row. A deadline has
+  no duration (``DURATION:PT0S``); a course event — a live session —
+  has no stored length either, so it gets an hour (``PT1H``), the
+  default every calendar client uses for a new meeting. At zero it
+  rendered as a hairline nobody could tap.
 - Times are emitted in UTC (``...Z``); the client renders in the
   user's timezone.
 """
@@ -36,6 +39,13 @@ if TYPE_CHECKING:
 
 
 _PRODID = "-//Equip//Calendar//EN"
+
+
+def _duration(source: str) -> str:
+    """A deadline is a moment; a live session takes a block of the day."""
+    return "PT1H" if source == "course_event" else "PT0S"
+
+
 _DOMAIN = "equipbible.com"
 
 
@@ -117,9 +127,7 @@ def render_calendar(events: list[CalendarEvent], *, locale: str = "en") -> str:
                 _fold(f"UID:{uid}"),
                 f"DTSTAMP:{now_stamp}",
                 f"DTSTART:{_format_dt(event.event_date)}",
-                # Deadline-style events: 0-duration so the client renders
-                # a single dot, not a multi-hour block.
-                "DURATION:PT0S",
+                f"DURATION:{_duration(event.source)}",
                 _fold(f"SUMMARY:{_escape(summary)}"),
             ]
         )

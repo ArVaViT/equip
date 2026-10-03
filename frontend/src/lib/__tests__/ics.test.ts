@@ -22,10 +22,11 @@ describe("one event as an .ics file", () => {
     expect(eventToIcs(event())).toContain("UID:course_event-e1@equipbible.com")
   })
 
-  it("gives the start as a UTC instant and no length, like the feed", () => {
+  it("gives the start as a UTC instant and the feed's length: an hour for a session, none for a deadline", () => {
     const ics = eventToIcs(event())
     expect(ics).toContain("DTSTART:20261011T130000Z")
-    expect(ics).toContain("DURATION:PT0S")
+    expect(ics).toContain("DURATION:PT1H")
+    expect(eventToIcs(event({ source: "assignment_deadline" }))).toContain("DURATION:PT0S")
     expect(formatUtc(new Date("2026-01-02T03:04:05.678Z"))).toBe("20260102T030405Z")
   })
 
