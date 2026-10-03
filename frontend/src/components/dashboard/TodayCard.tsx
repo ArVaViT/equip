@@ -1,5 +1,5 @@
 import { activeIntlTag } from "@/i18n/config"
-import { getDisplayTimeZone, zonedDayKey, zonedToday } from "@/i18n/timeZone"
+import { getDisplayTimeZone, zonedToday } from "@/i18n/timeZone"
 import { useZonedTodayKey } from "@/i18n/useZonedToday"
 import { parseYmd } from "@/lib/calendar"
 import { useMemo } from "react"
@@ -10,7 +10,7 @@ import { ArrowRight, CalendarDays } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Eyebrow } from "@/components/patterns"
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
-import { isJoinableNow, isOver } from "@/lib/eventTime"
+import { eventDayKey, isJoinableNow, isOver } from "@/lib/eventTime"
 import { formatEventTimeRange } from "@/components/calendar/eventTimeFormat"
 import { useNow } from "@/hooks/useNow"
 import { RecordingLink } from "@/components/calendar/RecordingLink"
@@ -77,10 +77,7 @@ export function TodayCard() {
   const todayEvents = useMemo(
     () =>
       events
-        .filter((e) => {
-          const d = new Date(e.event_date)
-          return !Number.isNaN(d.getTime()) && zonedDayKey(d) === todayKey
-        })
+        .filter((e) => eventDayKey(e) === todayKey)
         .slice(0, MAX_EVENTS_SHOWN),
     [events, todayKey],
   )
@@ -94,8 +91,8 @@ export function TodayCard() {
     if (todayEvents.length > 0) return []
     return events
       .filter((e) => {
-        const d = new Date(e.event_date)
-        return !Number.isNaN(d.getTime()) && zonedDayKey(d) > todayKey
+        const key = eventDayKey(e)
+        return key !== null && key > todayKey
       })
       .sort((a, b) => new Date(a.event_date).getTime() - new Date(b.event_date).getTime())
       .slice(0, MAX_AHEAD_SHOWN)

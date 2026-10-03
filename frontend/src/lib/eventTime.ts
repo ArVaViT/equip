@@ -1,6 +1,23 @@
 import type { CalendarEvent } from "@/types"
+import { zonedDayKey } from "@/i18n/timeZone"
 
-type Timed = Pick<CalendarEvent, "event_date" | "event_type"> & { duration_minutes?: number | null; all_day?: boolean }
+type Timed = Pick<CalendarEvent, "event_date" | "event_type"> & {
+  duration_minutes?: number | null
+  all_day?: boolean
+  day?: string | null
+}
+
+/**
+ * The `YYYY-MM-DD` the event is filed under in the reader's calendar, or
+ * `null` for a date that does not parse. An all-day item carries its day
+ * from the server — a group starting on the 5th in Kyiv starts on the 5th
+ * in Los Angeles too; everything else falls on its instant's day here.
+ */
+export function eventDayKey(event: Pick<Timed, "event_date" | "day">): string | null {
+  if (event.day) return event.day
+  const d = new Date(event.event_date)
+  return Number.isNaN(d.getTime()) ? null : zonedDayKey(d)
+}
 
 /**
  * An event without a stored length is treated as an hour long — the length
@@ -30,6 +47,8 @@ export function eventEnd(event: Timed): Date | null {
 export function isOver(event: Timed, now = Date.now()): boolean {
   const start = Date.parse(event.event_date)
   if (!Number.isFinite(start)) return false
+  // A day is over once the reader's today is past it.
+  if (event.all_day && event.day) return zonedDayKey(new Date(now)) > event.day
   // A deadline is a moment: a minute past it, it is missed.
   if (event.event_type === "deadline") return now >= start
   const end = eventEnd(event)

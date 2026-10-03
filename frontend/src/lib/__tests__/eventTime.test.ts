@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { eventEnd, isJoinableNow, isOver, minutesUntil, seriesLastDay } from "../eventTime"
+import { eventDayKey, eventEnd, isJoinableNow, isOver, minutesUntil, seriesLastDay } from "../eventTime"
 
 const start = "2026-10-25T00:00:00Z"
 const t = (iso: string) => Date.parse(iso)
@@ -56,5 +56,21 @@ describe("a group's day", () => {
     const e = { event_date: "2026-10-05T04:00:00Z", event_type: "other" as const, all_day: true }
     expect(eventEnd(e)?.toISOString()).toBe("2026-10-06T04:00:00.000Z")
     expect(isOver(e, Date.parse("2026-10-05T20:00:00Z"))).toBe(false)
+  })
+})
+
+describe("an all-day item keeps the day the server gave it", () => {
+  // 21:30Z on the 4th: the 4th in Los Angeles, but the group starts on the 5th.
+  const groupStart = { event_date: "2099-10-04T21:30:00Z", event_type: "other" as const, all_day: true, day: "2099-10-05" }
+
+  it("is filed under its own day, not the instant's", () => {
+    expect(eventDayKey(groupStart)).toBe("2099-10-05")
+    expect(eventDayKey({ event_date: "not a date" })).toBeNull()
+  })
+
+  it("is over only once the reader's today has passed it", () => {
+    // Noon on the 5th in UTC is still the 5th in most zones: not over.
+    expect(isOver(groupStart, Date.parse("2099-10-05T12:00:00Z"))).toBe(false)
+    expect(isOver(groupStart, Date.parse("2099-10-07T12:00:00Z"))).toBe(true)
   })
 })

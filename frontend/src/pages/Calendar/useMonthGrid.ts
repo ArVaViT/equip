@@ -1,9 +1,10 @@
-import { zonedCalendarDate, zonedToday } from "@/i18n/timeZone";
+import { zonedToday } from "@/i18n/timeZone";
 import { useMemo, useState } from "react";
 
 import type { CalendarEvent } from "@/types";
 import { addDays, startOfWeekMon, weekdayMonStart } from "@/lib/calendar";
 import { calendarDayKey } from "./utils";
+import { eventDayKey } from "@/lib/eventTime";
 
 interface DayCell {
   date: Date;
@@ -60,10 +61,12 @@ export function useMonthGrid(events: CalendarEvent[]) {
     const map = new Map<string, CalendarEvent[]>();
     for (const evt of events) {
       if (!evt.event_date) continue;
-      const d = new Date(evt.event_date);
-      if (Number.isNaN(d.getTime())) continue;
-      // The day the event falls on in the reader's zone.
-      const key = calendarDayKey(zonedCalendarDate(d));
+      // The day the event falls on in the reader's zone (an all-day
+      // item's own day).
+      const day = eventDayKey(evt);
+      if (!day) continue;
+      const [y, m, d] = day.split("-").map(Number);
+      const key = calendarDayKey(new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1));
       const bucket = map.get(key);
       if (bucket) bucket.push(evt);
       else map.set(key, [evt]);

@@ -478,3 +478,49 @@ class TestTheGroupsDays:
         ics = render_calendar(days, locale="ru", time_zone=student.time_zone)
         assert "DTSTART;VALUE=DATE:20991005" in ics
         assert "DTSTART;VALUE=DATE:20991219" in ics
+
+    @pytest.mark.parametrize(
+        ("author_zone", "expected"),
+        [
+            # Picked as 00:30 on the 5th in Kyiv = 21:30Z on the 4th. A reader
+            # in Los Angeles is still on the 4th then — and must see the 5th.
+            ("Europe/Kyiv", date(2099, 10, 5)),
+            # The author never set a zone: UTC, the same day for everyone.
+            (None, date(2099, 10, 4)),
+        ],
+    )
+    def test_the_day_is_the_authors_not_the_readers(
+        self, db: Session, teacher: User, student: User, author_zone: str | None, expected: date
+    ) -> None:
+        from app.models.cohort import Cohort
+        from app.models.course import Course
+        from app.services.calendar_service import build_calendar_events
+
+        course_id = _course(db, student)
+        course = db.get(Course, course_id)
+        assert course is not None
+        author = teacher
+        author.time_zone = author_zone
+        cohort = Cohort(
+            id=uuid.uuid4(),
+            start_date=datetime(2099, 10, 4, 21, 30, tzinfo=UTC),
+            end_date=datetime(2099, 12, 19, 7, 0, tzinfo=UTC),
+            status="upcoming",
+            organization_id=uuid.UUID(str(course.organization_id)),
+            created_by=author.id,
+        )
+        db.add(cohort)
+        db.flush()
+        enrollment = db.query(Enrollment).filter(Enrollment.course_id == course_id).one()
+        enrollment.cohort_id = cohort.id
+        student.time_zone = "America/Los_Angeles"
+        db.commit()
+
+        events = build_calendar_events(db, user=student, display_locale="en")
+        start = next(e for e in events if e.source == "cohort_start")
+        assert start.day == expected
+        ics = render_calendar([start], locale="en", time_zone=student.time_zone)
+        assert f"DTSTART;VALUE=DATE:{expected:%Y%m%d}" in ics
+        # Read in the subscriber's zone it would have been the 4th.
+        if expected.day == 5:
+            assert "DTSTART;VALUE=DATE:20991004" not in ics

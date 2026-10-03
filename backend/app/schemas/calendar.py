@@ -172,3 +172,8 @@ class CalendarEvent(BaseModel):
     #: A day, not a moment: a group's first and last day of study. The
     #: clients write "all day" instead of a time, and the feed a date.
     all_day: bool = False
+    #: The calendar day of an ``all_day`` item, fixed once on the server in
+    #: the zone it was chosen in. Every reader files it under this day: a
+    #: group that starts on the 5th in Kyiv starts on the 5th in Los
+    #: Angeles too, not on the 4th.
+    day: date | None = None

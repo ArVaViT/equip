@@ -49,9 +49,12 @@ _TAKES_TIME = frozenset({"live_session", "exam"})
 
 def _when(event: CalendarEvent, time_zone: str | None) -> list[str]:
     """DTSTART and its length. An all-day item (a group's first day) is a
-    date in the subscriber's zone, so a calendar shows it as a day, not as
-    an event at 00:00 or 03:00."""
+    date, so a calendar shows it as a day, not as an event at 00:00 or
+    03:00 — the day the server fixed for everyone, and only without one a
+    date in the subscriber's zone."""
     if event.all_day:
+        if event.day:
+            return [f"DTSTART;VALUE=DATE:{event.day.strftime('%Y%m%d')}", "DURATION:P1D"]
         from app.services.event_series import zone_or_utc
 
         when = event.event_date if event.event_date.tzinfo else event.event_date.replace(tzinfo=UTC)

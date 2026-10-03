@@ -614,6 +614,9 @@ export interface CalendarEvent {
   /** A day rather than a moment — a group's first or last day. Shown as
    *  "all day", never as 00:00. */
   all_day?: boolean
+  /** The `YYYY-MM-DD` of an all-day item, fixed on the server for every
+   *  reader. Filed under this day, never under the instant's day here. */
+  day?: string | null
   course_id: string
   course_title: string | null
   source: CalendarEventSource

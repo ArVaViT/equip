@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/patterns"
 import { EventCard } from "@/components/calendar/EventCard"
 import { formatDateLong } from "@/i18n/format"
 import { zonedDayKey } from "@/i18n/timeZone"
-import { isJoinableNow, isOver } from "@/lib/eventTime"
+import { eventDayKey, isJoinableNow, isOver } from "@/lib/eventTime"
 
 /** How far back "past classes" reaches: a term's worth of recordings. */
 const PAST_DAYS = 120
@@ -37,10 +37,19 @@ function groupByDay(events: CalendarEvent[], now: number, t: (k: string) => stri
   const yesterday = shiftDayKey(today, -1)
   const groups = new Map<string, DayGroup>()
   for (const evt of events) {
-    const key = zonedDayKey(new Date(evt.event_date))
+    const key = eventDayKey(evt)
+    if (!key) continue
     let group = groups.get(key)
     if (!group) {
-      const date = formatDateLong(evt.event_date, { year: undefined, weekday: "long", month: "long", day: "numeric" })
+      // The heading is the day itself, not the first event's instant: an
+      // all-day item may lead a day its instant is not on here.
+      const date = formatDateLong(`${key}T12:00:00Z`, {
+        year: undefined,
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        timeZone: "UTC",
+      })
       const label =
         key === today
           ? `${t("calendar.today")} · ${date}`
