@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { toast } from "@/lib/toast"
 import { calendarService } from "@/services/calendar"
+import { calendarPlatform } from "./calendarPlatform"
 
 /** `webcal://` opens the subscribe flow in Apple Calendar and Outlook. */
 function webcalOf(feedUrl: string): string {
@@ -36,6 +37,7 @@ export function CalendarSubscribe() {
   const [feedUrl, setFeedUrl] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [copied, setCopied] = useState(false)
+  const googleFirst = calendarPlatform(typeof navigator === "undefined" ? "" : navigator.userAgent) === "android"
 
   const create = async () => {
     setCreating(true)
@@ -57,6 +59,22 @@ export function CalendarSubscribe() {
     } catch {
       toast({ title: t("calendar.subscribe.copyFailed"), variant: "destructive" })
     }
+  }
+
+  const targets = (url: string) => {
+    const apple = (
+      <Button key="apple" asChild variant={googleFirst ? "outline" : "default"} className="flex-1">
+        <a href={webcalOf(url)}>{t("calendar.subscribe.apple")}</a>
+      </Button>
+    )
+    const google = (
+      <Button key="google" asChild variant={googleFirst ? "default" : "outline"} className="flex-1">
+        <a href={googleOf(url)} target="_blank" rel="noopener noreferrer">
+          {t("calendar.subscribe.google")}
+        </a>
+      </Button>
+    )
+    return googleFirst ? [google, apple] : [apple, google]
   }
 
   return (
@@ -82,16 +100,7 @@ export function CalendarSubscribe() {
 
           {feedUrl ? (
             <div className="space-y-3">
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button asChild className="flex-1">
-                  <a href={webcalOf(feedUrl)}>{t("calendar.subscribe.apple")}</a>
-                </Button>
-                <Button asChild variant="outline" className="flex-1">
-                  <a href={googleOf(feedUrl)} target="_blank" rel="noopener noreferrer">
-                    {t("calendar.subscribe.google")}
-                  </a>
-                </Button>
-              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">{targets(feedUrl)}</div>
               <Button variant="ghost" size="sm" onClick={() => void copy()}>
                 {copied ? (
                   <Check className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />

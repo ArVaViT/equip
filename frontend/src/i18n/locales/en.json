@@ -1676,7 +1676,7 @@
       "description": "Your courses’ sessions and deadlines appear in your calendar and stay up to date.",
       "replaces": "The link is personal. If you subscribed before, the old link stops working.",
       "create": "Create link",
-      "apple": "Apple and Outlook",
+      "apple": "iPhone Calendar, Outlook",
       "google": "Google Calendar",
       "copy": "Copy link",
       "copied": "Copied",
