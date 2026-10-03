@@ -47,6 +47,97 @@
       "removeConfirmAction": "Entfernen"
     }
   },
+  "organization": {
+    "eyebrow": "Organisation",
+    "verified": "Von Equip geprüft",
+    "edit": "Seite bearbeiten",
+    "notFound": "Diese Organisation gibt es nicht",
+    "loadError": "Die Seite der Organisation konnte nicht geladen werden",
+    "toCatalog": "Zu den Kursen",
+    "director_one": "Leitung",
+    "director_other": "Leitung",
+    "courses": "Kurse",
+    "noCourses": "Noch keine Kurse",
+    "lockedHint": "Kurse mit Schloss sind für Mitglieder der Organisation offen — den Zugang gibt ihre Leitung.",
+    "byInvitation": "Auf Einladung",
+    "inactive": "Diese Organisation bietet keine Kurse mehr auf Equip an. Ausgestellte Zertifikate bleiben gültig.",
+    "since": "Auf Equip seit {{date}}",
+    "verifyCertificate": "Zertifikat prüfen",
+    "stats": {
+      "courses_one": "Kurs",
+      "courses_other": "Kurse",
+      "lessons_one": "Lektion",
+      "lessons_other": "Lektionen",
+      "certificates_one": "Zertifikat ausgestellt",
+      "certificates_other": "Zertifikate ausgestellt",
+      "members_one": "Mitglied",
+      "members_other": "Mitglieder",
+      "teachers_one": "Lehrkraft",
+      "teachers_other": "Lehrkräfte"
+    },
+    "form": {
+      "description": "Über die Organisation",
+      "descriptionPlaceholder": "Wer Sie sind, wen Sie unterrichten und was — in zwei, drei Sätzen.",
+      "website": "Website",
+      "websiteHint": "Optional. Eine Adresse, die mit https:// beginnt",
+      "websiteBroken": "Die Adresse muss mit https:// beginnen",
+      "showMembers": "Anzahl der Mitglieder zeigen",
+      "showMembersHint": "Die Zahl erscheint ab zehn Mitgliedern.",
+      "save": "Speichern",
+      "saving": "Wird gespeichert…",
+      "saved": "Die Seite der Organisation ist aktualisiert",
+      "failed": "Speichern fehlgeschlagen",
+      "websitePlaceholder": "https://"
+    }
+  },
+  "adminOrgs": {
+    "loadError": "Organisationen konnten nicht geladen werden",
+    "empty": "Noch keine Organisationen",
+    "create": "Neue Organisation",
+    "created": "Organisation „{{name}}“ erstellt",
+    "createSave": "Erstellen",
+    "failed": "Speichern fehlgeschlagen",
+    "name": "Name",
+    "slug": "Seitenadresse",
+    "slugHint": "equipbible.com/o/{{slug}} — lateinische Buchstaben, Ziffern und Bindestriche; später nicht änderbar",
+    "country": "Land (Code, z. B. US)",
+    "members_one": "{{count}} Mitglied",
+    "members_other": "{{count}} Mitglieder",
+    "directors": "Leitung: {{list}}",
+    "noDirector": "Keine Leitung ernannt",
+    "status": "Status",
+    "statusSaved": "Status aktualisiert",
+    "statuses": {
+      "pending": "Antrag",
+      "approved": "Zugelassen",
+      "verified": "Geprüft",
+      "suspended": "Ausgesetzt"
+    },
+    "appointLabel": "Leitung ernennen (E-Mail eines registrierten Kontos)",
+    "appointPlaceholder": "director@example.com",
+    "appoint": "Ernennen",
+    "directorAppointed": "{{email}} zur Leitung ernannt"
+  },
+  "organizations": {
+    "eyebrow": "Auf Equip",
+    "title": "Organisationen auf Equip",
+    "lead": "Bibelschulen, Gemeinden und Dienste, die hier unterrichten. Jede ist von Equip geprüft, hat eine Leitung und eigene Kurse.",
+    "empty": "Noch leer",
+    "joinTitle": "Ihre Organisation ist noch nicht auf Equip?",
+    "joinBody": "Organisationen kommen per Vereinbarung dazu: Schreiben Sie uns, wer Sie sind und wen Sie unterrichten — wir richten Ihre Seite, Ihre Kurse und einen Leitungsbereich ein.",
+    "landingTitle": "Hier unterrichten Organisationen",
+    "all": "Alle Organisationen"
+  },
+  "myOrganizations": {
+    "eyebrow": "Ihre Organisation · {{role}}",
+    "roles": {
+      "director": "Leitung",
+      "teacher": "Lehrkraft",
+      "student": "Mitglied"
+    },
+    "catalog": "Offener Katalog",
+    "title": "Meine Organisationen"
+  },
   "header": {
     "home": "Start",
     "courses": "Kurse",
@@ -3233,96 +3324,5 @@
   "theme": {
     "switchToLight": "Helles Design",
     "switchToDark": "Dunkles Design"
-  },
-  "organization": {
-    "eyebrow": "Organisation",
-    "verified": "Von Equip geprüft",
-    "edit": "Seite bearbeiten",
-    "notFound": "Diese Organisation gibt es nicht",
-    "loadError": "Die Seite der Organisation konnte nicht geladen werden",
-    "toCatalog": "Zu den Kursen",
-    "director_one": "Leitung",
-    "director_other": "Leitung",
-    "courses": "Kurse",
-    "noCourses": "Noch keine Kurse",
-    "lockedHint": "Kurse mit Schloss sind für Mitglieder der Organisation offen — den Zugang gibt ihre Leitung.",
-    "byInvitation": "Auf Einladung",
-    "inactive": "Diese Organisation bietet keine Kurse mehr auf Equip an. Ausgestellte Zertifikate bleiben gültig.",
-    "since": "Auf Equip seit {{date}}",
-    "verifyCertificate": "Zertifikat prüfen",
-    "stats": {
-      "courses_one": "Kurs",
-      "courses_other": "Kurse",
-      "lessons_one": "Lektion",
-      "lessons_other": "Lektionen",
-      "certificates_one": "Zertifikat ausgestellt",
-      "certificates_other": "Zertifikate ausgestellt",
-      "members_one": "Mitglied",
-      "members_other": "Mitglieder",
-      "teachers_one": "Lehrkraft",
-      "teachers_other": "Lehrkräfte"
-    },
-    "form": {
-      "description": "Über die Organisation",
-      "descriptionPlaceholder": "Wer Sie sind, wen Sie unterrichten und was — in zwei, drei Sätzen.",
-      "website": "Website",
-      "websiteHint": "Optional. Eine Adresse, die mit https:// beginnt",
-      "websiteBroken": "Die Adresse muss mit https:// beginnen",
-      "showMembers": "Anzahl der Mitglieder zeigen",
-      "showMembersHint": "Die Zahl erscheint ab zehn Mitgliedern.",
-      "save": "Speichern",
-      "saving": "Wird gespeichert…",
-      "saved": "Die Seite der Organisation ist aktualisiert",
-      "failed": "Speichern fehlgeschlagen",
-      "websitePlaceholder": "https://"
-    }
-  },
-  "adminOrgs": {
-    "loadError": "Organisationen konnten nicht geladen werden",
-    "empty": "Noch keine Organisationen",
-    "create": "Neue Organisation",
-    "created": "Organisation „{{name}}“ erstellt",
-    "createSave": "Erstellen",
-    "failed": "Speichern fehlgeschlagen",
-    "name": "Name",
-    "slug": "Seitenadresse",
-    "slugHint": "equipbible.com/o/{{slug}} — lateinische Buchstaben, Ziffern und Bindestriche; später nicht änderbar",
-    "country": "Land (Code, z. B. US)",
-    "members_one": "{{count}} Mitglied",
-    "members_other": "{{count}} Mitglieder",
-    "directors": "Leitung: {{list}}",
-    "noDirector": "Keine Leitung ernannt",
-    "status": "Status",
-    "statusSaved": "Status aktualisiert",
-    "statuses": {
-      "pending": "Antrag",
-      "approved": "Zugelassen",
-      "verified": "Geprüft",
-      "suspended": "Ausgesetzt"
-    },
-    "appointLabel": "Leitung ernennen (E-Mail eines registrierten Kontos)",
-    "appointPlaceholder": "director@example.com",
-    "appoint": "Ernennen",
-    "directorAppointed": "{{email}} zur Leitung ernannt"
-  },
-  "organizations": {
-    "eyebrow": "Auf Equip",
-    "title": "Organisationen auf Equip",
-    "lead": "Bibelschulen, Gemeinden und Dienste, die hier unterrichten. Jede ist von Equip geprüft, hat eine Leitung und eigene Kurse.",
-    "empty": "Noch leer",
-    "joinTitle": "Ihre Organisation ist noch nicht auf Equip?",
-    "joinBody": "Organisationen kommen per Vereinbarung dazu: Schreiben Sie uns, wer Sie sind und wen Sie unterrichten — wir richten Ihre Seite, Ihre Kurse und einen Leitungsbereich ein.",
-    "landingTitle": "Hier unterrichten Organisationen",
-    "all": "Alle Organisationen"
-  },
-  "myOrganizations": {
-    "eyebrow": "Ihre Organisation · {{role}}",
-    "roles": {
-      "director": "Leitung",
-      "teacher": "Lehrkraft",
-      "student": "Mitglied"
-    },
-    "catalog": "Offener Katalog",
-    "title": "Meine Organisationen"
   }
 }

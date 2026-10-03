@@ -47,6 +47,97 @@
       "removeConfirmAction": "Remove"
     }
   },
+  "organization": {
+    "eyebrow": "Organization",
+    "verified": "Verified by Equip",
+    "edit": "Edit the page",
+    "notFound": "No such organization",
+    "loadError": "Could not load the organization's page",
+    "toCatalog": "To courses",
+    "director_one": "Director",
+    "director_other": "Directors",
+    "courses": "Courses",
+    "noCourses": "No courses yet",
+    "lockedHint": "Courses with a lock are open to the organization's members — its director grants access.",
+    "byInvitation": "By invitation",
+    "inactive": "This organization no longer runs courses on Equip. Certificates it issued remain valid.",
+    "since": "On Equip since {{date}}",
+    "verifyCertificate": "Verify a certificate",
+    "stats": {
+      "courses_one": "course",
+      "courses_other": "courses",
+      "lessons_one": "lesson",
+      "lessons_other": "lessons",
+      "certificates_one": "certificate issued",
+      "certificates_other": "certificates issued",
+      "members_one": "member",
+      "members_other": "members",
+      "teachers_one": "teacher",
+      "teachers_other": "teachers"
+    },
+    "form": {
+      "description": "About the organization",
+      "descriptionPlaceholder": "Who you are, whom you teach and what — in two or three sentences.",
+      "website": "Website",
+      "websiteHint": "Optional. An address starting with https://",
+      "websiteBroken": "The address must start with https://",
+      "showMembers": "Show the number of members",
+      "showMembersHint": "The number appears once there are at least ten members.",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "The organization's page is updated",
+      "failed": "Could not save",
+      "websitePlaceholder": "https://"
+    }
+  },
+  "adminOrgs": {
+    "loadError": "Could not load organizations",
+    "empty": "No organizations yet",
+    "create": "New organization",
+    "created": "Organization “{{name}}” created",
+    "createSave": "Create",
+    "failed": "Could not save",
+    "name": "Name",
+    "slug": "Page address",
+    "slugHint": "equipbible.com/o/{{slug}} — Latin letters, digits and hyphens; cannot be changed later",
+    "country": "Country (code, e.g. US)",
+    "members_one": "{{count}} member",
+    "members_other": "{{count}} members",
+    "directors": "Director: {{list}}",
+    "noDirector": "No director appointed",
+    "status": "Status",
+    "statusSaved": "Status updated",
+    "statuses": {
+      "pending": "Application",
+      "approved": "Admitted",
+      "verified": "Verified",
+      "suspended": "Suspended"
+    },
+    "appointLabel": "Appoint a director (email of a registered account)",
+    "appointPlaceholder": "director@example.com",
+    "appoint": "Appoint",
+    "directorAppointed": "{{email}} appointed director"
+  },
+  "organizations": {
+    "eyebrow": "On Equip",
+    "title": "Organizations on Equip",
+    "lead": "Bible schools, churches and ministries teaching here. Each one is verified by Equip, has a director and its own courses.",
+    "empty": "Nothing here yet",
+    "joinTitle": "Is your organization not on Equip yet?",
+    "joinBody": "Organizations join by agreement: write to us who you are and whom you teach, and we will open your page, your courses and a director's workspace.",
+    "landingTitle": "Organizations teach here",
+    "all": "All organizations"
+  },
+  "myOrganizations": {
+    "eyebrow": "Your organization · {{role}}",
+    "roles": {
+      "director": "director",
+      "teacher": "teacher",
+      "student": "member"
+    },
+    "catalog": "Open catalogue",
+    "title": "My organizations"
+  },
   "header": {
     "home": "Home",
     "courses": "Courses",
@@ -3233,96 +3324,5 @@
   "theme": {
     "switchToLight": "Light theme",
     "switchToDark": "Dark theme"
-  },
-  "organization": {
-    "eyebrow": "Organization",
-    "verified": "Verified by Equip",
-    "edit": "Edit the page",
-    "notFound": "No such organization",
-    "loadError": "Could not load the organization's page",
-    "toCatalog": "To courses",
-    "director_one": "Director",
-    "director_other": "Directors",
-    "courses": "Courses",
-    "noCourses": "No courses yet",
-    "lockedHint": "Courses with a lock are open to the organization's members — its director grants access.",
-    "byInvitation": "By invitation",
-    "inactive": "This organization no longer runs courses on Equip. Certificates it issued remain valid.",
-    "since": "On Equip since {{date}}",
-    "verifyCertificate": "Verify a certificate",
-    "stats": {
-      "courses_one": "course",
-      "courses_other": "courses",
-      "lessons_one": "lesson",
-      "lessons_other": "lessons",
-      "certificates_one": "certificate issued",
-      "certificates_other": "certificates issued",
-      "members_one": "member",
-      "members_other": "members",
-      "teachers_one": "teacher",
-      "teachers_other": "teachers"
-    },
-    "form": {
-      "description": "About the organization",
-      "descriptionPlaceholder": "Who you are, whom you teach and what — in two or three sentences.",
-      "website": "Website",
-      "websiteHint": "Optional. An address starting with https://",
-      "websiteBroken": "The address must start with https://",
-      "showMembers": "Show the number of members",
-      "showMembersHint": "The number appears once there are at least ten members.",
-      "save": "Save",
-      "saving": "Saving…",
-      "saved": "The organization's page is updated",
-      "failed": "Could not save",
-      "websitePlaceholder": "https://"
-    }
-  },
-  "adminOrgs": {
-    "loadError": "Could not load organizations",
-    "empty": "No organizations yet",
-    "create": "New organization",
-    "created": "Organization “{{name}}” created",
-    "createSave": "Create",
-    "failed": "Could not save",
-    "name": "Name",
-    "slug": "Page address",
-    "slugHint": "equipbible.com/o/{{slug}} — Latin letters, digits and hyphens; cannot be changed later",
-    "country": "Country (code, e.g. US)",
-    "members_one": "{{count}} member",
-    "members_other": "{{count}} members",
-    "directors": "Director: {{list}}",
-    "noDirector": "No director appointed",
-    "status": "Status",
-    "statusSaved": "Status updated",
-    "statuses": {
-      "pending": "Application",
-      "approved": "Admitted",
-      "verified": "Verified",
-      "suspended": "Suspended"
-    },
-    "appointLabel": "Appoint a director (email of a registered account)",
-    "appointPlaceholder": "director@example.com",
-    "appoint": "Appoint",
-    "directorAppointed": "{{email}} appointed director"
-  },
-  "organizations": {
-    "eyebrow": "On Equip",
-    "title": "Organizations on Equip",
-    "lead": "Bible schools, churches and ministries teaching here. Each one is verified by Equip, has a director and its own courses.",
-    "empty": "Nothing here yet",
-    "joinTitle": "Is your organization not on Equip yet?",
-    "joinBody": "Organizations join by agreement: write to us who you are and whom you teach, and we will open your page, your courses and a director's workspace.",
-    "landingTitle": "Organizations teach here",
-    "all": "All organizations"
-  },
-  "myOrganizations": {
-    "eyebrow": "Your organization · {{role}}",
-    "roles": {
-      "director": "director",
-      "teacher": "teacher",
-      "student": "member"
-    },
-    "catalog": "Open catalogue",
-    "title": "My organizations"
   }
 }
