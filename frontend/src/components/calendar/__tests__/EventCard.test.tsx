@@ -94,4 +94,19 @@ describe("EventCard — the title line", () => {
       expect(join.className).toContain("bg-brand ")
     })
   })
+
+  describe("a deadline leads to the work", () => {
+    const deadline = (extra: Partial<CalendarEvent>) =>
+      session({ id: "d1", title: "Эссе", event_type: "deadline", event_date: "2026-10-05T03:59:00Z", duration_minutes: null, source: "assignment_deadline", ...extra })
+
+    it("opens the lesson that holds the assignment", () => {
+      render(<EventCard event={deadline({ chapter_id: "ch-7", assignment_id: "a-1" })} now={NOW} />, { wrapper: Wrapper })
+      expect(screen.getByRole("link", { name: /Открыть задание/ })).toHaveAttribute("href", "/courses/c1/chapters/ch-7")
+    })
+
+    it("offers nothing to open when the server named no lesson", () => {
+      render(<EventCard event={deadline({})} now={NOW} />, { wrapper: Wrapper })
+      expect(screen.queryByRole("link", { name: /Открыть задание/ })).toBeNull()
+    })
+  })
 })

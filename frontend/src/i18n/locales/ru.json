@@ -1376,7 +1376,8 @@
       "addRecording": "Добавить запись",
       "addRecordingTitle": "Запись занятия «{{title}}»",
       "addRecordingSave": "Сохранить",
-      "recordingAdded": "Запись добавлена — студенты получат уведомление"
+      "recordingAdded": "Запись добавлена — студенты получат уведомление",
+      "openAssignment": "Открыть задание"
     },
     "yesterday": "Вчера",
     "newEvent": {
@@ -1537,6 +1538,7 @@
       "events": {
         "title": "События курса",
         "editEvent": "Редактировать событие",
+        "editNamed": "Изменить: {{title}} · {{date}}",
         "createEvent": "Создать событие",
         "titlePlaceholder": "Название события",
         "descriptionPlaceholder": "Описание (необязательно)",

@@ -173,6 +173,11 @@ class CalendarEvent(BaseModel):
     #: This lesson's place in its series, 1-based, and the series' length.
     series_index: int | None = None
     series_count: int | None = None
+    #: Where a deadline leads. A module's due date opens its first
+    #: lesson; an assignment's opens the lesson that holds it. A date on
+    #: a calendar with no way to the work it names was a dead end.
+    chapter_id: str | None = None
+    assignment_id: str | None = None
     course_id: str
     course_title: str | None = None
     source: Literal["module_deadline", "assignment_deadline", "course_event", "cohort_start", "cohort_end"]

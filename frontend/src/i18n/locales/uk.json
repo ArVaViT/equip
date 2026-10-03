@@ -1808,7 +1808,8 @@
       "addRecording": "Додати запис",
       "addRecordingTitle": "Запис заняття «{{title}}»",
       "addRecordingSave": "Зберегти",
-      "recordingAdded": "Запис додано — студенти отримають сповіщення"
+      "recordingAdded": "Запис додано — студенти отримають сповіщення",
+      "openAssignment": "Відкрити завдання"
     },
     "yesterday": "Учора",
     "newEvent": {
@@ -1969,6 +1970,7 @@
       "events": {
         "title": "Події курсу",
         "editEvent": "Редагувати подію",
+        "editNamed": "Змінити: {{title}} · {{date}}",
         "createEvent": "Створити подію",
         "titlePlaceholder": "Назва події",
         "descriptionPlaceholder": "Опис (необов’язково)",

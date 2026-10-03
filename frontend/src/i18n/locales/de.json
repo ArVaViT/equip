@@ -1738,7 +1738,8 @@
       "addRecording": "Aufzeichnung hinzufügen",
       "addRecordingTitle": "Aufzeichnung von „{{title}}“",
       "addRecordingSave": "Speichern",
-      "recordingAdded": "Aufzeichnung hinzugefügt — die Teilnehmenden werden benachrichtigt"
+      "recordingAdded": "Aufzeichnung hinzugefügt — die Teilnehmenden werden benachrichtigt",
+      "openAssignment": "Aufgabe öffnen"
     },
     "yesterday": "Gestern",
     "newEvent": {
@@ -1891,6 +1892,7 @@
       "events": {
         "title": "Kurstermine",
         "editEvent": "Termin bearbeiten",
+        "editNamed": "Bearbeiten: {{title}} · {{date}}",
         "createEvent": "Termin erstellen",
         "titlePlaceholder": "Titel des Termins",
         "descriptionPlaceholder": "Beschreibung (optional)",

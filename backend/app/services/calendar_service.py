@@ -180,6 +180,22 @@ def build_calendar_events(
     # «Модуль 3. Толкование Писания — Due» for every module deadline.
     # The reader's locale is what a calendar entry is for.
     populate_module_texts(db, modules, source_locale=display_locale)
+    # A module's deadline opens its first lesson the reader may see — the
+    # card's «open the work» link. First by order, skipping what is deleted
+    # or still waiting for its first release.
+    first_chapter_of_module: dict[str, str] = {}
+    if modules:
+        for ch_id, mod_id in (
+            db.query(Chapter.id, Chapter.module_id)
+            .filter(
+                Chapter.module_id.in_([m.id for m in modules]),
+                Chapter.deleted_at.is_(None),
+                ~chapter_awaits_first_release(),
+            )
+            .order_by(Chapter.module_id, Chapter.order_index, Chapter.id)
+            .all()
+        ):
+            first_chapter_of_module.setdefault(str(mod_id), str(ch_id))
     for m in modules:
         assert m.due_date is not None
         events.append(
@@ -193,6 +209,7 @@ def build_calendar_events(
                 description=m.description,
                 event_type="deadline",
                 event_date=m.due_date,
+                chapter_id=first_chapter_of_module.get(str(m.id)),
                 course_id=m.course_id,
                 course_title=course_titles.get(m.course_id),
                 source="module_deadline",
@@ -276,6 +293,8 @@ def build_calendar_events(
                     description=asg_description,
                     event_type="deadline",
                     event_date=a.due_date,
+                    chapter_id=str(a.chapter_id),
+                    assignment_id=aid,
                     course_id=crs_id,
                     course_title=course_titles.get(crs_id),
                     source="assignment_deadline",

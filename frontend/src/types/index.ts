@@ -615,6 +615,10 @@ export interface CalendarEvent {
    *  from the server — the client may not hold the whole series. */
   series_index?: number | null
   series_count?: number | null
+  /** Where a deadline leads: the lesson to open (a module's first, or the
+   *  one holding the assignment), and the assignment itself when it is one. */
+  chapter_id?: string | null
+  assignment_id?: string | null
   /** A day rather than a moment — a group's first or last day. Shown as
    *  "all day", never as 00:00. */
   all_day?: boolean

@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { BookOpen, Repeat, Upload } from "lucide-react"
+import { ArrowUpRight, BookOpen, Repeat, Upload } from "lucide-react"
 
 import type { CalendarEvent } from "@/types"
 import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { cn } from "@/lib/utils"
 import { isJoinableNow, isOver, minutesUntil } from "@/lib/eventTime"
 import { getEventColor } from "@/pages/Calendar/constants"
@@ -136,6 +137,18 @@ export function EventCard({
               before it, the thing to do is «В календарь», which is the
               bordered one, and the meeting address is a line of text. */}
           <div className="mt-2 flex flex-wrap items-center gap-2 empty:hidden">
+            {/* A deadline used to be a dead end: a date with no way to the
+                work it names. The lesson is one press away — late work is
+                still accepted, so the way stays open after the date too. */}
+            {event.event_type === "deadline" && event.chapter_id && (
+              <Link
+                to={`/courses/${event.course_id}/chapters/${event.chapter_id}`}
+                className={cn(buttonVariants({ size: "sm" }), "h-7 text-xs")}
+              >
+                {t("calendar.card.openAssignment")}
+                <ArrowUpRight className="ml-1 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+              </Link>
+            )}
             {/* A group's day is in the subscription; a file of "all day
                 group starts" is not worth a button on the card. */}
             {!over && !event.all_day && (
