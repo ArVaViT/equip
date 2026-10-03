@@ -26,13 +26,25 @@ function Wrapper({ children }: { children: ReactNode }) {
   )
 }
 
-function makeEvent(overrides: Partial<{ id: string; title: string; event_date: string; course_title: string | null }> = {}) {
+function makeEvent(
+  overrides: Partial<{
+    id: string
+    title: string
+    event_date: string
+    course_title: string | null
+    event_type: string
+    duration_minutes: number
+    recording_url: string
+  }> = {},
+) {
   return {
     id: overrides.id ?? "e-1",
     title: overrides.title ?? "Assignment due",
     description: null,
-    event_type: "assignment" as const,
+    event_type: (overrides.event_type ?? "assignment") as never,
     event_date: overrides.event_date ?? new Date().toISOString(),
+    duration_minutes: overrides.duration_minutes,
+    recording_url: overrides.recording_url,
     course_id: "c-1",
     course_title: overrides.course_title ?? "Acts of the Apostles",
     source: "assignment" as const,
@@ -147,5 +159,63 @@ describe("TodayCard", () => {
     useAuthMock.mockReturnValue({ user: null })
     render(<TodayCard />, { wrapper: Wrapper })
     expect(getCalendarEventsMock).not.toHaveBeenCalled()
+  })
+
+  describe("a class that has already ended", () => {
+    // The Home card showed the day's class long after it had ended with
+    // nothing to tell it from one still ahead — not even that it was over.
+    const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString()
+    const inDays = (n: number) => {
+      const d = new Date()
+      d.setDate(d.getDate() + n)
+      return d.toISOString()
+    }
+
+    it("is marked over, and offers its recording", async () => {
+      useAuthMock.mockReturnValue({ user: { id: "u-1" } })
+      getCalendarEventsMock.mockResolvedValueOnce([
+        makeEvent({
+          title: "Урок 3",
+          event_type: "live_session",
+          event_date: hoursAgo(3),
+          duration_minutes: 60,
+          recording_url: "https://youtu.be/abc",
+        }),
+      ])
+      render(<TodayCard />, { wrapper: Wrapper })
+      await waitFor(() => expect(screen.getByText("Урок 3")).toBeInTheDocument())
+      expect(screen.getByText(/^over$|^прошло$/i)).toBeInTheDocument()
+      expect(screen.getByRole("link", { name: /Урок 3/ })).toHaveAttribute("href", "https://youtu.be/abc")
+    })
+
+    it("lists what comes next beneath, once everything today is over", async () => {
+      useAuthMock.mockReturnValue({ user: { id: "u-1" } })
+      getCalendarEventsMock.mockResolvedValueOnce([
+        makeEvent({ id: "done", title: "Урок 3", event_type: "live_session", event_date: hoursAgo(3), duration_minutes: 60 }),
+        makeEvent({ id: "next", title: "Урок 4", event_type: "live_session", event_date: inDays(7), duration_minutes: 60 }),
+      ])
+      render(<TodayCard />, { wrapper: Wrapper })
+      await waitFor(() => expect(screen.getByText("Урок 4")).toBeInTheDocument())
+      const lists = screen.getAllByRole("list")
+      expect(lists).toHaveLength(2)
+      expect(lists[0]).toHaveTextContent("Урок 3")
+      expect(lists[1]).toHaveTextContent("Урок 4")
+    })
+
+    it("keeps the day to itself while a class is still ahead", async () => {
+      useAuthMock.mockReturnValue({ user: { id: "u-1" } })
+      const soon = new Date(Date.now() + 2 * 3_600_000)
+      // Only when "soon" is still today; near midnight the case does not exist.
+      if (soon.getDate() !== new Date().getDate()) return
+      getCalendarEventsMock.mockResolvedValueOnce([
+        makeEvent({ id: "done", title: "Урок 3", event_type: "live_session", event_date: hoursAgo(3), duration_minutes: 60 }),
+        makeEvent({ id: "later", title: "Урок 3б", event_type: "live_session", event_date: soon.toISOString(), duration_minutes: 60 }),
+        makeEvent({ id: "next", title: "Урок 4", event_type: "live_session", event_date: inDays(7), duration_minutes: 60 }),
+      ])
+      render(<TodayCard />, { wrapper: Wrapper })
+      await waitFor(() => expect(screen.getByText("Урок 3б")).toBeInTheDocument())
+      expect(screen.queryByText("Урок 4")).toBeNull()
+      expect(screen.getAllByRole("list")).toHaveLength(1)
+    })
   })
 })
