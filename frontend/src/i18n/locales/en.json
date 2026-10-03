@@ -855,7 +855,9 @@
     "lessonsLabel_other": "{{count}} lessons",
     "inProgress": "In progress",
     "completed": "Completed",
-    "progressLabel": "{{percent}}% complete"
+    "progressLabel": "{{percent}}% complete",
+    "forMembers": "For members of {{org}}",
+    "forMembersNoOrg": "For members"
   },
   "pageTitle": {
     "notes": "My notes",

@@ -22,6 +22,13 @@ interface CourseCardProps {
    * lookup — never fetched per-card.
    */
   progress?: number | null
+  /**
+   * The reader belongs to the organization whose closed course this is.
+   * To them the corner badge says whose the course is — «Для участников
+   * UCOAT» — not «По приглашению», which to a member reads as "not for
+   * you" on a course they can open (2026-10-03).
+   */
+  viewerIsMember?: boolean
 }
 
 function EnrollmentBadge({ start, end }: { start?: string | null; end?: string | null }) {
@@ -49,7 +56,7 @@ function EnrollmentBadge({ start, end }: { start?: string | null; end?: string |
   )
 }
 
-function CourseCard({ course, style, progress }: CourseCardProps) {
+function CourseCard({ course, style, progress, viewerIsMember = false }: CourseCardProps) {
   const { t } = useTranslation()
   const [imgError, setImgError] = useState(false)
   const coverSrc = toProxyImage(course.image_url)
@@ -68,7 +75,11 @@ function CourseCard({ course, style, progress }: CourseCardProps) {
       <div className="relative">
         {course.access_mode === "institute" ? (
           <Badge variant="muted" className="absolute right-3 top-3 z-10">
-            {t("courseCard.byInvitation")}
+            {!viewerIsMember
+              ? t("courseCard.byInvitation")
+              : course.organization_name
+                ? t("courseCard.forMembers", { org: course.organization_name })
+                : t("courseCard.forMembersNoOrg")}
           </Badge>
         ) : (
           <EnrollmentBadge start={course.enrollment_start} end={course.enrollment_end} />

@@ -36,7 +36,7 @@ export function MyOrganizationsCourses({ userId, progress }: { userId: string; p
           </h2>
           <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3">
             {block.closed.map((course) => (
-              <CourseCard key={course.id} course={course} progress={progress.get(course.id)} />
+              <CourseCard key={course.id} course={course} progress={progress.get(course.id)} viewerIsMember />
             ))}
           </div>
         </section>

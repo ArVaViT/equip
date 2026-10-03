@@ -893,7 +893,9 @@
     "lessonsLabel_other": "{{count}} уроку",
     "inProgress": "У процесі",
     "completed": "Завершено",
-    "progressLabel": "{{percent}}% завершено"
+    "progressLabel": "{{percent}}% завершено",
+    "forMembers": "Для учасників {{org}}",
+    "forMembersNoOrg": "Для учасників"
   },
   "pageTitle": {
     "notes": "Мої нотатки",

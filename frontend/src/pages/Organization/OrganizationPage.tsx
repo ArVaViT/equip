@@ -162,7 +162,7 @@ export default function OrganizationPage() {
           ) : (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3">
               {data.courses.map((course) => (
-                <CourseCard key={course.id} course={course} />
+                <CourseCard key={course.id} course={course} viewerIsMember={data.viewer_is_member} />
               ))}
               {data.locked_courses.map((course) => (
                 <LockedCourseCard key={course.id} course={course} page={data} />

@@ -462,7 +462,9 @@
     "lessonsLabel_other": "{{count}} урока",
     "inProgress": "В процессе",
     "completed": "Завершён",
-    "progressLabel": "Пройдено {{percent}}%"
+    "progressLabel": "Пройдено {{percent}}%",
+    "forMembers": "Для участников {{org}}",
+    "forMembersNoOrg": "Для участников"
   },
   "pageTitle": {
     "notes": "Мои заметки",
