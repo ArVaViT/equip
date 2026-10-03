@@ -78,6 +78,11 @@ class OrganizationResponse(BaseModel):
     #: and who runs it are the two questions the admin panel asks first.
     member_count: int = 0
     director_emails: list[str] = []
+    #: Published, not binned. With the status and the directors, this is
+    #: what decides whether the organization is on the public showcase
+    #: (``GET /organizations``), and the panel says so instead of leaving
+    #: staff to work out why a verified school is not listed.
+    published_courses: int = 0
 
 
 class OrganizationPerson(BaseModel):

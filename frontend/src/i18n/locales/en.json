@@ -122,10 +122,23 @@
       "verified": "Verified",
       "suspended": "Suspended"
     },
-    "appointLabel": "Appoint a director (email of a registered account)",
+    "appointLabel": "Add a director — email of a registered account",
     "appointPlaceholder": "director@example.com",
-    "appoint": "Appoint",
-    "directorAppointed": "{{email}} appointed director"
+    "appoint": "Add",
+    "directorAppointed": "Director added: {{email}}",
+    "statusHelp": "Application and Admitted — the page is seen only by members and platform staff · Verified — visible to everyone · Suspended — the page stays, courses are hidden, certificates remain valid",
+    "suspendConfirm": {
+      "title": "Suspend the organization?",
+      "body": "The page of {{name}} stays up, its courses are hidden, and the certificates it issued remain valid. The status can be changed back.",
+      "confirm": "Suspend"
+    },
+    "listed": {
+      "yes": "On the organizations list: yes",
+      "no": "On the organizations list: no — {{reasons}}",
+      "notVerified": "not verified",
+      "noDirector": "no director",
+      "noCourses": "no published courses"
+    }
   },
   "organizations": {
     "eyebrow": "On Equip",

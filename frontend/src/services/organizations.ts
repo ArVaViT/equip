@@ -70,6 +70,8 @@ export interface AdminOrganization {
   created_at: string
   member_count: number
   director_emails: string[]
+  /** Published and not binned — what the showcase counts. */
+  published_courses: number
 }
 
 /** `GET /organizations` — one card on the showcase. */

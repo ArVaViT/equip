@@ -19,6 +19,7 @@ Two rules are load-bearing enough to be tested rather than commented:
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -29,6 +30,7 @@ from app.core.database import get_db
 from app.main import app
 from app.models.organization import Organization, OrganizationMember
 from app.models.user import User, UserRole
+from tests._cv_helpers import make_course_with_text
 from tests.conftest import TEST_ORGANIZATION_ID
 
 if TYPE_CHECKING:
@@ -91,6 +93,23 @@ class TestAdmission:
         assert created["member_count"] == 0
         assert created["director_emails"] == []
         assert db.query(Organization).filter(Organization.slug == "second-school").first() is not None
+
+    def test_the_row_counts_the_courses_the_showcase_would_count(self, staff_client: TestClient, db: Session):
+        # Published and not binned — the same filter as ``GET /organizations``,
+        # so the panel can say why a verified school is not on the showcase.
+        created = _create(staff_client, slug="counted", public_name="Counted School")
+        organization_id = uuid.UUID(created["id"])
+        for status in ("published", "published", "draft"):
+            course = make_course_with_text(db, title="A course", status=status)
+            course.organization_id = organization_id
+        binned = make_course_with_text(db, title="Binned", status="published")
+        binned.organization_id = organization_id
+        binned.deleted_at = datetime.now(UTC)
+        db.commit()
+
+        rows = staff_client.get("/api/v1/admin/organizations").json()
+        row = next(r for r in rows if r["id"] == created["id"])
+        assert row["published_courses"] == 2
 
     def test_a_duplicate_slug_is_a_conflict_not_a_crash(self, staff_client: TestClient):
         _create(staff_client, slug="taken", public_name="First Name")

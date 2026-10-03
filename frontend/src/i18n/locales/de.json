@@ -122,10 +122,23 @@
       "verified": "Geprüft",
       "suspended": "Ausgesetzt"
     },
-    "appointLabel": "Leitung ernennen (E-Mail eines registrierten Kontos)",
+    "appointLabel": "Leitung hinzufügen — E-Mail eines registrierten Kontos",
     "appointPlaceholder": "director@example.com",
-    "appoint": "Ernennen",
-    "directorAppointed": "{{email}} zur Leitung ernannt"
+    "appoint": "Hinzufügen",
+    "directorAppointed": "Leitung hinzugefügt: {{email}}",
+    "statusHelp": "Antrag und Zugelassen — die Seite sehen nur Mitglieder und das Plattform-Team · Geprüft — für alle sichtbar · Ausgesetzt — die Seite bleibt, Kurse sind verborgen, Zertifikate bleiben gültig",
+    "suspendConfirm": {
+      "title": "Organisation aussetzen?",
+      "body": "Die Seite von {{name}} bleibt bestehen, ihre Kurse werden verborgen, ausgestellte Zertifikate bleiben gültig. Der Status lässt sich zurücksetzen.",
+      "confirm": "Aussetzen"
+    },
+    "listed": {
+      "yes": "In der Organisationsliste: ja",
+      "no": "In der Organisationsliste: nein — {{reasons}}",
+      "notVerified": "nicht geprüft",
+      "noDirector": "keine Leitung",
+      "noCourses": "keine veröffentlichten Kurse"
+    }
   },
   "organizations": {
     "eyebrow": "Auf Equip",

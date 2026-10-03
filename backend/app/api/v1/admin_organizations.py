@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import require_admin
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.models.course import Course, CourseStatus
 from app.models.organization import MembershipRole, MembershipSource, MembershipStatus, Organization, OrganizationMember
 from app.models.user import User, UserRole
 from app.schemas.organization import (
@@ -53,7 +54,7 @@ def _get_or_404(db: Session, organization_id: uuid.UUID) -> Organization:
 
 
 def _serialize_many(db: Session, organizations: list[Organization]) -> list[OrganizationResponse]:
-    """Two grouped queries for the whole page rather than two per row."""
+    """Three grouped queries for the whole page rather than three per row."""
     if not organizations:
         return []
     ids = [o.id for o in organizations]
@@ -87,6 +88,18 @@ def _serialize_many(db: Session, organizations: list[Organization]) -> list[Orga
         .all()
     ):
         directors.setdefault(org_id, []).append(email)
+    # The same count the showcase filters on (``organizations.list_organizations``).
+    published: dict[uuid.UUID, int] = {
+        org_id: count
+        for org_id, count in db.query(Course.organization_id, func.count(Course.id))
+        .filter(
+            Course.organization_id.in_(ids),
+            Course.status == CourseStatus.PUBLISHED,
+            Course.deleted_at.is_(None),
+        )
+        .group_by(Course.organization_id)
+        .all()
+    }
 
     return [
         OrganizationResponse.model_validate(
@@ -102,6 +115,7 @@ def _serialize_many(db: Session, organizations: list[Organization]) -> list[Orga
                 "created_at": o.created_at,
                 "member_count": counts.get(o.id, 0),
                 "director_emails": directors.get(o.id, []),
+                "published_courses": published.get(o.id, 0),
             }
         )
         for o in organizations

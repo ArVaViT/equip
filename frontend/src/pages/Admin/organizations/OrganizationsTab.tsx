@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Building2, ExternalLink, Plus, UserPlus } from "lucide-react"
 
+import { useConfirm } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,6 +24,7 @@ const STATUSES: readonly OrganizationStatus[] = ["pending", "approved", "verifie
  */
 export function OrganizationsTab() {
   const { t } = useTranslation()
+  const helpId = useId()
   const [version, setVersion] = useState(0)
   const { data, loading, error } = useAsyncData(() => organizationsService.adminList(), [version])
   const reload = () => setVersion((v) => v + 1)
@@ -36,13 +38,39 @@ export function OrganizationsTab() {
       {data.length === 0 ? (
         <EmptyState icon={<Building2 strokeWidth={1.75} aria-hidden />} title={t("adminOrgs.empty")} />
       ) : (
-        <ul className="space-y-3">
-          {data.map((org) => (
-            <OrganizationRow key={org.id} org={org} onChanged={reload} />
-          ))}
-        </ul>
+        <>
+          {/* What each status does, said once for every row's select: the
+              select saved on change with no word about what changed. */}
+          <p id={helpId} className="text-xs text-ink-muted">
+            {t("adminOrgs.statusHelp")}
+          </p>
+          <ul className="space-y-3">
+            {data.map((org) => (
+              <OrganizationRow key={org.id} org={org} statusHelpId={helpId} onChanged={reload} />
+            ))}
+          </ul>
+        </>
       )}
     </div>
+  )
+}
+
+/**
+ * Whether the organization is on the public showcase, and if not, why.
+ * The same three conditions ``GET /organizations`` filters on: verified,
+ * somebody directing it, something published.
+ */
+function ListedLine({ org }: { org: AdminOrganization }) {
+  const { t } = useTranslation()
+  const reasons = [
+    org.status !== "verified" ? t("adminOrgs.listed.notVerified") : null,
+    org.director_emails.length === 0 ? t("adminOrgs.listed.noDirector") : null,
+    org.published_courses === 0 ? t("adminOrgs.listed.noCourses") : null,
+  ].filter((x): x is string => x !== null)
+  return (
+    <p className="mt-2 text-xs text-ink-muted">
+      {reasons.length === 0 ? t("adminOrgs.listed.yes") : t("adminOrgs.listed.no", { reasons: reasons.join(", ") })}
+    </p>
   )
 }
 
@@ -130,8 +158,17 @@ function CreateOrganization({ onCreated }: { onCreated: () => void }) {
   )
 }
 
-function OrganizationRow({ org, onChanged }: { org: AdminOrganization; onChanged: () => void }) {
+function OrganizationRow({
+  org,
+  statusHelpId,
+  onChanged,
+}: {
+  org: AdminOrganization
+  statusHelpId: string
+  onChanged: () => void
+}) {
   const { t } = useTranslation()
+  const confirm = useConfirm()
   const ids = useId()
   const [email, setEmail] = useState("")
   const [busy, setBusy] = useState(false)
@@ -147,6 +184,22 @@ function OrganizationRow({ org, onChanged }: { org: AdminOrganization; onChanged
     } finally {
       setBusy(false)
     }
+  }
+
+  // Suspending hides every course of a school from everyone at once; the one
+  // status change that is asked about before it is saved.
+  const changeStatus = async (next: OrganizationStatus) => {
+    if (next === org.status) return
+    if (next === "suspended") {
+      const ok = await confirm({
+        title: t("adminOrgs.suspendConfirm.title"),
+        description: t("adminOrgs.suspendConfirm.body", { name: org.public_name }),
+        confirmLabel: t("adminOrgs.suspendConfirm.confirm"),
+        tone: "destructive",
+      })
+      if (!ok) return
+    }
+    await run(() => organizationsService.adminUpdate(org.id, { status: next }), t("adminOrgs.statusSaved"))
   }
 
   return (
@@ -169,17 +222,8 @@ function OrganizationRow({ org, onChanged }: { org: AdminOrganization; onChanged
         </div>
         <div className="w-44">
           <Label htmlFor={`${ids}-status`} className="sr-only">{t("adminOrgs.status")}</Label>
-          <Select
-            value={org.status}
-            onValueChange={(v) =>
-              void run(
-                () => organizationsService.adminUpdate(org.id, { status: v as OrganizationStatus }),
-                t("adminOrgs.statusSaved"),
-              )
-            }
-            disabled={busy}
-          >
-            <SelectTrigger id={`${ids}-status`} size="sm">
+          <Select value={org.status} onValueChange={(v) => void changeStatus(v as OrganizationStatus)} disabled={busy}>
+            <SelectTrigger id={`${ids}-status`} size="sm" aria-describedby={statusHelpId}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -192,6 +236,7 @@ function OrganizationRow({ org, onChanged }: { org: AdminOrganization; onChanged
           </Select>
         </div>
       </div>
+      <ListedLine org={org} />
       <form
         className="mt-3 flex flex-wrap items-end gap-2"
         onSubmit={(e) => {
