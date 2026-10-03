@@ -21,6 +21,7 @@ from app.api.dependencies import (
     require_director,
     require_teacher,
     verify_chapter_owner,
+    verify_course_in_own_school,
     verify_course_owner,
 )
 from app.core.database import get_db
@@ -414,8 +415,11 @@ def get_grade_sheet(
 
     ``cohort_id`` omitted means «без потока» — the bucket for students with no
     cohort, not "all of them" (D11).
+
+    The teacher reads their own course's sheet; the director reads any in
+    their school, because the director is who closes and signs it (2026-10-03).
     """
-    verify_course_owner(db, course_id, teacher)
+    verify_course_in_own_school(db, course_id, teacher)
     sheet = active_sheet(db, course_id, cohort_id)
     return _sheet_response(db, sheet) if sheet else None
 
@@ -430,12 +434,15 @@ def close_grade_sheet(
     """«Закрыть ведомость» — freeze every student's official result (D11).
 
     A director's action, like the scheme itself: closing a ведомость is what
-    turns a live report into a document someone signs.
+    turns a live report into a document someone signs. Any course of their
+    own school, then — not only the ones they teach. Until 2026-10-03 this
+    asked for course ownership and refused the director on every course a
+    teacher of their school taught.
 
     Re-closing supersedes the previous sheet rather than overwriting it, so the
     history of what was signed survives a correction.
     """
-    course = verify_course_owner(db, course_id, director)
+    course = verify_course_in_own_school(db, course_id, director)
     sheet = finalize_sheet(db, course, cohort_id, director.id)
     db.commit()
 
@@ -470,7 +477,7 @@ def reopen_grade_sheet(
             message="No such open ведомость",
             context={"resource_type": "grade_sheet", "resource_id": str(sheet_id)},
         )
-    verify_course_owner(db, sheet.course_id, director)
+    verify_course_in_own_school(db, sheet.course_id, director)
 
     try:
         reopen_sheet(db, sheet, director.id, data.reason)
@@ -501,8 +508,12 @@ def get_grading_scheme(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    """The course's scheme, pass line, and the bands they are read against."""
-    course = verify_course_owner(db, course_id, teacher)
+    """The course's scheme, pass line, and the bands they are read against.
+
+    Open to the course's teacher and to a director of its school — the read is
+    the form the director changes it from (2026-10-03).
+    """
+    course = verify_course_in_own_school(db, course_id, teacher)
     settings = get_org_settings(db, course.organization_id)
     scheme = course.grading_scheme or settings.default_grading_scheme
     return GradingSchemeResponse(
@@ -541,8 +552,12 @@ def update_grading_scheme(
        the course means; that is not a settings tweak, it is an academic
        decision someone should be able to point at later.
     4. **Quizzes that drift off the new pass line are recorded** — see below.
+
+    Scoped to the director's own school, not to the courses they teach: a
+    director who only ever taught nothing would otherwise be refused on every
+    course this decision is about (2026-10-03).
     """
-    course = verify_course_owner(db, course_id, director)
+    course = verify_course_in_own_school(db, course_id, director)
 
     invalid = validate_scheme_threshold(data.grading_scheme, data.pass_threshold)
     if invalid:
@@ -682,7 +697,9 @@ def get_grade_summary(
     # No local try/except: a database error reaches the global handler in
     # main.py, which answers 503 with structured logging — this route used to
     # answer the same failure with 500 VALIDATION_FAILED.
-    course = verify_course_owner(db, course_id, teacher)
+    # Read-only, so the school's director may look too: the ведомость they
+    # sign is reached from here, and its «Back» landed on a 403 (2026-10-03).
+    course = verify_course_in_own_school(db, course_id, teacher)
     results = calculate_all_student_grades(db, course)
 
     students = [StudentCalculatedGrade(**r) for r in results]
@@ -719,7 +736,9 @@ def export_grades_csv(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    course = verify_course_owner(db, course_id, teacher)
+    # Read-only, so the school's director may look too: the ведомость they
+    # sign is reached from here, and its «Back» landed on a 403 (2026-10-03).
+    course = verify_course_in_own_school(db, course_id, teacher)
     results = calculate_all_student_grades(db, course)
 
     # Course progress, straight from the enrolment. On a completion-only course
@@ -1197,7 +1216,9 @@ def list_course_grades(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> list[StudentGrade]:
-    verify_course_owner(db, course_id, teacher)
+    # Read-only, so the school's director may look too: the ведомость they
+    # sign is reached from here, and its «Back» landed on a 403 (2026-10-03).
+    verify_course_in_own_school(db, course_id, teacher)
     query = db.query(StudentGrade).filter(StudentGrade.course_id == course_id)
     if cohort_id is not None:
         query = query.filter(StudentGrade.cohort_id == cohort_id)

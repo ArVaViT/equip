@@ -36,6 +36,7 @@ from app.models.quiz import Quiz, QuizAnswer, QuizAttempt, QuizQuestion
 from app.models.user import User
 from app.schemas.locale import normalize_locale
 from app.services import quiz_service
+from app.services.late_work import first_handed_in, is_late
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -288,7 +289,7 @@ def assignment_work(db: Session, teacher_id: UUID, assignment_id: UUID) -> list[
     leaks somebody's essay.
     """
     rows = (
-        db.query(AssignmentSubmission, User.full_name, User.email)
+        db.query(AssignmentSubmission, User.full_name, User.email, Assignment.due_date)
         .join(Assignment, Assignment.id == AssignmentSubmission.assignment_id)
         .join(User, User.id == AssignmentSubmission.student_id)
         .join(Chapter, Chapter.id == Assignment.chapter_id)
@@ -304,6 +305,7 @@ def assignment_work(db: Session, teacher_id: UUID, assignment_id: UUID) -> list[
         .order_by(AssignmentSubmission.submitted_at.asc(), AssignmentSubmission.id.asc())
         .all()
     )
+    first = first_handed_in(db, assignment_id, list({submission.student_id for submission, *_ in rows}))
     return [
         {
             "submission_id": str(submission.id),
@@ -312,6 +314,9 @@ def assignment_work(db: Session, teacher_id: UUID, assignment_id: UUID) -> list[
             "submitted_at": submission.submitted_at,
             "content": submission.content,
             "file_url": submission.file_url,
+            # The queue is where the teacher meets the work; it is the one
+            # place «handed in late» must not be a click away (2026-10-03).
+            "is_late": is_late(first.get(str(submission.student_id), submission.submitted_at), due_date),
         }
-        for submission, full_name, email in rows
+        for submission, full_name, email, due_date in rows
     ]

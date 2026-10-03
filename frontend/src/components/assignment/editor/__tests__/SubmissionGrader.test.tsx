@@ -50,6 +50,31 @@ function Wrapper({ children }: { children: ReactNode }) {
   return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
 }
 
+describe("SubmissionGrader — late work says so", () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("ru")
+    vi.restoreAllMocks()
+    vi.spyOn(rubricsService, "forSubmission").mockResolvedValue({ rubric: null, marks: [] } as never)
+  })
+
+  it("marks work handed in after the deadline", async () => {
+    render(<SubmissionGrader submission={{ ...SUBMISSION, is_late: true }} maxScore={100} onUpdate={vi.fn()} />, {
+      wrapper: Wrapper,
+    })
+
+    expect(await screen.findByText("С опозданием")).toBeInTheDocument()
+  })
+
+  it("says nothing about work that arrived in time", async () => {
+    render(<SubmissionGrader submission={{ ...SUBMISSION, is_late: false }} maxScore={100} onUpdate={vi.fn()} />, {
+      wrapper: Wrapper,
+    })
+
+    await screen.findByText("Работа")
+    expect(screen.queryByText("С опозданием")).not.toBeInTheDocument()
+  })
+})
+
 describe("SubmissionGrader — the number belongs to whoever owns it", () => {
   beforeEach(async () => {
     await i18n.changeLanguage("ru")

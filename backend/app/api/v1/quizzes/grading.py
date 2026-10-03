@@ -20,6 +20,7 @@ from app.schemas.quiz import (
 )
 from app.services import quiz_service
 from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+from app.services.late_work import is_late, module_due_date_for_chapter
 
 from ._deps import course_source_locale_for_chapter, get_quiz_or_404, verify_quiz_owner
 from ._router import router
@@ -107,6 +108,8 @@ def list_pending_answers(
         else {}
     )
 
+    # One deadline for the whole quiz: its module's (2026-10-03).
+    module_due = module_due_date_for_chapter(db, quiz.chapter_id)
     results: list[PendingAnswerInfo] = []
     for answer, question, attempt, student in pending_rows:
         results.append(
@@ -125,6 +128,7 @@ def list_pending_answers(
                 student_name=student.full_name,
                 student_email=student.email,
                 submitted_at=attempt.completed_at,
+                is_late=is_late(attempt.completed_at, module_due),
             )
         )
     return results

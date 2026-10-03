@@ -40,6 +40,7 @@ from app.services.content_versions import (
 )
 from app.services.course_service import sync_enrollment_progress
 from app.services.domain_access import course_source_locale_for_chapter as _course_source_locale_for_chapter
+from app.services.late_work import first_handed_in, is_late
 from app.services.rubric_service import sync_assignment_max_score
 from app.services.submission_grading import apply_grade
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
@@ -255,6 +256,30 @@ def delete_assignment(
     db.commit()
 
 
+def _submission_response(
+    submission: AssignmentSubmission, assignment: Assignment, first: dict[str, datetime] | None = None
+) -> SubmissionResponse:
+    """The row plus the one fact it cannot carry by itself: was it late.
+
+    ``is_late`` is read against the assignment's ``due_date``, which lives one
+    table over, so the ORM row cannot answer it and every route that returns
+    a submission passes through here.
+    """
+    response = SubmissionResponse.model_validate(submission)
+    # Read against the student's first hand-in (``first_handed_in``): a
+    # revision the teacher asked for is not a missed deadline.
+    handed_in = (first or {}).get(str(submission.student_id), submission.submitted_at)
+    response.is_late = is_late(handed_in, assignment.due_date)
+    return response
+
+
+def _submission_responses(
+    db: Session, rows: list[AssignmentSubmission], assignment: Assignment
+) -> list[SubmissionResponse]:
+    first = first_handed_in(db, assignment.id, list({row.student_id for row in rows}))
+    return [_submission_response(row, assignment, first) for row in rows]
+
+
 def _refuse_if_already_marked(db: Session, assignment_id: UUID, student_id: UUID) -> None:
     """A marked piece of work is finished until a teacher says otherwise.
 
@@ -436,7 +461,7 @@ def submit_assignment(
             course_id=str(course_id),
             completion_type="assignment",
         )
-    return submission
+    return _submission_responses(db, [submission], assignment)[0]
 
 
 @router.get("/{assignment_id}/submissions", response_model=list[SubmissionResponse])
@@ -449,7 +474,7 @@ def list_submissions(
 ):
     assignment = _get_assignment_or_404(db, assignment_id)
     verify_chapter_owner(db, assignment.chapter_id, teacher)
-    return (
+    rows = (
         db.query(AssignmentSubmission)
         # Deactivated students keep their submission rows but drop out of
         # the teacher grading queue — same rule as the gradebook rosters
@@ -464,6 +489,7 @@ def list_submissions(
         .limit(limit)
         .all()
     )
+    return _submission_responses(db, rows, assignment)
 
 
 @router.get("/{assignment_id}/my-submissions", response_model=list[SubmissionResponse])
@@ -488,7 +514,7 @@ def list_my_submissions(
 
     # Same pagination envelope as the teacher-facing list above so
     # unbounded resubmission history cannot balloon the response.
-    return (
+    rows = (
         db.query(AssignmentSubmission)
         .filter(
             AssignmentSubmission.assignment_id == assignment_id,
@@ -499,6 +525,7 @@ def list_my_submissions(
         .limit(limit)
         .all()
     )
+    return _submission_responses(db, rows, assignment)
 
 
 @router.put("/submissions/{submission_id}/grade", response_model=SubmissionResponse)
@@ -542,4 +569,4 @@ def grade_submission(
         teacher_id=teacher.id,
         source_locale=_course_source_locale_for_chapter(db, assignment.chapter_id),
     )
-    return submission
+    return _submission_responses(db, [submission], assignment)[0]

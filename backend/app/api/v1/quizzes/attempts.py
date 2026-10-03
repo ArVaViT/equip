@@ -22,9 +22,22 @@ from app.models.user import User
 from app.schemas.quiz import QuizAttemptResponse, QuizSubmitRequest
 from app.services import quiz_service
 from app.services.course_service import sync_enrollment_progress
+from app.services.late_work import is_late, module_due_date_for_chapter
 
 from ._deps import get_quiz_or_404, verify_quiz_owner
 from ._router import router
+
+
+def _attempt_response(attempt: QuizAttempt, module_due: datetime | None) -> QuizAttemptResponse:
+    """The attempt plus whether it came in after its module's due date.
+
+    The deadline lives two tables away (chapter → module), so the row cannot
+    say it by itself; every route that hands an attempt out passes through
+    here (2026-10-03).
+    """
+    response = QuizAttemptResponse.model_validate(attempt)
+    response.is_late = is_late(attempt.completed_at, module_due)
+    return response
 
 
 @router.post(
@@ -163,6 +176,7 @@ def submit_quiz(
         started_at=attempt.started_at,
         completed_at=attempt.completed_at,
         answers=answer_results,
+        is_late=is_late(attempt.completed_at, module_due_date_for_chapter(db, quiz.chapter_id)),
     )
 
 
@@ -176,7 +190,7 @@ def get_quiz_attempts(
 ):
     quiz = get_quiz_or_404(db, quiz_id)
     verify_quiz_owner(db, quiz, teacher.id)
-    return (
+    rows = (
         db.query(QuizAttempt)
         .options(selectinload(QuizAttempt.answers))
         .filter(QuizAttempt.quiz_id == quiz_id)
@@ -185,6 +199,8 @@ def get_quiz_attempts(
         .limit(limit)
         .all()
     )
+    module_due = module_due_date_for_chapter(db, quiz.chapter_id)
+    return [_attempt_response(row, module_due) for row in rows]
 
 
 @router.get("/{quiz_id}/my-attempts", response_model=list[QuizAttemptResponse])
@@ -198,7 +214,7 @@ def get_my_quiz_attempts(
     quiz = get_quiz_or_404(db, quiz_id)
     verify_chapter_access(db, quiz.chapter_id, current_user)
 
-    return (
+    rows = (
         db.query(QuizAttempt)
         .options(selectinload(QuizAttempt.answers))
         .filter(
@@ -210,3 +226,5 @@ def get_my_quiz_attempts(
         .limit(limit)
         .all()
     )
+    module_due = module_due_date_for_chapter(db, quiz.chapter_id)
+    return [_attempt_response(row, module_due) for row in rows]

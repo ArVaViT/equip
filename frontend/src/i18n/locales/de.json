@@ -9,6 +9,7 @@
     "toProfile": "Profil öffnen"
   },
   "common": {
+    "late": "Verspätet",
     "appName": "Equip",
     "cancel": "Abbrechen",
     "confirm": "Bestätigen",
@@ -997,6 +998,8 @@
     "attemptsShort": "Versuche: {{used}}/{{max}}",
     "attemptsUnverified": "Es ließ sich nicht prüfen, wie viele Versuche Sie schon verbraucht haben. Sie können beginnen, aber wenn keine Versuche übrig sind, weist der Server die Abgabe zurück — laden Sie die Seite lieber neu.",
     "essayHelper": "Aufsatz · vom Dozenten bewertet",
+    "draftSaved": "Entwurf auf diesem Gerät gespeichert",
+    "draftRestored": "Entwurf von diesem Gerät wiederhergestellt",
     "essayPlaceholder": "Schreiben Sie Ihren Aufsatz …",
     "essayPlaceholderMin": "Schreiben Sie mindestens {{count}} Wörter. Ihre Antwort wird vom Dozenten geprüft.",
     "exam": "Prüfung",

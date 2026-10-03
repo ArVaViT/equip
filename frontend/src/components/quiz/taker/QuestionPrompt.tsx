@@ -1,9 +1,8 @@
 import { useTranslation } from "react-i18next"
 import type { QuizQuestion } from "@/types"
-import { EssayAnswer } from "./EssayAnswer"
+import { OpenAnswer } from "./OpenAnswer"
 import type { QuizAnswer } from "./types"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Textarea } from "@/components/ui/textarea"
 import { getTrueFalseLabel } from "@/components/quiz/editor/types"
 
 interface Props {
@@ -11,9 +10,19 @@ interface Props {
   index: number
   answer?: QuizAnswer
   onAnswer: (val: QuizAnswer) => void
+  /** Where an open answer's draft is kept; `null` keeps none. See `OpenAnswer`. */
+  draftKey?: string | null
+  onDraftClearer?: (questionId: string, clear: (() => void) | null) => void
 }
 
-export function QuestionPrompt({ question, index, answer, onAnswer }: Props) {
+export function QuestionPrompt({
+  question,
+  index,
+  answer,
+  onAnswer,
+  draftKey = null,
+  onDraftClearer,
+}: Props) {
   const { t } = useTranslation()
   const sortedOptions = [...(question.options ?? [])].sort(
     (a, b) => a.order_index - b.order_index,
@@ -80,22 +89,13 @@ export function QuestionPrompt({ question, index, answer, onAnswer }: Props) {
         </div>
       )}
 
-      {question.question_type === "short_answer" && (
-        <div className="ml-9">
-          <Textarea
-            fieldSize="default"
-            value={answer?.text_answer ?? ""}
-            onChange={(e) => onAnswer({ text_answer: e.target.value })}
-            placeholder={t("quiz.typeAnswerPlaceholder")}
-          />
-        </div>
-      )}
-
-      {question.question_type === "essay" && (
-        <EssayAnswer
+      {(question.question_type === "short_answer" || question.question_type === "essay") && (
+        <OpenAnswer
+          question={question}
           value={answer?.text_answer ?? ""}
-          minWords={question.min_words}
+          draftKey={draftKey}
           onChange={(text) => onAnswer({ text_answer: text })}
+          onDraftClearer={onDraftClearer}
         />
       )}
     </div>

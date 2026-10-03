@@ -586,6 +586,8 @@ class WaitingSubmission(BaseModel):
     submitted_at: datetime | None = None
     content: str | None = None
     file_url: str | None = None
+    #: After the assignment's deadline — see ``SubmissionResponse.is_late``.
+    is_late: bool = False
 
 
 class RetakeRequest(BaseModel):

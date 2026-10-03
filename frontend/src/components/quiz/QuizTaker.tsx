@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useCallback, useContext, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import PageSpinner from "@/components/ui/PageSpinner"
@@ -7,6 +7,8 @@ import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
 import { countWords } from "@/lib/text"
+import { AuthContext } from "@/context/auth-context"
+import { quizAnswerDraftKey } from "@/lib/storageKeys"
 import type { QuizAttempt } from "@/types"
 import { Loader2 } from "lucide-react"
 import {
@@ -57,6 +59,19 @@ function OneQuiz({ chapterId, quizId, onSubmitted, pageTitle }: QuizTakerProps) 
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<QuizAttempt | null>(null)
   const [showResults, setShowResults] = useState(false)
+  // Read optionally rather than through `useAuth`: the taker also renders in
+  // places that mount it without a provider, and a missing user only means
+  // there is nobody to keep a draft for.
+  const user = useContext(AuthContext)?.user
+  // One `clear` per open question, collected from the prompts (see
+  // `OpenAnswer`). Called together once an attempt is accepted, *before* the
+  // results replace the prompts — the hook flushes on unmount, so clearing
+  // afterwards would be too late.
+  const draftClears = useRef(new Map<string, () => void>())
+  const registerDraftClear = useCallback((questionId: string, clear: (() => void) | null) => {
+    if (clear) draftClears.current.set(questionId, clear)
+    else draftClears.current.delete(questionId)
+  }, [])
 
   if (loading) {
     return <PageSpinner variant="section" />
@@ -137,6 +152,8 @@ function OneQuiz({ chapterId, quizId, onSubmitted, pageTitle }: QuizTakerProps) 
         text_answer: answers[q.id]?.text_answer,
       }))
       const attempt = await coursesService.submitQuiz(quiz.id, payload)
+      // The attempt is in; nothing typed for it is unsent any more.
+      draftClears.current.forEach((clear) => clear())
       setResult(attempt)
       setShowResults(true)
       // Even from `null`: we may not know the history, but we know this one.
@@ -227,6 +244,8 @@ function OneQuiz({ chapterId, quizId, onSubmitted, pageTitle }: QuizTakerProps) 
                 index={idx}
                 answer={answers[question.id]}
                 onAnswer={(val) => setAnswer(question.id, val)}
+                draftKey={user ? quizAnswerDraftKey(user.id, quiz.id, question.id) : null}
+                onDraftClearer={registerDraftClear}
               />
             ))}
           </StaggerChildren>

@@ -320,6 +320,44 @@ def verify_course_owner(
     )
 
 
+def verify_course_in_own_school(db: Session, course_id: str, user: User) -> Course:
+    """The course a director may manage: any live course of their own school.
+
+    ``verify_course_owner`` answers "did this person write the course", and
+    every teaching route rightly asks it. The director routes asked it too, so
+    a director got «You do not own this course» on the grading scheme and the
+    ведомость of a course taught by a teacher of their own school — the exact
+    courses those routes exist for; ``update_grading_scheme`` even says in its
+    docstring that the director decides *for* the teacher. The test meant to
+    pin that signed in as platform staff, which passes any ownership check by
+    role, so nobody noticed (2026-10-03).
+
+    Who passes: the course's own author (a director who also teaches it),
+    platform staff, and a director of the organization the course belongs to.
+    A director of another school gets a 404 rather than a 403 — like a cohort
+    or a certificate next door, the answer must not confirm what is there. A
+    teacher who did not write the course keeps the 403 the teaching routes
+    give; this widens nothing for them.
+    """
+    course = get_live_course_or_404(db, course_id)
+    if str(course.created_by) == str(user.id) or user.role == UserRole.ADMIN.value:
+        return course
+    if user.role == UserRole.DIRECTOR.value:
+        if course.organization_id == organization_of(user):
+            return course
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Course not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
+    raise equip_error(
+        ErrorCode.AUTH_FORBIDDEN,
+        status_code=status.HTTP_403_FORBIDDEN,
+        message="You do not own this course",
+    )
+
+
 def _resolve_chapter(db: Session, chapter_id: str) -> tuple[Chapter, Module | None, Course]:
     # Hide soft-deleted chapters/modules/courses across every chapter-scoped
     # route (blocks, quizzes, assignments, progress). Before this filter,

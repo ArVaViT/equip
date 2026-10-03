@@ -451,6 +451,14 @@ export default function CohortDetailPage() {
                       </Badge>
                     )}
                   </div>
+                  {/* The director's way to the sheet they sign: the course link
+                      above opens the teacher's editor, which is not theirs. */}
+                  <Link
+                    to={`/teacher/courses/${c.id}/vedomost`}
+                    className="shrink-0 text-xs font-medium text-ink-muted hover:text-brand"
+                  >
+                    {t("vedomost.title")}
+                  </Link>
                   <Button
                     variant="ghost"
                     size="sm"

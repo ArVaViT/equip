@@ -17,6 +17,7 @@ import { FileText, Loader2, MessageSquare, Save, Star, User } from "lucide-react
 import { coursesService } from "@/services/courses"
 import { rubricsService } from "@/services/rubrics"
 import { RubricGrid } from "@/components/rubric/RubricGrid"
+import { LateBadge } from "@/components/patterns"
 import { toast } from "@/lib/toast"
 import { isHttpUrl } from "@/lib/url"
 import type { AssignmentSubmission, SubmissionRubric } from "@/types"
@@ -142,11 +143,14 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
               {submission.student_id.slice(0, 8)}...
             </span>
           </div>
-          <Badge variant={STATUS_VARIANT[submission.status] ?? "muted"}>
-            {t(`assignment.statusValue.${submission.status}`, {
-              defaultValue: submission.status,
-            })}
-          </Badge>
+          <div className="flex items-center gap-1.5">
+            {submission.is_late && <LateBadge />}
+            <Badge variant={STATUS_VARIANT[submission.status] ?? "muted"}>
+              {t(`assignment.statusValue.${submission.status}`, {
+                defaultValue: submission.status,
+              })}
+            </Badge>
+          </div>
         </div>
 
         {submission.content && (

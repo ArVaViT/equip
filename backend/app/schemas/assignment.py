@@ -102,6 +102,13 @@ class SubmissionResponse(BaseModel):
     feedback: str | None = None
     graded_by: UUID | None = None
     graded_at: datetime | None = None
+    #: Handed in after the assignment's ``due_date``. Derived, not stored:
+    #: ``submitted_at`` against the deadline, both as UTC instants, so moving
+    #: the deadline later forgives the work and moving it earlier does not
+    #: rewrite history in a column nobody re-computes. Late work is accepted;
+    #: what it costs is the teacher's call, and this is how they learn of it
+    #: (2026-10-03).
+    is_late: bool = False
 
 
 class GradeSubmissionRequest(RequestModel):

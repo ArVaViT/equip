@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "@/i18n/config"
 import { cohortsService } from "@/services/cohorts"
+import { coursesService } from "@/services/courses"
 
 const auth = vi.hoisted(() => ({ role: "director" as string }))
 vi.mock("@/context/useAuth", () => ({
@@ -83,5 +84,28 @@ describe("a cohort's page", () => {
     expect((await screen.findAllByText("Весна 2026")).length).toBeGreaterThan(0)
     expect(screen.queryByRole("button", { name: /Добавить студента/ })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: /Добавить курс/ })).not.toBeInTheDocument()
+  })
+
+  it("takes the director to each course's sheet, not to the teacher's editor", async () => {
+    auth.role = "director"
+    vi.mocked(cohortsService.getCohort).mockResolvedValue({
+      id: "k1",
+      name: "Осень 2026",
+      start_date: "2026-10-01",
+      end_date: "2026-12-20",
+      enrollment_start: null,
+      enrollment_end: null,
+      status: "active",
+      max_students: null,
+      created_by: null,
+      created_at: "2026-09-01T00:00:00Z",
+      updated_at: null,
+      course_ids: ["c-acts"],
+    } as never)
+    vi.spyOn(coursesService, "getCourse").mockResolvedValue({ id: "c-acts", title: "Деяния", access_mode: "public" } as never)
+    open()
+
+    const link = await screen.findByRole("link", { name: "Ведомость" })
+    expect(link).toHaveAttribute("href", "/teacher/courses/c-acts/vedomost")
   })
 })

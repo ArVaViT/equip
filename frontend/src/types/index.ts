@@ -352,6 +352,9 @@ export interface PendingAnswer {
   student_name: string | null
   student_email: string
   submitted_at: string | null
+  /** The attempt came in after its module's due date. Derived by the server;
+   *  absent on objects the client assembles itself (2026-10-03). */
+  is_late?: boolean
 }
 
 export interface QuizAttempt {
@@ -364,6 +367,8 @@ export interface QuizAttempt {
   started_at: string
   completed_at: string | null
   answers?: QuizAnswerResult[]
+  /** Completed after the module's due date — see `PendingAnswer.is_late`. */
+  is_late?: boolean
 }
 
 export interface Assignment {
@@ -388,6 +393,10 @@ export interface AssignmentSubmission {
   feedback: string | null
   graded_by: string | null
   graded_at: string | null
+  /** Handed in after the assignment's `due_date`. Derived by the server from
+   *  `submitted_at` against the deadline; late work is accepted and marked,
+   *  what it costs is the teacher's call (2026-10-03). */
+  is_late?: boolean
 }
 
 export interface Certificate {
@@ -902,6 +911,8 @@ export interface WaitingSubmission {
   submitted_at: string | null
   content: string | null
   file_url: string | null
+  /** After the assignment's deadline — see `AssignmentSubmission.is_late`. */
+  is_late?: boolean
 }
 
 /**

@@ -2,6 +2,7 @@ import { CheckCircle, Clock, XCircle } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { QuizAttempt } from "@/types"
 import { formatDate } from "@/i18n/format"
+import { LateBadge } from "@/components/patterns"
 
 interface Props {
   attempts: QuizAttempt[]
@@ -45,7 +46,8 @@ export function PreviousAttempts({ attempts, autoMaxScore }: Props) {
                   })}
                 </span>
               </div>
-              <span className="text-xs text-ink-muted">
+              <span className="flex items-center gap-2 text-xs text-ink-muted">
+                {att.is_late && <LateBadge />}
                 {att.completed_at ? formatDate(att.completed_at) : t("quiz.inProgress")}
               </span>
             </div>

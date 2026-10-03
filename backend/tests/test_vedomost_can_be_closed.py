@@ -838,3 +838,107 @@ def test_a_retaking_students_sheet_reads_its_own_потока_progress(admin_cli
     row = admin_client.post(f"{SHEET_URL.format(course_id=course.id)}?cohort_id={finished.id}").json()["rows"][0]
 
     assert row["result_state"] == "pass", "the finished поток's page reads the finished enrolment"
+
+
+# --------------------------------------------------------------------------
+# who may close it
+# --------------------------------------------------------------------------
+
+
+def test_a_director_closes_the_sheet_of_a_course_they_do_not_teach(db: Session, teacher, student) -> None:
+    """The ведомость is the director's document; the course is the teacher's.
+
+    The route said so in its docstring and then asked for course ownership, so
+    the one person meant to sign got «You do not own this course» on every
+    course they did not personally teach (2026-10-03).
+    """
+    from fastapi.testclient import TestClient
+
+    from app.api.dependencies import get_current_user, get_optional_user
+    from app.core.database import get_db
+    from app.main import app
+    from app.models.user import UserRole
+
+    course, quiz = _course(db, teacher, "c-sheet-director")
+    _enrol(db, course.id, STUDENT_ID)
+    _attempt(db, quiz, STUDENT_ID, 90)
+    director = User(
+        id=uuid.uuid4(),
+        email="director@example.com",
+        full_name="Dmytro Director",
+        role=UserRole.DIRECTOR.value,
+        organization_id=TEST_ORGANIZATION_ID,
+    )
+    db.add(director)
+    db.commit()
+
+    def _db():
+        yield db
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_current_user] = lambda: director
+    app.dependency_overrides[get_optional_user] = lambda: director
+    try:
+        with TestClient(app, raise_server_exceptions=False) as director_client:
+            nothing_yet = director_client.get(SHEET_URL.format(course_id=course.id))
+            closed = director_client.post(SHEET_URL.format(course_id=course.id))
+            reopened = director_client.post(
+                f"/api/v1/grades/sheet/{closed.json().get('id')}/reopen", json={"reason": "Один балл пересчитан"}
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert nothing_yet.status_code == 200, nothing_yet.text
+    assert nothing_yet.json() is None
+    assert closed.status_code == 201, closed.text
+    assert closed.json()["finalized_by"] == str(director.id)
+    assert reopened.status_code == 200, reopened.text
+
+
+def test_a_director_reads_the_gradebook_behind_the_sheet_but_does_not_mark(db: Session, teacher, student) -> None:
+    """The sheet is reached from the gradebook and its «Back» returns there,
+    and every read under it answered a same-school director with 403. Reading
+    is theirs; marking stays the teacher's (2026-10-03)."""
+    from fastapi.testclient import TestClient
+
+    from app.api.dependencies import get_current_user, get_optional_user
+    from app.core.database import get_db
+    from app.main import app
+    from app.models.user import UserRole
+
+    course, quiz = _course(db, teacher, "c-gradebook-director")
+    _enrol(db, course.id, STUDENT_ID)
+    _attempt(db, quiz, STUDENT_ID, 90)
+    director = User(
+        id=uuid.uuid4(),
+        email="director2@example.com",
+        full_name="Dmytro Director",
+        role=UserRole.DIRECTOR.value,
+        organization_id=TEST_ORGANIZATION_ID,
+    )
+    db.add(director)
+    db.commit()
+
+    def _db():
+        yield db
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_current_user] = lambda: director
+    app.dependency_overrides[get_optional_user] = lambda: director
+    try:
+        with TestClient(app, raise_server_exceptions=False) as c:
+            reads = [
+                c.get(f"/api/v1/grades/course/{course.id}"),
+                c.get(f"/api/v1/grades/course/{course.id}/summary"),
+                c.get(f"/api/v1/grades/course/{course.id}/export-csv"),
+                c.get(f"/api/v1/progress/course/{course.id}/gradebook"),
+            ]
+            mark = c.put(
+                f"/api/v1/grades/course/{course.id}/student/{STUDENT_ID}",
+                json={"override_code": "A", "reason": "director tries"},
+            )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert [r.status_code for r in reads] == [200, 200, 200, 200], [r.text for r in reads]
+    assert mark.status_code == 403

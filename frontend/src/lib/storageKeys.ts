@@ -30,6 +30,7 @@ const PREFIX_GRAND_TOUR_SEEN = "equip.grand-tour.seen"
 const PREFIX_PER_PAGE_TOUR_SEEN = "equip.tour.seen"
 const PREFIX_COMPLETION_CELEBRATED = "equip.celebrated"
 const PREFIX_ASSIGNMENT_DRAFT = "equip.draft.assignment"
+const PREFIX_QUIZ_ANSWER_DRAFT = "equip.draft.quiz"
 const PREFIX_BLOCK_DRAFT = "equip.draft.block"
 
 /**
@@ -94,6 +95,18 @@ export function completionCelebratedKey(userId: string, courseId: string): strin
  */
 export function assignmentDraftKey(userId: string, assignmentId: string): string {
   return `${PREFIX_ASSIGNMENT_DRAFT}.${userId}.${assignmentId}`
+}
+
+/**
+ * An unsent open answer in a quiz or exam — per ``(userId, quizId, questionId)``.
+ *
+ * The assignment draft above exists because nine hundred words were lost to a
+ * reload; an exam essay typed into the quiz taker was lost the same way, and
+ * on an exam the reload also cost the attempt. Same scoping, same reason: a
+ * shared device must not hand one student another's answer (2026-10-03).
+ */
+export function quizAnswerDraftKey(userId: string, quizId: string, questionId: string): string {
+  return `${PREFIX_QUIZ_ANSWER_DRAFT}.${userId}.${quizId}.${questionId}`
 }
 
 /**

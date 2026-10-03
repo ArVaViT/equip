@@ -13,6 +13,7 @@ import { assignmentDraftKey } from "@/lib/storageKeys"
 import { SubmissionDeclaration, type DeclarationState } from "./SubmissionDeclaration"
 import { declarationStatement } from "./declarationStatement"
 import { RubricGrid } from "@/components/rubric/RubricGrid"
+import { LateBadge } from "@/components/patterns"
 import { toast } from "@/lib/toast"
 import { repeatsTitle } from "@/lib/repeatsTitle"
 import type { AiPolicy, Assignment, AssignmentSubmission, SubmissionRubric } from "@/types"
@@ -378,6 +379,15 @@ function SingleAssignment({
               <div className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${statusConfig[submission.status]?.color ?? ""}`}>
                 {statusConfig[submission.status]?.icon}
                 <span className="font-medium">{statusConfig[submission.status]?.label}</span>
+                {submission.is_late && <LateBadge className="ml-auto" />}
+              </div>
+            )}
+            {/* The deadline was shown above the work and never consulted when
+                the work arrived (2026-10-03). Said once, beside the grade when
+                the status row has given way to it. */}
+            {submission.is_late && submission.status === "graded" && submission.grade !== null && (
+              <div>
+                <LateBadge />
               </div>
             )}
 

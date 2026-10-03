@@ -7,7 +7,7 @@ import type { PendingAnswer } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { EmptyState } from "@/components/patterns"
+import { EmptyState, LateBadge } from "@/components/patterns"
 import { CheckCheck, CheckCircle2, GraduationCap, Inbox, Loader2, Save, Users } from "lucide-react"
 import { formatDateTime } from "@/i18n/format"
 import { countWords } from "@/lib/text"
@@ -202,6 +202,7 @@ export default function QuizSubmissionsReview({ quizId }: Props) {
                 {item.submitted_at && (
                   <div>{formatDateTime(item.submitted_at)}</div>
                 )}
+                {item.is_late && <LateBadge className="mt-1" />}
               </div>
             </div>
 
