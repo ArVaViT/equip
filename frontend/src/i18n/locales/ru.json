@@ -1369,7 +1369,11 @@
       "inMinutes_one": "Через {{count}} минуту",
       "inMinutes_few": "Через {{count}} минуты",
       "inMinutes_many": "Через {{count}} минут",
-      "inMinutes_other": "Через {{count}} минуты"
+      "inMinutes_other": "Через {{count}} минуты",
+      "addRecording": "Добавить запись",
+      "addRecordingTitle": "Запись занятия «{{title}}»",
+      "addRecordingSave": "Сохранить",
+      "recordingAdded": "Запись добавлена — студенты получат уведомление"
     },
     "yesterday": "Вчера",
     "newEvent": {

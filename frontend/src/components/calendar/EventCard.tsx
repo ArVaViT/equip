@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { BookOpen, Repeat } from "lucide-react"
+import { BookOpen, Repeat, Upload } from "lucide-react"
 
 import type { CalendarEvent } from "@/types"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { isJoinableNow, isOver, minutesUntil } from "@/lib/eventTime"
 import { getEventColor } from "@/pages/Calendar/constants"
@@ -11,6 +12,7 @@ import { JoinMeetingLink } from "./JoinMeetingLink"
 import { LinkifiedText } from "./LinkifiedText"
 import { RecordingLink } from "./RecordingLink"
 import { formatEventTimeRange } from "./eventTimeFormat"
+import { useCalendarEditing } from "./calendarEditing"
 
 /** The join button when it is the one thing on the card. */
 const PROMINENT_JOIN =
@@ -42,6 +44,7 @@ export function EventCard({
   className?: string
 }) {
   const { t } = useTranslation()
+  const editing = useCalendarEditing()
   const color = getEventColor(event.event_type)
   const over = isOver(event, now)
   const joinable = Boolean(event.meeting_url) && isJoinableNow(event, now)
@@ -131,6 +134,14 @@ export function EventCard({
               />
             )}
             <RecordingLink url={event.recording_url} title={event.title} />
+            {/* The teacher's one job after a class: put the recording where
+                the class will find it. Here, not three screens away. */}
+            {over && !event.recording_url && event.event_type === "live_session" && editing?.canEdit(event) && (
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => editing.addRecording(event)}>
+                <Upload className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                {t("calendar.card.addRecording")}
+              </Button>
+            )}
             {!over && <AddToCalendarButton event={event} />}
           </div>
         </div>

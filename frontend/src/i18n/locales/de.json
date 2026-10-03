@@ -1730,7 +1730,11 @@
     "card": {
       "onNow": "Läuft gerade",
       "inMinutes_one": "In {{count}} Minute",
-      "inMinutes_other": "In {{count}} Minuten"
+      "inMinutes_other": "In {{count}} Minuten",
+      "addRecording": "Aufzeichnung hinzufügen",
+      "addRecordingTitle": "Aufzeichnung von „{{title}}“",
+      "addRecordingSave": "Speichern",
+      "recordingAdded": "Aufzeichnung hinzugefügt — die Teilnehmenden werden benachrichtigt"
     },
     "yesterday": "Gestern",
     "newEvent": {

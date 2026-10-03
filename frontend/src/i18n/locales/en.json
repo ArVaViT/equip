@@ -1730,7 +1730,11 @@
     "card": {
       "onNow": "On now",
       "inMinutes_one": "In {{count}} minute",
-      "inMinutes_other": "In {{count}} minutes"
+      "inMinutes_other": "In {{count}} minutes",
+      "addRecording": "Add recording",
+      "addRecordingTitle": "Recording of “{{title}}”",
+      "addRecordingSave": "Save",
+      "recordingAdded": "Recording added — students will be notified"
     },
     "yesterday": "Yesterday",
     "newEvent": {

@@ -1800,7 +1800,11 @@
       "inMinutes_one": "За {{count}} хвилину",
       "inMinutes_few": "За {{count}} хвилини",
       "inMinutes_many": "За {{count}} хвилин",
-      "inMinutes_other": "За {{count}} хвилини"
+      "inMinutes_other": "За {{count}} хвилини",
+      "addRecording": "Додати запис",
+      "addRecordingTitle": "Запис заняття «{{title}}»",
+      "addRecordingSave": "Зберегти",
+      "recordingAdded": "Запис додано — студенти отримають сповіщення"
     },
     "yesterday": "Учора",
     "newEvent": {
