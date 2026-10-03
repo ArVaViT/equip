@@ -588,6 +588,28 @@ class TestASuspendedMembershipAndAnInvitation:
         assert db.query(Invitation).filter(Invitation.token == token).one().status == "pending"
 
 
+class TestADeactivatedInviter:
+    def test_the_links_of_a_director_the_platform_switched_off_admit_nobody(self, db: Session, world: dict) -> None:
+        """Deactivation leaves memberships in place so a restored account finds
+        its seats again — so ``directs`` still said yes for the director, and
+        their pending teacher invitation still minted a teacher."""
+        director = world["director_a"]
+        newcomer = _person(db, "late@example.com", UserRole.STUDENT.value)
+        assert _invite(db, director, email=newcomer.email, role="teacher", scope="organization").status_code == 201
+        token = db.query(Invitation).filter(Invitation.email == newcomer.email).one().token
+
+        assert _as(db, world["admin"]).delete(f"/api/v1/users/admin/users/{director.id}").status_code == 204
+
+        resp = _as(db, newcomer).post("/api/v1/invitations/accept", json={"token": token})
+
+        assert resp.status_code == 403, resp.text
+        assert resp.json()["detail"]["code"] == "invitation.inviter_not_staff"
+        # The row is left as it was: a director still in office writes a fresh
+        # one, and nothing was granted meanwhile.
+        assert _rows(db, newcomer.email) == [("organization", "pending")]
+        assert _membership(db, newcomer, A_ID) is None
+
+
 class TestWhoIsAStudentHere:
     def test_a_student_who_teaches_elsewhere_is_still_on_the_list(self, db: Session, world: dict) -> None:
         """The at-risk roster read ``User.role == 'student'``; with the role a

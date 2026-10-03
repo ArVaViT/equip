@@ -556,6 +556,15 @@ def accept_invitation(
     # through a suspended membership, and not in for the first time either.
     # Until 2026-10-03 only the former was checked. The row is left pending:
     # a director who wants the person in writes a fresh one.
+    #
+    # A deactivated account speaks for nobody. ``directs`` and ``teaches_in``
+    # read the membership, and deactivation leaves memberships as they were
+    # so that a restored account finds its seats again — which meant a
+    # director the platform had switched off still admitted teachers through
+    # the links they had written. The account is checked here, not in those
+    # two, because they answer "is this role held" for the account's own
+    # requests, and a deactivated account never gets as far as making one
+    # (``get_current_user``).
     if invitation.scope != InvitationScope.PLATFORM.value:
         inviter = (
             db.query(User).filter(User.id == invitation.invited_by).first()
@@ -563,7 +572,8 @@ def accept_invitation(
             else None
         )
         speaks_for_it = directs if invitation.role in STAFF_ROLES else teaches_in
-        if not speaks_for_it(db, inviter, invitation.organization_id):
+        still_an_account = inviter is not None and inviter.deactivated_at is None
+        if not (still_an_account and speaks_for_it(db, inviter, invitation.organization_id)):
             increment("equip.invitations.refused_total", reason="inviter_not_staff", scope=invitation.scope)
             raise equip_error(
                 ErrorCode.INVITATION_INVITER_NOT_STAFF,
