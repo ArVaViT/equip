@@ -78,7 +78,21 @@ export interface OrganizationCard {
   courses: number
 }
 
+/** `GET /courses/my-organizations` — one block per organization the reader belongs to. */
+export interface MyOrganizationCourses {
+  organization_id: string
+  organization_slug: string
+  organization_name: string
+  role: "director" | "teacher" | "student"
+  courses: Course[]
+}
+
 export const organizationsService = {
+  async mine(): Promise<MyOrganizationCourses[]> {
+    const { data } = await api.get<MyOrganizationCourses[]>("/courses/my-organizations")
+    return data
+  },
+
   async list(): Promise<OrganizationCard[]> {
     const { data } = await api.get<OrganizationCard[]>("/organizations")
     return data

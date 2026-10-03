@@ -3303,5 +3303,14 @@
     "joinBody": "Organizations join by agreement: write to us who you are and whom you teach, and we will open your page, your courses and a director's workspace.",
     "landingTitle": "Organizations teach here",
     "all": "All organizations"
+  },
+  "myOrganizations": {
+    "eyebrow": "Your organization · {{role}}",
+    "roles": {
+      "director": "director",
+      "teacher": "teacher",
+      "student": "member"
+    },
+    "catalog": "Open catalogue"
   }
 }
