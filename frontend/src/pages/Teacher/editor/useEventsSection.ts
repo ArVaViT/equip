@@ -61,11 +61,29 @@ export function useEventsSection(
   // Read when the form is reset (an event handler), so the latest
   // defaults apply without re-creating every callback below.
   const defaultsRef = useRef(defaults)
-  useEffect(() => {
-    defaultsRef.current = defaults
-  }, [defaults])
   const blankForm = useCallback((): EventFormState => ({ ...EMPTY_EVENT_FORM, ...defaultsRef.current }), [])
   const [editingId, setEditingId] = useState<string | null>(null)
+  const editingRef = useRef<string | null>(null)
+  useEffect(() => {
+    editingRef.current = editingId
+  }, [editingId])
+  // New defaults (another course picked, or the calendar loaded after the
+  // dialog opened) fill only the fields still holding the old ones: what
+  // the teacher typed stays, and an event open for editing is left alone.
+  useEffect(() => {
+    const before = defaultsRef.current
+    defaultsRef.current = defaults
+    if (before === defaults || editingRef.current) return
+    setForm((f) => {
+      const next = { ...f }
+      const keys = new Set([...Object.keys(before ?? {}), ...Object.keys(defaults ?? {})]) as Set<keyof EventFormState>
+      for (const k of keys) {
+        const was = before?.[k] ?? EMPTY_EVENT_FORM[k]
+        if (f[k] === was) (next as Record<string, unknown>)[k] = defaults?.[k] ?? EMPTY_EVENT_FORM[k]
+      }
+      return next
+    })
+  }, [defaults])
   const [saving, setSaving] = useState(false)
   const [pendingScope, setPendingScope] = useState<PendingScope | null>(null)
 

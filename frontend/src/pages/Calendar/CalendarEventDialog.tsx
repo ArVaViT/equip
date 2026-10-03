@@ -48,12 +48,13 @@ export function CalendarEventDialog({
   }, [open, firstOwned]);
   const defaults = useMemo(() => newEventDefaults(events, courseId, now), [events, courseId, now]);
   const section = useEventsSection(open ? courseId : undefined, confirm, defaults.form);
-  // A blank form for the course that is open now — not the one the
-  // dialog was first rendered for, before the calendar had loaded.
+  // A blank form each time the dialog opens. A course picked inside it, or
+  // a calendar that loads late, only refills the fields nobody has typed
+  // in (useEventsSection) — a title already written survives the switch.
   const { resetForm } = section;
   useEffect(() => {
     if (open) resetForm();
-  }, [open, courseId, resetForm]);
+  }, [open, resetForm]);
 
   return (
     <EventsModal
@@ -72,7 +73,8 @@ export function CalendarEventDialog({
             <Select
               value={courseId}
               onValueChange={(v) => {
-                section.resetForm();
+                // An event open for editing belongs to the course left behind.
+                if (section.editingId) section.resetForm();
                 setCourseId(v);
               }}
             >

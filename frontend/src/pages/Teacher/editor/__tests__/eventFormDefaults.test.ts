@@ -37,4 +37,19 @@ describe("the event form's defaults", () => {
     act(() => result.current.resetForm())
     expect(result.current.form).toEqual({ ...EMPTY_EVENT_FORM, ...defaults })
   })
+
+  it("keeps what the teacher typed when the defaults change under it", async () => {
+    // Another course picked in the calendar's dialog, or the calendar
+    // loading after the dialog opened: only untouched fields follow.
+    vi.spyOn(coursesService, "getCourseEventsForEdit").mockResolvedValue([])
+    const confirm = vi.fn(async () => true)
+    const a = { event_type: "live_session", duration_minutes: "90", meeting_url: "https://zoom.us/j/1" }
+    const b = { event_type: "live_session", duration_minutes: "60", meeting_url: "https://zoom.us/j/2" }
+    const { result, rerender } = renderHook(({ d }) => useEventsSection("c1", confirm, d), { initialProps: { d: a } })
+    act(() => result.current.setForm({ ...result.current.form, title: "Разбор проповеди", duration_minutes: "45" }))
+    rerender({ d: b })
+    expect(result.current.form.title).toBe("Разбор проповеди")
+    expect(result.current.form.duration_minutes).toBe("45")
+    expect(result.current.form.meeting_url).toBe("https://zoom.us/j/2")
+  })
 })
