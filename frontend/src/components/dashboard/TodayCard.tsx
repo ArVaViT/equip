@@ -10,7 +10,9 @@ import { ArrowRight, CalendarDays } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Eyebrow } from "@/components/patterns"
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
-import { isOver } from "@/lib/eventTime"
+import { isJoinableNow, isOver } from "@/lib/eventTime"
+import { formatEventTimeRange } from "@/components/calendar/eventTimeFormat"
+import { useNow } from "@/hooks/useNow"
 import { RecordingLink } from "@/components/calendar/RecordingLink"
 import { coursesService } from "@/services/courses"
 import { useAuth } from "@/context/useAuth"
@@ -41,6 +43,7 @@ function ymdKey(d: Date): string {
  */
 export function TodayCard() {
   const { t, i18n } = useTranslation()
+  const now = useNow()
   const { user } = useAuth()
 
   // Silent on error: the dashboard is more important than this card.
@@ -183,6 +186,15 @@ export function TodayCard() {
                   className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand"
                 />
                 <div className="min-w-0">
+                  {/* The time first: on the day itself it is the question. */}
+                  <p className="tabular-nums text-ink-muted">
+                    {formatEventTimeRange(e)}
+                    {e.meeting_url && isJoinableNow(e, now) && (
+                      <span className="ml-1.5 font-medium text-success-ink">
+                        · {Date.parse(e.event_date) <= now ? t("calendar.card.onNow") : t("calendar.card.inMinutes", { count: Math.ceil((Date.parse(e.event_date) - now) / 60000) })}
+                      </span>
+                    )}
+                  </p>
                   <p className="truncate font-medium text-ink">{e.title}</p>
                   {e.course_title && (
                     <p className="truncate text-ink-muted">{e.course_title}</p>
@@ -191,7 +203,7 @@ export function TodayCard() {
                       for a Saturday Zoom class the answer is a button,
                       not an instruction to go and find one. */}
                   <div className="mt-1.5 flex flex-wrap gap-1.5 empty:hidden">
-                    {!isOver(e) && <JoinMeetingLink url={e.meeting_url} title={e.title} />}
+                    {!isOver(e, now) && <JoinMeetingLink url={e.meeting_url} title={e.title} />}
                     <RecordingLink url={e.recording_url} title={e.title} />
                   </div>
                 </div>

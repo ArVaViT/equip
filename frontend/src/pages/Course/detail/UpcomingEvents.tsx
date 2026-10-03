@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next"
 import type { CalendarEvent } from "@/types"
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
 import { isOver } from "@/lib/eventTime"
+import { formatEventTimeRange } from "@/components/calendar/eventTimeFormat"
 import { RecordingLink } from "@/components/calendar/RecordingLink"
 import { formatDateLong, formatDateTime } from "@/i18n/format"
 
@@ -91,13 +92,8 @@ export function UpcomingEvents({ events }: Props) {
                 title={formatDateTime(evt.event_date)}
                 className="text-xs text-ink-muted whitespace-nowrap tabular-nums"
               >
-                {formatDateLong(evtDate, {
-                  year: undefined,
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formatDateLong(evtDate, { year: undefined, month: "short", day: "numeric" })},{" "}
+                {formatEventTimeRange(evt)}
               </time>
             </div>
           )
