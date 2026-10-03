@@ -12,6 +12,7 @@ import { usersService } from "@/services/users"
 import { storageService } from "@/services/storage"
 import { coursesService } from "@/services/courses"
 import { countAwarded } from "@/lib/certificates"
+import { MyOrganizationsCard } from "./MyOrganizationsCard"
 import { makeProfileSchema } from "@/lib/validations/course"
 import { toProxyImage } from "@/lib/images"
 import { ROLE_I18N_KEY } from "@/lib/roles"
@@ -270,6 +271,7 @@ export default function ProfilePage() {
 
         {tab === "overview" && (
           <div id="profile-panel-overview" role="tabpanel" aria-labelledby="profile-tab-overview" className="space-y-6">
+            {user && <MyOrganizationsCard userId={user.id} />}
             <Card className="transition-[border-color] duration-200 hover:border-brand/25">
               <CardHeader className="space-y-1">
                 <CardTitle>
