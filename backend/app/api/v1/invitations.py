@@ -41,11 +41,14 @@ from app.services.invitation_service import (
     revoke_invitation,
 )
 from app.services.memberships import active_memberships, belongs_to, default_organization_id, directs, teaches_in
+from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
 router = APIRouter(prefix="/invitations", tags=["invitations"])
 
 
-def _to_response(invitation: Invitation) -> InvitationResponse:
+def _to_response(
+    invitation: Invitation, *, organization_name: str | None = None, course_title: str | None = None
+) -> InvitationResponse:
     is_expired = invitation.status == "pending" and is_invitation_expired(invitation)
     return InvitationResponse(
         id=invitation.id,
@@ -61,6 +64,8 @@ def _to_response(invitation: Invitation) -> InvitationResponse:
         expires_at=invitation.expires_at,
         is_expired=is_expired,
         age_attested_at=invitation.age_attested_at,
+        organization_name=organization_name,
+        course_title=course_title,
     )
 
 
@@ -220,6 +225,7 @@ def list_invitations_route(
     limit: int = Query(50, ge=1, le=200),
     role: str | None = Query(None),
     invite_status: str | None = Query(None, alias="status"),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     director: User = Depends(require_director),
     requested: UUID | None = Depends(requested_organization_id),
     db: Session = Depends(get_db),
@@ -240,7 +246,29 @@ def list_invitations_route(
         status_filter=invite_status,
         platform_rows=is_platform_staff,
     )
-    return [_to_response(r) for r in rows]
+    # Where each row leads, by name — one query for the organizations and
+    # one for the course titles, for the whole page. A course with no title
+    # in the reader's language is sent without one, like everywhere a
+    # reader is served text (``test_no_reader_gets_another_language``); the
+    # list then says «to a course» rather than printing another language.
+    names = {
+        o.id: o.public_name
+        for o in db.query(Organization).filter(Organization.id.in_({r.organization_id for r in rows})).all()
+    }
+    course_ids = sorted({r.course_id for r in rows if r.scope == InvitationScope.COURSE.value and r.course_id})
+    titles = (
+        fetch_course_titles_by_id(db, course_ids, display_locale=normalize_locale(accept_language))
+        if course_ids
+        else {}
+    )
+    return [
+        _to_response(
+            r,
+            organization_name=names.get(r.organization_id),
+            course_title=(titles.get(r.course_id) or None) if r.course_id else None,
+        )
+        for r in rows
+    ]
 
 
 @router.delete("/{invitation_id}", response_model=InvitationResponse)

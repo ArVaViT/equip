@@ -2783,7 +2783,8 @@
       "scope": {
         "platform": "Nur Konto",
         "course": "Kurs"
-      }
+      },
+      "thWhere": "Wohin"
     },
     "tabSchool": "Schule",
     "school": {

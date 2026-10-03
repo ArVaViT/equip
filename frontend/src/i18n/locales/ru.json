@@ -2462,7 +2462,8 @@
       "scope": {
         "platform": "Только аккаунт",
         "course": "На курс"
-      }
+      },
+      "thWhere": "Куда"
     },
     "tabSchool": "Школа",
     "school": {

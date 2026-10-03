@@ -2678,6 +2678,10 @@
     "path": "/api/v1/invitations",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
         "X-Organization-Id",
         "header"
       ],

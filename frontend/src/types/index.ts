@@ -547,6 +547,9 @@ export interface Invitation {
    *  course seat. Older clients read every row as the school's. */
   scope?: "platform" | "organization" | "course"
   course_id?: string | null
+  /** Where it leads, by name — filled by the list route, for the list only. */
+  organization_name?: string | null
+  course_title?: string | null
 }
 
 /**

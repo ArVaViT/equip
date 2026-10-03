@@ -2783,7 +2783,8 @@
       "scope": {
         "platform": "Account only",
         "course": "Course"
-      }
+      },
+      "thWhere": "Where"
     },
     "tabSchool": "School",
     "school": {

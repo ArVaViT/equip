@@ -164,9 +164,11 @@ export function InvitationsTab() {
   return (
     <Card className="flex max-h-[calc(100dvh-240px)] flex-col md:max-h-[calc(100dvh-200px)] md:min-h-[420px]">
       <CardHeader className="shrink-0 gap-3 space-y-0 border-b">
-        <div className="flex items-center justify-between gap-3">
+        {/* Title over the button on a phone: side by side, the button pushed
+            the card past a 390px screen (2026-10-03). */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-xl">{t("admin.invitations.title")}</CardTitle>
-          <Button size="sm" onClick={() => setCreateOpen(true)} className="h-9 shrink-0">
+          <Button size="sm" onClick={() => setCreateOpen(true)} className="h-9 shrink-0 self-start sm:self-auto">
             <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
             {t("admin.invitations.inviteButton")}
           </Button>
@@ -282,7 +284,7 @@ function InvitationsTable({
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1.5">
                   <Badge variant={ROLE_BADGE_VARIANT[inv.role]}>{t(ROLE_I18N_KEY[inv.role])}</Badge>
-                  <ScopeBadge scope={inv.scope} />
+                  <WhereBadge inv={inv} />
                   <Badge variant={STATUS_BADGE[status]}>{t(STATUS_LABEL_KEYS[status])}</Badge>
                 </div>
               </div>
@@ -316,16 +318,18 @@ function InvitationsTable({
       <div className="hidden min-h-0 flex-1 overflow-y-auto sm:block">
         <table className="w-full table-fixed text-sm">
           <colgroup>
-            <col className="w-[34%]" />
+            <col className="w-[28%]" />
+            <col className="w-[12%]" />
+            <col className="w-[18%]" />
             <col className="w-[14%]" />
-            <col className="w-[16%]" />
-            <col className="w-[20%]" />
+            <col className="w-[12%]" />
             <col className="w-[16%]" />
           </colgroup>
           <thead className="sticky top-0 z-10 bg-card">
             <tr className="border-b text-left">
               <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.invitations.thEmail")}</th>
               <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.invitations.thRole")}</th>
+              <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.invitations.thWhere")}</th>
               <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.invitations.thStatus")}</th>
               <th className="px-5 py-3 font-medium text-ink-muted">{t("admin.invitations.thSent")}</th>
               <th className="px-5 py-3 font-medium text-ink-muted" />
@@ -340,10 +344,10 @@ function InvitationsTable({
                     {inv.email}
                   </td>
                   <td className="px-5 py-3">
-                    <span className="inline-flex flex-wrap gap-1.5">
-                      <Badge variant={ROLE_BADGE_VARIANT[inv.role]}>{t(ROLE_I18N_KEY[inv.role])}</Badge>
-                      <ScopeBadge scope={inv.scope} />
-                    </span>
+                    <Badge variant={ROLE_BADGE_VARIANT[inv.role]}>{t(ROLE_I18N_KEY[inv.role])}</Badge>
+                  </td>
+                  <td className="px-5 py-3">
+                    <WhereBadge inv={inv} />
                   </td>
                   <td className="px-5 py-3">
                     <Badge variant={STATUS_BADGE[status]}>{t(STATUS_LABEL_KEYS[status])}</Badge>
@@ -404,7 +408,7 @@ function InvitationsTableSkeleton() {
       <div className="hidden max-h-[60vh] overflow-y-auto sm:block">
         {Array.from({ length: 6 }).map((_, row) => (
           <div key={row} className="flex items-center gap-4 border-b px-5 py-3">
-            {Array.from({ length: 5 }).map((_, col) => (
+            {Array.from({ length: 6 }).map((_, col) => (
               <Skeleton key={col} className="h-4 flex-1" />
             ))}
           </div>
@@ -415,12 +419,26 @@ function InvitationsTableSkeleton() {
 }
 
 /**
- * What the invitation grants, when it is not the school's place — the
- * default nobody needs told. One address can hold an "account only" and a
- * school invitation at once; without this the two rows read the same.
+ * Where the invitation leads: an account and nothing else, the organization
+ * by name, or the course by title. One address can hold an "account only"
+ * and a school invitation at once; without this the two rows read the same.
+ * An older server sends neither name: then the school's own invitation says
+ * nothing, as before, and a course one says «to a course».
  */
-function ScopeBadge({ scope }: { scope: Invitation["scope"] }) {
+function WhereBadge({ inv }: { inv: Invitation }) {
   const { t } = useTranslation()
-  if (scope !== "platform" && scope !== "course") return null
-  return <Badge variant="outline">{t(`admin.invitations.scope.${scope}`)}</Badge>
+  if (inv.scope === "platform") return <Badge variant="outline">{t("admin.invitations.scope.platform")}</Badge>
+  if (inv.scope === "course") {
+    return (
+      <Badge variant="outline" className="max-w-full truncate" title={inv.course_title ?? undefined}>
+        {inv.course_title || t("admin.invitations.scope.course")}
+      </Badge>
+    )
+  }
+  if (!inv.organization_name) return null
+  return (
+    <Badge variant="outline" className="max-w-full truncate" title={inv.organization_name}>
+      {inv.organization_name}
+    </Badge>
+  )
 }

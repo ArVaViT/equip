@@ -102,6 +102,12 @@ class InvitationResponse(BaseModel):
     # expired at read time rather than requiring a cron to flip a stored
     # status. Only meaningful when status == "pending".
     is_expired: bool
+    #: Where the invitation leads, by name, for the list that shows many at
+    #: once: the organization it admits to, and for a course invitation the
+    #: course, in the reader's language. Filled by the list route; a single
+    #: row written or revoked carries neither, since the caller named them.
+    organization_name: str | None = None
+    course_title: str | None = None
 
 
 class InvitationPreview(BaseModel):
