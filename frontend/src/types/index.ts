@@ -137,6 +137,9 @@ export interface Course {
   // - 'public'    catalog enroll button works (subject to enrollment_start/end)
   // - 'institute' enroll button is shown disabled with the
   //              'Доступно только по приглашению' label
+  /** The organization the course belongs to, as catalog cards show it. */
+  organization_name?: string | null
+  organization_slug?: string | null
   access_mode: 'public' | 'institute'
   created_by: string
   created_at: string

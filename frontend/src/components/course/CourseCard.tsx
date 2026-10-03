@@ -91,6 +91,14 @@ function CourseCard({ course, style, progress }: CourseCardProps) {
         )}
       </div>
       <CardHeader className="pb-2">
+        {/* Who teaches it: a catalog of many organizations is a catalog of
+            organizations, not of anonymous courses. A label, not a link —
+            the whole card is already one; the course page links on. */}
+        {course.organization_name && (
+          <p className="mb-1 truncate text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
+            {course.organization_name}
+          </p>
+        )}
         <CardTitle className="leading-snug line-clamp-2 text-wrap-safe">
           {orNotTranslated(t, course.title)}
         </CardTitle>
