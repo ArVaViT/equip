@@ -17,30 +17,6 @@ from app.schemas.grade import GradeBreakdown
 from app.services.grade_exemption_service import excused_item_ids
 from app.services.grading_scheme import effective_bands, get_org_settings, score_to_symbol
 
-#: Fallback letter scale, used only when no database session is at hand.
-#: The live bands come from ``org_settings`` via :mod:`app.services.grading_scheme`
-#: — a school can move them, and these constants must never overrule that.
-LETTER_GRADES = [
-    (90, "A"),
-    (80, "B"),
-    (70, "C"),
-    (60, "D"),
-    (0, "F"),
-]
-
-
-def score_to_letter(score: float) -> str:
-    """Legacy helper: the shipped letter scale, ignoring institutional bands.
-
-    Kept for callers that have no session. Anything computing a grade a
-    student will see must go through :func:`resolve_symbol` instead, or a
-    school that edits its bands will find the change has no effect.
-    """
-    for threshold, letter in LETTER_GRADES:
-        if score >= threshold:
-            return letter
-    return "F"
-
 
 def resolve_symbol(score: float, course: Course, settings: OrgSettings) -> str:
     """The grade symbol for *score* under this course's scheme.
@@ -418,7 +394,9 @@ def calculate_student_grade(
             .group_by(QuizAttempt.quiz_id)
             .all()
         )
-        best_scores = [float(r.best) for r in rows if r.best is not None]
+        # Capped at 100 like the assignment percentages below: an attempt
+        # graded on another scale must not read as more than full marks.
+        best_scores = [min(100.0, float(r.best)) for r in rows if r.best is not None]
         student_has_quiz_marks = bool(best_scores)
         total_quizzes = len(quiz_ids)
         quiz_avg = sum(best_scores) / total_quizzes if total_quizzes > 0 else 0.0
@@ -432,21 +410,7 @@ def calculate_student_grade(
     current_assignment_avg = 0.0
     student_has_assignment_marks = False
     if assignment_ids:
-        best_per_assignment = (
-            db.query(
-                AssignmentSubmission.assignment_id,
-                sqlfunc.max(AssignmentSubmission.grade).label("best_grade"),
-                Assignment.max_score,
-            )
-            .join(Assignment, Assignment.id == AssignmentSubmission.assignment_id)
-            .filter(
-                AssignmentSubmission.assignment_id.in_(assignment_ids),
-                AssignmentSubmission.student_id == student_id,
-                AssignmentSubmission.grade.isnot(None),
-            )
-            .group_by(AssignmentSubmission.assignment_id, Assignment.max_score)
-            .all()
-        )
+        best_per_assignment = _latest_graded(db, assignment_ids, [student_id])
         total_assignments = len(assignment_ids)
         if total_assignments > 0:
             # Clamp at 100% defensively — assignment_submissions.grade
@@ -560,32 +524,13 @@ def calculate_all_student_grades(db: Session, course: Course):
         )
         for qr in quiz_rows:
             if qr.best is not None:
-                quiz_scores.setdefault(str(qr.user_id), {})[qr.quiz_id] = float(qr.best)
+                quiz_scores.setdefault(str(qr.user_id), {})[qr.quiz_id] = min(100.0, float(qr.best))
 
     # Batch: best assignment grade per student per assignment. Keyed by item for
     # the same reason as the quizzes above.
     asgn_scores: dict[str, dict[UUID, float]] = {str(sid): {} for sid in student_ids}
     if assignment_ids:
-        asgn_rows = (
-            db.query(
-                AssignmentSubmission.student_id,
-                AssignmentSubmission.assignment_id,
-                sqlfunc.max(AssignmentSubmission.grade).label("best_grade"),
-                Assignment.max_score,
-            )
-            .join(Assignment, Assignment.id == AssignmentSubmission.assignment_id)
-            .filter(
-                AssignmentSubmission.assignment_id.in_(assignment_ids),
-                AssignmentSubmission.student_id.in_(student_ids),
-                AssignmentSubmission.grade.isnot(None),
-            )
-            .group_by(
-                AssignmentSubmission.student_id,
-                AssignmentSubmission.assignment_id,
-                Assignment.max_score,
-            )
-            .all()
-        )
+        asgn_rows = _latest_graded(db, assignment_ids, student_ids)
         for ar in asgn_rows:
             # See same-named single-student site above — clamp at 100%
             # so a historical over-cap grade doesn't distort the batch.
@@ -718,3 +663,47 @@ def calculate_all_student_grades(db: Session, course: Course):
         )
 
     return results
+
+
+def _latest_graded(db: Session, assignment_ids, student_ids) -> list:
+    """The grade that counts for each (student, assignment): the latest one.
+
+    It was ``MAX(grade)`` over every submission, so a mark given when the work
+    was returned for revision outranked the teacher's final mark on the
+    resubmission — the item list said 30, the course grade used 40
+    (2026-10-03). The teacher's latest mark decides, ordered as
+    ``zachet.latest_submissions`` orders them. While a resubmission waits to
+    be marked, the previous mark stands in the number (the item list shows the
+    work as pending) — as it did under ``MAX``. Rows: ``student_id,
+    assignment_id, best_grade, max_score``.
+    """
+    ranked = (
+        db.query(
+            AssignmentSubmission.student_id.label("student_id"),
+            AssignmentSubmission.assignment_id.label("assignment_id"),
+            AssignmentSubmission.grade.label("best_grade"),
+            Assignment.max_score.label("max_score"),
+            sqlfunc.row_number()
+            .over(
+                partition_by=(AssignmentSubmission.student_id, AssignmentSubmission.assignment_id),
+                order_by=(
+                    AssignmentSubmission.submitted_at.desc().nullslast(),
+                    AssignmentSubmission.graded_at.desc().nullslast(),
+                    AssignmentSubmission.id.desc(),
+                ),
+            )
+            .label("rn"),
+        )
+        .join(Assignment, Assignment.id == AssignmentSubmission.assignment_id)
+        .filter(
+            AssignmentSubmission.assignment_id.in_(assignment_ids),
+            AssignmentSubmission.student_id.in_(student_ids),
+            AssignmentSubmission.grade.isnot(None),
+        )
+        .subquery()
+    )
+    return (
+        db.query(ranked.c.student_id, ranked.c.assignment_id, ranked.c.best_grade, ranked.c.max_score)
+        .filter(ranked.c.rn == 1)
+        .all()
+    )

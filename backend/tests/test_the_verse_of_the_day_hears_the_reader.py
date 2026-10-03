@@ -119,3 +119,13 @@ class TestARealAcceptLanguageHeader:
         from app.schemas.locale import normalize_locale
 
         assert normalize_locale("fr-FR,fr;q=0.9,en;q=0.8") == "en"
+
+    def test_the_cdn_keeps_it_only_when_the_language_is_in_the_url(self, client: TestClient):
+        # Same verse for the whole UTC day: cacheable — but the CDN keys on
+        # the URL, so an answer chosen by Accept-Language must not be kept.
+        with patch("app.api.v1.verse_of_the_day.get_verse_of_the_day", side_effect=lambda code: _verse(code)):
+            by_url = client.get("/api/v1/verse-of-the-day?locale=ru")
+            by_header = client.get("/api/v1/verse-of-the-day", headers={"Accept-Language": "ru"})
+
+        assert "s-maxage=600" in by_url.headers.get("Cache-Control", "")
+        assert "s-maxage" not in by_header.headers.get("Cache-Control", "")

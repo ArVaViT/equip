@@ -190,3 +190,29 @@ class TestVerification:
 
         assert response.status_code == 200
         assert response.json()["course_title"] == EN_TITLE
+
+    def test_a_rename_after_issuance_does_not_rewrite_the_name(self, client: TestClient, db: Session):
+        course = _make_course(db)
+        person = db.get(User, TEACHER_ID)
+        person.full_name = "Maria Ivanova"
+        db.commit()
+        _issue(db, course, number="CERT-FROZEN00007")
+        person.full_name = "Maria Petrova"
+        db.commit()
+
+        response = client.get("/api/v1/certificates/verify/CERT-FROZEN00007")
+
+        assert response.json()["user_name"] == "Maria Ivanova"
+
+    def test_a_nameless_holder_is_not_shown_by_address(self, client: TestClient, db: Session):
+        # The snapshot falls back to the email when there was no name; the
+        # public page must not.
+        course = _make_course(db)
+        db.get(User, TEACHER_ID).full_name = None
+        db.commit()
+        cert = _issue(db, course, number="CERT-FROZEN00008")
+        assert cert.student_name == "teacher@example.com"
+
+        response = client.get("/api/v1/certificates/verify/CERT-FROZEN00008")
+
+        assert "@" not in (response.json()["user_name"] or "")

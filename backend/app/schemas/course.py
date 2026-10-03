@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas._media_url import validate_safe_media_url
 from app.schemas._request import RequestModel
@@ -180,6 +180,14 @@ class CourseUpdate(RequestModel):
     def _validate_image_url(cls, value: str | None) -> str | None:
         return validate_safe_media_url(value)
 
+    @model_validator(mode="after")
+    def _window_opens_before_it_closes(self) -> "CourseUpdate":
+        # A window that closes before it opens was saved as is, and nobody
+        # could ever enrol (2026-10-03).
+        if self.enrollment_start and self.enrollment_end and self.enrollment_end <= self.enrollment_start:
+            raise ValueError("enrollment_end must be after enrollment_start")
+        return self
+
 
 class CourseResponse(_ReadTitle):
     model_config = ConfigDict(from_attributes=True)
@@ -334,7 +342,8 @@ class CourseDashboardSummary(_ReadTitle):
 class EnrollmentSummaryResponse(BaseModel):
     """Enrollment for the dashboard list — embeds the slim CourseDashboardSummary.
 
-    ``progress`` is assessment-only by design (see
+    ``progress`` is assessment-only by design — on a course with nothing to
+    assess it is the share of chapters read (see
     ``course_service.sync_enrollment_progress``). ``chapters_read`` /
     ``chapters_to_read`` carry the other half of the story, because the
     dashboard used to show the percentage alone: a student who had read

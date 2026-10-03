@@ -8,10 +8,10 @@ from typing import Any
 from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, Header, Query, Response, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import and_, or_
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
@@ -184,7 +184,7 @@ def update_grading_config(
 @router.get("/course/{course_id}/student/{student_id}/exemptions", response_model=list[ExemptionResponse])
 def list_exemptions(
     course_id: str,
-    student_id: str,
+    student_id: UUID,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
@@ -192,7 +192,7 @@ def list_exemptions(
     verify_course_owner(db, course_id, teacher)
     return (
         db.query(GradeExemption)
-        .filter(GradeExemption.course_id == course_id, GradeExemption.student_id == UUID(str(student_id)))
+        .filter(GradeExemption.course_id == course_id, GradeExemption.student_id == student_id)
         .order_by(GradeExemption.created_at.desc())
         .all()
     )
@@ -205,7 +205,7 @@ def list_exemptions(
 )
 def create_exemption(
     course_id: str,
-    student_id: str,
+    student_id: UUID,
     data: ExemptionCreate,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
@@ -219,13 +219,13 @@ def create_exemption(
     """
     verify_course_owner(db, course_id, teacher)
 
-    student_uuid = UUID(str(student_id))
+    student_uuid = student_id
     if not lookup_enrollment(db, student_uuid, course_id):
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
             message="Student is not enrolled in this course",
-            context={"resource_type": "enrollment", "student_id": student_id, "course_id": course_id},
+            context={"resource_type": "enrollment", "student_id": str(student_id), "course_id": course_id},
         )
 
     if chapter_for_item(db, item_type=data.item_type, item_id=data.item_id, course_id=course_id) is None:
@@ -271,9 +271,9 @@ def create_exemption(
 )
 def delete_exemption(
     course_id: str,
-    student_id: str,
+    student_id: UUID,
     item_type: str,
-    item_id: str,
+    item_id: UUID,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ) -> None:
@@ -282,17 +282,17 @@ def delete_exemption(
 
     removed = remove_exemption(
         db,
-        student_id=UUID(str(student_id)),
+        student_id=student_id,
         course_id=course_id,
         item_type=item_type,
-        item_id=UUID(str(item_id)),
+        item_id=item_id,
     )
     if removed is None:
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
             message="No such exemption",
-            context={"resource_type": "grade_exemption", "student_id": student_id},
+            context={"resource_type": "grade_exemption", "student_id": str(student_id)},
         )
 
     # Commit the removal before writing the trail. `log_action` rolls the
@@ -679,43 +679,35 @@ def get_grade_summary(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
 ):
-    try:
-        course = verify_course_owner(db, course_id, teacher)
-        results = calculate_all_student_grades(db, course)
+    # No local try/except: a database error reaches the global handler in
+    # main.py, which answers 503 with structured logging — this route used to
+    # answer the same failure with 500 VALIDATION_FAILED.
+    course = verify_course_owner(db, course_id, teacher)
+    results = calculate_all_student_grades(db, course)
 
-        students = [StudentCalculatedGrade(**r) for r in results]
-        # A class average only means something when there are grades to average.
-        # ``result_state`` is resolved course-wide, so one student answers for
-        # all: on a completion-only or not-yet-graded course every final_score
-        # is a placeholder zero, and averaging them prints "class average 0.0%"
-        # in bold under a table of dashes — the single most alarming line a
-        # teacher can open a gradebook to.
-        gradable = [s for s in students if s.breakdown.result_state == "graded"]
-        class_avg = round(sum(s.breakdown.final_score for s in gradable) / len(gradable), 2) if gradable else None
+    students = [StudentCalculatedGrade(**r) for r in results]
+    # A class average only means something when there are grades to average.
+    # ``result_state`` is resolved course-wide, so one student answers for
+    # all: on a completion-only or not-yet-graded course every final_score
+    # is a placeholder zero, and averaging them prints "class average 0.0%"
+    # in bold under a table of dashes — the single most alarming line a
+    # teacher can open a gradebook to.
+    gradable = [s for s in students if s.breakdown.result_state == "graded"]
+    class_avg = round(sum(s.breakdown.final_score for s in gradable) / len(gradable), 2) if gradable else None
 
-        # The school's scale travels with the grades, so the client never has
-        # to know what A or «4» mean.
-        org_settings = get_org_settings(db, course.organization_id)
-        scheme = course.grading_scheme or org_settings.default_grading_scheme
+    # The school's scale travels with the grades, so the client never has
+    # to know what A or «4» mean.
+    org_settings = get_org_settings(db, course.organization_id)
+    scheme = course.grading_scheme or org_settings.default_grading_scheme
 
-        return GradeSummaryResponse(
-            course_id=course_id,
-            config=GradingConfigResponse.model_validate(course),
-            students=students,
-            class_average=class_avg,
-            grading_scheme=scheme,
-            bands=effective_bands(org_settings, scheme),
-        )
-    except HTTPException:
-        raise
-    except SQLAlchemyError as exc:
-        logger.exception("Grade summary DB error for course %s", course_id)
-        raise equip_error(
-            ErrorCode.VALIDATION_FAILED,
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            message="Grade calculation failed",
-            context={"resource_type": "grade_summary", "course_id": course_id},
-        ) from exc
+    return GradeSummaryResponse(
+        course_id=course_id,
+        config=GradingConfigResponse.model_validate(course),
+        students=students,
+        class_average=class_avg,
+        grading_scheme=scheme,
+        bands=effective_bands(org_settings, scheme),
+    )
 
 
 # ── CSV Export ────────────────────────────────────────────────────
@@ -1276,7 +1268,7 @@ def upsert_student_grade(
             ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
             message="Student is not enrolled in this course",
-            context={"resource_type": "enrollment", "student_id": student_id, "course_id": course_id},
+            context={"resource_type": "enrollment", "student_id": str(student_id), "course_id": course_id},
         )
 
     invalid = validate_override(course, code=data.override_code, score=data.override_score)

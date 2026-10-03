@@ -418,6 +418,19 @@ def list_cohort_courses(
     return _course_ids_for_cohort(db, cohort_id)
 
 
+def _refuse_if_completed(cohort: Cohort) -> None:
+    """A completed cohort is history: its grades and certificates are frozen
+    (see ``update_cohort``). Adding a course or a student to it made new
+    enrolments in a term that is over (2026-10-03)."""
+    if cohort.status == CohortStatus.COMPLETED:
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_409_CONFLICT,
+            message="This cohort is completed; nothing can be added to it",
+            context={"resource_type": "cohort", "resource_id": str(cohort.id), "status": str(cohort.status)},
+        )
+
+
 @router.post(
     "/{cohort_id}/courses",
     response_model=CohortResponse,
@@ -433,6 +446,7 @@ def attach_course(
     are auto-enrolled in this course (one enrollment row per student,
     all sharing the same ``cohort_id``)."""
     cohort = _get_or_404(db, cohort_id, director)
+    _refuse_if_completed(cohort)
     course = _course_or_404(db, body.course_id)
     # An institute course belongs to its organization. Attaching it to a
     # cohort of another one would enrol that cohort's students in it and
@@ -693,6 +707,7 @@ def add_student(
             message="Cohort not found",
             context={"resource_type": "cohort", "resource_id": str(cohort_id)},
         )
+    _refuse_if_completed(cohort)
 
     if body.user_id:
         user = db.query(User).filter(User.id == body.user_id).first()

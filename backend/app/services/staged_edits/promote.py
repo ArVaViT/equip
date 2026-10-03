@@ -27,8 +27,9 @@ from typing import TYPE_CHECKING
 
 from app.models.content_version import ContentVersionStatus
 from app.models.staged_content_version import StagedContentVersion
+from app.schemas.locale import LOCALE_CODES
 from app.services.content_versions.write import record_human_version, record_mt_version
-from app.services.staged_edits.read import staged_status_for_course
+from app.services.staged_edits.read import _human_translation_locales, staged_status_for_course
 from app.services.translation.hash import compute_source_hash
 
 if TYPE_CHECKING:
@@ -131,14 +132,25 @@ def _promote_one_field(
         .with_for_update()
         .all()
     )
-    human = next((r for r in rows if r.origin == "human"), None)
-    if human is None:
+    humans = [r for r in rows if r.origin == "human"]
+    if not humans:
         return False
+    # The newest, should a field hold two from before one-per-field.
+    human = max(humans, key=lambda r: (r.updated_at or r.created_at, r.created_at))
 
     expected_hash = compute_source_hash(human.text, locale=human.locale)
     translations = [
         r for r in rows if r.origin == "mt" and r.status == ContentVersionStatus.OK and r.source_hash == expected_hash
     ]
+    # Every language, in the words now staged — or nothing is written. This
+    # said so above and went ahead anyway: the human row landed with whatever
+    # translations matched, and readers in the others kept the old text.
+    exempt = _human_translation_locales(db, {(entity_type, entity_id, field)}).get(
+        (entity_type, entity_id, field), set()
+    )
+    needed = {loc for loc in LOCALE_CODES if loc != human.locale and loc not in exempt}
+    if not needed <= {r.locale for r in translations}:
+        return False
 
     # The human text lands first so the translations recorded below can
     # point their provenance at it.

@@ -21,6 +21,7 @@ from app.core.metrics import increment
 from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Course
+from app.models.rubric import AssignmentRubric
 from app.models.submission_declaration import SubmissionDeclaration
 from app.models.user import User, can_teach
 from app.schemas.assignment import (
@@ -39,6 +40,7 @@ from app.services.content_versions import (
 )
 from app.services.course_service import sync_enrollment_progress
 from app.services.domain_access import course_source_locale_for_chapter as _course_source_locale_for_chapter
+from app.services.rubric_service import sync_assignment_max_score
 from app.services.submission_grading import apply_grade
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import (
@@ -212,6 +214,14 @@ def update_assignment(
         text_patch["description"] = patch.pop("description")
     for field, value in patch.items():
         setattr(assignment, field, value)
+    # With a rubric attached the maximum is the rubric's total, and only the
+    # rubric moves it (``sync_assignment_max_score``). Taken from the form it
+    # drifted: marked 40 of 40 on the rubric, shown as 40 of 100 — or every
+    # rubric save refused as above a maximum of 10 (2026-10-03).
+    if "max_score" in patch:
+        attached = db.query(AssignmentRubric).filter(AssignmentRubric.assignment_id == assignment.id).first()
+        if attached is not None:
+            sync_assignment_max_score(db, assignment.id, attached.rubric_id)
 
     db.flush()
     source_locale = _course_source_locale_for_chapter(db, assignment.chapter_id)
@@ -320,6 +330,9 @@ def submit_assignment(
             message="You must be enrolled in this course to submit assignments",
             context={"resource_type": "assignment", "assignment_id": str(assignment_id), "course_id": course_id},
         )
+    # Same as reading it: a course back in draft, or a binned lesson, is a 404
+    # and was still taking submissions that counted (2026-10-03).
+    verify_chapter_access(db, assignment.chapter_id, current_user)
     refuse_if_chapter_locked(db, assignment.chapter_id, current_user)
 
     _refuse_if_already_marked(db, assignment_id, current_user.id)

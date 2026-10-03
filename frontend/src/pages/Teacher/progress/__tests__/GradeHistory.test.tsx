@@ -103,4 +103,23 @@ describe("GradeHistory", () => {
     expect(screen.queryByText(/Мария Петровна/)).not.toBeInTheDocument()
     expect(screen.getByRole("button")).toBeInTheDocument()
   })
+
+  it("never shows the previous student's history in the next one's drawer", async () => {
+    // The first request is slow; the teacher moves on to another student
+    // before it answers.
+    let answerFirst: (v: GradeHistoryEntry[]) => void = () => {}
+    vi.spyOn(gradesService, "getGradeHistory").mockImplementation(
+      () => new Promise((resolve) => (answerFirst = resolve)),
+    )
+    const { rerender } = render(<GradeHistory courseId="c-1" studentId="s-1" />, { wrapper: Wrapper })
+    await userEvent.click(screen.getByRole("button"))
+
+    rerender(<GradeHistory courseId="c-1" studentId="s-2" />)
+    answerFirst([entry({ reason: "Причина для первого студента" })])
+
+    await new Promise((r) => setTimeout(r, 0))
+    expect(screen.queryByText("Причина для первого студента")).not.toBeInTheDocument()
+    // …and the new student's button is not stuck spinning.
+    expect(screen.getByRole("button")).toBeEnabled()
+  })
 })

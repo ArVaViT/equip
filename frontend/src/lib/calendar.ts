@@ -1,6 +1,6 @@
 /**
  * Shared date math for the hand-rolled Mon-start month grid used by the
- * three calendar pickers (`DatePicker`, `DateTimePicker`, `DateRangePicker`).
+ * two calendar pickers (`DateTimePicker`, `DateRangePicker`).
  * These were copy-pasted byte-for-byte across all three before extraction.
  *
  * NOTE: this is the date-INPUT grid (Mon-start, 6 rows, no event bucketing).

@@ -119,10 +119,17 @@ class TestReplenishOneQuestion:
         monkeypatch.setattr(
             R,
             "run_generation",
-            lambda *a, **k: GenerationOutcome(generation_run_id=uuid.uuid4(), created_question_ids=[]),
+            lambda *a, **k: GenerationOutcome(
+                generation_run_id=uuid.uuid4(),
+                created_question_ids=[],
+                rejected_at_scripture=3,
+                errors=["no survivors after scripture validation"],
+            ),
         )
         out = R.replenish_one_question(db, client=object())  # type: ignore[arg-type]
         assert out.status == "no_survivors"
+        # The gate that emptied the run is named, not just «a gate».
+        assert "scripture=3" in (out.detail or "")
 
     def test_generation_error_is_caught(self, db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
         _admin(db)

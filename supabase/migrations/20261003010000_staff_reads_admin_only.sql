@@ -11,7 +11,6 @@
 --
 -- Students keep their own rows; platform staff (is_platform_staff()) keep
 -- everything, which the admin overview's enrollment count needs.
-begin;
 
 drop policy if exists chapter_progress_select on public.chapter_progress;
 create policy chapter_progress_select on public.chapter_progress for select to authenticated
@@ -43,5 +42,3 @@ create policy quiz_answers_select_own on public.quiz_answers for select to authe
     exists (select 1 from public.quiz_attempts qa where qa.id = quiz_answers.attempt_id and qa.user_id = (select auth.uid()))
     or public.is_platform_staff()
   );
-
-commit;

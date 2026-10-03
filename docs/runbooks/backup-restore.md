@@ -66,7 +66,8 @@ quarter so the next real incident isn't the first time.
 ### Steps
 
 1. **Pick the backup window to restore.** Supabase keeps daily
-   automated backups + PITR for the configured retention. For the
+   automated backups for the plan's retention (PITR is OFF — see the
+   header). For the
    drill, restore the most recent automated backup — it's the
    fastest and exercises the same code path as a real recovery.
 
@@ -88,7 +89,9 @@ quarter so the next real incident isn't the first time.
 4. **Once the restore is "Complete", validate the data:**
 
    ```bash
-   supabase db remote --project-ref $DRILL_TARGET_PROJECT_REF psql
+   # Connection string: drill project → Connect → Session pooler.
+   # (There is no `supabase db remote` in CLI v2.)
+   psql "$DRILL_TARGET_DB_URL"
 
    # Sanity row counts — these numbers should be in the same
    # order-of-magnitude as the drill source captured below.
@@ -157,7 +160,8 @@ Spend **5 minutes** answering these before touching anything:
 2. What is the minimum acceptable RPO (recovery point objective)
    for THIS incident? If the answer is "anything in the last 24
    hours is fine", we use the daily backup. If "we cannot lose
-   more than 10 minutes", we use PITR.
+   more than 10 minutes", we need PITR — which is OFF on this project
+   (see the header), so the daily backup is the only option today.
 3. Who is the comms lead? Vadym defaults to lead on his own; for a
    pilot-school incident loop in the school director by email
    BEFORE the restore so they're not surprised by the brief outage.
@@ -167,27 +171,20 @@ Spend **5 minutes** answering these before touching anything:
 Cut user traffic so the restore doesn't race with live writes.
 Two options, in order of preference:
 
-**A. Vercel maintenance mode (preferred — fast)**
+**There is no maintenance switch today.** Nothing in the backend reads a
+`MAINTENANCE_MODE` flag (checked 2026-10-03), and CLI v2 has no
+`supabase projects pause`. What exists:
 
-```bash
-# Set the env var that the backend respects as a kill switch:
-vercel env add MAINTENANCE_MODE production
-# value: "true"
-vercel --prod equip-backend  # redeploy with the flag
-```
+**A. Pause the project from the dashboard** — Supabase → Project Settings →
+General → Pause project, where the plan offers it. Blocks all reads and
+writes; the frontend shows a hard error.
 
-(If `MAINTENANCE_MODE` isn't wired yet in the backend, fall through
-to B.)
+**B. Restore without a freeze** — accept that writes made during the restore
+window are lost, note `T_RESTORE_START`, and reconcile from the audit log
+afterwards. Tell the school director first.
 
-**B. Pause the Supabase project**
-
-```bash
-supabase projects pause --project-ref $PROD_PROJECT_REF
-```
-
-This blocks all reads and writes. Less surgical than maintenance
-mode (the frontend gets a hard error), but guaranteed to stop
-writes regardless of caller.
+Building a real switch (a flag the API answers 503 on) is the fix; until then
+this step is a decision, not a command.
 
 ### Step 2 — Restore
 
@@ -243,10 +240,7 @@ DATABASE_URL="postgres://..." uvicorn app.main:app
 
 Reverse step 1:
 
-```bash
-vercel env rm MAINTENANCE_MODE production  # or unpause the project
-vercel --prod equip-backend
-```
+Unpause the project from the dashboard if step 1 paused it.
 
 Sanity-check the prod dashboard one more time as a real user. The
 first 15 minutes of traffic is when remaining issues will surface.
@@ -266,13 +260,9 @@ Within 24 hours, write a postmortem:
 
 ## Datadog hooks
 
-* `equip.backup.last_restore_drill` — single-value gauge, age in
-  days since the most recent drill log entry. Wired via a Datadog
-  scheduled query against this file. (Configured in
-  `equipbible-docs/runbooks/backup-monitoring.md`; the alert fires
-  if the value exceeds 100 days.)
-* Backup completion / failure events from Supabase land in Datadog
-  via the existing Supabase log forwarder.
+* None today. No metric reports the age of the last drill and no Supabase
+  backup events reach Datadog (checked 2026-10-03). The drill log above is
+  the only record — keep it current.
 
 ## Why no automation
 

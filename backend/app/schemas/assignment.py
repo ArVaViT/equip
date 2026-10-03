@@ -3,7 +3,7 @@ from typing import Literal
 from urllib.parse import urlparse
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas._request import RequestModel
 
@@ -78,6 +78,14 @@ class SubmissionCreate(RequestModel):
         if parsed.scheme.lower() != "https" or not parsed.netloc:
             raise ValueError("file_url must be an https:// URL")
         return value
+
+    @model_validator(mode="after")
+    def _something_to_submit(self) -> "SubmissionCreate":
+        # A declaration alone, or a blank text box, was accepted as the work
+        # and marked the lesson done (2026-10-03).
+        if not (self.content or "").strip() and not self.file_url:
+            raise ValueError("A submission needs text or a file")
+        return self
 
 
 class SubmissionResponse(BaseModel):

@@ -93,6 +93,10 @@ def submit_quiz(
             message="You must be enrolled in this course to submit quizzes",
             context={"resource_type": "quiz", "quiz_id": str(quiz_id), "course_id": course_id},
         )
+    # What the student may read they may answer, and no more: a course taken
+    # back to draft (or a binned lesson) is a 404 to read, and was still
+    # taking attempts that counted (2026-10-03).
+    verify_chapter_access(db, pre_quiz.chapter_id, current_user)
     refuse_if_chapter_locked(db, pre_quiz.chapter_id, current_user)
 
     # Lost-race fallback inside the helper: someone deleting the quiz

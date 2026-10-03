@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -85,17 +85,27 @@ export default function CoursesPage() {
     }
   }, [fetchedCourses])
 
+  // Which list a «load more» belongs to. A page of the previous search (or
+  // language) that arrived after the new one was appended to it: 25 cards
+  // under «x», one of them matching nothing (2026-10-03).
+  const listGeneration = useRef(0)
+  useEffect(() => {
+    listGeneration.current += 1
+  }, [query, reloadKey, i18n.language])
+
   // Append the next page. skip = current count (catalog order is stable
   // created_at desc, so offset paging is correct for append).
   const loadMore = async () => {
+    const generation = listGeneration.current
     setLoadingMore(true)
     setMoreError(false)
     try {
       const next = await coursesService.getCourses(query || undefined, { skip: courses.length, limit: PAGE_SIZE })
+      if (generation !== listGeneration.current) return
       setCourses((prev) => [...prev, ...next])
       setHasMore(next.length === PAGE_SIZE)
     } catch {
-      setMoreError(true)
+      if (generation === listGeneration.current) setMoreError(true)
     } finally {
       setLoadingMore(false)
     }

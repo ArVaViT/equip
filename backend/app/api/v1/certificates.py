@@ -550,10 +550,16 @@ def verify_certificate(
         )
     if course_title is None:
         course_title = cert.archived_course_title
+    # The name as the document carries it (``_snapshot_letterhead``): a
+    # rename after issuance must not make the page disagree with the paper
+    # it vouches for. The snapshot falls back to the address when there was
+    # no name, and an address is not for a public page — then the live name,
+    # as before.
+    frozen_name = cert.student_name if cert.student_name and "@" not in cert.student_name else None
     return CertificateVerifyResponse(
         valid=True,
         certificate_number=cert.certificate_number,
-        user_name=user.full_name if user else None,
+        user_name=frozen_name or (user.full_name if user else None),
         course_title=course_title,
         issued_at=cert.issued_at,
     )

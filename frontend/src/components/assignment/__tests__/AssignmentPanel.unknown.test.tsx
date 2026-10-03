@@ -122,4 +122,38 @@ describe("AssignmentPanel — a failed lookup is not an empty one", () => {
     expect(await screen.findByRole("button", { name: /Отправить/i })).toBeInTheDocument()
     expect(screen.queryByText(/Не удалось проверить/)).not.toBeInTheDocument()
   })
+
+  it("does not call work handed in before the date overdue", async () => {
+    vi.spyOn(coursesService, "getChapterAssignments").mockResolvedValue([
+      { ...ASSIGNMENT, due_date: "2026-08-13T09:00:00Z" },
+    ])
+    vi.spyOn(coursesService, "getMySubmissions").mockResolvedValue([SUBMITTED])
+    show()
+
+    expect(await screen.findByText("Уже сдано")).toBeInTheDocument()
+    expect(screen.queryByText(/Просрочено/)).not.toBeInTheDocument()
+  })
+
+  it("does call it overdue when nothing was handed in", async () => {
+    vi.spyOn(coursesService, "getChapterAssignments").mockResolvedValue([
+      { ...ASSIGNMENT, due_date: "2026-08-13T09:00:00Z" },
+    ])
+    vi.spyOn(coursesService, "getMySubmissions").mockResolvedValue([])
+    show()
+
+    expect(await screen.findByText(/Просрочено/)).toBeInTheDocument()
+  })
+
+  it("says the draft was restored the moment it is", async () => {
+    // Only after the next keystroke, until now — the student who came back
+    // to find their essay there was not told why.
+    const { assignmentDraftKey } = await import("@/lib/storageKeys")
+    window.localStorage.setItem(assignmentDraftKey("student-1", "a-1"), "Половина эссе")
+    vi.spyOn(coursesService, "getMySubmissions").mockResolvedValue([])
+    show()
+
+    expect(await screen.findByDisplayValue("Половина эссе")).toBeInTheDocument()
+    expect(screen.getByText(/Восстановлен черновик/)).toBeInTheDocument()
+    window.localStorage.clear()
+  })
 })

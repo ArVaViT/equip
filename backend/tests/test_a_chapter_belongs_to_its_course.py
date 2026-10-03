@@ -29,7 +29,7 @@ import pytest
 from app.models.course import Chapter, Course, Module
 from app.schemas.course import ChapterCreate
 from app.services.course_service import clone_course, create_chapter, delete_chapter, get_course
-from tests.conftest import TEACHER_ID
+from tests.conftest import TEACHER_ID, TEST_ORGANIZATION_ID
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -101,7 +101,7 @@ def test_a_clone_puts_every_chapter_under_the_new_course(db: Session):
         for title in titles:
             create_chapter(db, module.id, ChapterCreate(title=title))
 
-    clone = clone_course(db, course.id, TEACHER_ID)
+    clone = clone_course(db, course.id, TEACHER_ID, organization_id=TEST_ORGANIZATION_ID)
 
     assert clone is not None and clone.id != course.id
     cloned_chapters = [chapter for module in clone.modules for chapter in module.chapters]

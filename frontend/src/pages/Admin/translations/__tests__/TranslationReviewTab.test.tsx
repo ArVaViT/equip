@@ -116,4 +116,23 @@ describe("TranslationReviewTab", () => {
 
     expect(await screen.findByText(/Не удалось загрузить очередь/)).toBeInTheDocument()
   })
+
+  it("steps back to the last real page when the one it is on runs out", async () => {
+    // Accepting the last row of page 2 left an empty page under a count of 25
+    // and, with the total now fitting one page, no pager to go back with.
+    vi.spyOn(adminTranslationsService, "listNeedsReview").mockImplementation(async (params) =>
+      (params?.offset ?? 0) > 0
+        ? { items: [], total: 25, limit: 25, offset: params?.offset ?? 0 }
+        : { items: [row()], total: 25, limit: 25, offset: 0 },
+    )
+    render(
+      <I18nextProvider i18n={i18n}>
+        <MemoryRouter initialEntries={["/admin?tab=translations&page=2"]}>
+          <TranslationReviewTab />
+        </MemoryRouter>
+      </I18nextProvider>,
+    )
+
+    expect(await screen.findByRole("button", { name: /Принять/ })).toBeInTheDocument()
+  })
 })

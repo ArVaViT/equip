@@ -1,6 +1,10 @@
 # ADR-012: Invitations, notifications, and one way out of the building
 
-- **Status**: Proposed (2026-09-12)
+- **Status**: Accepted, partially implemented (2026-10-02). As built: course
+  mail (invitation, certificate decision) with per-kind switches and a one-click
+  unsubscribe; the reader's time zone lives on `profiles`; there is no
+  `message_deliveries` table, no delivery webhook and no reminder cron yet;
+  the per-grade mail was built and then removed by decision (mail stays rare).
 - **Date**: 2026-09-12
 - **Decision-makers**: @ArVaViT (owner), @claude (Equip agent)
 
@@ -131,6 +135,14 @@ Role never moves down: a director accepting a student invitation keeps
 being a director and still gets the membership and the enrollment. The
 ordering is `TEACHING_ROLES` plus student, and it lives next to
 `can_teach()` rather than being re-derived.
+
+*Amended 2026-10-03:* across schools the two rules collide. Accepting moves
+the person to the inviting school, so a director or teacher of school A who
+accepted a student seat in school B arrived in B as its director or teacher;
+taking the offered role instead would cost them school A without a word (a
+stale course link was enough). Such an acceptance is now refused
+(`invitation.other_school`, 409) before anything is written. Moving with an
+equal or higher role offered, and platform staff, are unchanged.
 
 Enrollment reuses `enroll_user_in_course` — it already takes an
 arbitrary `user_id`, is idempotent on `(user, course, cohort)` and

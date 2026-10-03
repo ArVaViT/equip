@@ -302,7 +302,19 @@ export function useCourseData(
   // editor used to sort modules here and let each child re-derive the rest.
   const structure = useMemo(() => readCourseStructure(course), [course])
 
-  const chapters = useCourseChapters({ courseId, course, setCourse })
+  // Only the lessons and modules, quietly: after a partly failed reorder the
+  // server's order is the one to show, but a full reload put the whole editor
+  // behind a spinner and reset the enrolment-window inputs mid-edit.
+  const reloadCourse = useCallback(() => {
+    if (!courseId) return
+    coursesService
+      .getCourseForEdit(courseId)
+      .then((data) =>
+        setCourse((prev) => (prev ? { ...prev, chapters: data.chapters, modules: data.modules } : data)),
+      )
+      .catch(() => undefined)
+  }, [courseId])
+  const chapters = useCourseChapters({ courseId, course, setCourse, reload: reloadCourse })
 
   const reorderModules = useCallback(
     async (result: DropResult) => {

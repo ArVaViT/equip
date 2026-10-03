@@ -15,6 +15,7 @@ import {
   isSupportedLocale,
   type SupportedLocale,
 } from "@/i18n/config"
+import { useLatestRequest } from "@/hooks/useLatestRequest"
 import { adminTranslationsService, type NeedsReviewRow } from "@/services/adminTranslations"
 
 const PAGE_SIZE = 25
@@ -62,7 +63,9 @@ export function TranslationReviewTab() {
   const [loadError, setLoadError] = useState(false)
   const [actingId, setActingId] = useState<string | null>(null)
 
+  const begin = useLatestRequest()
   const load = useCallback(async () => {
+    const isCurrent = begin()
     setLoading(true)
     setLoadError(false)
     try {
@@ -72,14 +75,15 @@ export function TranslationReviewTab() {
         limit: PAGE_SIZE,
         offset: (page - 1) * PAGE_SIZE,
       })
+      if (!isCurrent()) return
       setRows(res.items)
       setTotal(res.total)
     } catch {
-      setLoadError(true)
+      if (isCurrent()) setLoadError(true)
     } finally {
-      setLoading(false)
+      if (isCurrent()) setLoading(false)
     }
-  }, [locale, courseId, page])
+  }, [begin, locale, courseId, page])
 
   useEffect(() => {
     void load()
@@ -144,6 +148,13 @@ export function TranslationReviewTab() {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  // Accepting the last row of the last page leaves that page past the end:
+  // empty, «nothing to review» under a count of 25, and no pager to go back
+  // with once the total fits one page. Step back to the last real page.
+  useEffect(() => {
+    if (!loading && !loadError && total > 0 && page > totalPages) goToPage(totalPages)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- goToPage is rebuilt each render; page/total decide
+  }, [loading, loadError, total, page, totalPages])
 
   return (
     <section className="rounded-card border border-edge bg-card shadow-card dark:border-transparent">

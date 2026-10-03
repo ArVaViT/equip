@@ -13,10 +13,10 @@ if TYPE_CHECKING:
 def test_supabase_secret_key_wins_over_the_legacy_name(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "eyJ-legacy-disabled-2026-06")
     monkeypatch.setenv("SUPABASE_SECRET_KEY", "sb_secret_current")
-    assert Settings().SUPABASE_SERVICE_ROLE_KEY == "sb_secret_current"
+    assert Settings(_env_file=None).SUPABASE_SERVICE_ROLE_KEY == "sb_secret_current"
 
 
 def test_the_legacy_name_still_works_alone(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("SUPABASE_SECRET_KEY", raising=False)
     monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "sb_secret_under_old_name")
-    assert Settings().SUPABASE_SERVICE_ROLE_KEY == "sb_secret_under_old_name"
+    assert Settings(_env_file=None).SUPABASE_SERVICE_ROLE_KEY == "sb_secret_under_old_name"

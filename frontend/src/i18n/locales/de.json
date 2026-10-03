@@ -50,7 +50,6 @@
     "home": "Start",
     "courses": "Kurse",
     "calendar": "Kalender",
-    "certificates": "Zertifikate",
     "manage": "Lehre",
     "manageCourses": "Kurse, die ich unterrichte",
     "admin": "Admin",
@@ -74,8 +73,7 @@
   "landing": {
     "hero": {
       "manifesto": "Die Schrift der Reihe nach studieren, nicht in Bruchstücken",
-      "subline": "Kostenlose Kurse mit echter Prüfung und einem Zertifikat, das jeder nachprüfen kann — für alle, die die Schrift ernst nehmen.",
-      "facts": "Kostenlos · Open Source · RU EN DE UK · Überprüfbares Zertifikat"
+      "subline": "Kostenlose Kurse mit echter Prüfung und einem Zertifikat, das jeder nachprüfen kann — für alle, die die Schrift ernst nehmen."
     },
     "value": {
       "heading": "Was Equip bietet",
@@ -822,6 +820,7 @@
       "invitation_expired": "Diese Einladung ist abgelaufen.",
       "invitation_already_used": "Diese Einladung wurde bereits verwendet.",
       "invitation_email_mismatch": "Diese Einladung wurde an eine andere Adresse geschickt.",
+      "invitation_other_school": "Sie haben in einer anderen Schule auf Equip eine höhere Rolle. Wenn Sie diese Einladung annehmen, wechseln Sie hierher und verlieren diese Rolle – deshalb kann sie mit diesem Konto nicht angenommen werden. Bitten Sie die Person, die Sie eingeladen hat, sich bei uns zu melden.",
       "plan_limit_reached": "Sie haben bereits {{limit}} Kurse — mehr kann eine Lehrkraft nicht gleichzeitig führen. Löschen Sie einen, den Sie nicht mehr brauchen, oder wenden Sie sich an eine Administratorin oder einen Administrator.",
       "validation_failed": "Etwas an Ihrer Eingabe stimmt nicht.",
       "legal_consent_required": "Bitte akzeptieren Sie die aktuellen Nutzungsbedingungen und die Datenschutzerklärung, bevor Sie etwas ändern.",
@@ -2910,9 +2909,6 @@
     "prevMonth": "Voriger Monat",
     "nextMonth": "Nächster Monat"
   },
-  "datePicker": {
-    "placeholder": "Datum wählen"
-  },
   "dateTimePicker": {
     "placeholder": "Datum und Uhrzeit wählen",
     "hourAria": "Stunde",
@@ -2936,6 +2932,7 @@
       "unusable": "Diese Einladung wurde bereits genutzt, zurückgezogen oder ist abgelaufen. Bitten Sie um eine neue.",
       "emailMismatch": "Diese Einladung ging an eine andere E-Mail-Adresse.",
       "emailMismatchDetail": "Diese Einladung ging an <strong>{{invited}}</strong>, angemeldet sind Sie aber als <strong>{{current}}</strong>.",
+      "otherSchool": "Sie haben in einer anderen Schule auf Equip eine höhere Rolle. Wenn Sie diese Einladung annehmen, wechseln Sie hierher und verlieren diese Rolle – deshalb kann sie mit diesem Konto nicht angenommen werden. Bitten Sie die Person, die Sie eingeladen hat, sich bei uns zu melden.",
       "acceptFailed": "Die Einladung konnte nicht angenommen werden. Bitte erneut versuchen.",
       "accountExists": "Sie haben mit dieser Adresse bereits ein Equip-Konto. Melden Sie sich an und öffnen Sie den Einladungslink dann erneut."
     },
@@ -3136,6 +3133,7 @@
     "complete": "Dieser Kurs liegt in allen Sprachen vor und wurde geprüft",
     "remaining": "Noch zu übersetzen: {{count}}",
     "prepare": "Jetzt übersetzen",
+    "prepareFailed": "Übersetzung konnte nicht gestartet werden — bitte erneut versuchen.",
     "behindBy": "— {{count}} fehlen",
     "heldEdits": "{{count}} Änderungen warten auf die Übersetzung. Studierende sehen sie, sobald alle Sprachen bereit sind.",
     "blockedEdits": "{{count}} Änderungen hängen fest. Eine Übersetzung hat die Prüfung nicht bestanden und braucht einen Menschen.",

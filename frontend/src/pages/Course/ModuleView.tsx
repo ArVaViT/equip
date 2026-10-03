@@ -28,13 +28,16 @@ import { useNotedChapters } from "@/hooks/useNotedChapters"
 import { EmptyState, ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
 import { isChapterComplete, isChapterLocked, isChapterRead } from "./moduleProgress"
-import { chapterHref } from "@/lib/courseStructure"
+import { chapterHref, findChapter, readCourseStructure, type CourseStructure } from "@/lib/courseStructure"
 import { orNotTranslated } from "@/lib/untranslated"
 
 // Module ID + course ID come from the route, locale from i18n; bundle the
 // fetcher's deps in one tuple so useAsyncData re-runs at the right edges.
 interface ModuleFetchResult {
   module: Module | null
+  /** The course's reading order, for the lesson before each one — across
+   *  module boundaries. `null` when it could not be had. */
+  structure: CourseStructure | null
   /** `null` when the progress request failed — not the same as "none". */
   completedIds: Set<string> | null
   invalidLink: boolean
@@ -50,10 +53,12 @@ export default function ModuleView() {
   const { data, loading, error: fetchError } = useAsyncData<ModuleFetchResult>(
     async (isCancelled) => {
       if (!courseId || !moduleId) {
-        return { module: null, completedIds: null, invalidLink: true }
+        return { module: null, structure: null, completedIds: null, invalidLink: true }
       }
-      const [mod, completedChapterIds] = await Promise.all([
+      const [mod, course, completedChapterIds] = await Promise.all([
         coursesService.getModule(courseId, moduleId),
+        // Cached, and the page that sent the student here fetched it already.
+        coursesService.getCourse(courseId).catch(() => null),
         // `null`, not `[]`. An empty list means the student has finished
         // nothing; a failed request means we do not know. Rendering the second
         // as the first shows somebody who completed this module a page of
@@ -61,10 +66,11 @@ export default function ModuleView() {
         coursesService.getMyChapterProgress(courseId).catch(() => null),
       ])
       if (isCancelled()) {
-        return { module: null, completedIds: null, invalidLink: false }
+        return { module: null, structure: null, completedIds: null, invalidLink: false }
       }
       return {
         module: mod,
+        structure: course ? readCourseStructure(course) : null,
         completedIds: completedChapterIds === null ? null : new Set(completedChapterIds),
         invalidLink: false,
       }
@@ -244,7 +250,12 @@ export default function ModuleView() {
               const isGradable = isGradableChapterType(chapter.chapter_type)
               const isCompleted = isChapterComplete(completedIds, chapter, isGradable)
               const requiresTeacher = chapter.requires_completion
-              const prevChapter = idx > 0 ? sortedChapters[idx - 1] : null
+              // The lesson before it in the *course*, as the lesson page and the
+              // outline judge it: the first lesson of a module follows the last
+              // of the one before, so «M2 opens after M1's exam» locked M2's
+              // first lesson here even after the exam was passed (2026-10-03).
+              const placement = data?.structure ? findChapter(data.structure, chapter.id) : null
+              const prevChapter = placement ? placement.prev : idx > 0 ? sortedChapters[idx - 1] : null
               const prevIsGradable = prevChapter ? isGradableChapterType(prevChapter.chapter_type) : false
               // Fails **open** when progress is unknown, and that direction is
               // deliberate. `!completedIds.has(...)` on a failed fetch is
@@ -253,7 +264,11 @@ export default function ModuleView() {
               // request timed out. The server gates this for real; guessing on
               // the client can only be wrong in one of two directions, and
               // wrongly denying somebody their own progress is the worse one.
-              const isLocked = isChapterLocked(completedIds, chapter, prevChapter ?? null, prevIsGradable)
+              // Without the course's order the first lesson's predecessor is
+              // unknown — it may be the exam it waits on, or nothing — so it
+              // fails open like unknown progress does.
+              const prevUnknown = !placement && idx === 0
+              const isLocked = !prevUnknown && isChapterLocked(completedIds, chapter, prevChapter ?? null, prevIsGradable)
               const isRead = isChapterRead(completedIds, chapter, isGradable)
 
               if (isLocked) {

@@ -392,3 +392,21 @@ def test_a_student_cannot_read_somebody_elses(student_client, db: Session, teach
     db.commit()
 
     assert student_client.get(f"/api/v1/rubrics/submission/{submission.id}").status_code == 403
+
+
+def test_the_form_cannot_move_a_rubric_assignments_maximum(client, db: Session, teacher) -> None:
+    """With a rubric attached only the rubric decides the maximum.
+
+    The assignment form sends ``max_score`` with every save; taken as is it
+    drifted from the rubric total — marked 7 of 7 on the grid, shown as 7 of
+    100 (2026-10-03).
+    """
+    course, assignment = _course_with_assignment(db, "rubric-form-max")
+    rubric, _ = _rubric(db, course.id, criteria=[[0, 3], [0, 4]])
+    _attach(db, assignment, rubric)
+
+    response = client.put(f"/api/v1/assignments/{assignment.id}", json={"max_score": 100})
+
+    assert response.status_code == 200, response.text
+    db.refresh(assignment)
+    assert assignment.max_score == 7

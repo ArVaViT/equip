@@ -191,6 +191,18 @@ def persist_answers(
                 context={"resource_type": "quiz_question", "question_id": str(ans.question_id)},
             )
         answered.add(question.id)
+        if ans.selected_option_id is not None:
+            # An option of this question or none. Anything else was a 409
+            # from the foreign key, or — an option of another question —
+            # stored as this student's choice and shown to the teacher.
+            option = options_by_id.get(str(ans.selected_option_id))
+            if option is None or option.question_id != question.id:
+                raise equip_error(
+                    ErrorCode.VALIDATION_FAILED,
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    message=f"Option {ans.selected_option_id} is not an option of question {ans.question_id}",
+                    context={"resource_type": "quiz_option", "question_id": str(ans.question_id)},
+                )
         is_correct, points_earned = grade_auto_answer(question, ans.selected_option_id, options_by_id)
         total_score += points_earned
         # Auto-gradable answers are scored deterministically right now,
@@ -200,13 +212,21 @@ def persist_answers(
         # queue uses that NULL as its single source of truth for "this
         # answer still needs a human".
         auto_graded_at = now if question.question_type in AUTO_GRADED_QUESTION_TYPES else None
+        # An open answer with nothing in it is a skipped question, and is
+        # recorded like one (below). Kept as pending, it read «waiting for
+        # review» to the student forever while no teacher queue showed it —
+        # both queues need text — and an exam's one attempt was spent on it
+        # (2026-10-03).
+        text_answer = ans.text_answer if (ans.text_answer or "").strip() else None
+        if question.question_type not in AUTO_GRADED_QUESTION_TYPES and text_answer is None:
+            auto_graded_at = now
         answer_results.append(
             _add_answer_row(
                 db,
                 attempt_id=attempt.id,
                 question_id=ans.question_id,
                 selected_option_id=ans.selected_option_id,
-                text_answer=ans.text_answer,
+                text_answer=text_answer,
                 is_correct=is_correct,
                 points_earned=points_earned,
                 graded_at=auto_graded_at,
@@ -310,11 +330,18 @@ def recompute_attempt_grade(db: Session, attempt: QuizAttempt, quiz: Quiz) -> st
     ``None``.
     """
     rows = db.query(QuizAnswer).filter(QuizAnswer.attempt_id == attempt.id).all()
-    attempt.score = sum(int(r.points_earned or 0) for r in rows)
-    # ``max_score`` is already the full potential from submit(); we don't
-    # recompute it here because question.points might legally change
-    # later (rare) and we want the attempt to reflect the grading state,
-    # not the current quiz definition.
+    # ``max_score`` stays what it was at submission: a finished attempt keeps
+    # its own scale, and an edit to a question re-scores nothing already
+    # graded (see ``quizzes/questions.py``). But a manual grade is capped by
+    # the question's *current* points, so a question re-weighted upwards
+    # after submission could push the score past the attempt's own maximum
+    # — an essay re-weighted 10 → 50 and marked 50 read 51/11, 463% in the
+    # course grade (2026-10-03). The score never exceeds what the attempt
+    # was out of.
+    attempt.score = min(
+        sum(int(r.points_earned or 0) for r in rows),
+        int(attempt.max_score or 0) or sum(int(r.points_earned or 0) for r in rows),
+    )
     was_passed = bool(attempt.passed)
     max_score = int(attempt.max_score or 0)
     percentage = (attempt.score / max_score * 100) if max_score > 0 else 0

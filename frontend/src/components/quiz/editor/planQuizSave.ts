@@ -9,6 +9,9 @@ export interface DraftSnapshot {
   passingScore: number
   /** ``null`` for a plain quiz — only an exam caps attempts. */
   maxAttempts: number | null
+  /** The lesson's kind. The server reads it for whether a finished attempt
+   *  shows the right answers, so it has to follow the lesson. */
+  quizType: "quiz" | "exam"
   questions: DraftQuestion[]
 }
 
@@ -58,6 +61,9 @@ export function planInPlaceSave(existing: Quiz, draft: DraftSnapshot): InPlacePl
   if (draft.description !== (existing.description ?? null)) quiz.description = draft.description
   if (draft.passingScore !== existing.passing_score) quiz.passing_score = draft.passingScore
   if (draft.maxAttempts !== (existing.max_attempts ?? null)) quiz.max_attempts = draft.maxAttempts
+  // A lesson switched between quiz and exam kept the old kind on the quiz:
+  // an «exam» went on showing the right answers (2026-10-03).
+  if (draft.quizType !== existing.quiz_type) quiz.quiz_type = draft.quizType
 
   const questions: InPlacePlan["questions"] = []
   const options: InPlacePlan["options"] = []

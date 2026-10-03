@@ -28,6 +28,8 @@ import type { Cohort, Course } from "@/types"
 import { AttachCourseDialog } from "./AttachCourseDialog"
 import { AddStudentDialog } from "./AddStudentDialog"
 import { CohortStatusPicker } from "./CohortStatusPicker"
+import { canDirect } from "@/lib/roles"
+import { useLatestRequest } from "@/hooks/useLatestRequest"
 import { cn } from "@/lib/utils"
 
 export default function CohortDetailPage() {
@@ -56,10 +58,15 @@ export default function CohortDetailPage() {
   // request out before the route-level <Navigate> redirects them.
   // Resolves the "fetch fires before redirect" timing window the
   // role-check return at the bottom of the file used to expose.
-  const isAdmin = user?.role === "admin"
+  // A director runs their school's cohorts too (the backend's
+  // ``require_director``); «admin» alone sent them back to the home page from
+  // the cohort they had just clicked (2026-10-03).
+  const isAdmin = canDirect(user?.role)
+  const begin = useLatestRequest()
 
   const load = useCallback(async () => {
     if (!cohortId || !isAdmin) return
+    const isCurrent = begin()
     setLoading(true)
     setLoadError(null)
     try {
@@ -67,6 +74,7 @@ export default function CohortDetailPage() {
         cohortsService.getCohort(cohortId),
         cohortsService.listCohortStudents(cohortId),
       ])
+      if (!isCurrent()) return
       setCohort(c)
       setStudents(s)
       if (c.course_ids.length) {
@@ -79,6 +87,7 @@ export default function CohortDetailPage() {
         const settled = await Promise.allSettled(
           c.course_ids.map((id) => coursesService.getCourse(id)),
         )
+        if (!isCurrent()) return
         const attached: Course[] = []
         let failed = 0
         for (const r of settled) {
@@ -100,6 +109,7 @@ export default function CohortDetailPage() {
         setCourses([])
       }
     } catch (e: unknown) {
+      if (!isCurrent()) return
       const status = (e as { response?: { status?: number } })?.response?.status
       // A 404 is the one failure that means «this cohort is gone». Everything
       // else used to fall into the same «may have been deleted» screen once
@@ -107,7 +117,7 @@ export default function CohortDetailPage() {
       if (status === 404) setNotFound(true)
       else setLoadError(getErrorDetail(e, t("admin.cohorts.toast.loadFailed")))
     } finally {
-      setLoading(false)
+      if (isCurrent()) setLoading(false)
     }
     // ``t`` deliberately excluded -- it was here for the toast string
     // resolution, but its identity changes on every i18n language flip
@@ -115,7 +125,7 @@ export default function CohortDetailPage() {
     // each time the admin toggles the UI language. The toast resolves
     // ``t`` lazily at the call site anyway.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cohortId, isAdmin])
+  }, [begin, cohortId, isAdmin])
 
   useEffect(() => {
     void load()
@@ -218,7 +228,8 @@ export default function CohortDetailPage() {
     }
   }
 
-  if (user?.role !== "admin") return <Navigate to="/" replace />
+  if (!isAdmin) return <Navigate to="/" replace />
+  const isCompleted = cohort?.status === "completed"
   if (loading) return <PageSpinner />
   if (loadError && !cohort) {
     return (
@@ -391,10 +402,14 @@ export default function CohortDetailPage() {
           <CardTitle>
             {t("admin.cohorts.coursesHeading", { count: courses.length })}
           </CardTitle>
-          <Button size="sm" className="h-9" onClick={() => setAttachOpen(true)}>
-            <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-            {t("admin.cohorts.attachCourseButton")}
-          </Button>
+          {/* A completed cohort is history: the server refuses new courses and
+              students in it, so the page does not offer them. */}
+          {!isCompleted && (
+            <Button size="sm" className="h-9" onClick={() => setAttachOpen(true)}>
+              <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+              {t("admin.cohorts.attachCourseButton")}
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="pt-0">
           {courses.length === 0 ? (
@@ -403,10 +418,12 @@ export default function CohortDetailPage() {
               title={t("admin.cohorts.noCoursesAttachedTitle")}
               description={t("admin.cohorts.noCoursesAttached")}
               action={
-                <Button size="sm" variant="outline" onClick={() => setAttachOpen(true)}>
-                  <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-                  {t("admin.cohorts.attachCourseButton")}
-                </Button>
+                isCompleted ? undefined : (
+                  <Button size="sm" variant="outline" onClick={() => setAttachOpen(true)}>
+                    <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                    {t("admin.cohorts.attachCourseButton")}
+                  </Button>
+                )
               }
             />
           ) : (
@@ -450,7 +467,11 @@ export default function CohortDetailPage() {
         </CardContent>
       </Card>
 
-      <StudentsCard students={students} onAdd={() => setAddOpen(true)} onRemove={removeStudent} />
+      <StudentsCard
+        students={students}
+        onAdd={isCompleted ? undefined : () => setAddOpen(true)}
+        onRemove={removeStudent}
+      />
 
       <AttachCourseDialog
         open={attachOpen}
@@ -632,7 +653,8 @@ function StudentsCard({
   onRemove,
 }: {
   students: CohortStudent[]
-  onAdd: () => void
+  /** Absent on a completed cohort, which takes no new students. */
+  onAdd?: () => void
   onRemove: (s: CohortStudent) => void
 }) {
   const { t } = useTranslation()
@@ -655,10 +677,12 @@ function StudentsCard({
             <Users className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             {t("admin.cohorts.studentsHeading", { count: students.length })}
           </CardTitle>
-          <Button size="sm" onClick={onAdd}>
-            <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-            {t("admin.cohorts.addStudentButton")}
-          </Button>
+          {onAdd && (
+            <Button size="sm" onClick={onAdd}>
+              <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+              {t("admin.cohorts.addStudentButton")}
+            </Button>
+          )}
         </div>
         {students.length > 0 && (
           <div className="relative">
@@ -685,10 +709,12 @@ function StudentsCard({
             title={t("admin.cohorts.noStudentsTitle")}
             description={t("admin.cohorts.noStudents")}
             action={
-              <Button size="sm" variant="outline" onClick={onAdd}>
-                <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-                {t("admin.cohorts.addStudentButton")}
-              </Button>
+              onAdd ? (
+                <Button size="sm" variant="outline" onClick={onAdd}>
+                  <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  {t("admin.cohorts.addStudentButton")}
+                </Button>
+              ) : undefined
             }
           />
         ) : filtered.length === 0 ? (

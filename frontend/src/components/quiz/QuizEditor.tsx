@@ -60,6 +60,7 @@ export default function QuizEditor({
     description: draft.description.trim() || null,
     passingScore: draft.passingScore,
     maxAttempts: chapterType === "exam" ? draft.maxAttempts : null,
+    quizType: chapterType,
     questions: draft.questions,
   })
 

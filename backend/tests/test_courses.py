@@ -899,3 +899,12 @@ class TestCatalogLocalizedMetadata:
         c = next(c for c in r.json() if c["id"] == cid)
         assert c["title"] == "Правильный RU title"
         assert c["description"] == "Правильный RU desc"
+
+
+def test_an_enrollment_window_that_closes_before_it_opens_is_refused(client: TestClient):
+    course = _create_course(client)
+    resp = client.put(
+        f"{PREFIX}/{course['id']}",
+        json={"enrollment_start": "2030-01-01T00:00:00Z", "enrollment_end": "2020-01-01T00:00:00Z"},
+    )
+    assert resp.status_code == 422

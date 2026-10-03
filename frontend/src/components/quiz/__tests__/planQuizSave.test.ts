@@ -57,6 +57,7 @@ function draftOf(quiz: Quiz): DraftSnapshot {
     description: quiz.description,
     passingScore: quiz.passing_score,
     maxAttempts: quiz.max_attempts,
+    quizType: quiz.quiz_type,
     questions: quiz.questions.map(
       (q): DraftQuestion => ({
         id: q.id,
@@ -117,6 +118,15 @@ describe("the plan for saving a quiz in place", () => {
       description: "Проверка главы",
       passing_score: 80,
     })
+  })
+
+  it("a lesson turned into an exam takes the quiz with it", () => {
+    // The server decides from quiz_type whether a finished attempt shows the
+    // right answers; left behind, an «exam» kept showing them.
+    const quiz = savedQuiz()
+    const draft = { ...draftOf(quiz), quizType: "exam" as const, maxAttempts: 1 }
+
+    expect(planInPlaceSave(quiz, draft)!.quiz).toEqual({ max_attempts: 1, quiz_type: "exam" })
   })
 
   it("reordering questions patches their positions", () => {

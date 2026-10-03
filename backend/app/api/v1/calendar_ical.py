@@ -260,9 +260,6 @@ def serve_feed(
         display_locale=locale,
     )
     body = render_calendar(events, locale=locale)
-    response.headers["Content-Type"] = "text/calendar; charset=utf-8"
-    response.headers["Cache-Control"] = "private, max-age=900"
-    response.headers["Content-Disposition"] = 'inline; filename="equip-calendar.ics"'
     return Response(
         content=body,
         media_type="text/calendar; charset=utf-8",

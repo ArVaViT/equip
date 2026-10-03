@@ -153,7 +153,9 @@ export function useAcceptInvite() {
       setServerError(
         code === "invitation.email_mismatch"
           ? i18n.t("invite.errors.emailMismatch")
-          : i18n.t("invite.errors.acceptFailed"),
+          : code === "invitation.other_school"
+            ? i18n.t("invite.errors.otherSchool")
+            : i18n.t("invite.errors.acceptFailed"),
       )
       setPhase("ready")
     }

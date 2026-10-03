@@ -174,6 +174,11 @@ class ErrorCode(enum.StrEnum):
     """The authenticated caller's email does not match the email the
     invitation was issued to."""
 
+    INVITATION_OTHER_SCHOOL = "invitation.other_school"
+    """The caller belongs to another organization with a higher role than the
+    one offered. Accepting would either carry that role into this school or
+    silently take it away, so it is refused and nothing is written."""
+
     # ── Plan limits ─────────────────────────────────────────────────────
     PLAN_LIMIT_REACHED = "plan.limit_reached"
     """The account already holds as many of something as its plan allows.

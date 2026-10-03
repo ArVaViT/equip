@@ -292,10 +292,16 @@ export default function CertificateCard({ courseId, progress, blocked = false, c
                 {t("certificates.card.rejectedDescription")}
               </p>
             </div>
-            <Button onClick={handleRequest} disabled={requesting} variant="outline">
-              <RefreshCw className="mr-1.5 h-4 w-4" strokeWidth={1.75} />
-              {requesting ? t("certificates.card.requesting") : t("certificates.card.rerequest")}
-            </Button>
+            {/* The same rule as the first request: while something still
+                stands in the way, the server refuses, so no button. */}
+            {blocked ? (
+              <p className="max-w-[16rem] text-sm text-ink-muted">{t("certificates.card.blocked")}</p>
+            ) : (
+              <Button onClick={handleRequest} disabled={requesting} variant="outline">
+                <RefreshCw className="mr-1.5 h-4 w-4" strokeWidth={1.75} />
+                {requesting ? t("certificates.card.requesting") : t("certificates.card.rerequest")}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

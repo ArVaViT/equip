@@ -36,6 +36,9 @@ export function SchoolSettingsTab() {
   useEffect(() => {
     let cancelled = false
     setLoadError(null)
+    // Back to loading on a retry too: with only the error cleared, the empty
+    // form showed — and saved — while the second request was in flight.
+    setLoading(true)
     adminService
       .getOrgSettings()
       .then((s) => {

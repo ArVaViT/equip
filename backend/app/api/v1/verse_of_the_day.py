@@ -63,6 +63,14 @@ def read_verse_of_the_day(
             context={"resource_type": "verse_of_the_day"},
         ) from None
 
+    if locale:
+        # Same verse for everyone for the whole UTC day, so the CDN may keep
+        # it: p95 was ~700 ms with the in-process cache cold on every new
+        # instance (2026-10-03). Only when the language is in the URL — the
+        # cache key is the URL, and a cached answer must not be served to a
+        # reader whose Accept-Language asked for another language. Ten
+        # minutes bounds how long yesterday's verse can outlive midnight.
+        response.headers["Cache-Control"] = "public, max-age=300, s-maxage=600"
     return VerseOfTheDayResponse(
         reference=verse.reference,
         text=verse.text,

@@ -39,7 +39,13 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
   const { t } = useTranslation()
   const [grade, setGrade] = useState(submission.grade ?? 0)
   const [feedback, setFeedback] = useState(submission.feedback ?? "")
-  const [status, setStatus] = useState(submission.status)
+  // What the mark will be saved as: «graded» or «returned», the only two the
+  // server takes. Seeded from the work's own status it was «submitted» for
+  // anything unmarked — refused (422) unless the teacher happened to touch the
+  // select first, which showed blank for it (2026-10-03).
+  const [status, setStatus] = useState<"graded" | "returned">(
+    submission.status === "returned" ? "returned" : "graded",
+  )
   const [saving, setSaving] = useState(false)
   // The rubric, when the assignment is marked by one. `null` after loading
   // means it is not — which is a different screen from «rubric, nothing chosen».
@@ -199,7 +205,7 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
           </div>
           <Select
             value={status}
-            onValueChange={(v) => setStatus(v as AssignmentSubmission["status"])}
+            onValueChange={(v) => setStatus(v === "returned" ? "returned" : "graded")}
           >
             <SelectTrigger
               size="xs"

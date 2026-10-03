@@ -175,4 +175,63 @@ describe("GradingQueue", () => {
     await userEvent.type(box, "60")
     expect(save).toBeDisabled()
   })
+
+  it("does not move on from a rubric essay with no level chosen", async () => {
+    vi.spyOn(gradesService, "getQueue").mockResolvedValue([group()])
+    vi.spyOn(gradesService, "getAssignmentQueue").mockResolvedValue([work()])
+    vi.spyOn(rubricsService, "forSubmission").mockResolvedValue({
+      rubric: {
+        id: "r1",
+        course_id: "c1",
+        title: "Эссе",
+        max_score: 10,
+        criteria: [
+          {
+            id: "cr1",
+            title: "Аргумент опирается на текст",
+            description: null,
+            order_index: 0,
+            levels: [{ id: "l1", label: "Да", points: 10, description: null, order_index: 0 }],
+          },
+        ],
+      },
+      marks: [],
+      earned: null,
+      out_of: 10,
+    })
+    render(<GradingQueue />, { wrapper: Wrapper })
+    await userEvent.click(await screen.findByRole("button", { name: /Проверить/ }))
+
+    expect(await screen.findByRole("button", { name: /Сохранить и закончить/ })).toBeDisabled()
+  })
+
+  it("does not count a mark left from a rubric that was swapped out", async () => {
+    vi.spyOn(gradesService, "getQueue").mockResolvedValue([group()])
+    vi.spyOn(gradesService, "getAssignmentQueue").mockResolvedValue([work()])
+    vi.spyOn(rubricsService, "forSubmission").mockResolvedValue({
+      rubric: {
+        id: "r1",
+        course_id: "c1",
+        title: "Эссе",
+        max_score: 10,
+        criteria: [
+          {
+            id: "cr1",
+            title: "Аргумент опирается на текст",
+            description: null,
+            order_index: 0,
+            levels: [{ id: "l1", label: "Да", points: 10, description: null, order_index: 0 }],
+          },
+        ],
+      },
+      // A mark on a criterion of the rubric this assignment used to have.
+      marks: [{ criterion_id: "old", level_id: "lx", points: 5, comment: null }],
+      earned: null,
+      out_of: 10,
+    })
+    render(<GradingQueue />, { wrapper: Wrapper })
+    await userEvent.click(await screen.findByRole("button", { name: /Проверить/ }))
+
+    expect(await screen.findByRole("button", { name: /Сохранить и закончить/ })).toBeDisabled()
+  })
 })

@@ -104,7 +104,12 @@ export function useTeacherAgreement(userId: string | undefined) {
     }
     setAccepted(false)
     check()
-    const interval = window.setInterval(check, POLL_MS)
+    // Not while the tab is hidden: coming back to it asks anyway (below), and a
+    // forgotten background tab otherwise polls every five minutes all day —
+    // this is already the endpoint real users call most (2026-10-03).
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") check()
+    }, POLL_MS)
     const onVisible = () => {
       // Throttled, or a person flicking between two tabs generates a request
       // per flick.

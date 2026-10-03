@@ -211,7 +211,7 @@ Every data view must handle three states:
 1. **Loading:** a skeleton that matches final layout. `<PageSpinner>` only
    when a skeleton is impossible.
 2. **Empty:** `<EmptyState icon title action>`. No "No data" plain text.
-3. **Error:** `<ErrorState onRetry>`. No silent failures.
+3. **Error:** `<ErrorState action={<Button>Retry</Button>}>`. No silent failures.
 
 ## Banned patterns
 
@@ -266,7 +266,7 @@ doesn't look right in one theme, fix the token — don't branch on `.dark`.
 - **Clickable surfaces:** always `<button type="button">` for actions or
   `<a href>` for navigation. Never `<div onClick>` or `role="button"` on a
   div *if a real button would work*. The only acceptable `role="button" tabIndex={0}` is the dnd drag handle pattern (see `ChapterRow`, `AssignmentItem`,
-  `ModulesList`) where a real button would steal the drag.
+  `CourseOutline`) where a real button would steal the drag.
 - **Headings:** every page must have one `<h1>` describing its primary subject.
   Sub-sections use `<h2>` / `<h3>`. **Never** style a `<div>` or `<span>` to
   look like a heading. `InlineEdit` ships an actual `<h1>` / `<h2>` when

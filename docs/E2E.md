@@ -53,7 +53,9 @@ this is the shape of it:
    what's needed) plus `backend/scripts/seed_e2e_daily_challenge.py` (one
    published Daily Challenge question — the student dashboard's schedule
    autofill picks up any published question for "today" with no explicit
-   schedule row needed).
+   schedule row needed) and `backend/scripts/seed_e2e_legal_acceptance.py`
+   (pre-accepts the required legal documents for the three role users, so
+   the first-run consent dialog does not cover every page).
 5. **Backend** — `uvicorn app.main:app` against the local Postgres, with
    `JWT_SECRET_KEY` set to the local stack's GoTrue signing secret so the
    backend's own JWT verification (`app/core/security.py`) accepts tokens

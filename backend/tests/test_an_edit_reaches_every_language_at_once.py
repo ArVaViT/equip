@@ -451,3 +451,59 @@ def test_a_hand_written_translation_does_not_deadlock_the_edit(db: Session):
     assert promote_ready_fields(db, course).promoted_fields == 1
     assert _served_text(db, course, "de") == "Der erste Brief an die Korinther"
     assert _served_text(db, course, "ru") == "Правка при ручном немецком переводе"
+
+
+def test_translations_of_the_previous_wording_do_not_release_the_new_one(db: Session):
+    """Every language present, every row «ok» — of the words before the
+    latest save. Counted as done, the new Russian went out beside the old
+    English, German and Ukrainian (2026-10-03)."""
+    course = _published_course(db)
+    _edit(db, course, "Правка номер два")
+
+    stale_hash = compute_source_hash("Первое послание к Коринфянам", locale="ru")
+    for locale in ("en", "de", "uk"):
+        db.add(
+            StagedContentVersion(
+                entity_type="course",
+                entity_id=str(course.id),
+                course_id=str(course.id),
+                field="title",
+                locale=locale,
+                text=f"[{locale}] First Corinthians",
+                origin="mt",
+                status="ok",
+                source_locale="ru",
+                source_hash=stale_hash,
+            )
+        )
+    db.commit()
+
+    assert [s.state for s in staged_status_for_course(db, course)] == ["translating"]
+    assert promote_ready_fields(db, course).promoted_fields == 0
+    assert _served_text(db, course, "ru") == "Первое послание к Коринфянам"
+
+
+def test_two_saves_filed_under_two_languages_hold_one_edit(db: Session):
+    """The detector can file two saves of a short text under two languages.
+    The field held both; promotion released the older and dropped the newer,
+    and the author's own view raised on two rows (2026-10-03)."""
+    course = _published_course(db)
+    _edit(db, course, "Галатам")
+    stage_human_edit(
+        db,
+        entity_type="course",
+        entity_id=str(course.id),
+        course_id=str(course.id),
+        field="title",
+        locale="uk",
+        text="Галатам, друга правка",
+    )
+    db.commit()
+
+    held = (
+        db.query(StagedContentVersion)
+        .filter(StagedContentVersion.entity_id == str(course.id), StagedContentVersion.origin == "human")
+        .all()
+    )
+    assert [(r.locale, r.text) for r in held] == [("uk", "Галатам, друга правка")]
+    assert author_text(db, entity_type="course", entity_id=str(course.id), field="title") == "Галатам, друга правка"

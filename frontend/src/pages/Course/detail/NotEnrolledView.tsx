@@ -14,6 +14,7 @@ import { DraftOutline } from "./DraftOutline"
 import { orNotTranslated } from "@/lib/untranslated"
 import { CourseReadingTime } from "./CourseReadingTime"
 import { CourseTabs } from "./CourseTabs"
+import { enrollmentState } from "@/lib/enrollmentWindow"
 
 interface Props {
   course: Course
@@ -68,8 +69,13 @@ export function NotEnrolledView({
   // add them via the admin cohort UI. Owners (teacher/admin viewing
   // their own course) still get the normal flow so they can preview.
   const isInstituteGate = course.access_mode === "institute" && !isOwner
+  // Without cohorts the course's own window decides, as on the server and on
+  // the catalog card — which said «Enrollment closed» while this button
+  // offered to enrol (2026-10-03).
+  const courseWindow = enrollmentState(course.enrollment_start, course.enrollment_end)
+  const courseWindowOpen = courseWindow.state === null || courseWindow.state === "open"
   const canEnroll =
-    !isInstituteGate && (enrollableCohorts.length > 0 || cohorts.length === 0)
+    !isInstituteGate && (enrollableCohorts.length > 0 || (cohorts.length === 0 && courseWindowOpen))
 
   // Course-at-a-glance counts, and the outline the owner previews.
   //
@@ -291,7 +297,11 @@ export function NotEnrolledView({
               <p className="text-sm text-ink-muted mt-2">
                 {cohorts.length > 0
                   ? t("courseDetail.enrollmentClosedAllCohorts")
-                  : t("courseDetail.noCohortsAvailable")}
+                  : courseWindow.state === "opens" && courseWindow.date
+                    ? t("courseCard.opensOn", { date: formatDate(courseWindow.date.toISOString()) })
+                    : courseWindow.state === "closed"
+                      ? t("courseCard.enrollmentClosed")
+                      : t("courseDetail.noCohortsAvailable")}
               </p>
             )}
           </div>

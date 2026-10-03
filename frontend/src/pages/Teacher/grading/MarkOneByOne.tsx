@@ -128,7 +128,16 @@ export function MarkOneByOne({
   // rubric was meant.
   const rubricLoading = rubric === null && !rubricFailed
   const overMax = maxScore != null && grade != null && grade > maxScore
-  const needsMark = rubricLoading || (!rubric?.rubric && (grade === null || overMax))
+  // With a rubric the mark is the levels chosen: every criterion needs one,
+  // or «Сохранить и закончить» moved on from an essay nobody had marked —
+  // the rubric writes as levels are picked, and an untouched one wrote
+  // nothing (2026-10-03).
+  // Counted per criterion, not by number of marks: re-attaching a rubric keeps
+  // the old one's marks, and they would make up the count.
+  const rubricIncomplete =
+    rubric?.rubric != null &&
+    !rubric.rubric.criteria.every((c) => rubric.marks.some((m) => m.criterion_id === c.id))
+  const needsMark = rubricLoading || rubricIncomplete || (!rubric?.rubric && (grade === null || overMax))
 
   const saveAndNext = async () => {
     if (!current || needsMark) return

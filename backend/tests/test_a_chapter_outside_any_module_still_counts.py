@@ -62,7 +62,7 @@ from app.services.grade_calculator import _get_course_chapter_ids
 from app.services.grade_exemption_service import chapter_for_item
 from app.services.grading_queue import assignment_work, pending_by_course, waiting_groups
 from app.services.student_progress_service import _latest_activity_by_user, _load_course_structure
-from tests.conftest import STUDENT_ID, TEACHER_ID
+from tests.conftest import STUDENT_ID, TEACHER_ID, TEST_ORGANIZATION_ID
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -674,7 +674,7 @@ def test_a_clone_copies_a_loose_chapter(db: Session):
     make_chapter_block_with_content(db, chapter_id="loose-q", content="<p>Вопросы</p>")
     db.commit()
 
-    clone = clone_course(db, COURSE, TEACHER_ID)
+    clone = clone_course(db, COURSE, TEACHER_ID, organization_id=TEST_ORGANIZATION_ID)
 
     assert clone is not None
     by_title = {c.title: c for c in clone.chapters}

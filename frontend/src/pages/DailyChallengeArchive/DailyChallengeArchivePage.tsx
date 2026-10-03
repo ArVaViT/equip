@@ -352,7 +352,10 @@ function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {
         } else if (code === "daily_challenge.not_translated") {
           setNotTranslated(true)
         } else if (code === "daily_challenge.archive_date_not_allowed") {
+          // Today or later (a stale or hand-edited ?d=): nothing to replay
+          // here. The toast says why; the panel must not sit blank under it.
           toast.error(t("dailyChallenge.archive.toast.dateNotAllowed"))
+          setNotScheduled(true)
         } else {
           setLoadFailed(true)
         }

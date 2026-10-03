@@ -230,3 +230,28 @@ def test_a_student_cannot_press_it(student_client, db: Session, teacher: User, s
 
 def test_an_unknown_course_is_404(client, teacher: User):
     assert client.post("/api/v1/courses/no-such-course/resync-progress").status_code == 404
+
+
+def test_the_whole_course_and_one_student_agree(db: Session, teacher: User, student: User, admin: User):
+    """The course-wide resync is set-based (it runs on every lesson added or
+    removed); ``fresh_progress`` asks for one student. Same rule, same answer —
+    for each student, gradable course or reading-only."""
+    from app.services.course_service._enrollment import fresh_progress
+    from tests.conftest import ADMIN_ID
+
+    _seed(db, quizzes=3, readings=2)
+    db.add(Enrollment(id="enr-resync-2", user_id=ADMIN_ID, course_id=COURSE_ID, progress=0))
+    db.commit()
+    _pass(db, f"{COURSE_ID}-quiz-0")
+    db.add(ChapterProgress(id=uuid.uuid4(), user_id=ADMIN_ID, chapter_id=f"{COURSE_ID}-quiz-1", completed=True))
+    db.add(ChapterProgress(id=uuid.uuid4(), user_id=ADMIN_ID, chapter_id=f"{COURSE_ID}-quiz-2", completed=True))
+    db.commit()
+
+    resync_course_progress(db, COURSE_ID)
+
+    stored = {str(e.user_id): e.progress for e in db.query(Enrollment).filter(Enrollment.course_id == COURSE_ID)}
+    assert stored == {
+        str(STUDENT_ID): fresh_progress(db, STUDENT_ID, COURSE_ID),
+        str(ADMIN_ID): fresh_progress(db, ADMIN_ID, COURSE_ID),
+    }
+    assert sorted(stored.values()) == [33, 67]

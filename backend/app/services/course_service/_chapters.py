@@ -68,12 +68,11 @@ def _resync_progress_for_chapter(db: Session, chapter: Chapter) -> None:
     Imported here rather than at module scope: ``_enrollment`` imports from
     this package too, and the pair would deadlock at import time.
     """
-    from app.constants import GRADABLE_CHAPTER_TYPES
     from app.services.course_service._enrollment import resync_course_progress
 
-    if chapter.chapter_type not in GRADABLE_CHAPTER_TYPES:
-        # Reading chapters are not in the fraction, so nothing moved.
-        return
+    # Any chapter, not only a gradable one: on a course with nothing to
+    # assess, reading chapters *are* the fraction, and a reading chapter
+    # added or removed moved everybody's percentage (2026-10-03).
     resync_course_progress(db, chapter.course_id)
 
 

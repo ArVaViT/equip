@@ -133,6 +133,11 @@ import { BookOpen } from "lucide-react"
 />
 ```
 
+`variant="compact"` is for a container that already has its own frame (a
+`<Card>`, a `<Modal>`, a sidebar panel): no dashed border, no background,
+less padding, so the message reads as quiet inline copy instead of a box
+inside a box.
+
 ### `<ErrorState>` — "we tried to load X and failed"
 
 For the recoverable-error case: API 5xx, timeout, network error. Includes
@@ -280,7 +285,9 @@ page heading, one icon size, one gap. A page whose heading is a control
 rather than a label — the inline-editable course or module name — passes
 `titleSlot` (a `ReactNode`) instead; the two are mutually exclusive.
 `description` stays a `ReactNode`, so `<InlineEdit multiline>` goes
-straight in.
+straight in. `eyebrow` (a sentence-case string; the component sets the
+tracking) sits above the heading, and `icon` (a Lucide component, not an
+element) sits before it at the one size icons go beside headings.
 
 ### Don't
 
@@ -311,6 +318,25 @@ import { Modal } from "@/components/patterns"
 >
   <CohortCreateForm onCreated={() => setOpen(false)} />
 </Modal>
+```
+
+`size="wide"` widens the card to `sm:max-w-2xl` for a form or a table that
+does not fit the default `sm:max-w-lg`.
+
+## `<Eyebrow>`
+
+[`patterns/Eyebrow.tsx`](../frontend/src/components/patterns/Eyebrow.tsx)
+
+The tiny uppercase label above a heading — the DESIGN.md recipe
+(`text-xs font-medium uppercase`, wide tracking) in one place, so call
+sites stop re-typing it at 10, 11 and 12 px. `tone="accent"` is the
+celebration / first-run variant; `as="label"` (with `htmlFor`) or
+`as="div"` where the semantics require it.
+
+```tsx
+import { Eyebrow } from "@/components/patterns"
+
+<Eyebrow>{t("courses.academicPrograms")}</Eyebrow>
 ```
 
 ### When NOT to use `<Modal>`

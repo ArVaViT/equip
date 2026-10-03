@@ -11,6 +11,7 @@ import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
 import type { Course } from "@/types"
 import { orNotTranslated } from "@/lib/untranslated"
+import { courseWindowOpen } from "@/lib/enrollmentWindow"
 
 interface Props {
   /** First name from the user's profile (when known). When present,
@@ -84,8 +85,14 @@ export function CoursePickerStep({ firstName, onEnrolled, onSkip }: Props) {
       .getCourses()
       .then((data) => {
         if (cancelled) return
+        // Only what a newcomer can actually join now: a course whose window
+        // is closed or not yet open was offered, and the first thing they did
+        // on the platform was refused with no reason given (2026-10-03).
         const eligible = data.filter(
-          (c) => c.access_mode === "public" && c.status === "published",
+          (c) =>
+            c.access_mode === "public" &&
+            c.status === "published" &&
+            courseWindowOpen(c.enrollment_start, c.enrollment_end),
         )
         setCourses(eligible)
         setLoading(false)

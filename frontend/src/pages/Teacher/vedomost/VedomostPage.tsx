@@ -11,6 +11,7 @@ import type { GradeSheet } from "@/types"
 import { printedResult } from "./resultLabel"
 import { formatPercent } from "@/i18n/number"
 import { zonedParts } from "@/i18n/timeZone"
+import { useLatestRequest } from "@/hooks/useLatestRequest"
 import "./print.css"
 
 /**
@@ -48,22 +49,29 @@ function VedomostPage() {
   const [closing, setClosing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
+  const begin = useLatestRequest()
   const load = useCallback(() => {
     if (!courseId) return
+    const isCurrent = begin()
     setLoading(true)
     setLoadError(null)
     gradesService
       .getGradeSheet(courseId, cohortId)
-      .then(setSheet)
+      .then((next) => {
+        if (isCurrent()) setSheet(next)
+      })
       .catch((err: unknown) => {
+        if (!isCurrent()) return
         // `null` is what an open sheet answers by design, and that screen
         // offers the «close» button — an irreversible snapshot. A refused or
         // failed request must not be dressed as that invitation.
         setSheet(null)
         setLoadError(getErrorDetail(err, t("vedomost.loadFailed")))
       })
-      .finally(() => setLoading(false))
-  }, [courseId, cohortId, t])
+      .finally(() => {
+        if (isCurrent()) setLoading(false)
+      })
+  }, [begin, courseId, cohortId, t])
 
   useEffect(load, [load])
 

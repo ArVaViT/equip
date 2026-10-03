@@ -50,4 +50,20 @@ describe("CertificateCard — the gate (D9)", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument()
     expect(screen.getByText(/когда закроются пункты выше/)).toBeInTheDocument()
   })
+
+  it("does the same after a refusal: no re-request while something still stands", () => {
+    render(
+      <CertificateCard
+        courseId="c-1"
+        progress={100}
+        blocked
+        certificate={{ id: "cert-1", status: "rejected", course_id: "c-1" } as never}
+        onCertificateUpdate={vi.fn()}
+      />,
+      { wrapper: Wrapper },
+    )
+
+    expect(screen.queryByRole("button")).not.toBeInTheDocument()
+    expect(screen.getByText(/когда закроются пункты выше/)).toBeInTheDocument()
+  })
 })

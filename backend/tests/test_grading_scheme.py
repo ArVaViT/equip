@@ -114,7 +114,7 @@ def test_new_course_inherits_letter_at_70(db: Session) -> None:
 
 
 def test_letter_bands_match_what_the_calculator_already_applied(db: Session) -> None:
-    """90/80/70/60 — the scale hardcoded in ``grade_calculator.LETTER_GRADES``.
+    """90/80/70/60 — the scale ``grade_calculator`` used to hardcode.
 
     If these drift, the Q1 promise that existing courses keep grading exactly
     as before is broken.
