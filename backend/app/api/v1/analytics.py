@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Header, Query, Response
 from pydantic import BaseModel
 from sqlalchemy import func
@@ -8,7 +10,8 @@ from app.core.database import get_db
 from app.models.enrollment import Enrollment
 from app.models.user import User
 from app.schemas.locale import normalize_locale
-from app.services.translation.resolve_for_display import populate_spine_texts
+from app.services.students_at_risk import students_at_risk
+from app.services.translation.resolve_for_display import fetch_course_titles_by_id, populate_spine_texts
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -120,3 +123,52 @@ def get_course_analytics(
         "completion_count": int(agg.completed or 0),
         "enrollments": student_list,
     }
+
+
+class StudentAtRisk(BaseModel):
+    student_id: str
+    full_name: str
+    #: The address the teacher's gradebook already shows, for a one-click note.
+    email: str | None = None
+    course_id: str
+    #: In the reader's language; ``None`` when the course has no title in it.
+    course_title: str | None
+    last_activity: datetime
+    #: Whole days since anything at all — a lesson read, a test, a submission.
+    quiet_days: int
+    #: Work past its due date with nothing handed in (excused work not counted).
+    missed_deadlines: int
+
+
+@router.get(
+    "/at-risk",
+    response_model=list[StudentAtRisk],
+    summary="Students slipping away in the caller's own published courses",
+)
+def get_students_at_risk(
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+) -> list[StudentAtRisk]:
+    """Quiet for seven days, or two deadlines missed — see ``services/students_at_risk.py``.
+
+    The courses are the caller's own: this is the teacher's list of people to
+    call this week, not a platform report.
+    """
+    found = students_at_risk(db, teacher.id)
+    titles = fetch_course_titles_by_id(
+        db, sorted({r.course_id for r in found}), display_locale=normalize_locale(accept_language)
+    )
+    return [
+        StudentAtRisk(
+            student_id=r.student_id,
+            full_name=r.full_name,
+            email=r.email,
+            course_id=r.course_id,
+            course_title=titles.get(r.course_id) or None,
+            last_activity=r.last_activity,
+            quiet_days=r.quiet_days,
+            missed_deadlines=r.missed_deadlines,
+        )
+        for r in found
+    ]

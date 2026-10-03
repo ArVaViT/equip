@@ -6,6 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/patterns";
 import type { CalendarEvent } from "@/types";
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
+import { RecordingLink } from "@/components/calendar/RecordingLink"
+import { AddToCalendarButton } from "@/components/calendar/AddToCalendarButton"
+import { isOver } from "@/lib/eventTime"
 import { LinkifiedText } from "@/components/calendar/LinkifiedText";
 import { getEventColor } from "./constants";
 import { formatTime } from "./utils";
@@ -91,11 +94,11 @@ export function SelectedDayPanel({ selectedDay, events }: SelectedDayPanelProps)
                       {/* Last in the card, under the description: this
                           is the day's detail panel, and the action to
                           take belongs after what the event is. */}
-                      <JoinMeetingLink
-                        url={evt.meeting_url}
-                        title={evt.title}
-                        className="mt-2"
-                      />
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        {!isOver(evt) && <JoinMeetingLink url={evt.meeting_url} title={evt.title} />}
+                        <RecordingLink url={evt.recording_url} title={evt.title} />
+                        {!isOver(evt) && <AddToCalendarButton event={evt} />}
+                      </div>
                     </div>
                   </div>
                 </div>

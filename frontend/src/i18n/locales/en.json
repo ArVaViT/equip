@@ -1,4 +1,13 @@
 {
+  "unsubscribe": {
+    "title": "Equip email",
+    "ask": "Stop sending “{{kind}}” emails?",
+    "button": "Unsubscribe",
+    "done": "Done: “{{kind}}” emails will no longer arrive.",
+    "again": "You can turn them back on in your profile, under Settings.",
+    "invalid": "This link does not work. Turn email off in your profile, under Settings.",
+    "toProfile": "Open profile"
+  },
   "common": {
     "appName": "Equip",
     "cancel": "Cancel",
@@ -116,6 +125,16 @@
     }
   },
   "dashboard": {
+    "atRisk": {
+      "write": "Write to {{name}}",
+      "title": "Who to write to",
+      "quiet_one": "{{count}} day without activity",
+      "quiet_other": "{{count}} days without activity",
+      "missed_one": "{{count}} deadline missed",
+      "missed_other": "{{count}} deadlines missed",
+      "more_one": "and {{count}} more",
+      "more_other": "and {{count}} more"
+    },
     "continue": {
       "eyebrow": "Continue",
       "position": "lesson {{current}} of {{total}}",
@@ -652,6 +671,23 @@
     "signInLinkBackToPassword": "Use a password"
   },
   "profile": {
+    "myData": {
+      "label": "My data",
+      "hint": "Everything Equip keeps about you: profile, courses, test answers, work with its marks, certificates — in one file.",
+      "download": "Download",
+      "preparing": "Preparing the file…",
+      "failed": "Could not prepare the file. Please try again."
+    },
+    "emails": {
+      "label": "Course email",
+      "kinds": {
+        "work_returned": "Work marked or returned",
+        "certificate_decided": "Certificate decision",
+        "session_starting": "A live session is about to start",
+        "deadline_moved": "A deadline moved",
+        "announcement": "Course announcements"
+      }
+    },
     "fullName": "Full Name",
     "changeAvatar": "Change avatar",
     "uploadFailed": "Failed to upload avatar",
@@ -714,6 +750,8 @@
     "progressLabel": "{{percent}}% complete"
   },
   "pageTitle": {
+    "notes": "My notes",
+    "transcript": "Transcript",
     "login": "Sign In",
     "register": "Create Account",
     "forgotPassword": "Forgot Password",
@@ -823,7 +861,8 @@
       "option_text": "option text",
       "is_correct": "correct answer",
       "order_index": "order",
-      "meeting_url": "meeting link"
+      "meeting_url": "meeting link",
+      "recording_url": "recording link"
     },
     "validation": {
       "less_than_equal": "must be no more than {{le}}",
@@ -912,6 +951,17 @@
     "goHome": "Go Home"
   },
   "chapter": {
+    "reading": {
+      "label": "Reading settings",
+      "size": "Text size",
+      "sizes": {
+        "s": "Small text",
+        "m": "Normal text",
+        "l": "Large text",
+        "xl": "Extra large text"
+      },
+      "easy": "Easy reading"
+    },
     "attachmentEyebrow": "Attachment",
     "blocksLoadFailed": "Couldn't load this lesson",
     "blocksLoadFailedDescription": "We couldn't load the lesson content. This is usually a temporary network issue — try again.",
@@ -942,6 +992,12 @@
     "submitAssignmentToComplete": "Submit the assignment to complete this lesson"
   },
   "quiz": {
+    "result": {
+      "correct": "Correct",
+      "incorrect": "Incorrect",
+      "yourAnswer": "your answer",
+      "rightAnswer": "right answer"
+    },
     "answerAll": "Answer all questions to submit",
     "attemptPoints": "{{score}}/{{max}} points",
     "attemptsShort": "Attempts: {{used}}/{{max}}",
@@ -984,6 +1040,59 @@
     "wordsCount_other": "{{count}} words",
     "wordsWithMin": "{{count}} / {{min}} required",
     "yourAnswer": "Your answer:"
+  },
+  "scripture": {
+    "open": "Open the verse {{ref}}",
+    "edition": {
+      "bsb": "Berean Standard Bible",
+      "kjv": "King James Version",
+      "nrt": "Новый русский перевод",
+      "elberfelder": "Elberfelder Bibel",
+      "kulish": "Переклад Куліша, 1905"
+    }
+  },
+  "notes": {
+    "lesson": {
+      "hasNote": "You have a note here",
+      "loadFailed": "Could not load your note on this lesson.",
+      "title": "My notes on this lesson",
+      "add": "Add a note to this lesson",
+      "all": "All notes",
+      "placeholder": "Your note…",
+      "saving": "Saving…",
+      "saved": "Saved",
+      "failed": "Not saved. Your text stays here.",
+      "private": "Only you can see this. It saves itself."
+    },
+    "page": {
+      "courseUnavailable": "This course is not available now",
+      "deleteConfirmTitle": "Delete this note?",
+      "deleteConfirmDescription": "It cannot be brought back.",
+      "deleteFailed": "Could not delete the note",
+      "delete": "Delete note",
+      "unavailable": "This lesson is not available now",
+      "eyebrow": "Learning",
+      "title": "My notes",
+      "emptyTitle": "No notes yet",
+      "emptyDescription": "Write under a lesson — your notes gather here.",
+      "loadFailed": "Could not load your notes."
+    }
+  },
+  "review": {
+    "teaser": {
+      "title": "This week's review is ready",
+      "count_one": "{{count}} question",
+      "count_other": "{{count}} questions"
+    },
+    "checkFailed": "Could not check — please try again.",
+    "title": "This week's review",
+    "hint_one": "{{count}} question from what you have done, not graded",
+    "hint_other": "{{count}} questions from what you have done, not graded",
+    "start": "Start",
+    "progress": "Question {{n}} of {{total}}",
+    "next": "Next",
+    "finish": "Done",
+    "result": "{{right}} of {{total}} right"
   },
   "quizEditor": {
     "validation": {
@@ -1291,6 +1400,26 @@
     "draftRestored": "Draft restored from this device"
   },
   "certificates": {
+    "transcript": {
+      "kind": "Academic transcript",
+      "asOf": "As of {{date}}",
+      "empty": "No certificates have been issued yet.",
+      "course": "Course",
+      "school": "School",
+      "completed": "Completed",
+      "number": "Certificate no.",
+      "verify_one": "The certificate can be verified at equipbible.com/verify by its number.",
+      "verify_other": "Each certificate can be verified at equipbible.com/verify by its number.",
+      "open": "Transcript"
+    },
+    "share": {
+      "share": "Share",
+      "linkedIn": "Add to LinkedIn",
+      "linkedInShort": "LinkedIn",
+      "text": "I have completed the course “{{course}}”. The certificate can be verified here:",
+      "copied": "Verification link copied",
+      "copyFailed": "Could not copy the link"
+    },
     "backToCourses": "Back to courses",
     "title": "My Certificates",
     "eyebrow": "Achievements",
@@ -1533,10 +1662,14 @@
     "deleteAria": "Delete review"
   },
   "calendar": {
+    "addOne": {
+      "label": "Add to calendar",
+      "aria": "Add “{{title}}” to your calendar"
+    },
     "subscribe": {
       "open": "Subscribe",
       "title": "Your course schedule in your own calendar",
-      "description": "Lessons and deadlines from your courses appear in your phone or computer calendar and update on their own. Times show in your calendar's time zone.",
+      "description": "Your courses’ sessions and deadlines appear in your calendar and stay up to date.",
       "replaces": "The link is personal. If you subscribed before, the old link stops working.",
       "create": "Create link",
       "apple": "Apple and Outlook",
@@ -1963,6 +2096,9 @@
     }
   },
   "courseDetail": {
+    "minutesShort": "{{minutes}} min",
+    "hoursShort": "≈ {{hours}} h",
+    "readingHours": "≈ {{hours}} h of reading",
     "allCourses": "All Courses",
     "manageCourse": "Manage Course",
     "enrollInCourse": "Enroll in Course",
@@ -2026,6 +2162,25 @@
     }
   },
   "gradebook": {
+    "write": {
+      "tooMany": "Too many addresses for one link. Copy them into the Bcc field.",
+      "open": "Write to…",
+      "title": "Write to students",
+      "who": "To",
+      "work": "Work",
+      "audience": {
+        "not_submitted": "Not handed in",
+        "not_passed": "Not passed or sent back",
+        "everyone": "The whole class"
+      },
+      "count_one": "{{count}} student",
+      "count_other": "{{count}} students",
+      "copy": "Copy addresses",
+      "compose": "Open an email",
+      "copied_one": "{{count}} address copied",
+      "copied_other": "{{count}} addresses copied",
+      "copyFailed": "Could not copy the addresses"
+    },
     "summaryTab": "Summary Grades",
     "tableTab": "Grade Table",
     "failedLoad": "Failed to load gradebook. Please try again.",
@@ -2706,6 +2861,8 @@
       "confirm": "Publish anyway"
     },
     "checks": {
+      "headingsInOrder": "Headings in \"{{title}}\" are in order.",
+      "imagesHaveAlt": "Pictures in \"{{title}}\" have descriptions.",
       "hasDescription": "The course has a description for the catalog.",
       "hasCoverImage": "The course has a cover image.",
       "translationsComplete": "Every language has this course. It goes into the catalog once they all do.",
@@ -2739,7 +2896,9 @@
       "quizThresholdAboveCourse": "A quiz demands a higher score than the course does. Students can pass the course on paper and still never complete the lesson, so the certificate stays out of reach.",
       "quizWeightNonzero": "Quizzes do not count toward the final grade.",
       "assignmentWeightNonzero": "Assignments do not count toward the final grade.",
-      "quizThresholdBelowCourse": "Some quizzes pass at a lower score than the course does. A student can clear every quiz and still finish below the course's pass line."
+      "quizThresholdBelowCourse": "Some quizzes pass at a lower score than the course does. A student can clear every quiz and still finish below the course's pass line.",
+      "headingsInOrder": "Headings in \"{{title}}\" are out of order.",
+      "imagesHaveAlt": "\"{{title}}\" has pictures without a description."
     }
   },
   "dateRangePicker": {
@@ -3005,6 +3164,11 @@
     "errorDescription": "That is a connection problem, not a verdict on the certificate. Please try again."
   },
   "meeting": {
+    "recordingPlaceholder": "https://youtu.be/…",
+    "recording": "Recording",
+    "recordingAria": "Watch the recording — {{title}}",
+    "recordingLabel": "Recording link",
+    "recordingHint": "YouTube, Vimeo, Google Drive",
     "join": "Join",
     "joinAria": "Join the meeting for {{title}}",
     "linkLabel": "Meeting link",

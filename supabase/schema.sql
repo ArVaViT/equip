@@ -516,6 +516,20 @@ CREATE TABLE public.chapter_blocks (
 
 
 --
+-- Name: chapter_notes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.chapter_notes (
+    user_id uuid NOT NULL,
+    chapter_id character varying NOT NULL,
+    body text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT chapter_notes_body_check CHECK (((char_length(body) >= 1) AND (char_length(body) <= 10000)))
+);
+
+
+--
 -- Name: chapter_progress; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -622,7 +636,8 @@ CREATE TABLE public.course_events (
     event_date timestamp with time zone NOT NULL,
     created_by uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
-    meeting_url character varying(2048)
+    meeting_url character varying(2048),
+    recording_url character varying(2048)
 );
 
 
@@ -1089,9 +1104,11 @@ CREATE TABLE public.profiles (
     region text,
     city text,
     church text,
+    email_off jsonb DEFAULT '[]'::jsonb NOT NULL,
     CONSTRAINT chk_profiles_role CHECK ((role = ANY (ARRAY['admin'::text, 'director'::text, 'teacher'::text, 'student'::text]))),
     CONSTRAINT profiles_birth_date_floor_check CHECK (((birth_date IS NULL) OR (birth_date >= '1900-01-01'::date))),
     CONSTRAINT profiles_country_code_check CHECK (((country_code IS NULL) OR (country_code ~ '^[A-Z]{2}$'::text))),
+    CONSTRAINT profiles_email_off_check CHECK (((jsonb_typeof(email_off) = 'array'::text) AND (email_off <@ '["work_returned", "certificate_decided", "session_starting", "deadline_moved", "announcement"]'::jsonb))),
     CONSTRAINT profiles_locale_source_check CHECK ((locale_source = ANY (ARRAY['default'::text, 'detected'::text, 'chosen'::text]))),
     CONSTRAINT profiles_personal_text_lengths_check CHECK ((((time_zone IS NULL) OR ((char_length(time_zone) >= 1) AND (char_length(time_zone) <= 64))) AND ((phone IS NULL) OR ((char_length(phone) >= 4) AND (char_length(phone) <= 32))) AND ((region IS NULL) OR ((char_length(region) >= 1) AND (char_length(region) <= 100))) AND ((city IS NULL) OR ((char_length(city) >= 1) AND (char_length(city) <= 100))) AND ((church IS NULL) OR ((char_length(church) >= 1) AND (char_length(church) <= 200))))),
     CONSTRAINT profiles_preferred_locale_check CHECK (((preferred_locale)::text = ANY (ARRAY['ru'::text, 'en'::text, 'de'::text, 'uk'::text]))),
@@ -1356,6 +1373,17 @@ CREATE TABLE public.translation_jobs (
 
 
 --
+-- Name: worker_leases; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.worker_leases (
+    name text NOT NULL,
+    holder uuid NOT NULL,
+    expires_at timestamp with time zone NOT NULL
+);
+
+
+--
 -- Name: announcements announcements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1425,6 +1453,14 @@ ALTER TABLE ONLY public.certificates
 
 ALTER TABLE ONLY public.chapter_blocks
     ADD CONSTRAINT chapter_blocks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: chapter_notes chapter_notes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chapter_notes
+    ADD CONSTRAINT chapter_notes_pkey PRIMARY KEY (user_id, chapter_id);
 
 
 --
@@ -1812,6 +1848,14 @@ ALTER TABLE ONLY public.translation_jobs
 
 
 --
+-- Name: worker_leases worker_leases_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.worker_leases
+    ADD CONSTRAINT worker_leases_pkey PRIMARY KEY (name);
+
+
+--
 -- Name: legal_acceptances uq_legal_acceptances_user_doc_version; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2016,6 +2060,13 @@ CREATE INDEX ix_chapter_blocks_chapter_id_order ON public.chapter_blocks USING b
 --
 
 CREATE INDEX ix_chapter_blocks_quiz_id ON public.chapter_blocks USING btree (quiz_id);
+
+
+--
+-- Name: ix_chapter_notes_chapter_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_chapter_notes_chapter_id ON public.chapter_notes USING btree (chapter_id);
 
 
 --
@@ -2898,6 +2949,22 @@ ALTER TABLE ONLY public.chapter_blocks
 
 
 --
+-- Name: chapter_notes chapter_notes_chapter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chapter_notes
+    ADD CONSTRAINT chapter_notes_chapter_id_fkey FOREIGN KEY (chapter_id) REFERENCES public.chapters(id) ON DELETE CASCADE;
+
+
+--
+-- Name: chapter_notes chapter_notes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chapter_notes
+    ADD CONSTRAINT chapter_notes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+
+--
 -- Name: chapter_progress chapter_progress_chapter_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3683,6 +3750,13 @@ CREATE POLICY certificates_select_own_or_reviewer ON public.certificates FOR SEL
 ALTER TABLE public.chapter_blocks ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: chapter_notes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.chapter_notes ENABLE ROW LEVEL SECURITY;
+
+
+--
 -- Name: chapter_progress; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -4170,6 +4244,12 @@ CREATE POLICY submissions_select_own_or_teacher ON public.assignment_submissions
 --
 
 ALTER TABLE public.translation_jobs ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: worker_leases; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.worker_leases ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: translation_jobs translation_jobs_no_client_access; Type: POLICY; Schema: public; Owner: -

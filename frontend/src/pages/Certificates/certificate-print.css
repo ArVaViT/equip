@@ -62,19 +62,28 @@
   color: hsl(var(--muted-foreground));
 }
 
-@media print {
-  @page {
-    size: A4 landscape;
-    /* The frame is drawn on the sheet, so the page margin only has to clear
-       the printer's unprintable edge. */
-    margin: 12mm;
-  }
+/* Named, like the ведомость's and the transcript's: an unnamed @page from
+   one document's stylesheet decided the paper of the others once all three
+   had been loaded in the session. */
+@page certificate {
+  size: A4 landscape;
+  /* The frame is drawn on the sheet, so the page margin only has to clear
+     the printer's unprintable edge. */
+  margin: 12mm;
+}
 
+.certificate-sheet {
+  page: certificate;
+}
+
+@media print {
   /* Everything that is not the document goes away — app chrome on a printed
-     certificate is the single clearest sign that nobody thought about paper. */
-  header:not(.certificate-sheet header),
-  footer:not(.certificate-sheet footer),
-  nav {
+     certificate is the single clearest sign that nobody thought about paper.
+     Scoped to the page holding the certificate, so it never reaches into
+     another document's own header. */
+  body:has(.certificate-sheet) header:not(.certificate-sheet header),
+  body:has(.certificate-sheet) footer:not(.certificate-sheet footer),
+  body:has(.certificate-sheet) nav {
     display: none !important;
   }
 

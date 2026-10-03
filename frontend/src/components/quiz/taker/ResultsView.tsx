@@ -115,11 +115,14 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                 </p>
                 {isCorrect !== null && (
                   <span className="shrink-0">
+                    {/* Said, not only shown: the icon's colour and shape are
+                        all a screen reader had, which is nothing. */}
                     {isCorrect ? (
-                      <CheckCircle className="h-4 w-4 text-success" strokeWidth={1.75} />
+                      <CheckCircle className="h-4 w-4 text-success" strokeWidth={1.75} aria-hidden />
                     ) : (
-                      <XCircle className="h-4 w-4 text-destructive" strokeWidth={1.75} />
+                      <XCircle className="h-4 w-4 text-destructive" strokeWidth={1.75} aria-hidden />
                     )}
+                    <span className="sr-only">{isCorrect ? t("quiz.result.correct") : t("quiz.result.incorrect")}</span>
                   </span>
                 )}
               </div>
@@ -129,7 +132,13 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                     .sort((a, b) => a.order_index - b.order_index)
                     .map((opt) => {
                       const isSelected = userAnswer?.selected_option_id === opt.id
-                      const isRight = answerResult?.correct_option_id === opt.id
+                      // An exam hides `correct_option_id` but still says whether the
+                      // reader's own answer was right: go by that for their choice,
+                      // or a right answer is read aloud as "Неверно".
+                      const isRight =
+                        answerResult?.correct_option_id === opt.id ||
+                        (isSelected && answerResult?.is_correct === true)
+                      const isWrong = isSelected && answerResult?.is_correct === false
                       const displayText =
                         q.question_type === "true_false"
                           ? getTrueFalseLabel(opt.option_text, t)
@@ -140,14 +149,25 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
                           className={`rounded px-2 py-1 text-xs ${
                             isRight
                               ? "bg-success/15 font-medium text-success-ink"
-                              : isSelected
+                              : isWrong
                                 ? "bg-destructive/15 text-destructive-ink"
                                 : "text-ink-muted"
                           }`}
                         >
-                          {isSelected && !isRight ? "✗ " : ""}
-                          {isRight ? "✓ " : ""}
+                          {/* Glyphs for the eye, words for the ear — and the
+                              reader's own choice marked even when it was right,
+                              which colour alone could not say. */}
+                          {isWrong && <span aria-hidden>✗ </span>}
+                          {isRight && <span aria-hidden>✓ </span>}
                           {displayText}
+                          {(isRight || isSelected) && (
+                            <span className="ml-1.5 text-ink-muted font-normal">
+                              {isSelected && <span>({t("quiz.result.yourAnswer")})</span>}
+                              {isRight && !isSelected && <span className="sr-only">{t("quiz.result.rightAnswer")}</span>}
+                              {isRight && isSelected && <span className="sr-only">{t("quiz.result.correct")}</span>}
+                              {isWrong && <span className="sr-only">{t("quiz.result.incorrect")}</span>}
+                            </span>
+                          )}
                         </div>
                       )
                     })}

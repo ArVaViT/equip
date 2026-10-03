@@ -114,7 +114,9 @@ class TestTheAggregatedFeed:
 
         lectures = [e for e in events if e.event_type == "lecture"]
         assert lectures
-        assert all(e.title == "" for e in lectures)
+        # Not the Russian title: the kind of event, in German, until the
+        # translation exists.
+        assert all(e.title == "Termin" for e in lectures), [e.title for e in lectures]
 
     def test_the_reader_whose_language_it_is_gets_it(self, db: Session, student: User, teacher: User):
         _russian_course_with_dates(db, student, teacher)
@@ -138,3 +140,25 @@ class TestTheAggregatedFeed:
         assert deadlines
         assert all("Due" not in e.title for e in deadlines)
         assert all(e.event_type == "deadline" for e in deadlines)
+
+
+def test_an_event_whose_title_is_still_waiting_says_what_kind_it_is(db: Session, student: User, teacher: User) -> None:
+    """An event added to a published course has no live title until every
+    language is translated; the reader gets its kind, not a blank row."""
+    from app.services.translation.resolve_for_display import localize_course_event_rows
+
+    course = _russian_course_with_dates(db, student, teacher)
+    waiting = CourseEvent(
+        id=uuid.uuid4(),
+        course_id=course.id,
+        event_type="live_session",
+        event_date=datetime.now(UTC) + timedelta(days=2),
+        created_by=teacher.id,
+    )
+    db.add(waiting)
+    db.commit()
+
+    feed = build_calendar_events(db=db, user=student, course_id=None, limit=100, display_locale="ru")
+    assert [e.title for e in feed if e.id == str(waiting.id)] == ["Живое занятие"]
+    rows = localize_course_event_rows(db, [waiting], display_locale="de", source_locale="ru")
+    assert rows[0].title == "Live-Termin"

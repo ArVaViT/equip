@@ -114,12 +114,18 @@ MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 #:     ``update_my_preferences``, whose body model is ``PreferredLocaleUpdate``
 #:     - so what an un-consented caller gains here is the ability to pick
 #:     the language of the page that is asking them to consent.
+#:   * ``/api/v1/email/unsubscribe`` - the link at the foot of a course mail.
+#:     The privacy policy promises that every such mail can be stopped from
+#:     it, and the promise has no "after you have accepted the documents"
+#:     clause. The route is authorised by its signed token, not by a session,
+#:     and can only turn one kind of mail off.
 EXEMPT_PREFIXES: tuple[str, ...] = (
     "/api/v1/legal/",
     "/api/v1/auth/",
     "/api/v1/health",
     "/api/v1/internal/",
     "/api/v1/users/me/preferences",
+    "/api/v1/email/unsubscribe",
 )
 
 #: The registry's role-aware answer, when the registry has one.

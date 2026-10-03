@@ -190,10 +190,21 @@ _USFM_ORDER: tuple[str, ...] = (
 
 SLUG_TO_USFM: dict[str, str] = {slug: code for (slug, _aliases), code in zip(_BOOKS, _USFM_ORDER, strict=True)}
 
-#: Process-local, unbounded, never invalidated — Scripture does not change.
-#: The pipeline quotes the same handful of verses across a course, so this
-#: turns a per-verse network call into a per-verse-per-process one.
+#: Process-local, never invalidated — Scripture does not change. The pipeline
+#: quotes the same handful of verses across a course, so this turns a
+#: per-verse network call into a per-verse-per-process one.
+#:
+#: Bounded since readers' lessons reach it too (the verse card): a cap on
+#: entries, oldest out first, so no stream of distinct references can grow
+#: it without limit. Generous for real use — a course cites hundreds of
+#: verses, not tens of thousands.
 _cache: dict[tuple[str, str], str | None] = {}
+_CACHE_MAX = 20_000
+#: And a cap on the text it holds: a whole psalm is 13 000 characters, and
+#: entries alone would let distinct long ranges grow it to hundreds of MB.
+_CACHE_MAX_CHARS = 8_000_000
+_cache_chars = 0
+_MISS = object()
 _lock = threading.Lock()
 
 
@@ -298,6 +309,19 @@ def absence_is_remembered(ref: BibleRef, locale: LocaleCode) -> bool:
     return _cache.get((locale, usfm), "") is None
 
 
+def _remember(key: tuple[str, str], text: str | None) -> None:
+    """Keep ``text`` for ``key``, oldest out first, within both caps."""
+    global _cache_chars
+    with _lock:
+        if not _cache:
+            _cache_chars = 0  # emptied from outside (tests do) — start counting again
+        _cache_chars -= len(_cache.pop(key, None) or "")
+        while _cache and (len(_cache) >= _CACHE_MAX or _cache_chars + len(text or "") > _CACHE_MAX_CHARS):
+            _cache_chars -= len(_cache.pop(next(iter(_cache))) or "")
+        _cache[key] = text
+        _cache_chars += len(text or "")
+
+
 def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
     """Canonical text for `ref` in `locale`, or `None` for any reason at all.
 
@@ -320,8 +344,10 @@ def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
         return None
 
     key = (locale, usfm)
-    if key in _cache:
-        return _cache[key]
+    # One lookup, not "in" then "[]": another thread may evict the key between.
+    cached = _cache.get(key, _MISS)
+    if cached is not _MISS:
+        return cached  # type: ignore[return-value]
 
     api_key = os.getenv("YOUVERSION_API_KEY")
     if not api_key:
@@ -399,8 +425,7 @@ def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
         logger.info("Bible API unreachable for %s in %s", usfm, locale)
         return None  # Not cached: a transient outage must not poison the verse.
 
-    with _lock:
-        _cache[key] = text
+    _remember(key, text)
     return text
 
 

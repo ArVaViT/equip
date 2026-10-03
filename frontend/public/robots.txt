@@ -15,9 +15,12 @@ Disallow: /dashboard
 Disallow: /profile
 Disallow: /certificates
 Disallow: /calendar
+Disallow: /notes
 # One-time links carrying a token in the URL. Nothing to index, and a
 # crawler following one burns it.
 Disallow: /auth
+# A personal link from the foot of a course mail; it asks before it acts.
+Disallow: /unsubscribe
 Disallow: /invite
 
 Sitemap: https://equipbible.com/sitemap.xml

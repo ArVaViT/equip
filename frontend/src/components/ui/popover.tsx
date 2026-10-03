@@ -36,7 +36,9 @@ PopoverContent.displayName = PopoverPrimitive.Content.displayName
 
 export { PopoverContent }
 
+const PopoverAnchor = PopoverPrimitive.Anchor
+
 // Bare aliases of Radix primitives. eslint-plugin-react-refresh >= 0.5.5 inspects
 // the initializer and cannot tell that `PopoverPrimitive.Root` / `.Trigger` are
 // components; Vite's Fast Refresh checks the runtime value, so HMR is unaffected.
-export { Popover, PopoverTrigger }
+export { Popover, PopoverAnchor, PopoverTrigger }

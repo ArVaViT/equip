@@ -329,3 +329,10 @@ def test_the_feed_is_named_in_the_subscribers_language() -> None:
     # the subscriber otherwise reads in their own language.
     ics = render_calendar([_calendar_event()], locale="ru")
     assert "X-WR-CALNAME:Календарь Equip\r\n" in ics
+
+
+def test_a_recording_reaches_the_subscribed_calendar_in_the_reader_s_language() -> None:
+    evt = _calendar_event()
+    evt.recording_url = "https://youtu.be/abc"
+    ics = render_calendar([evt], locale="ru").replace("\r\n ", "")
+    assert "Запись занятия: https://youtu.be/abc" in ics

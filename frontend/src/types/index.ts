@@ -77,7 +77,17 @@ export interface User {
   region?: string | null
   city?: string | null
   church?: string | null
+  /** Kinds of course mail this person turned off. Empty or absent: all of it. */
+  email_off?: MailKind[]
 }
+
+/**
+ * Course mail a person can turn off — the kinds the privacy policy names,
+ * the same list `profiles_email_off_check` holds. Account mail (sign-in,
+ * password, invitations) is not one of them: it cannot be turned off.
+ */
+export const MAIL_KINDS = ["work_returned", "certificate_decided", "session_starting", "deadline_moved", "announcement"] as const
+export type MailKind = (typeof MAIL_KINDS)[number]
 
 export interface Course {
   id: string
@@ -506,6 +516,7 @@ export type NotificationType =
   | 'new_announcement'
   | 'new_event'
   | 'event_rescheduled'
+  | 'recording_ready'
   | 'retake_requested'
 
 export interface Notification {
@@ -567,6 +578,7 @@ export interface Profile {
   region?: string | null
   city?: string | null
   church?: string | null
+  email_off?: MailKind[]
 }
 
 type CalendarEventType = 'deadline' | 'live_session' | 'exam' | 'other'
@@ -582,6 +594,8 @@ export interface CalendarEvent {
    *  the two deadline sources are always `null`. Render the join action
    *  on this being present, never on `event_type`. */
   meeting_url: string | null
+  /** Where to watch it afterwards, once the teacher has added it. */
+  recording_url?: string | null
   course_id: string
   course_title: string | null
   source: CalendarEventSource
@@ -754,6 +768,7 @@ export interface CourseEvent {
   event_type: CalendarEventType
   event_date: string
   meeting_url: string | null
+  recording_url?: string | null
   created_by: string
   created_at: string
 }

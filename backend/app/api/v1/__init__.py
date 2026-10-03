@@ -18,19 +18,23 @@ from app.api.v1 import (
     courses,
     daily_challenge,
     daily_challenge_archive,
+    email_unsubscribe,
     grades,
     health,
     internal_daily_challenge_worker,
     internal_translation_worker,
     invitations,
     legal,
+    notes,
     notifications,
     organizations,
     prerequisites,
     progress,
     quizzes,
+    review,
     reviews,
     rubrics,
+    scripture,
     users,
     verse_of_the_day,
 )
@@ -60,7 +64,11 @@ api_router.include_router(legal.router)
 api_router.include_router(calendar_mod.router)
 api_router.include_router(calendar_mod.event_router)
 api_router.include_router(calendar_ical.router)
+api_router.include_router(email_unsubscribe.router)
 api_router.include_router(verse_of_the_day.router)
+api_router.include_router(scripture.router)
+api_router.include_router(notes.router)
+api_router.include_router(review.router)
 api_router.include_router(admin_org_settings.router)
 api_router.include_router(admin_organizations.router)
 api_router.include_router(admin_translations.router)

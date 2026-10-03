@@ -26,6 +26,7 @@ import { returnPathFrom } from "@/lib/authRedirect"
 import { canTeach } from "@/lib/roles"
 import { DeniedRedirect } from "@/components/auth/DeniedRedirect"
 import { getTeacherAgreementOwed, subscribeTeacherAgreement } from "@/components/legal/useTeacherAgreement"
+import { hasStoredSupabaseSession } from "@/lib/storedSession"
 
 // Lazy: FirstRunFlow renders null until a brand-new user's privacy/setup gate
 // activates, so it never needs to be on the critical path — its component code
@@ -55,9 +56,19 @@ const ForgotPassword = lazyRoute(() => import("./pages/Auth/ForgotPassword"))
 const ResetPassword = lazyRoute(() => import("./pages/Auth/ResetPassword"))
 const AuthCallback = lazyRoute(() => import("./pages/Auth/AuthCallback"))
 const AcceptInvite = lazyRoute(() => import("./pages/Invite/AcceptInvite"))
-const DashboardPage = lazyRoute(() => import("./pages/Dashboard/DashboardPage"))
+// The public landing is its own chunk (it carries the animation library a
+// signed-in dashboard never uses). For a visitor with no stored session it is
+// requested together with the dashboard chunk, so the landing costs no extra
+// round trip; a signed-in reader never downloads it.
+const DashboardPage = lazyRoute(() => {
+  // A failed prefetch is not an error: the landing's own lazy load retries
+  // (and recovers from a stale deploy) when it is actually rendered.
+  if (!hasStoredSupabaseSession()) import("./pages/Dashboard/PublicLanding").catch(() => undefined)
+  return import("./pages/Dashboard/DashboardPage")
+})
 const CoursesPage = lazyRoute(() => import("./pages/Courses/CoursesPage"))
 const VerifyCertificatePage = lazyRoute(() => import("./pages/Verify/VerifyCertificatePage"))
+const UnsubscribePage = lazyRoute(() => import("./pages/Unsubscribe/UnsubscribePage"))
 const LegalDocumentPage = lazyRoute(() => import("./pages/Legal/LegalDocumentPage"))
 const DmcaPage = lazyRoute(() => import("./pages/Legal/DmcaPage"))
 const ProfilePage = lazyRoute(() => import("./pages/Profile/ProfilePage"))
@@ -71,6 +82,7 @@ const VedomostPage = lazyRoute(() => import("./pages/Teacher/vedomost/VedomostPa
 const TeacherGradebook = lazyRoute(() => import("./pages/Teacher/TeacherGradebook"))
 const GradingQueue = lazyRoute(() => import("./pages/Teacher/GradingQueue"))
 const CertificateDocument = lazyRoute(() => import("./pages/Certificates/CertificateDocument"))
+const TranscriptPage = lazyRoute(() => import("./pages/Certificates/TranscriptPage"))
 const TeacherAnalytics = lazyRoute(() => import("./pages/Teacher/TeacherAnalytics"))
 const StudentProgress = lazyRoute(() => import("./pages/Teacher/StudentProgress"))
 const ChapterView = lazyRoute(() => import("./pages/Course/ChapterView"))
@@ -78,6 +90,7 @@ const ChapterEditor = lazyRoute(() => import("./pages/Teacher/ChapterEditor"))
 const AdminDashboard = lazyRoute(() => import("./pages/Admin/AdminDashboard"))
 const CohortDetailPage = lazyRoute(() => import("./pages/Admin/cohorts/CohortDetailPage"))
 const CalendarPage = lazyRoute(() => import("./pages/Calendar/CalendarPage"))
+const MyNotesPage = lazyRoute(() => import("./pages/Notes/MyNotesPage"))
 const DailyChallengeArchivePage = lazyRoute(() => import("./pages/DailyChallengeArchive/DailyChallengeArchivePage"))
 const DailyChallengeReviewPage = lazyRoute(() => import("./pages/Admin/dailyChallenge/DailyChallengeReviewPage"))
 const DailyChallengeReviewDetailPage = lazyRoute(() => import("./pages/Admin/dailyChallenge/DailyChallengeReviewDetailPage"))
@@ -281,6 +294,9 @@ function AppRoutes() {
                   certificate points here. */}
               <Route path="/verify" element={<VerifyCertificatePage />} />
               <Route path="/verify/:certificateNumber" element={<VerifyCertificatePage />} />
+              {/* Public: the link at the foot of a course mail lands here,
+                  often on a phone that has never signed in. */}
+              <Route path="/unsubscribe" element={<UnsubscribePage />} />
               <Route path="/privacy" element={<LegalDocumentPage slug="privacy" />} />
               <Route path="/terms" element={<LegalDocumentPage slug="terms" />} />
               {/* Public like the other two: somebody deciding whether to accept
@@ -299,6 +315,7 @@ function AppRoutes() {
               <Route path="/dmca" element={<DmcaPage />} />
               <Route path="/profile" element={<Gate mode="private"><ProfilePage /></Gate>} />
               <Route path="/calendar" element={<Gate mode="private"><CalendarPage /></Gate>} />
+              <Route path="/notes" element={<Gate mode="private"><MyNotesPage /></Gate>} />
               <Route path="/daily-challenge/archive" element={<Gate mode="private"><DailyChallengeArchivePage /></Gate>} />
               <Route path="/certificates" element={<Gate mode="private"><CertificatesPage /></Gate>} />
               {/* No <Gate>: a course page is open to anyone, as the landing FAQ
@@ -320,6 +337,7 @@ function AppRoutes() {
               <Route path="/teacher/courses/:courseId/chapters/:chapterId/edit" element={<Gate mode="teacher"><ChapterEditor /></Gate>} />
               <Route path="/teacher/courses/:courseId/modules/:moduleId/chapters/:chapterId/edit" element={<Gate mode="teacher"><ChapterEditor /></Gate>} />
               <Route path="/teacher/courses/:courseId/analytics" element={<Gate mode="teacher"><TeacherAnalytics /></Gate>} />
+              <Route path="/certificates/transcript" element={<Gate mode="private"><TranscriptPage /></Gate>} />
               <Route path="/certificates/:certificateId" element={<Gate mode="private"><CertificateDocument /></Gate>} />
               <Route path="/teach/grading" element={<Gate mode="teacher"><GradingQueue /></Gate>} />
               <Route path="/teacher/courses/:courseId/gradebook" element={<Gate mode="teacher"><TeacherGradebook /></Gate>} />

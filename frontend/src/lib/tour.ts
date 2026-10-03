@@ -86,7 +86,28 @@ export const EDITORIAL_TOUR_BASE = {
   stagePadding: 6,
   stageRadius: 8,
   popoverClass: "editorial-tour-popover",
+  onHighlighted: (element) => {
+    if (element) dropPopupAttributesFromStaticElement(element)
+  },
 } satisfies Partial<Config>
+
+// Elements a popup attribute is allowed on. Not `[tabindex]`: a focusable
+// div with no role still may not carry aria-haspopup.
+const INTERACTIVE = "a[href], button, input, select, textarea, summary, [role=button], [role=link], [role=tab], [role=menuitem], [role=combobox]"
+
+/**
+ * driver.js marks whatever it spotlights as a popup trigger
+ * (`aria-haspopup`, `aria-expanded`, `aria-controls`). On a button that is
+ * true enough; on a card or a section — most of our steps — those attributes
+ * are not allowed (axe: aria-allowed-attr) and announce a control that is
+ * not there. Removed from anything that is not itself interactive.
+ */
+export function dropPopupAttributesFromStaticElement(element: Element): void {
+  if (element.matches(INTERACTIVE)) return
+  element.removeAttribute("aria-haspopup")
+  element.removeAttribute("aria-expanded")
+  element.removeAttribute("aria-controls")
+}
 
 interface CreateTourOpts {
   steps: readonly TourStep[]

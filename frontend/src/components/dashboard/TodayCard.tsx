@@ -10,6 +10,8 @@ import { ArrowRight, CalendarDays } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Eyebrow } from "@/components/patterns"
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
+import { isOver } from "@/lib/eventTime"
+import { RecordingLink } from "@/components/calendar/RecordingLink"
 import { coursesService } from "@/services/courses"
 import { useAuth } from "@/context/useAuth"
 import type { CalendarEvent } from "@/types"
@@ -188,7 +190,10 @@ export function TodayCard() {
                   {/* The card answers "what do I need to do today", and
                       for a Saturday Zoom class the answer is a button,
                       not an instruction to go and find one. */}
-                  <JoinMeetingLink url={e.meeting_url} title={e.title} className="mt-1.5" />
+                  <div className="mt-1.5 flex flex-wrap gap-1.5 empty:hidden">
+                    {!isOver(e) && <JoinMeetingLink url={e.meeting_url} title={e.title} />}
+                    <RecordingLink url={e.recording_url} title={e.title} />
+                  </div>
                 </div>
               </li>
             ))}

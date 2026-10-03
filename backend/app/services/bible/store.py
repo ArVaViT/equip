@@ -78,9 +78,12 @@ def chapters_in(book: str) -> int | None:
     verified end to end; the others are the API's, and asking a network
     service how long a book is to check a citation would be absurd.
 
-    Chapter counts do not differ between the editions this platform
-    serves — the versification differences it has to care about are in
-    *verse* numbering, which is what ``psalm_numbering`` exists for.
+    Chapter counts mostly agree between the editions this platform serves —
+    most versification differences are in *verse* numbering, which is what
+    ``psalm_numbering`` exists for. Not entirely: German editions follow the
+    Hebrew and give Joel four chapters where the KJV has three (and Malachi
+    three where it has four). A caller using this as a bound for a
+    reference in another edition should allow for that.
     """
     global _chapter_counts_built
     if not _chapter_counts_built:

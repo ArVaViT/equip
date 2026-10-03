@@ -3,13 +3,18 @@ import uuid
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, CheckConstraint, Date, DateTime, ForeignKey, func
+from sqlalchemy import JSON, BigInteger, CheckConstraint, Date, DateTime, ForeignKey, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.enrollment import Enrollment
+
+
+# JSONB in Postgres, JSON in the SQLite test database (as in org_settings).
+_JSONVariant = JSONB().with_variant(JSON(), "sqlite")
 
 
 class UserRole(enum.StrEnum):
@@ -155,6 +160,12 @@ class User(Base):
     region: Mapped[str | None] = mapped_column()
     city: Mapped[str | None] = mapped_column()
     church: Mapped[str | None] = mapped_column()
+    #: Kinds of course mail this person turned off (``app.services.email.
+    #: course_mail.KINDS``). Empty — the default — is "everything". Account
+    #: mail is never in it: it cannot be turned off. The allowed values are
+    #: held by ``profiles_email_off_check`` in Postgres, not mirrored here
+    #: (SQLite has no ``jsonb_typeof``).
+    email_off: Mapped[list[str]] = mapped_column(_JSONVariant, default=list, server_default="[]")
     # Floor for iCal token ``iat`` claims. When a user rotates their
     # subscription token via ``POST /calendar/ical/token``, we stamp
     # this to the new ``iat``; the feed verifier refuses tokens whose

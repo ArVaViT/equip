@@ -70,13 +70,25 @@ class Delivery:
     #: Provider id when it took the message; the closest thing to a
     #: receipt until the deliveries table exists (ADR-012, step 4).
     provider_id: str | None = None
-    #: Machine-readable: not_configured | http_error | rejected | ok.
+    #: Machine-readable: not_configured | not_allowed | http_error | rejected | ok.
     reason: str = "ok"
 
 
 def _domain_of(address: str) -> str:
     _, _, domain = address.rpartition("@")
     return domain or "unknown"
+
+
+def _allowed(to: str) -> bool:
+    """False when an allowlist is set and ``to`` is not on it (local and preview work).
+
+    Set but empty means nobody: a guard that opens when it is misconfigured
+    is not a guard.
+    """
+    if settings.EMAIL_ALLOWLIST is None:
+        return True
+    allowed = {a.strip().lower() for a in settings.EMAIL_ALLOWLIST.split(",") if a.strip()}
+    return to.strip().lower() in allowed
 
 
 def send_email(
@@ -88,6 +100,7 @@ def send_email(
     text: str | None = None,
     sender_name: str | None = None,
     reply_to: str | None = None,
+    headers: dict[str, str] | None = None,
 ) -> Delivery:
     """Hand one message to the provider.
 
@@ -101,6 +114,11 @@ def send_email(
     and a poor signal to every filter that reads it. Measured on a real
     message on 2026-09-12, which is how it was found.
 
+    ``headers`` go to the provider as extra message headers — the
+    unsubscribe pair (``List-Unsubscribe`` and ``List-Unsubscribe-Post``)
+    on course mail, which Gmail and Yahoo require of a sender that wants
+    to stay out of the spam folder.
+
     ``reply_to`` is the inviting person's own address. A message nobody
     can answer is a message a filter has every reason to distrust, and
     a person who replies "is this really you?" should reach a human.
@@ -111,6 +129,12 @@ def send_email(
         logger.warning("email skipped: no RESEND_API_KEY (kind=%s domain=%s)", kind, _domain_of(to))
         increment("equip.email.attempts_total", kind=kind, outcome="not_configured")
         return Delivery(sent=False, reason="not_configured")
+
+    if not _allowed(to):
+        # A test run against real data must not reach a real student.
+        logger.warning("email not sent: recipient not on EMAIL_ALLOWLIST (kind=%s domain=%s)", kind, _domain_of(to))
+        increment("equip.email.attempts_total", kind=kind, outcome="not_allowed")
+        return Delivery(sent=False, reason="not_allowed")
 
     started = perf_counter()
     try:
@@ -127,6 +151,7 @@ def send_email(
                 "html": html,
                 **({"text": text} if text else {}),
                 **({"reply_to": reply_to} if reply_to else {}),
+                **({"headers": headers} if headers else {}),
             },
             timeout=_TIMEOUT_SECONDS,
         )

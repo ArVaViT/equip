@@ -2,6 +2,7 @@ import { Trash2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { Notification } from "@/types"
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
+import { RecordingLink } from "@/components/calendar/RecordingLink"
 import { cn } from "@/lib/utils"
 import { orNotTranslated } from "@/lib/untranslated"
 
@@ -12,6 +13,11 @@ import { orNotTranslated } from "@/lib/untranslated"
  *  is a link worth rendering. */
 function meetingUrlOf(notification: Notification): string | null {
   const value = notification.metadata?.meeting_url
+  return typeof value === "string" ? value : null
+}
+
+function recordingUrlOf(notification: Notification): string | null {
+  const value = notification.metadata?.recording_url
   return typeof value === "string" ? value : null
 }
 import {
@@ -42,49 +48,50 @@ export function NotificationItem({ notification, onActivate, onDelete }: Props) 
         !notification.is_read && "bg-brand/[0.03]",
       )}
     >
-      <button
-        onClick={() => onActivate(notification)}
-        className="flex gap-3 flex-1 min-w-0 text-left cursor-pointer bg-transparent border-0 p-0"
-        aria-label={orNotTranslated(t, notification.title)}
-      >
-        <div className={cn("mt-0.5 shrink-0", color)}>
-          <Icon className="h-4 w-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <p
-              className={cn(
-                "text-sm leading-snug",
-                !notification.is_read
-                  ? "font-medium text-ink"
-                  : "text-ink-muted",
-              )}
-            >
-              {orNotTranslated(t, notification.title)}
-            </p>
-            {!notification.is_read && (
-              <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />
-            )}
+      <div className="min-w-0 flex-1">
+        <button
+          onClick={() => onActivate(notification)}
+          className="flex w-full min-w-0 gap-3 text-left cursor-pointer bg-transparent border-0 p-0"
+          aria-label={orNotTranslated(t, notification.title)}
+        >
+          <div className={cn("mt-0.5 shrink-0", color)}>
+            <Icon className="h-4 w-4" />
           </div>
-          <p className="mt-0.5 text-xs text-ink-muted line-clamp-2">
-            {orNotTranslated(t, notification.message)}
-          </p>
-          <p className="mt-1 text-xs text-ink-muted">
-            {timeAgo(notification.created_at, t)}
-          </p>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <p
+                className={cn(
+                  "text-sm leading-snug",
+                  !notification.is_read
+                    ? "font-medium text-ink"
+                    : "text-ink-muted",
+                )}
+              >
+                {orNotTranslated(t, notification.title)}
+              </p>
+              {!notification.is_read && (
+                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />
+              )}
+            </div>
+            <p className="mt-0.5 text-xs text-ink-muted line-clamp-2">
+              {orNotTranslated(t, notification.message)}
+            </p>
+            <p className="mt-1 text-xs text-ink-muted">
+              {timeAgo(notification.created_at, t)}
+            </p>
+          </div>
+        </button>
+        {/* Outside the button, never inside it: a link nested in a button
+            is invalid HTML, and browsers recover from it by breaking one
+            of the two — usually the link. Under the text, in line with it:
+            beside it, the button squeezed the title into a column of
+            single words. The bell is where a student is standing when a
+            session starts, so it is worth the row it costs. */}
+        <div className="mt-2 flex flex-wrap gap-2 pl-7 empty:hidden">
+          <JoinMeetingLink url={meetingUrlOf(notification)} title={orNotTranslated(t, notification.title)} />
+          <RecordingLink url={recordingUrlOf(notification)} title={orNotTranslated(t, notification.title)} />
         </div>
-      </button>
-      {/* Outside the button, never inside it: a link nested in a button
-          is invalid HTML, and browsers recover from it by breaking one
-          of the two — usually the link. So the join action is a sibling
-          of the row's own click target, sharing its bottom edge. The
-          bell is where a student is standing when a session starts, so
-          it is worth the row it costs. */}
-      <JoinMeetingLink
-        url={meetingUrlOf(notification)}
-        title={orNotTranslated(t, notification.title)}
-        className="self-center"
-      />
+      </div>
       <button
         onClick={(e) => {
           e.stopPropagation()

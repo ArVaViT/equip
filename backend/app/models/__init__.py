@@ -3,6 +3,7 @@ from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.audit_log import AuditLog
 from app.models.certificate import Certificate
 from app.models.chapter_block import ChapterBlock
+from app.models.chapter_note import ChapterNote
 from app.models.chapter_progress import ChapterProgress
 from app.models.cohort import Cohort
 from app.models.content_version import ContentVersion
@@ -39,6 +40,7 @@ from app.models.staged_content_version import StagedContentVersion
 from app.models.student_grade import StudentGrade
 from app.models.submission_declaration import SubmissionDeclaration
 from app.models.user import User, UserRole
+from app.models.worker_lease import WorkerLease
 
 __all__ = [
     "DEFAULT_GRADE_BANDS",
@@ -50,6 +52,7 @@ __all__ = [
     "Certificate",
     "Chapter",
     "ChapterBlock",
+    "ChapterNote",
     "ChapterProgress",
     "Cohort",
     "ContentVersion",
@@ -87,4 +90,5 @@ __all__ = [
     "SubmissionDeclaration",
     "User",
     "UserRole",
+    "WorkerLease",
 ]

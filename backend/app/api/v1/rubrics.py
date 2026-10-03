@@ -367,7 +367,11 @@ def set_submission_marks(
             assignment=assignment,
             grade=earned,
             feedback=data.feedback if data.feedback is not None else submission.feedback,
-            new_status="graded",
+            # A grid re-saved on work that was sent back for a draft keeps it
+            # sent back: editing a comment is not accepting the work. It used
+            # to flip ``returned`` to ``graded`` silently. Accepting it is the
+            # explicit mark.
+            new_status="returned" if submission.status == "returned" else "graded",
             teacher_id=teacher.id,
             source_locale=_course_source_locale_for_chapter(db, assignment.chapter_id),
             source="rubric",

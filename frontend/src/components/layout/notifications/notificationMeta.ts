@@ -7,6 +7,7 @@ import {
   Megaphone,
   RotateCcw,
   XCircle,
+  PlayCircle,
 } from "lucide-react"
 import type { NotificationType } from "@/types"
 import { formatDate } from "@/i18n/format"
@@ -26,6 +27,7 @@ const NOTIFICATION_ICONS: Record<NotificationType, typeof Bell> = {
   new_announcement: Megaphone,
   new_event: CalendarPlus,
   event_rescheduled: CalendarClock,
+  recording_ready: PlayCircle,
   retake_requested: RotateCcw,
 }
 
@@ -36,6 +38,7 @@ const NOTIFICATION_COLORS: Record<NotificationType, string> = {
   new_announcement: "text-warning",
   new_event: "text-info",
   event_rescheduled: "text-warning",
+  recording_ready: "text-info",
   retake_requested: "text-warning",
 }
 

@@ -31,6 +31,7 @@ import {
   Link as LinkIcon,
   AlertTriangle,
 } from "lucide-react"
+import { ScriptureText } from "@/components/chapter/ScriptureText"
 
 /**
  * "We could not find out", as distinct from "there is nothing".
@@ -303,8 +304,9 @@ function SingleAssignment({
           {orNotTranslated(t, assignment.title)}
         </h3>
         {assignment.description && (
-          <p className="mt-1.5 text-sm leading-relaxed text-ink-muted text-wrap-safe whitespace-pre-line">
-            {assignment.description}
+          <p className="prose-verse mt-1.5 text-sm leading-relaxed text-ink-muted text-wrap-safe whitespace-pre-line">
+            {/* A cited verse opens over the page, as it does in a lesson. */}
+            <ScriptureText text={assignment.description} />
           </p>
         )}
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">

@@ -1,4 +1,13 @@
 {
+  "unsubscribe": {
+    "title": "Листи Equip",
+    "ask": "Більше не надсилати листи «{{kind}}»?",
+    "button": "Відписатися",
+    "done": "Готово: листи «{{kind}}» більше не прийдуть.",
+    "again": "Повернути їх можна в профілі, у «Налаштуваннях».",
+    "invalid": "Посилання не працює. Листи вимикаються в профілі, у «Налаштуваннях».",
+    "toProfile": "Відкрити профіль"
+  },
   "common": {
     "appName": "Equip",
     "cancel": "Скасувати",
@@ -116,6 +125,22 @@
     }
   },
   "dashboard": {
+    "atRisk": {
+      "write": "Написати: {{name}}",
+      "title": "Кому варто написати",
+      "quiet_one": "{{count}} день без активності",
+      "quiet_few": "{{count}} дні без активності",
+      "quiet_many": "{{count}} днів без активності",
+      "quiet_other": "{{count}} дня без активності",
+      "missed_one": "пропущено {{count}} термін",
+      "missed_few": "пропущено {{count}} терміни",
+      "missed_many": "пропущено {{count}} термінів",
+      "missed_other": "пропущено {{count}} терміну",
+      "more_one": "і ще {{count}}",
+      "more_few": "і ще {{count}}",
+      "more_many": "і ще {{count}}",
+      "more_other": "і ще {{count}}"
+    },
     "continue": {
       "eyebrow": "Продовжити",
       "position": "урок {{current}} з {{total}}",
@@ -668,6 +693,23 @@
     "signInLinkBackToPassword": "Увійти паролем"
   },
   "profile": {
+    "myData": {
+      "label": "Мої дані",
+      "hint": "Усе, що Equip зберігає про вас: профіль, курси, відповіді на тести, роботи з оцінками, сертифікати — одним файлом.",
+      "download": "Завантажити",
+      "preparing": "Готуємо файл…",
+      "failed": "Не вдалося підготувати файл. Спробуйте ще раз."
+    },
+    "emails": {
+      "label": "Листи про курси",
+      "kinds": {
+        "work_returned": "Роботу перевірено або повернуто",
+        "certificate_decided": "Рішення щодо сертифіката",
+        "session_starting": "Скоро почнеться заняття",
+        "deadline_moved": "Строк перенесено",
+        "announcement": "Оголошення курсу"
+      }
+    },
     "fullName": "Повне ім’я",
     "changeAvatar": "Змінити зображення",
     "uploadFailed": "Не вдалося завантажити зображення",
@@ -732,6 +774,8 @@
     "progressLabel": "{{percent}}% завершено"
   },
   "pageTitle": {
+    "notes": "Мої нотатки",
+    "transcript": "Виписка",
     "login": "Вхід",
     "register": "Створення облікового запису",
     "forgotPassword": "Забули пароль",
@@ -843,7 +887,8 @@
       "option_text": "текст варіанта",
       "is_correct": "правильна відповідь",
       "order_index": "порядок",
-      "meeting_url": "посилання на зустріч"
+      "meeting_url": "посилання на зустріч",
+      "recording_url": "посилання на запис"
     },
     "validation": {
       "less_than_equal": "не більше {{le}}",
@@ -932,6 +977,17 @@
     "goHome": "На головну"
   },
   "chapter": {
+    "reading": {
+      "label": "Налаштування читання",
+      "size": "Розмір тексту",
+      "sizes": {
+        "s": "Дрібний текст",
+        "m": "Звичайний текст",
+        "l": "Великий текст",
+        "xl": "Дуже великий текст"
+      },
+      "easy": "Легко читати"
+    },
     "attachmentEyebrow": "Вкладення",
     "blocksLoadFailed": "Не вдалося завантажити цей урок",
     "blocksLoadFailedDescription": "Вміст уроку не завантажився. Зазвичай це тимчасова проблема зі зв’язком — спробуйте ще раз.",
@@ -962,6 +1018,12 @@
     "submitAssignmentToComplete": "Надішліть завдання, щоб завершити цей урок"
   },
   "quiz": {
+    "result": {
+      "correct": "Правильно",
+      "incorrect": "Неправильно",
+      "yourAnswer": "ваша відповідь",
+      "rightAnswer": "правильна відповідь"
+    },
     "answerAll": "Дайте відповідь на всі запитання, щоб здати",
     "attemptPoints": "{{score}}/{{max}} балів",
     "attemptsShort": "Спроби: {{used}}/{{max}}",
@@ -1014,6 +1076,63 @@
     "wordsCount_other": "{{count}} слова",
     "wordsWithMin": "{{count}} / {{min}} потрібно",
     "yourAnswer": "Ваша відповідь:"
+  },
+  "scripture": {
+    "open": "Відкрити вірш {{ref}}",
+    "edition": {
+      "bsb": "Berean Standard Bible",
+      "kjv": "King James Version",
+      "nrt": "Новый русский перевод",
+      "elberfelder": "Elberfelder Bibel",
+      "kulish": "Переклад Куліша, 1905"
+    }
+  },
+  "notes": {
+    "lesson": {
+      "hasNote": "Є ваша нотатка",
+      "loadFailed": "Не вдалося завантажити нотатку до уроку.",
+      "title": "Мої нотатки до уроку",
+      "add": "Додати нотатку до уроку",
+      "all": "Усі нотатки",
+      "placeholder": "Ваша нотатка…",
+      "saving": "Зберігаю…",
+      "saved": "Збережено",
+      "failed": "Не збереглося. Текст лишається тут.",
+      "private": "Бачите лише ви. Зберігається само."
+    },
+    "page": {
+      "courseUnavailable": "Курс зараз недоступний",
+      "deleteConfirmTitle": "Видалити нотатку?",
+      "deleteConfirmDescription": "Її не можна буде повернути.",
+      "deleteFailed": "Не вдалося видалити нотатку",
+      "delete": "Видалити нотатку",
+      "unavailable": "Урок зараз недоступний",
+      "eyebrow": "Навчання",
+      "title": "Мої нотатки",
+      "emptyTitle": "Нотаток поки немає",
+      "emptyDescription": "Пишіть під уроками — нотатки зберуться тут.",
+      "loadFailed": "Не вдалося завантажити нотатки."
+    }
+  },
+  "review": {
+    "teaser": {
+      "title": "Повторення тижня готове",
+      "count_one": "{{count}} питання",
+      "count_few": "{{count}} питання",
+      "count_many": "{{count}} питань",
+      "count_other": "{{count}} питання"
+    },
+    "checkFailed": "Не вдалося перевірити — спробуйте ще раз.",
+    "title": "Повторення тижня",
+    "hint_one": "{{count}} питання з пройденого, без оцінки",
+    "hint_few": "{{count}} питання з пройденого, без оцінки",
+    "hint_many": "{{count}} питань з пройденого, без оцінки",
+    "hint_other": "{{count}} питання з пройденого, без оцінки",
+    "start": "Почати",
+    "progress": "Питання {{n}} з {{total}}",
+    "next": "Далі",
+    "finish": "Готово",
+    "result": "Правильно {{right}} з {{total}}"
   },
   "quizEditor": {
     "validation": {
@@ -1331,6 +1450,28 @@
     "draftRestored": "Чернетку відновлено з цього пристрою"
   },
   "certificates": {
+    "transcript": {
+      "kind": "Academic transcript",
+      "asOf": "As of {{date}}",
+      "empty": "No certificates have been issued yet.",
+      "course": "Course",
+      "school": "School",
+      "completed": "Completed",
+      "number": "Certificate no.",
+      "verify_one": "The certificate can be verified at equipbible.com/verify by its number.",
+      "verify_other": "Each certificate can be verified at equipbible.com/verify by its number.",
+      "open": "Виписка",
+      "verify_few": "Each certificate can be verified at equipbible.com/verify by its number.",
+      "verify_many": "Each certificate can be verified at equipbible.com/verify by its number."
+    },
+    "share": {
+      "share": "Поділитися",
+      "linkedIn": "Додати в LinkedIn",
+      "linkedInShort": "LinkedIn",
+      "text": "Я закінчив(ла) курс «{{course}}». Сертифікат можна перевірити за посиланням:",
+      "copied": "Посилання на перевірку скопійовано",
+      "copyFailed": "Не вдалося скопіювати посилання"
+    },
     "backToCourses": "Назад до курсів",
     "title": "Мої сертифікати",
     "eyebrow": "Здобутки",
@@ -1391,7 +1532,7 @@
       "print": "Друк",
       "back": "Назад до сертифікатів",
       "notIssued": "Цей сертифікат ще не видано",
-      "loadFailed": "Не вдалося завантажити свідоцтво.",
+      "loadFailed": "Не вдалося завантажити сертифікат.",
       "schoolUnnamed": "Назву школи не вказано",
       "open": "Відкрити сертифікат",
       "certificateOfCompletion": "Certificate of Completion",
@@ -1585,10 +1726,14 @@
     "deleteAria": "Видалити відгук"
   },
   "calendar": {
+    "addOne": {
+      "label": "До календаря",
+      "aria": "Додати «{{title}}» до календаря"
+    },
     "subscribe": {
       "open": "Підписатися",
       "title": "Розклад курсів у вашому календарі",
-      "description": "Заняття й терміни ваших курсів з'являться в календарі телефона чи комп'ютера й оновлюватимуться самі. Час показано в поясі вашого календаря.",
+      "description": "Заняття й терміни ваших курсів з’являться в календарі й оновлюватимуться самі.",
       "replaces": "Посилання особисте. Якщо ви вже підписувалися, попереднє посилання перестане працювати.",
       "create": "Створити посилання",
       "apple": "Apple і Outlook",
@@ -2027,6 +2172,9 @@
     }
   },
   "courseDetail": {
+    "minutesShort": "{{minutes}} хв",
+    "hoursShort": "≈ {{hours}} год",
+    "readingHours": "≈ {{hours}} год читання",
     "allCourses": "Усі курси",
     "manageCourse": "Керувати курсом",
     "enrollInCourse": "Записатися на курс",
@@ -2098,6 +2246,29 @@
     }
   },
   "gradebook": {
+    "write": {
+      "tooMany": "Забагато адрес для посилання. Скопіюйте їх у поле «Прихована копія».",
+      "open": "Написати…",
+      "title": "Написати студентам",
+      "who": "Кому",
+      "work": "Робота",
+      "audience": {
+        "not_submitted": "Не здали",
+        "not_passed": "Не склали або на доопрацюванні",
+        "everyone": "Увесь клас"
+      },
+      "count_one": "{{count}} студент",
+      "count_few": "{{count}} студенти",
+      "count_many": "{{count}} студентів",
+      "count_other": "{{count}} студента",
+      "copy": "Скопіювати адреси",
+      "compose": "Відкрити лист",
+      "copied_one": "Скопійовано {{count}} адресу",
+      "copied_few": "Скопійовано {{count}} адреси",
+      "copied_many": "Скопійовано {{count}} адрес",
+      "copied_other": "Скопійовано {{count}} адреси",
+      "copyFailed": "Не вдалося скопіювати адреси"
+    },
     "summaryTab": "Підсумкові оцінки",
     "tableTab": "Таблиця оцінок",
     "failedLoad": "Не вдалося завантажити журнал оцінок. Спробуйте ще раз.",
@@ -2792,6 +2963,8 @@
       "confirm": "Усе одно опублікувати"
     },
     "checks": {
+      "headingsInOrder": "У «{{title}}» заголовки йдуть по порядку.",
+      "imagesHaveAlt": "Картинки в «{{title}}» мають опис.",
       "hasDescription": "У курсу є опис для каталогу.",
       "hasCoverImage": "У курсу є обкладинка.",
       "translationsComplete": "Курс є всіма мовами. До каталогу він потрапить, коли буде готовий кожною.",
@@ -2825,7 +2998,9 @@
       "quizThresholdAboveCourse": "Тест вимагає вищого балу, ніж курс. Студент може скласти курс за балами і все одно не завершити урок — сертифікат лишиться недосяжним.",
       "quizWeightNonzero": "Тести не зараховуються до підсумкової оцінки.",
       "assignmentWeightNonzero": "Завдання не зараховуються до підсумкової оцінки.",
-      "quizThresholdBelowCourse": "Деякі тести складаються з нижчим балом, ніж потрібно курсу. Студент може скласти всі тести й усе одно лишитися нижче прохідного балу курсу."
+      "quizThresholdBelowCourse": "Деякі тести складаються з нижчим балом, ніж потрібно курсу. Студент може скласти всі тести й усе одно лишитися нижче прохідного балу курсу.",
+      "headingsInOrder": "У «{{title}}» заголовки йдуть не по порядку.",
+      "imagesHaveAlt": "У «{{title}}» є картинки без опису."
     }
   },
   "dateRangePicker": {
@@ -3103,6 +3278,11 @@
     "errorDescription": "Це збій зв'язку, а не вирок сертифікату. Спробуйте ще раз."
   },
   "meeting": {
+    "recordingPlaceholder": "https://youtu.be/…",
+    "recording": "Запис заняття",
+    "recordingAria": "Дивитися запис — {{title}}",
+    "recordingLabel": "Посилання на запис",
+    "recordingHint": "YouTube, Vimeo, Google Диск",
     "join": "Приєднатися",
     "joinAria": "Приєднатися до зустрічі — {{title}}",
     "linkLabel": "Посилання на зустріч",

@@ -21,6 +21,7 @@ from typing import Literal
 
 from sqlalchemy.orm import Session  # noqa: TC002
 
+from app.core.i18n import t
 from app.models.announcement import Announcement  # noqa: TC001
 from app.models.assignment import Assignment  # noqa: TC001
 from app.models.chapter_block import ChapterBlock  # noqa: TC001
@@ -1195,6 +1196,10 @@ def localize_announcement_rows(
     return out
 
 
+#: Event kinds with a label of their own (``event_type.*`` in ``app.core.i18n``).
+_EVENT_KINDS = frozenset({"deadline", "live_session", "exam", "other"})
+
+
 def localize_course_event_rows(
     db: Session,
     events: list[CourseEvent],
@@ -1227,7 +1232,11 @@ def localize_course_event_rows(
                 {
                     "id": e.id,
                     "course_id": e.course_id,
-                    "title": texts.get((eid, "title")) or "",
+                    # Nothing live yet — an event added to a published
+                    # course waits for every translation: name its kind
+                    # rather than show a blank row.
+                    "title": texts.get((eid, "title"))
+                    or t(display_locale, f"event_type.{e.event_type if e.event_type in _EVENT_KINDS else 'other'}"),
                     "description": texts.get((eid, "description")),
                     "event_type": e.event_type,
                     "event_date": e.event_date,
@@ -1236,6 +1245,7 @@ def localize_course_event_rows(
                     # address of a Zoom room is the same address for a
                     # German reader as for a Russian one.
                     "meeting_url": e.meeting_url,
+                    "recording_url": e.recording_url,
                     "created_by": e.created_by,
                     "created_at": e.created_at,
                 }

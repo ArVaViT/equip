@@ -71,6 +71,7 @@ export function useEventsSection(
       event_type: ev.event_type,
       event_date: isoToLocalInput(ev.event_date),
       meeting_url: ev.meeting_url ?? "",
+      recording_url: ev.recording_url ?? "",
     })
     setEditingId(ev.id)
   }, [])
@@ -94,6 +95,8 @@ export function useEventsSection(
       // would see an absent key, and `exclude_unset` would leave the old
       // link in place — the field would look cleared and would not be.
       meeting_url: form.meeting_url.trim() || null,
+      // `null` for the same reason: clearing the field clears the link.
+      recording_url: form.recording_url.trim() || null,
     }
     try {
       if (editingId) {

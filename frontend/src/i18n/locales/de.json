@@ -1,4 +1,13 @@
 {
+  "unsubscribe": {
+    "title": "E-Mails von Equip",
+    "ask": "Keine E-Mails „{{kind}}“ mehr senden?",
+    "button": "Abbestellen",
+    "done": "Erledigt: E-Mails „{{kind}}“ kommen nicht mehr.",
+    "again": "Sie können sie im Profil unter „Einstellungen“ wieder einschalten.",
+    "invalid": "Dieser Link funktioniert nicht. E-Mails schalten Sie im Profil unter „Einstellungen“ ab.",
+    "toProfile": "Profil öffnen"
+  },
   "common": {
     "appName": "Equip",
     "cancel": "Abbrechen",
@@ -116,6 +125,16 @@
     }
   },
   "dashboard": {
+    "atRisk": {
+      "write": "An {{name}} schreiben",
+      "title": "Wem Sie schreiben sollten",
+      "quiet_one": "{{count}} Tag ohne Aktivität",
+      "quiet_other": "{{count}} Tage ohne Aktivität",
+      "missed_one": "{{count}} Frist verpasst",
+      "missed_other": "{{count}} Fristen verpasst",
+      "more_one": "und {{count}} weitere",
+      "more_other": "und {{count}} weitere"
+    },
     "continue": {
       "eyebrow": "Weiterlernen",
       "position": "Lektion {{current}} von {{total}}",
@@ -652,6 +671,23 @@
     "signInLinkBackToPassword": "Mit Passwort anmelden"
   },
   "profile": {
+    "myData": {
+      "label": "Meine Daten",
+      "hint": "Alles, was Equip über Sie speichert: Profil, Kurse, Testantworten, Arbeiten mit Bewertungen, Zertifikate — in einer Datei.",
+      "download": "Herunterladen",
+      "preparing": "Datei wird vorbereitet…",
+      "failed": "Die Datei konnte nicht vorbereitet werden. Bitte versuchen Sie es erneut."
+    },
+    "emails": {
+      "label": "E-Mails zu Kursen",
+      "kinds": {
+        "work_returned": "Arbeit bewertet oder zurückgegeben",
+        "certificate_decided": "Entscheidung über das Zertifikat",
+        "session_starting": "Eine Live-Sitzung beginnt gleich",
+        "deadline_moved": "Eine Frist wurde verschoben",
+        "announcement": "Kursankündigungen"
+      }
+    },
     "fullName": "Vollständiger Name",
     "changeAvatar": "Profilbild ändern",
     "uploadFailed": "Profilbild konnte nicht hochgeladen werden",
@@ -714,6 +750,8 @@
     "progressLabel": "{{percent}} % abgeschlossen"
   },
   "pageTitle": {
+    "notes": "Meine Notizen",
+    "transcript": "Leistungsnachweis",
     "login": "Anmelden",
     "register": "Konto erstellen",
     "forgotPassword": "Passwort vergessen",
@@ -823,7 +861,8 @@
       "option_text": "Optionstext",
       "is_correct": "richtige Antwort",
       "order_index": "Reihenfolge",
-      "meeting_url": "Link zum Meeting"
+      "meeting_url": "Link zum Meeting",
+      "recording_url": "Link zur Aufzeichnung"
     },
     "validation": {
       "less_than_equal": "höchstens {{le}}",
@@ -912,6 +951,17 @@
     "goHome": "Zur Startseite"
   },
   "chapter": {
+    "reading": {
+      "label": "Leseeinstellungen",
+      "size": "Textgröße",
+      "sizes": {
+        "s": "Kleiner Text",
+        "m": "Normaler Text",
+        "l": "Großer Text",
+        "xl": "Sehr großer Text"
+      },
+      "easy": "Leicht lesen"
+    },
     "attachmentEyebrow": "Anhang",
     "blocksLoadFailed": "Diese Lektion konnte nicht geladen werden",
     "blocksLoadFailedDescription": "Der Lektionsinhalt ließ sich nicht laden. Meist ist das ein vorübergehendes Netzproblem — versuchen Sie es erneut.",
@@ -942,6 +992,12 @@
     "submitAssignmentToComplete": "Reichen Sie die Aufgabe ein, um diese Lektion abzuschließen"
   },
   "quiz": {
+    "result": {
+      "correct": "Richtig",
+      "incorrect": "Falsch",
+      "yourAnswer": "Ihre Antwort",
+      "rightAnswer": "richtige Antwort"
+    },
     "answerAll": "Beantworten Sie alle Fragen, um abzugeben",
     "attemptPoints": "{{score}}/{{max}} Punkte",
     "attemptsShort": "Versuche: {{used}}/{{max}}",
@@ -984,6 +1040,59 @@
     "wordsCount_other": "{{count}} Wörter",
     "wordsWithMin": "{{count}} / {{min}} nötig",
     "yourAnswer": "Ihre Antwort:"
+  },
+  "scripture": {
+    "open": "Vers {{ref}} öffnen",
+    "edition": {
+      "bsb": "Berean Standard Bible",
+      "kjv": "King James Version",
+      "nrt": "Новый русский перевод",
+      "elberfelder": "Elberfelder Bibel",
+      "kulish": "Переклад Куліша, 1905"
+    }
+  },
+  "notes": {
+    "lesson": {
+      "hasNote": "Hier gibt es Ihre Notiz",
+      "loadFailed": "Ihre Notiz zu dieser Lektion konnte nicht geladen werden.",
+      "title": "Meine Notizen zur Lektion",
+      "add": "Notiz zur Lektion hinzufügen",
+      "all": "Alle Notizen",
+      "placeholder": "Ihre Notiz…",
+      "saving": "Wird gespeichert…",
+      "saved": "Gespeichert",
+      "failed": "Nicht gespeichert. Ihr Text bleibt hier.",
+      "private": "Nur Sie sehen das. Es speichert sich selbst."
+    },
+    "page": {
+      "courseUnavailable": "Dieser Kurs ist derzeit nicht verfügbar",
+      "deleteConfirmTitle": "Diese Notiz löschen?",
+      "deleteConfirmDescription": "Sie kann nicht wiederhergestellt werden.",
+      "deleteFailed": "Notiz konnte nicht gelöscht werden",
+      "delete": "Notiz löschen",
+      "unavailable": "Diese Lektion ist derzeit nicht verfügbar",
+      "eyebrow": "Lernen",
+      "title": "Meine Notizen",
+      "emptyTitle": "Noch keine Notizen",
+      "emptyDescription": "Schreiben Sie unter Lektionen — Ihre Notizen sammeln sich hier.",
+      "loadFailed": "Notizen konnten nicht geladen werden."
+    }
+  },
+  "review": {
+    "teaser": {
+      "title": "Die Wiederholung der Woche ist bereit",
+      "count_one": "{{count}} Frage",
+      "count_other": "{{count}} Fragen"
+    },
+    "checkFailed": "Prüfung fehlgeschlagen — bitte erneut versuchen.",
+    "title": "Wiederholung der Woche",
+    "hint_one": "{{count}} Frage aus dem Gelernten, ohne Note",
+    "hint_other": "{{count}} Fragen aus dem Gelernten, ohne Note",
+    "start": "Beginnen",
+    "progress": "Frage {{n}} von {{total}}",
+    "next": "Weiter",
+    "finish": "Fertig",
+    "result": "{{right}} von {{total}} richtig"
   },
   "quizEditor": {
     "validation": {
@@ -1291,6 +1400,26 @@
     "draftRestored": "Entwurf von diesem Gerät wiederhergestellt"
   },
   "certificates": {
+    "transcript": {
+      "kind": "Academic transcript",
+      "asOf": "As of {{date}}",
+      "empty": "No certificates have been issued yet.",
+      "course": "Course",
+      "school": "School",
+      "completed": "Completed",
+      "number": "Certificate no.",
+      "verify_one": "The certificate can be verified at equipbible.com/verify by its number.",
+      "verify_other": "Each certificate can be verified at equipbible.com/verify by its number.",
+      "open": "Leistungsnachweis"
+    },
+    "share": {
+      "share": "Teilen",
+      "linkedIn": "Zu LinkedIn hinzufügen",
+      "linkedInShort": "LinkedIn",
+      "text": "Ich habe den Kurs „{{course}}“ abgeschlossen. Das Zertifikat lässt sich hier prüfen:",
+      "copied": "Prüflink kopiert",
+      "copyFailed": "Link konnte nicht kopiert werden"
+    },
     "backToCourses": "Zurück zu den Kursen",
     "title": "Meine Zertifikate",
     "eyebrow": "Erreichtes",
@@ -1533,10 +1662,14 @@
     "deleteAria": "Bewertung löschen"
   },
   "calendar": {
+    "addOne": {
+      "label": "In den Kalender",
+      "aria": "„{{title}}“ in den Kalender eintragen"
+    },
     "subscribe": {
       "open": "Abonnieren",
       "title": "Ihr Kursplan in Ihrem eigenen Kalender",
-      "description": "Termine und Fristen Ihrer Kurse erscheinen im Kalender Ihres Telefons oder Computers und aktualisieren sich selbst. Zeiten stehen in der Zeitzone Ihres Kalenders.",
+      "description": "Termine und Fristen Ihrer Kurse erscheinen in Ihrem Kalender und bleiben aktuell.",
       "replaces": "Der Link ist persönlich. Wenn Sie schon abonniert haben, funktioniert der alte Link nicht mehr.",
       "create": "Link erstellen",
       "apple": "Apple und Outlook",
@@ -1963,6 +2096,9 @@
     }
   },
   "courseDetail": {
+    "minutesShort": "{{minutes}} Min.",
+    "hoursShort": "≈ {{hours}} Std.",
+    "readingHours": "≈ {{hours}} Std. Lesezeit",
     "allCourses": "Alle Kurse",
     "manageCourse": "Kurs verwalten",
     "enrollInCourse": "In den Kurs einschreiben",
@@ -2026,6 +2162,25 @@
     }
   },
   "gradebook": {
+    "write": {
+      "tooMany": "Zu viele Adressen für einen Link. Kopieren Sie sie ins Bcc-Feld.",
+      "open": "Schreiben an…",
+      "title": "An Studierende schreiben",
+      "who": "An",
+      "work": "Arbeit",
+      "audience": {
+        "not_submitted": "Nicht abgegeben",
+        "not_passed": "Nicht bestanden oder in Überarbeitung",
+        "everyone": "Die ganze Klasse"
+      },
+      "count_one": "{{count}} Person",
+      "count_other": "{{count}} Personen",
+      "copy": "Adressen kopieren",
+      "compose": "E-Mail öffnen",
+      "copied_one": "{{count}} Adresse kopiert",
+      "copied_other": "{{count}} Adressen kopiert",
+      "copyFailed": "Adressen konnten nicht kopiert werden"
+    },
     "summaryTab": "Gesamtnoten",
     "tableTab": "Notentabelle",
     "failedLoad": "Notenbuch konnte nicht geladen werden. Bitte erneut versuchen.",
@@ -2706,6 +2861,8 @@
       "confirm": "Trotzdem veröffentlichen"
     },
     "checks": {
+      "headingsInOrder": "In „{{title}}“ sind die Überschriften geordnet.",
+      "imagesHaveAlt": "Bilder in „{{title}}“ haben eine Beschreibung.",
       "hasDescription": "Der Kurs hat eine Beschreibung für den Katalog.",
       "hasCoverImage": "Der Kurs hat ein Titelbild.",
       "translationsComplete": "Jede Sprache hat diesen Kurs. In den Katalog kommt er, sobald das für alle gilt.",
@@ -2739,7 +2896,9 @@
       "quizThresholdAboveCourse": "Ein Test verlangt eine höhere Punktzahl als der Kurs. Studierende können den Kurs auf dem Papier bestehen und die Lektion doch nie abschließen — das Zertifikat bleibt außer Reichweite.",
       "quizWeightNonzero": "Tests zählen nicht für die Endnote.",
       "assignmentWeightNonzero": "Aufgaben zählen nicht für die Endnote.",
-      "quizThresholdBelowCourse": "Manche Tests bestehen bei einer niedrigeren Punktzahl als der Kurs. Man kann jeden Test schaffen und trotzdem unter der Bestehensgrenze des Kurses landen."
+      "quizThresholdBelowCourse": "Manche Tests bestehen bei einer niedrigeren Punktzahl als der Kurs. Man kann jeden Test schaffen und trotzdem unter der Bestehensgrenze des Kurses landen.",
+      "headingsInOrder": "In „{{title}}“ sind die Überschriften nicht geordnet.",
+      "imagesHaveAlt": "In „{{title}}“ gibt es Bilder ohne Beschreibung."
     }
   },
   "dateRangePicker": {
@@ -3005,6 +3164,11 @@
     "errorDescription": "Das ist ein Verbindungsproblem und kein Urteil über das Zertifikat. Bitte erneut versuchen."
   },
   "meeting": {
+    "recordingPlaceholder": "https://youtu.be/…",
+    "recording": "Aufzeichnung",
+    "recordingAria": "Aufzeichnung ansehen — {{title}}",
+    "recordingLabel": "Link zur Aufzeichnung",
+    "recordingHint": "YouTube, Vimeo, Google Drive",
     "join": "Beitreten",
     "joinAria": "Dem Meeting beitreten — {{title}}",
     "linkLabel": "Link zum Meeting",

@@ -22,6 +22,7 @@ from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
+from app.models.grade_exemption import GradeExemption
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt
 from app.models.user import User
 from app.schemas.locale import LocaleCode, normalize_locale
@@ -516,6 +517,7 @@ def _build_chapter_infos(
     assignment_map: dict[str, list[Assignment]] | None = None,
     group_of: dict[str, str] | None = None,
     title_of: dict[str, str] | None = None,
+    excused_items: set[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Per-chapter completion + embedded quiz/assignment result for one student.
 
@@ -575,9 +577,32 @@ def _build_chapter_infos(
                 "quiz_result": quiz_data,
                 "assignment_result": asgn_data,
                 "gradable_item": gradable_item,
+                # Excused from this chapter's work — from the exemptions
+                # themselves, not from ``completed_by``: an exemption granted
+                # after a teacher had ticked the chapter leaves the tick as
+                # it was, and the student must still not be chased for it.
+                # Every piece of work in the chapter, as ``_every_item_excused``
+                # decides it: a chapter with a test and an essay is not
+                # excused because the test was.
+                "excused": bool(chapter_quizzes or chapter_assignments)
+                and all(
+                    work_id in (excused_items or set())
+                    for work_id in [*(str(q.id) for q in chapter_quizzes), *(str(a.id) for a in chapter_assignments)]
+                ),
             }
         )
     return chapter_infos
+
+
+def _excused_by_student(db: Session, course_id: str, user_ids: list[str] | None = None) -> dict[str, set[str]]:
+    """Item ids each student is excused from in the course, in one query."""
+    query = db.query(GradeExemption.student_id, GradeExemption.item_id).filter(GradeExemption.course_id == course_id)
+    if user_ids is not None:
+        query = query.filter(GradeExemption.student_id.in_(as_uuids(user_ids)))
+    out: dict[str, set[str]] = defaultdict(set)
+    for student_id, item_id in query.all():
+        out[str(student_id)].add(str(item_id))
+    return out
 
 
 def _latest_activity_by_user(db: Session, course_id: str) -> tuple[dict[str, datetime], dict[str, datetime]]:
@@ -746,6 +771,7 @@ def build_student_chapter_detail(
         assignment_map,
         group_of,
         chapter_title_map,
+        _excused_by_student(db, course_id, [student_id]).get(student_id),
     )
 
     return {
@@ -798,6 +824,7 @@ def build_course_gradebook_matrix(
         .all()
     )
 
+    excused = _excused_by_student(db, course_id)
     students = []
     for enrollment, user in enrollments:
         uid = str(user.id)
@@ -821,6 +848,7 @@ def build_course_gradebook_matrix(
                     assignment_map,
                     group_of,
                     chapter_titles,
+                    excused.get(uid),
                 ),
             }
         )

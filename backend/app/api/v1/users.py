@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -16,6 +17,7 @@ from app.schemas.locale import LocaleCode, normalize_locale
 from app.schemas.user import PreferredLocaleUpdate, UserResponse
 from app.services.audit_service import log_action
 from app.services.course_service import get_user_courses, reading_progress_by_course
+from app.services.my_data_export import export_my_data
 from app.services.translation.resolve_for_display import (
     build_localized_course_dashboard_summaries,
     should_apply_course_translation_overlay,
@@ -65,6 +67,26 @@ def _get_user_or_404(db: Session, uid: UUID) -> User:
             context={"resource_type": "user", "resource_id": str(uid)},
         )
     return user
+
+
+@router.get("/me/export", summary="Everything Equip keeps about the caller, as a JSON file")
+def export_my_data_file(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> JSONResponse:
+    """The caller's own data, to keep or take elsewhere — see ``services/my_data_export.py``.
+
+    A download, never cached: it carries the person's answers and marks.
+    """
+    data = export_my_data(db, current_user)
+    day = datetime.now(UTC).date().isoformat()
+    return JSONResponse(
+        data,
+        headers={
+            "Content-Disposition": f'attachment; filename="equip-my-data-{day}.json"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @router.get("/me/courses", response_model=list[EnrollmentSummaryResponse])

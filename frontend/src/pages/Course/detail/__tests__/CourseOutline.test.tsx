@@ -1,11 +1,12 @@
 import type { ReactNode } from "react"
-import { render, screen, within } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import { I18nextProvider } from "react-i18next"
 import { MemoryRouter } from "react-router-dom"
-import { beforeEach, describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import i18n from "@/i18n/config"
 import { readCourseStructure } from "@/lib/courseStructure"
+import { coursesService } from "@/services/courses"
 import { CourseOutline } from "../CourseOutline"
 import type { Chapter, Course, Module } from "@/types"
 
@@ -289,5 +290,32 @@ describe("a course that does both", () => {
     // The loose lesson is third in the course, and its row says so rather
     // than restarting the count.
     expect(container.textContent).toMatch(/3A closing word/)
+  })
+})
+
+describe("how long each part takes to read", () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it("puts the minutes on each lesson and the sum on each module", async () => {
+    vi.spyOn(coursesService, "getReadingTime").mockResolvedValue({
+      chapters: { a1: 12, a2: 0, b1: 7 },
+      total_minutes: 19,
+    })
+    show(TWO_MODULES)
+    const beginnings = (await screen.findByText("Beginnings")).closest("div")!
+    expect(within(beginnings).getByText("12 min")).toBeInTheDocument()
+    expect(screen.getByText("7 min")).toBeInTheDocument()
+  })
+
+  it("shows no time on a lesson with nothing to read, or when the numbers fail", async () => {
+    const failing = vi.spyOn(coursesService, "getReadingTime").mockRejectedValue(new Error("offline"))
+    const { container } = show(FOUR_LESSONS)
+    await waitFor(() => expect(failing).toHaveBeenCalled())
+    // Let the rejection settle before looking.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(screen.getByText("Pentecost")).toBeInTheDocument()
+    expect(container.textContent).not.toMatch(/\d min/)
   })
 })

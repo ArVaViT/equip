@@ -1,0 +1,45 @@
+/* The transcript as paper: portrait A4, black on white, no app chrome.
+ *
+ * A named page, like the certificate's and the ведомость's: in a single-page
+ * app every visited page's stylesheet stays loaded, and an unnamed @page
+ * would let whichever loaded last decide how this sheet prints. */
+
+@page transcript {
+  size: A4;
+  margin: 18mm 16mm;
+}
+
+.transcript-sheet {
+  page: transcript;
+}
+
+@media print {
+  body:has(.transcript-sheet) header:not(.transcript-sheet header),
+  body:has(.transcript-sheet) footer:not(.transcript-sheet footer),
+  body:has(.transcript-sheet) nav {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .transcript-sheet {
+    max-width: none;
+    padding: 0;
+    background: #fff;
+    color: #000;
+  }
+
+  .transcript-sheet table th,
+  .transcript-sheet table td {
+    border-color: #000 !important;
+    color: #000 !important;
+  }
+
+  .transcript-sheet tr {
+    break-inside: avoid;
+  }
+}

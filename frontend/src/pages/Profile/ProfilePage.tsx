@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
@@ -21,17 +20,19 @@ import { DEFAULT_LOCALE, LANGUAGE_NAME_KEYS } from "@/i18n/config"
 import { toast } from "@/lib/toast"
 import {
   User as UserIcon, Mail, Calendar, Camera, Globe,
-  Loader2, Award, BookOpen, ArrowRight, LogOut, Moon, Sun,
+  Loader2, Award, BookOpen, ArrowRight, LogOut, Moon, NotebookPen, Sun,
 } from "lucide-react"
 import { useUserTour } from "@/hooks/useUserTour"
 import { profileSteps } from "@/lib/tourSteps"
-import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion"
+import { cn } from "@/lib/utils"
 import { initialsOf } from "@/lib/names"
 import { PersonalDetailsCard } from "./PersonalDetailsCard"
 import { TimeZoneSetting } from "./TimeZoneSetting"
+import { EmailSetting } from "./EmailSetting"
 
 function useCountUp(target: number, durationMs = 800) {
-  const prefersReducedMotion = useReducedMotion()
+  const prefersReducedMotion = usePrefersReducedMotion()
   // Initialize to ``target`` (not 0) so the first render — and StrictMode's
   // double-mount — never flashes through the animation. The effect only
   // fires the count-up when the target genuinely changes from the last
@@ -72,7 +73,8 @@ function useCountUp(target: number, durationMs = 800) {
 export default function ProfilePage() {
   const { user, refreshUser, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
-  const prefersReducedMotion = useReducedMotion()
+  // The icon turns only when the reader turns it, not on every visit.
+  const [themeToggled, setThemeToggled] = useState(false)
   const navigate = useNavigate()
   const { t } = useTranslation()
   const [error, setError] = useState("")
@@ -310,6 +312,22 @@ export default function ProfilePage() {
                       aria-hidden
                     />
                   </Link>
+                  <Link
+                    to="/notes"
+                    className="lift group flex items-center gap-3 rounded-lg bg-muted/15 p-4 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:col-span-2"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+                      <NotebookPen className="h-5 w-5 text-ink-muted" strokeWidth={1.75} aria-hidden />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">{t("notes.page.title")}</p>
+                    </div>
+                    <ArrowRight
+                      className="h-4 w-4 shrink-0 text-ink-muted transition-transform duration-base group-hover:translate-x-0.5 group-hover:text-ink"
+                      strokeWidth={1.75}
+                      aria-hidden
+                    />
+                  </Link>
                 </div>
               </CardContent>
             </Card>
@@ -319,23 +337,25 @@ export default function ProfilePage() {
                 <CardTitle>{t("profile.accountDetails")}</CardTitle>
               </CardHeader>
               <CardContent>
+                {/* Each group is a `div` holding its `dt` and `dd` directly, as
+                    a description list requires; the icon sits inside the term,
+                    placed in the gutter. A wrapper between the group and its
+                    term was what axe flagged. */}
                 <dl className="divide-y divide-border rounded-md ">
-                  <div className="flex items-start gap-3 px-4 py-3">
-                    <Mail className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-                    <div className="min-w-0">
-                      <dt className="text-xs text-ink-muted">{t("auth.email")}</dt>
-                      <dd className="text-sm font-medium">{user.email}</dd>
-                    </div>
+                  <div className="relative px-4 py-3 pl-11">
+                    <dt className="text-xs text-ink-muted">
+                      <Mail className="absolute left-4 top-3.5 h-4 w-4 text-ink-muted" strokeWidth={1.75} aria-hidden />
+                      {t("auth.email")}
+                    </dt>
+                    <dd className="min-w-0 text-sm font-medium">{user.email}</dd>
                   </div>
                   {user.created_at && (
-                    <div className="flex items-start gap-3 px-4 py-3">
-                      <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-                      <div>
-                        <dt className="text-xs text-ink-muted">{t("profile.memberSince")}</dt>
-                        <dd className="text-sm font-medium">
-                          {formatDateLong(user.created_at)}
-                        </dd>
-                      </div>
+                    <div className="relative px-4 py-3 pl-11">
+                      <dt className="text-xs text-ink-muted">
+                        <Calendar className="absolute left-4 top-3.5 h-4 w-4 text-ink-muted" strokeWidth={1.75} aria-hidden />
+                        {t("profile.memberSince")}
+                      </dt>
+                      <dd className="text-sm font-medium">{formatDateLong(user.created_at)}</dd>
                     </div>
                   )}
                 </dl>
@@ -371,31 +391,24 @@ export default function ProfilePage() {
                       </p>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" onClick={toggleTheme}>
-                    {prefersReducedMotion ? (
-                      theme === "dark" ? (
-                        <Sun className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setThemeToggled(true)
+                      toggleTheme()
+                    }}
+                  >
+                    {/* Keyed by the theme, so the icon turns in when the
+                        reader changes it — CSS (`.animate-icon-in`), not the
+                        animation library; reduced motion makes it a swap. */}
+                    <span key={theme} className={cn("mr-1.5 inline-flex", themeToggled && "animate-icon-in")}>
+                      {theme === "dark" ? (
+                        <Sun className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                       ) : (
-                        <Moon className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-                      )
-                    ) : (
-                      <AnimatePresence mode="wait" initial={false}>
-                        <motion.span
-                          key={theme}
-                          className="mr-1.5 inline-flex"
-                          initial={{ rotate: -45, opacity: 0 }}
-                          animate={{ rotate: 0, opacity: 1 }}
-                          exit={{ rotate: 45, opacity: 0 }}
-                          transition={{ duration: MOTION_DURATION.base, ease: EDITORIAL_EASE }}
-                        >
-                          {theme === "dark" ? (
-                            <Sun className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                          ) : (
-                            <Moon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                          )}
-                        </motion.span>
-                      </AnimatePresence>
-                    )}
+                        <Moon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                      )}
+                    </span>
                     {theme === "dark" ? t("profile.switchToLight") : t("profile.switchToDark")}
                   </Button>
                 </div>
@@ -412,6 +425,9 @@ export default function ProfilePage() {
                   <LanguageSwitcher />
                 </div>
                 <TimeZoneSetting />
+                <EmailSetting />
+                {/* MyDataSetting (the JSON download of one's own data) is built but
+                    held back for now; GET /users/me/export stays. */}
               </CardContent>
             </Card>
           </div>
@@ -481,7 +497,9 @@ function ProfileTabs({ active, onSelect }: { active: ProfileTab; onSelect: (tab:
     document.getElementById(`profile-tab-${next}`)?.focus()
   }
   return (
-    <div role="tablist" aria-label={t("profile.tabs.label")} onKeyDown={onKeyDown} className="flex gap-1 overflow-x-auto border-b border-edge">
+    // On a phone the tabs share the width by their length, and a label wraps
+    // only when it must: «Persönliche Angaben» pushed «Einstellungen» off.
+    <div role="tablist" aria-label={t("profile.tabs.label")} onKeyDown={onKeyDown} className="flex gap-1 border-b border-edge sm:overflow-x-auto">
       {PROFILE_TABS.map((tab) => (
         <button
           key={tab}
@@ -492,7 +510,7 @@ function ProfileTabs({ active, onSelect }: { active: ProfileTab; onSelect: (tab:
           aria-controls={`profile-panel-${tab}`}
           tabIndex={active === tab ? 0 : -1}
           onClick={() => onSelect(tab)}
-          className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+          className={`-mb-px min-w-0 flex-auto border-b-2 px-2 py-2.5 text-center text-sm font-medium leading-tight sm:flex-none sm:leading-5 sm:whitespace-nowrap sm:px-4 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
             active === tab ? "border-brand text-ink" : "border-transparent text-ink-muted hover:text-ink"
           }`}
         >

@@ -24,6 +24,7 @@ import type { CourseMaterial } from "./types"
 import { EnrolledHeader } from "./EnrolledHeader"
 import { MaterialsModal } from "./MaterialsModal"
 import { CourseOutline } from "./CourseOutline"
+import { WeeklyReview } from "@/components/review/WeeklyReview"
 import { MyGradeCard } from "./MyGradeCard"
 import { UpcomingEvents } from "./UpcomingEvents"
 
@@ -132,6 +133,8 @@ export function EnrolledView({
           completedChapterIds={completedChapterIds}
         />
       </div>
+
+      <WeeklyReview courseId={course.id} />
 
       {/* Above the certificate card on purpose: the grade is the thing that
           will one day decide whether that card can be used, so a student

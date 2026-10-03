@@ -13,6 +13,8 @@ export interface EventFormState {
    *  `<input>`, and the blank is what "no meeting" looks like in a form.
    *  It is turned into an absent field on the way to the server. */
   meeting_url: string
+  /** The recording's address, added after the session. Blank = none. */
+  recording_url: string
 }
 
 export const EMPTY_EVENT_FORM: EventFormState = {
@@ -21,6 +23,7 @@ export const EMPTY_EVENT_FORM: EventFormState = {
   event_type: "other",
   event_date: "",
   meeting_url: "",
+  recording_url: "",
 }
 
 export type CourseEditorModal =

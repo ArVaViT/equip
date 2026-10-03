@@ -18,9 +18,13 @@ import {
   Lock,
   CalendarDays,
   AlertTriangle,
+  NotebookPen,
 } from "lucide-react"
 import { isGradableChapterType } from "@/lib/chapterTypes"
 import ChapterTypeBadge from "@/components/course/ChapterTypeBadge"
+import { ReadingMinutes } from "@/components/course/ReadingMinutes"
+import { useReadingMinutes } from "@/hooks/useReadingMinutes"
+import { useNotedChapters } from "@/hooks/useNotedChapters"
 import { EmptyState, ErrorState } from "@/components/patterns"
 import { Skeleton } from "@/components/ui/skeleton"
 import { isChapterComplete, isChapterLocked, isChapterRead } from "./moduleProgress"
@@ -39,6 +43,8 @@ interface ModuleFetchResult {
 export default function ModuleView() {
   const { t, i18n } = useTranslation()
   const { courseId, moduleId } = useParams<{ courseId: string; moduleId: string }>()
+  const minutes = useReadingMinutes(courseId)
+  const noted = useNotedChapters()
   const { user } = useAuth()
 
   const { data, loading, error: fetchError } = useAsyncData<ModuleFetchResult>(
@@ -257,15 +263,30 @@ export default function ModuleView() {
                     className="animate-fade-in opacity-60 cursor-not-allowed"
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex min-w-0 items-center gap-2 text-base">
+                    <CardHeader className="py-4">
+                      <CardTitle className="flex min-w-0 items-start gap-2 text-base sm:items-center">
                         <Lock className="h-5 w-5 text-ink-muted shrink-0" strokeWidth={1.75} aria-hidden />
-                        <span className="min-w-0 flex-1 truncate text-ink-muted">
-                          {orNotTranslated(t, chapter.title)}
+                        {/* On a phone the title gets the whole line and wraps;
+                            time, note and type sit under it. Wider, one row. */}
+                        <span className="block min-w-0 flex-1 sm:flex sm:items-center sm:gap-2">
+                          <span className="block text-wrap-safe text-ink-muted sm:min-w-0 sm:flex-1 sm:truncate">
+                            {orNotTranslated(t, chapter.title)}
+                          </span>
+                          <span className="mt-1.5 flex items-center gap-2 empty:hidden sm:mt-0 sm:shrink-0">
+                            {noted.has(chapter.id) && (
+                              <NotebookPen
+                                className="h-3.5 w-3.5 shrink-0 text-ink-muted"
+                                strokeWidth={1.75}
+                                role="img"
+                                aria-label={t("notes.lesson.hasNote")}
+                              />
+                            )}
+                            <ReadingMinutes minutes={minutes?.[chapter.id]} />
+                            {chapter.chapter_type && (
+                              <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
+                            )}
+                          </span>
                         </span>
-                        {chapter.chapter_type && (
-                          <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
-                        )}
                         <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
                       </CardTitle>
                     </CardHeader>
@@ -287,8 +308,8 @@ export default function ModuleView() {
                     className={`animate-fade-in transition-colors hover:border-brand/40 ${isCompleted ? "border-success/40 bg-success/5" : ""}`}
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex min-w-0 items-center gap-2 text-base">
+                    <CardHeader className="py-4">
+                      <CardTitle className="flex min-w-0 items-start gap-2 text-base sm:items-center">
                         {isGradable ? (
                           isCompleted ? (
                             <CheckCircle className="h-5 w-5 shrink-0 text-success" strokeWidth={1.75} aria-hidden />
@@ -307,13 +328,32 @@ export default function ModuleView() {
                             strokeWidth={1.75}
                             aria-label={t("module.chapterRead")}
                           />
-                        ) : null}
-                        <span className={`min-w-0 flex-1 truncate ${isCompleted ? "text-ink-muted" : ""}`}>
-                          {orNotTranslated(t, chapter.title)}
-                        </span>
-                        {chapter.chapter_type && (
-                          <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
+                        ) : (
+                          // Keeps an unread lesson's title in line with the
+                          // rows that have a mark.
+                          <span className="h-5 w-5 shrink-0" aria-hidden />
                         )}
+                        {/* On a phone the title gets the whole line and wraps;
+                            time, note and type sit under it. Wider, one row. */}
+                        <span className="block min-w-0 flex-1 sm:flex sm:items-center sm:gap-2">
+                          <span className={`block text-wrap-safe sm:min-w-0 sm:flex-1 sm:truncate ${isCompleted ? "text-ink-muted" : ""}`}>
+                            {orNotTranslated(t, chapter.title)}
+                          </span>
+                          <span className="mt-1.5 flex items-center gap-2 empty:hidden sm:mt-0 sm:shrink-0">
+                            {noted.has(chapter.id) && (
+                              <NotebookPen
+                                className="h-3.5 w-3.5 shrink-0 text-ink-muted"
+                                strokeWidth={1.75}
+                                role="img"
+                                aria-label={t("notes.lesson.hasNote")}
+                              />
+                            )}
+                            <ReadingMinutes minutes={minutes?.[chapter.id]} />
+                            {chapter.chapter_type && (
+                              <ChapterTypeBadge type={chapter.chapter_type} size="sm" />
+                            )}
+                          </span>
+                        </span>
                         <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
                       </CardTitle>
                     </CardHeader>

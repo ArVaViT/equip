@@ -411,6 +411,21 @@
   },
   {
     "method": "GET",
+    "path": "/api/v1/analytics/at-risk",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
     "path": "/api/v1/analytics/course/{course_id}",
     "params": [
       [
@@ -1829,6 +1844,25 @@
     "body": false
   },
   {
+    "method": "GET",
+    "path": "/api/v1/courses/{course_id}/reading-time",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
     "method": "POST",
     "path": "/api/v1/courses/{course_id}/restore",
     "params": [
@@ -1990,6 +2024,36 @@
       "422"
     ],
     "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/email/unsubscribe",
+    "params": [
+      [
+        "token",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/email/unsubscribe",
+    "params": [
+      [
+        "token",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
   },
   {
     "method": "GET",
@@ -2704,6 +2768,75 @@
     "body": true
   },
   {
+    "method": "DELETE",
+    "path": "/api/v1/notes/chapters/{chapter_id}",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notes/chapters/{chapter_id}",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PUT",
+    "path": "/api/v1/notes/chapters/{chapter_id}",
+    "params": [
+      [
+        "chapter_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notes/me",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/notes/me/chapters",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  },
+  {
     "method": "GET",
     "path": "/api/v1/notifications",
     "params": [
@@ -3224,6 +3357,50 @@
     "body": true
   },
   {
+    "method": "POST",
+    "path": "/api/v1/review/check",
+    "params": [],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/review/course/{course_id}",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/review/me",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
     "method": "GET",
     "path": "/api/v1/reviews/course/{course_id}",
     "params": [
@@ -3355,6 +3532,21 @@
     "body": true
   },
   {
+    "method": "POST",
+    "path": "/api/v1/scripture/passages",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
+  },
+  {
     "method": "GET",
     "path": "/api/v1/users/admin/users",
     "params": [
@@ -3452,6 +3644,15 @@
     "responses": [
       "200",
       "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/users/me/export",
+    "params": [],
+    "responses": [
+      "200"
     ],
     "body": false
   },

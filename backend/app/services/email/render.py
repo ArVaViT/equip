@@ -63,6 +63,10 @@ class Message:
     facts: tuple[Fact, ...] = field(default_factory=tuple)
     #: Small print under the button, in order.
     notes: tuple[str, ...] = field(default_factory=tuple)
+    #: Course mail only: the words of the unsubscribe link and where it goes.
+    #: Account mail has none — it cannot be turned off.
+    unsubscribe_label: str | None = None
+    unsubscribe_url: str | None = None
 
 
 def _lede(message: Message) -> str:
@@ -126,13 +130,19 @@ def _cta(message: Message) -> str:
 
 
 def _notes(message: Message) -> str:
-    if not message.notes:
+    if not message.notes and not message.unsubscribe_url:
         return ""
     lines = "".join(
         f'<p style="margin:0 0 4px 0; font-family:{theme.SANS}; font-size:12px; '
         f'line-height:1.6; color:{theme.INK_FAINT};">{escape(note)}</p>'
         for note in message.notes
     )
+    if message.unsubscribe_url and message.unsubscribe_label:
+        lines += (
+            f'<p style="margin:8px 0 0 0; font-family:{theme.SANS}; font-size:12px; line-height:1.6;">'
+            f'<a href="{escape(message.unsubscribe_url, quote=True)}" '
+            f'style="color:{theme.INK_FAINT}; text-decoration:underline;">{escape(message.unsubscribe_label)}</a></p>'
+        )
     return f'<tr><td style="padding:18px 44px 40px 44px;" align="center">{lines}</td></tr>'
 
 
@@ -182,4 +192,7 @@ def render_text(message: Message) -> str:
     if message.notes:
         lines.append("")
         lines.extend(message.notes)
+    if message.unsubscribe_url and message.unsubscribe_label:
+        lines.append("")
+        lines.append(f"{message.unsubscribe_label}: {message.unsubscribe_url}")
     return "\n".join(lines)

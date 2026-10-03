@@ -92,6 +92,16 @@ export default function CertificatesPage() {
         data-tour="certs-header"
         eyebrow={t("certificates.eyebrow")}
         title={t("certificates.title")}
+        actions={
+          countAwarded(certificates) > 0 ? (
+            <Link to="/certificates/transcript">
+              <Button variant="outline" size="sm">
+                <ScrollText className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                {t("certificates.transcript.open")}
+              </Button>
+            </Link>
+          ) : undefined
+        }
         description={
           certificates.length > 0
             ? // Only the ones actually awarded. The page used to count every

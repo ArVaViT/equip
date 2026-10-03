@@ -64,7 +64,14 @@ export function StudentTable({
         {students.length === 0 ? (
           <EmptyState hasSearch={hasSearch} />
         ) : (
-          <div className="overflow-x-auto">
+          // Focusable and named: on a phone the table scrolls sideways, and a
+          // keyboard user can only scroll what they can reach.
+          <div
+            className="overflow-x-auto rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            tabIndex={0}
+            role="region"
+            aria-label={t("studentProgress.table.heading")}
+          >
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left">

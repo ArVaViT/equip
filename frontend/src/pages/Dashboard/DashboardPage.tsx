@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
-import { motion, useReducedMotion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { coursesService } from "@/services/courses"
 import type { Enrollment, StudentGrade } from "@/types"
@@ -16,14 +15,17 @@ import { TodayCard } from "@/components/dashboard/TodayCard"
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard"
 import { RecentlyViewedRow } from "@/components/dashboard/RecentlyViewedRow"
 import { ContinueCard } from "@/components/dashboard/ContinueCard"
+import { WeeklyReviewTeaser } from "@/components/review/WeeklyReviewTeaser"
 import { CourseThumb } from "@/components/course/CourseThumb"
 import { TeacherCoursesCard } from "@/components/dashboard/TeacherCoursesCard"
+import { TeacherAtRiskCard } from "@/components/dashboard/TeacherAtRiskCard"
 import { useUserTour } from "@/hooks/useUserTour"
 import { studentDashboardSteps } from "@/lib/tourSteps"
 import { firstNameOf } from "@/lib/names"
-import { PublicLanding } from "./PublicLanding"
+// Its own chunk: see the DashboardPage route in App.tsx.
+const PublicLanding = lazyRoute(() => import("./PublicLanding"))
 import { cn } from "@/lib/utils"
-import { EDITORIAL_EASE, MOTION_DURATION } from "@/lib/motion"
+import { lazyRoute } from "@/lib/lazyRoute"
 import { enrollmentsVersion, subscribeEnrollments } from "@/lib/enrollmentsChanged"
 import { isNewcomer, visibleEnrollments } from "./myCourses"
 import { useRailFit } from "./railFit"
@@ -46,7 +48,6 @@ interface MyCoursesSectionProps {
 function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
   const { t, i18n } = useTranslation()
   const { user } = useAuth()
-  const prefersReducedMotion = useReducedMotion()
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [grades, setGrades] = useState<StudentGrade[]>([])
   const [loading, setLoading] = useState(true)
@@ -229,25 +230,13 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
                   </div>
                   <div className="mt-1.5 flex items-center gap-2">
                     <div className="h-1.5 min-w-20 flex-1 overflow-hidden rounded-full bg-muted">
-                      {prefersReducedMotion ? (
-                        <div
-                          className={cn("h-full rounded-full", progressColor)}
-                          style={{ width: `${Math.min(enrollment.progress, 100)}%` }}
-                        />
-                      ) : (
-                        <motion.div
-                          className={cn("h-full rounded-full", progressColor)}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.min(enrollment.progress, 100)}%` }}
-                          // Was 0.9s with a 45ms-per-row stagger. A progress
-                          // bar that fills is a nice touch; six of them
-                          // filling in sequence over most of a second, on the
-                          // screen you open every day, is a loading animation
-                          // pretending to be a feature. One duration from the
-                          // shared scale, no stagger.
-                          transition={{ duration: MOTION_DURATION.panel, ease: EDITORIAL_EASE }}
-                        />
-                      )}
+                      {/* Fills from empty on arrival, in CSS (`.animate-fill-in`,
+                          off under reduced motion): one duration from the shared
+                          scale, no stagger. */}
+                      <div
+                        className={cn("h-full rounded-full animate-fill-in", progressColor)}
+                        style={{ width: `${Math.min(enrollment.progress, 100)}%` }}
+                      />
                     </div>
                     <span className="shrink-0 text-xs font-medium tabular-nums text-ink-muted">
                       {enrollment.progress}%
@@ -327,7 +316,11 @@ export default function DashboardPage() {
   useRailFit(railRef, Boolean(user))
 
   if (!user) {
-    return <PublicLanding />
+    return (
+      <Suspense fallback={null}>
+        <PublicLanding />
+      </Suspense>
+    )
   }
 
   return (
@@ -348,7 +341,10 @@ export default function DashboardPage() {
           {/* Teachers first see the courses they teach — the reason most
               of them signed in. Renders nothing for students. */}
           <TeacherCoursesCard />
+          {/* Who to write to this week — teachers only, nothing when nobody. */}
+          <TeacherAtRiskCard />
           <ContinueCard />
+          <WeeklyReviewTeaser />
           <RecentlyViewedRow />
           <div className="min-h-0 flex-1">
             <MyCoursesSection onTourStart={startTour} />

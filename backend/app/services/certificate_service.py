@@ -33,6 +33,7 @@ from app.schemas.locale import LocaleCode, normalize_locale
 from app.services.audit_service import log_action
 from app.services.certificate_grade_snapshot import snapshot_certificate_grade
 from app.services.domain_access import assert_course_owner
+from app.services.email.certificate import send_certificate_email
 from app.services.notification_service import create_notification, notification_text
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 from app.services.user_locale import preferred_locale_of
@@ -299,6 +300,8 @@ def admin_approve(db: Session, cert_id: UUID, admin: User) -> Certificate:
         str(cert_id),
         details={"level": "admin"},
     )
+    # After the commit, so a mail never announces a decision that rolled back.
+    send_certificate_email(db, cert=cert, locale=recipient_locale, issued=True)
     return cert
 
 
@@ -363,6 +366,7 @@ def reject(db: Session, cert_id: UUID, user: User) -> Certificate:
     db.refresh(cert)
 
     log_action(db, user.id, "reject", "certificate", str(cert_id))
+    send_certificate_email(db, cert=cert, locale=recipient_locale, issued=False)
     return cert
 
 

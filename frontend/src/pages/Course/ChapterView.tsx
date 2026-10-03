@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, useCallback, useMemo, memo } from "react"
+import { useEffect, useRef, useState, useCallback, useMemo, memo, lazy, Suspense } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { isAxiosError } from "axios"
 import { sanitizeHtml as sanitize } from "@/lib/sanitize"
 import { tieTypographyIn } from "@/lib/typography"
 import { readingMinutes } from "@/lib/readingTime"
+import { ReadingMinutes } from "@/components/course/ReadingMinutes"
 import { renderMathIn } from "@/lib/katex-render"
 import { renderToggleCalloutsIn } from "@/lib/callout-toggle"
 import { attachCopyButtonsIn } from "@/lib/codeblock-copy"
@@ -35,9 +36,14 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react"
-import QuizTaker from "@/components/quiz/QuizTaker"
+// Loaded only when a lesson has a test: most lessons are reading. Together
+// with importing PressFeedback from its own file (the `@/components/motion`
+// barrel shares a chunk with Reveal and StaggerChildren, which bring the
+// animation library), a reading lesson's own load went from 85 KB to 41 KB
+// gzip on 2026-10-01. A test adds its 8 KB, and the library, when it is shown.
+const QuizTaker = lazy(() => import("@/components/quiz/QuizTaker"))
 import AssignmentPanel from "@/components/assignment/AssignmentPanel"
-import { PressFeedback } from "@/components/motion"
+import { PressFeedback } from "@/components/motion/PressFeedback"
 import {
   CHAPTER_TYPE_LABEL_KEYS,
   getChapterTypeMeta,
@@ -50,6 +56,13 @@ import { chapterViewSteps } from "@/lib/tourSteps"
 import { recordCourseView } from "@/lib/recentlyViewed"
 import { ReadingSkeleton } from "@/components/chapter/ReadingSkeleton"
 import { orNotTranslated } from "@/lib/untranslated"
+import { useNamedPageTitle } from "@/hooks/usePageTitle"
+import { ReadingControls } from "@/components/chapter/ReadingControls"
+import { useReadingPrefs } from "@/lib/readingPrefs"
+import { linkScriptureIn, textForScripture } from "@/lib/scriptureLinks"
+import { scriptureService, type Passage } from "@/services/scripture"
+import { VerseCard } from "@/components/chapter/VerseCard"
+import { LessonNote } from "@/components/chapter/LessonNote"
 
 /**
  * Renders a sanitised text-block via ``dangerouslySetInnerHTML`` and
@@ -66,6 +79,28 @@ function TextBlockRender({ html }: { html: string }) {
   // each ``<img>``. Instead, delegate clicks at the wrapper div and
   // open the lightbox with the clicked image's src + alt.
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
+  // References in the block open their verse over the lesson (VerseCard).
+  // Found by the server after the block renders; until then, plain text.
+  const [passages, setPassages] = useState<Passage[]>([])
+  const [verse, setVerse] = useState<{ anchor: HTMLElement; passage: Passage } | null>(null)
+  useEffect(() => {
+    const root = ref.current
+    if (!root) return
+    let live = true
+    setVerse(null)
+    void scriptureService.passagesIn(textForScripture(root)).then((found) => {
+      if (!live) return
+      setPassages(found)
+      linkScriptureIn(
+        root,
+        found.map((p) => p.written),
+        (written) => t("scripture.open", { ref: written }),
+      )
+    })
+    return () => {
+      live = false
+    }
+  }, [html, t])
   useEffect(() => {
     // Order matters: ``renderToggleCalloutsIn`` rewrites parent
     // elements (``div[data-callout="toggle"]`` → ``<details>``), so
@@ -90,6 +125,14 @@ function TextBlockRender({ html }: { html: string }) {
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement
+    const cited = target.closest<HTMLElement>("[data-verse]")
+    if (cited && ref.current?.contains(cited)) {
+      const passage = passages[Number(cited.dataset.verse)]
+      // A second tap on the same reference closes its card.
+      if (verse?.anchor === cited) setVerse(null)
+      else if (passage) setVerse({ anchor: cited, passage })
+      return
+    }
     if (target.tagName !== "IMG") return
     const img = target as HTMLImageElement
     // Skip tiny / decorative images (icons, small thumbs inside a
@@ -124,6 +167,7 @@ function TextBlockRender({ html }: { html: string }) {
         translate="yes"
         dangerouslySetInnerHTML={{ __html: html }}
       />
+      {verse && <VerseCard anchor={verse.anchor} passage={verse.passage} onClose={() => setVerse(null)} />}
       {lightbox && (
         <ImageLightbox
           src={lightbox.src}
@@ -158,7 +202,9 @@ const BlockRenderer = memo(function BlockRenderer({
 
     case "quiz":
       return block.quiz_id ? (
-        <QuizTaker chapterId={block.chapter_id} quizId={block.quiz_id} onSubmitted={onProgressChanged} />
+        <Suspense fallback={<PageSpinner variant="section" />}>
+          <QuizTaker chapterId={block.chapter_id} quizId={block.quiz_id} onSubmitted={onProgressChanged} />
+        </Suspense>
       ) : null
 
     case "assignment":
@@ -593,6 +639,10 @@ export default function ChapterView() {
   const placement = findChapter(structure, chapterId)
 
   const chapter = placement?.chapter ?? null
+  // The reader's own text size and easy-reading mode (the "Aa" in the header).
+  const [readingPrefs, setReadingPrefs] = useReadingPrefs()
+  // Named by the lesson, as the course page is by the course.
+  useNamedPageTitle(chapter?.title)
   const currentIdx = placement?.index ?? -1
   const prevChapter = placement?.prev ?? null
   const nextChapter = placement?.next ?? null
@@ -792,41 +842,58 @@ export default function ChapterView() {
       </Link>
 
       <header data-tour="chapter-header" className="mb-10">
-        <p className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
+        {/* «Aa» sits in the corner, the line keeps clear of it: a longer
+            German or Ukrainian line no longer pushes it onto a row of its own. */}
+        <p
+          className={`relative mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted ${chapterType === "reading" ? "min-h-7 pr-12" : ""}`}
+        >
           <span className="inline-flex items-center gap-1.5">
             <ChapterTypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
             {t(CHAPTER_TYPE_LABEL_KEYS[chapterType])}
           </span>
-          <span aria-hidden className="text-ink-muted">·</span>
-          <span className="tabular-nums">
-            {/* The lesson's place in the course, not in its module. «Глава 1
-                из 3» on the first lesson of the second module told a student
-                they were at the start of something they were halfway through. */}
-            {t("chapter.positionEyebrow", { current: currentIdx + 1, total: structure.chapters.length })}
+          {/* Each separator travels with the item after it, so a wrapped
+              line never ends on a lone «·». */}
+          <span className="inline-flex items-center gap-x-2">
+            <span aria-hidden className="text-ink-muted">·</span>
+            <span className="tabular-nums">
+              {/* The lesson's place in the course, not in its module. «Глава 1
+                  из 3» on the first lesson of the second module told a student
+                  they were at the start of something they were halfway through. */}
+              {t("chapter.positionEyebrow", { current: currentIdx + 1, total: structure.chapters.length })}
+            </span>
           </span>
           {readingTime > 0 && (
-            <>
+            <span className="inline-flex items-center gap-x-2">
               <span aria-hidden className="text-ink-muted">·</span>
-              <span className="normal-case tracking-normal tabular-nums">
-                {t("chapter.readingTime", { count: readingTime })}
-              </span>
-            </>
+              <ReadingMinutes
+                minutes={readingTime}
+                className="gap-1.5 normal-case tracking-normal"
+                iconClassName="h-3.5 w-3.5"
+              />
+            </span>
           )}
           {parentModule?.title && (
-            <>
-              <span aria-hidden className="text-ink-muted">·</span>
+            // On a phone the module takes a line of its own, without a dot.
+            <span className="inline-flex min-w-0 items-center gap-x-2 max-sm:order-last max-sm:basis-full">
+              <span aria-hidden className="text-ink-muted max-sm:hidden">·</span>
               <span className="normal-case tracking-normal text-ink-muted text-wrap-safe">
                 {parentModule.title}
               </span>
-            </>
+            </span>
           )}
+          {chapterType === "reading" && <ReadingControls prefs={readingPrefs} onChange={setReadingPrefs} />}
         </p>
         <h1 className="font-serif text-3xl font-semibold tracking-tight text-wrap-safe sm:text-4xl">
           {orNotTranslated(t, chapter.title)}
         </h1>
       </header>
 
-      <div data-tour="chapter-body" className="mb-10 space-y-6">
+      <div
+        data-tour="chapter-body"
+        data-reading-size={readingPrefs.size}
+        data-reading-easy={readingPrefs.easy ? "true" : undefined}
+        className="mb-10 space-y-6"
+      >
         {chapterType === "reading" && (
           <ChapterBodyBlocks
             loading={loadingBlocks}
@@ -839,7 +906,9 @@ export default function ChapterView() {
         )}
 
         {(chapterType === "quiz" || chapterType === "exam") && (
-          <QuizTaker chapterId={chapter.id} onSubmitted={refreshCompletion} />
+          <Suspense fallback={<PageSpinner variant="section" />}>
+            <QuizTaker chapterId={chapter.id} onSubmitted={refreshCompletion} />
+          </Suspense>
         )}
 
         {chapterType === "assignment" && (
@@ -850,6 +919,10 @@ export default function ChapterView() {
           />
         )}
       </div>
+
+      {/* The reader's own margin, under the lesson it belongs to. Only for
+          lessons to read: a test or an assignment has its own box to write in. */}
+      {chapterType === "reading" && <LessonNote key={chapter.id} chapterId={chapter.id} />}
 
       {/* Reading chapters get an act of their own.
           Until now a chapter of pure text could not be finished by the person

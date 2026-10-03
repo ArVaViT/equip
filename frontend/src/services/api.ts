@@ -48,7 +48,7 @@ supabase.auth.onAuthStateChange((_event, session) => {
   rememberSession(session ?? null)
 })
 
-function currentAcceptLanguage(): string {
+export function currentAcceptLanguage(): string {
   // The three rungs all end at DEFAULT_LOCALE rather than a literal: this
   // header is what the server resolves content in, so a value here that
   // disagreed with the constant would have the API answering in one

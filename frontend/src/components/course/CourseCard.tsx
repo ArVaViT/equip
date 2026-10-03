@@ -1,7 +1,6 @@
 import { useState, memo } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { motion, useReducedMotion } from "motion/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { Course } from "@/types"
@@ -9,7 +8,6 @@ import { ArrowRight, CheckCircle } from "lucide-react"
 import { CourseCoverFallback } from "./CourseCoverFallback"
 import { toProxyImage } from "@/lib/images"
 import { formatDate } from "@/i18n/format"
-import { EDITORIAL_EASE } from "@/lib/motion"
 import { orNotTranslated } from "@/lib/untranslated"
 
 interface CourseCardProps {
@@ -64,7 +62,6 @@ function EnrollmentBadge({ start, end }: { start?: string | null; end?: string |
 
 function CourseCard({ course, style, progress }: CourseCardProps) {
   const { t } = useTranslation()
-  const prefersReducedMotion = useReducedMotion()
   const [imgError, setImgError] = useState(false)
   const coverSrc = toProxyImage(course.image_url)
   // Lessons, not modules: a course can be four finished lessons and no
@@ -162,18 +159,12 @@ function CourseCard({ course, style, progress }: CourseCardProps) {
       style={style}
       className="group block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      {prefersReducedMotion ? (
-        cardInner
-      ) : (
-        <motion.div
-          whileHover={{ y: -2 }}
-          whileTap={{ scale: 0.985 }}
-          transition={{ duration: 0.28, ease: EDITORIAL_EASE }}
-          className="h-full"
-        >
-          {cardInner}
-        </motion.div>
-      )}
+      {/* Lifts on hover and gives on press, in CSS — and not at all under
+          reduced motion. Was a motion.div, which put the animation library on
+          the catalog and the dashboard for a 2-pixel lift. */}
+      <div className="h-full transition-transform duration-[280ms] ease-editorial motion-safe:group-hover:-translate-y-0.5 motion-safe:active:scale-[0.985]">
+        {cardInner}
+      </div>
     </Link>
   )
 }

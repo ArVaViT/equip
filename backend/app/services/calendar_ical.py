@@ -75,6 +75,10 @@ def _format_dt(value: datetime) -> str:
 # that is not the course's own text. It was English for everybody.
 _CALNAME = {"ru": "Календарь Equip", "uk": "Календар Equip", "en": "Equip Calendar", "de": "Equip-Kalender"}
 
+# Under a live session's description once a recording is added — a
+# subscribed calendar refreshes, so the link reaches the student there too.
+_RECORDING = {"ru": "Запись занятия", "uk": "Запис заняття", "en": "Recording", "de": "Aufzeichnung"}
+
 
 def render_calendar(events: list[CalendarEvent], *, locale: str = "en") -> str:
     """Serialize ``events`` to an RFC 5545 VCALENDAR.
@@ -103,6 +107,8 @@ def render_calendar(events: list[CalendarEvent], *, locale: str = "en") -> str:
             description_parts.append(event.course_title)
         if event.description:
             description_parts.append(event.description)
+        if event.recording_url:
+            description_parts.append(f"{_RECORDING.get(locale, _RECORDING['en'])}: {event.recording_url}")
         description = "\n".join(description_parts)
 
         lines.extend(

@@ -9,6 +9,7 @@ objects; header parsing and cache/Vary headers stay in the routes.
 
 from sqlalchemy.orm import Session
 
+from app.core.i18n import t
 from app.models.assignment import Assignment
 from app.models.course import Chapter, Course, Module
 from app.models.course_event import CourseEvent
@@ -20,6 +21,9 @@ from app.services.translation.resolve_for_display import (
     fetch_course_titles_by_id,
     populate_module_texts,
 )
+
+#: Event kinds with a label of their own (``event_type.*`` in ``app.core.i18n``).
+_EVENT_TYPE_LABELS = frozenset({"deadline", "live_session", "exam", "other"})
 
 
 def build_calendar_events(
@@ -223,7 +227,11 @@ def build_calendar_events(
         # ``localize_course_event_rows``; this route served the same rows
         # through its own three-tier chain and handed a German reader the
         # teacher's Russian.
-        title = ce_rows_by_pair_locale.get((ce_id, "title", display_locale)) or ""
+        # Until a title reaches the reader's language — an event added to a
+        # published course waits for every translation — say what kind of
+        # event it is rather than show a blank row.
+        kind = ce.event_type if ce.event_type in _EVENT_TYPE_LABELS else "other"
+        title = ce_rows_by_pair_locale.get((ce_id, "title", display_locale)) or t(display_locale, f"event_type.{kind}")
         description = ce_rows_by_pair_locale.get((ce_id, "description", display_locale))
         events.append(
             CalendarEvent(
@@ -236,6 +244,7 @@ def build_calendar_events(
                 # two deadline kinds above leave it at its default
                 # ``None``: a module's due date is a moment, not a room.
                 meeting_url=ce.meeting_url,
+                recording_url=ce.recording_url,
                 course_id=ce.course_id,
                 course_title=course_titles.get(ce.course_id),
                 source="course_event",

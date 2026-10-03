@@ -66,8 +66,12 @@ export function FirstRunFlow() {
    * the platform asking somebody to accept a text they cannot read.
    *
    * A gate that blocks its own escape hatch is not a gate, it is a wall.
+   *
+   * `/unsubscribe` for the same reason from the other side: the policy
+   * promises every course mail can be stopped from its own link, with no
+   * "after you have accepted" clause. The server exempts the route too.
    */
-  const exempt = pathname === "/privacy" || pathname === "/terms"
+  const exempt = pathname === "/privacy" || pathname === "/terms" || pathname === "/unsubscribe"
 
   // null until the server has answered. See `decideInitialStep`.
   const [legalOutstanding, setLegalOutstanding] = useState<boolean | null>(null)

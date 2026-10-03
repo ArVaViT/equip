@@ -515,6 +515,28 @@
       width: 100%;
     }
   }
+  /* A progress bar that fills from empty on arrival. A clip, not width:
+     the row is not laid out again as it grows. Was a
+     motion.div on the dashboard, which made the whole animation library part
+     of the first screen a student opens every day. */
+  @keyframes fill-in {
+    from {
+      clip-path: inset(0 100% 0 0 round 9999px);
+    }
+    to {
+      clip-path: inset(0 0 0 0 round 9999px);
+    }
+  }
+  /* A clip, not scaleX: scaling squashed the bar's rounded end for the
+     length of the animation (review, 2026-10-01). */
+  .animate-fill-in {
+    animation: fill-in var(--motion-panel) cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fill-in {
+      animation: none;
+    }
+  }
   /* Password-reset success rail — named alias for reduced-motion parity */
   .animate-grow-bar {
     width: 0;
@@ -545,7 +567,25 @@
    * It also cost the most: `blur-3xl` on a 700×400 element is a full-screen
    * composite every frame, forever, on the phones our students read on. */
 
+  /* An icon that turns in when it changes (the theme button on the profile). */
+  .animate-icon-in {
+    animation: icon-in 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes icon-in {
+    from {
+      opacity: 0;
+      transform: rotate(-45deg);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
+    .animate-icon-in {
+      animation: none;
+    }
     .animate-fade-in {
       animation: none;
       opacity: 1;
@@ -741,6 +781,29 @@
   hyphens: auto;
   text-align: left;
 }
+/* The reader's own setting (the "Aa" beside a lesson): a size either side of
+   the default, and easy reading — looser lines and a little more space between
+   letters and words. Set on the lesson body, so every text block follows.
+   The column keeps its width: `ch` grows with the font, so 68ch at a smaller
+   size shrank the whole article instead of fitting more words on a line.
+   Each width is 68ch of the default 1.125rem, restated in the new size. */
+[data-reading-size="s"] .prose {
+  font-size: 1rem;
+  max-width: 76.5ch;
+}
+[data-reading-size="l"] .prose {
+  font-size: 1.25rem;
+  max-width: 61.2ch;
+}
+[data-reading-size="xl"] .prose {
+  font-size: 1.4375rem;
+  max-width: 53.2ch;
+}
+[data-reading-easy="true"] .prose {
+  line-height: 1.95;
+  letter-spacing: 0.012em;
+  word-spacing: 0.08em;
+}
 .prose h1 {
   /* Was text-3xl and competing with the page title above it, which is also
      3xl — two h1s at the same size, one of them lying. The chapter title owns
@@ -788,6 +851,19 @@
 }
 .prose a {
   @apply text-primary underline underline-offset-4 decoration-primary/40 hover:decoration-primary;
+}
+/* A Bible reference that opens its verse (lib/scriptureLinks). Reads as the
+ * text it was — same font, same colour — with a dotted underline that says
+ * "tap me" without turning every citation into a link-blue word. */
+.prose .verse-ref,
+.prose-verse .verse-ref {
+  @apply cursor-pointer rounded-sm underline decoration-dotted decoration-1 underline-offset-4 decoration-ink-muted/70 hover:decoration-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand;
+  font: inherit;
+  color: inherit;
+  background: none;
+  padding: 0;
+  border: 0;
+  white-space: nowrap;
 }
 .prose hr {
   @apply my-8 border-border;

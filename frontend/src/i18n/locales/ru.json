@@ -1,4 +1,13 @@
 {
+  "unsubscribe": {
+    "title": "Письма Equip",
+    "ask": "Больше не присылать письма «{{kind}}»?",
+    "button": "Отписаться",
+    "done": "Готово: письма «{{kind}}» больше не придут.",
+    "again": "Вернуть их можно в профиле, в «Настройках».",
+    "invalid": "Ссылка не работает. Письма отключаются в профиле, в «Настройках».",
+    "toProfile": "Открыть профиль"
+  },
   "common": {
     "appName": "Equip",
     "cancel": "Отмена",
@@ -250,6 +259,23 @@
     "signInLinkBackToPassword": "Войти паролем"
   },
   "profile": {
+    "myData": {
+      "label": "Мои данные",
+      "hint": "Всё, что Equip хранит о вас: профиль, курсы, ответы на тесты, работы с отметками, сертификаты — одним файлом.",
+      "download": "Скачать",
+      "preparing": "Готовим файл…",
+      "failed": "Не удалось подготовить файл. Попробуйте ещё раз."
+    },
+    "emails": {
+      "label": "Письма о курсах",
+      "kinds": {
+        "work_returned": "Работа проверена или возвращена",
+        "certificate_decided": "Решение по сертификату",
+        "session_starting": "Скоро начнётся занятие",
+        "deadline_moved": "Срок перенесён",
+        "announcement": "Объявления курса"
+      }
+    },
     "fullName": "Полное имя",
     "changeAvatar": "Изменить аватар",
     "uploadFailed": "Не удалось загрузить аватар",
@@ -314,6 +340,8 @@
     "progressLabel": "Пройдено {{percent}}%"
   },
   "pageTitle": {
+    "notes": "Мои заметки",
+    "transcript": "Выписка",
     "login": "Вход",
     "register": "Регистрация",
     "forgotPassword": "Восстановление пароля",
@@ -425,7 +453,8 @@
       "option_text": "текст варианта",
       "is_correct": "правильный ответ",
       "order_index": "порядок",
-      "meeting_url": "ссылка на встречу"
+      "meeting_url": "ссылка на встречу",
+      "recording_url": "ссылка на запись"
     },
     "validation": {
       "less_than_equal": "не больше {{le}}",
@@ -514,6 +543,17 @@
     "goHome": "На главную"
   },
   "chapter": {
+    "reading": {
+      "label": "Настройки чтения",
+      "size": "Размер текста",
+      "sizes": {
+        "s": "Мелкий текст",
+        "m": "Обычный текст",
+        "l": "Крупный текст",
+        "xl": "Очень крупный текст"
+      },
+      "easy": "Легко читать"
+    },
     "attachmentEyebrow": "Вложение",
     "blocksLoadFailed": "Не удалось загрузить урок",
     "blocksLoadFailedDescription": "Не удалось загрузить содержимое урока. Обычно это временная проблема сети — попробуйте ещё раз.",
@@ -544,6 +584,12 @@
     "submitAssignmentToComplete": "Отправьте задание, чтобы завершить урок"
   },
   "quiz": {
+    "result": {
+      "correct": "Верно",
+      "incorrect": "Неверно",
+      "yourAnswer": "ваш ответ",
+      "rightAnswer": "правильный ответ"
+    },
     "answerAll": "Ответьте на все вопросы, чтобы отправить",
     "attemptPoints": "{{score}}/{{max}} баллов",
     "attemptsShort": "Попытки: {{used}}/{{max}}",
@@ -596,6 +642,63 @@
     "wordsCount_other": "{{count}} слов",
     "wordsWithMin": "{{count}} / {{min}} требуется",
     "yourAnswer": "Ваш ответ:"
+  },
+  "scripture": {
+    "open": "Открыть стих {{ref}}",
+    "edition": {
+      "bsb": "Berean Standard Bible",
+      "kjv": "King James Version",
+      "nrt": "Новый русский перевод",
+      "elberfelder": "Elberfelder Bibel",
+      "kulish": "Переклад Куліша, 1905"
+    }
+  },
+  "notes": {
+    "lesson": {
+      "hasNote": "Есть ваша заметка",
+      "loadFailed": "Не удалось загрузить заметку к уроку.",
+      "title": "Мои заметки к уроку",
+      "add": "Добавить заметку к уроку",
+      "all": "Все заметки",
+      "placeholder": "Ваша заметка…",
+      "saving": "Сохраняю…",
+      "saved": "Сохранено",
+      "failed": "Не сохранилось. Текст остаётся здесь.",
+      "private": "Видите только вы. Сохраняется само."
+    },
+    "page": {
+      "courseUnavailable": "Курс сейчас недоступен",
+      "deleteConfirmTitle": "Удалить заметку?",
+      "deleteConfirmDescription": "Её нельзя будет вернуть.",
+      "deleteFailed": "Не удалось удалить заметку",
+      "delete": "Удалить заметку",
+      "unavailable": "Урок сейчас недоступен",
+      "eyebrow": "Учёба",
+      "title": "Мои заметки",
+      "emptyTitle": "Заметок пока нет",
+      "emptyDescription": "Пишите под уроками — заметки соберутся здесь.",
+      "loadFailed": "Не удалось загрузить заметки."
+    }
+  },
+  "review": {
+    "teaser": {
+      "title": "Повторение недели готово",
+      "count_one": "{{count}} вопрос",
+      "count_few": "{{count}} вопроса",
+      "count_many": "{{count}} вопросов",
+      "count_other": "{{count}} вопроса"
+    },
+    "checkFailed": "Не удалось проверить — попробуйте ещё раз.",
+    "title": "Повторение недели",
+    "hint_one": "{{count}} вопрос из пройденного, без оценки",
+    "hint_few": "{{count}} вопроса из пройденного, без оценки",
+    "hint_many": "{{count}} вопросов из пройденного, без оценки",
+    "hint_other": "{{count}} вопроса из пройденного, без оценки",
+    "start": "Начать",
+    "progress": "Вопрос {{n}} из {{total}}",
+    "next": "Дальше",
+    "finish": "Готово",
+    "result": "Верно {{right}} из {{total}}"
   },
   "quizEditor": {
     "validation": {
@@ -913,6 +1016,28 @@
     "draftRestored": "Восстановлен черновик с этого устройства"
   },
   "certificates": {
+    "transcript": {
+      "kind": "Academic transcript",
+      "asOf": "As of {{date}}",
+      "empty": "No certificates have been issued yet.",
+      "course": "Course",
+      "school": "School",
+      "completed": "Completed",
+      "number": "Certificate no.",
+      "verify_one": "The certificate can be verified at equipbible.com/verify by its number.",
+      "verify_other": "Each certificate can be verified at equipbible.com/verify by its number.",
+      "open": "Выписка",
+      "verify_few": "Each certificate can be verified at equipbible.com/verify by its number.",
+      "verify_many": "Each certificate can be verified at equipbible.com/verify by its number."
+    },
+    "share": {
+      "share": "Поделиться",
+      "linkedIn": "Добавить в LinkedIn",
+      "linkedInShort": "LinkedIn",
+      "text": "Я окончил(а) курс «{{course}}». Сертификат можно проверить по ссылке:",
+      "copied": "Ссылка на проверку скопирована",
+      "copyFailed": "Не удалось скопировать ссылку"
+    },
     "backToCourses": "К курсам",
     "title": "Мои сертификаты",
     "eyebrow": "Достижения",
@@ -971,11 +1096,11 @@
     },
     "document": {
       "print": "Печать",
-      "back": "К свидетельствам",
-      "notIssued": "Это свидетельство ещё не выдано",
-      "loadFailed": "Не удалось загрузить свидетельство.",
+      "back": "К сертификатам",
+      "notIssued": "Этот сертификат ещё не выдан",
+      "loadFailed": "Не удалось загрузить сертификат.",
       "schoolUnnamed": "Название школы не задано",
-      "open": "Открыть свидетельство",
+      "open": "Открыть сертификат",
       "certificateOfCompletion": "Certificate of Completion",
       "certifies": "This certifies that",
       "hasCompleted": "has completed the course",
@@ -1167,10 +1292,14 @@
     "deleteAria": "Удалить отзыв"
   },
   "calendar": {
+    "addOne": {
+      "label": "В календарь",
+      "aria": "Добавить «{{title}}» в календарь"
+    },
     "subscribe": {
       "open": "Подписаться",
       "title": "Расписание курсов в вашем календаре",
-      "description": "Занятия и сроки ваших курсов появятся в календаре телефона или компьютера и будут обновляться сами. Время показывается в поясе вашего календаря.",
+      "description": "Занятия и сроки ваших курсов появятся в календаре и будут обновляться сами.",
       "replaces": "Ссылка личная. Если вы уже подписывались, прежняя ссылка перестанет работать.",
       "create": "Создать ссылку",
       "apple": "Apple и Outlook",
@@ -1609,6 +1738,9 @@
     }
   },
   "courseDetail": {
+    "minutesShort": "{{minutes}} мин",
+    "hoursShort": "≈ {{hours}} ч",
+    "readingHours": "≈ {{hours}} ч чтения",
     "allCourses": "Все курсы",
     "manageCourse": "Управлять курсом",
     "enrollInCourse": "Записаться на курс",
@@ -1680,6 +1812,29 @@
     }
   },
   "gradebook": {
+    "write": {
+      "tooMany": "Адресов слишком много для ссылки. Скопируйте их в поле «Скрытая копия».",
+      "open": "Написать…",
+      "title": "Написать студентам",
+      "who": "Кому",
+      "work": "Работа",
+      "audience": {
+        "not_submitted": "Не сдали",
+        "not_passed": "Не прошли или на доработке",
+        "everyone": "Весь класс"
+      },
+      "count_one": "{{count}} студент",
+      "count_few": "{{count}} студента",
+      "count_many": "{{count}} студентов",
+      "count_other": "{{count}} студента",
+      "copy": "Скопировать адреса",
+      "compose": "Открыть письмо",
+      "copied_one": "Скопирован {{count}} адрес",
+      "copied_few": "Скопировано {{count}} адреса",
+      "copied_many": "Скопировано {{count}} адресов",
+      "copied_other": "Скопировано {{count}} адреса",
+      "copyFailed": "Не удалось скопировать адреса"
+    },
     "summaryTab": "Сводка оценок",
     "tableTab": "Таблица оценок",
     "failedLoad": "Не удалось загрузить журнал. Попробуйте снова.",
@@ -2374,6 +2529,8 @@
       "confirm": "Всё равно опубликовать"
     },
     "checks": {
+      "headingsInOrder": "В «{{title}}» заголовки идут по порядку.",
+      "imagesHaveAlt": "У картинок в «{{title}}» есть описание.",
       "hasDescription": "У курса есть описание для каталога.",
       "hasCoverImage": "У курса есть обложка.",
       "translationsComplete": "Курс есть на всех языках. В каталог он попадёт, когда будет готов на каждом.",
@@ -2381,7 +2538,7 @@
       "hasAtLeastOneChapter": "В курсе есть хотя бы один урок.",
       "hasMultipleModules": "В курсе два модуля или больше.",
       "moduleHasChapters": "В «{{title}}» есть хотя бы один урок.",
-      "readingHasContent": "В \"{{title}}\" есть содержимое для чтения.",
+      "readingHasContent": "В «{{title}}» есть содержимое для чтения.",
       "quizHasQuestion": "В тесте «{{title}}» есть хотя бы один вопрос.",
       "examHasQuestion": "В экзамене «{{title}}» есть хотя бы один вопрос.",
       "quizQuestionsComplete": "Все вопросы в «{{title}}» заполнены (варианты ответа, отметка правильного).",
@@ -2407,10 +2564,28 @@
       "quizThresholdAboveCourse": "У теста проходной балл выше, чем у курса. Студент может пройти курс по баллам и всё равно не завершить урок — сертификат останется недоступным.",
       "quizWeightNonzero": "Тесты не учитываются в итоговой оценке.",
       "assignmentWeightNonzero": "Задания не учитываются в итоговой оценке.",
-      "quizThresholdBelowCourse": "У некоторых тестов проходной балл ниже, чем у курса. Студент может сдать все тесты и всё равно не дотянуть до проходного балла курса."
+      "quizThresholdBelowCourse": "У некоторых тестов проходной балл ниже, чем у курса. Студент может сдать все тесты и всё равно не дотянуть до проходного балла курса.",
+      "headingsInOrder": "В «{{title}}» заголовки идут не по порядку.",
+      "imagesHaveAlt": "В «{{title}}» есть картинки без описания."
     }
   },
   "dashboard": {
+    "atRisk": {
+      "write": "Написать: {{name}}",
+      "title": "Кому стоит написать",
+      "quiet_one": "{{count}} день без активности",
+      "quiet_few": "{{count}} дня без активности",
+      "quiet_many": "{{count}} дней без активности",
+      "quiet_other": "{{count}} дня без активности",
+      "missed_one": "пропущен {{count}} срок",
+      "missed_few": "пропущено {{count}} срока",
+      "missed_many": "пропущено {{count}} сроков",
+      "missed_other": "пропущено {{count}} срока",
+      "more_one": "и ещё {{count}}",
+      "more_few": "и ещё {{count}}",
+      "more_many": "и ещё {{count}}",
+      "more_other": "и ещё {{count}}"
+    },
     "continue": {
       "eyebrow": "Продолжить",
       "position": "урок {{current}} из {{total}}",
@@ -3103,6 +3278,11 @@
     "errorDescription": "Это сбой связи, а не приговор сертификату. Попробуйте ещё раз."
   },
   "meeting": {
+    "recordingPlaceholder": "https://youtu.be/…",
+    "recording": "Запись занятия",
+    "recordingAria": "Смотреть запись — {{title}}",
+    "recordingLabel": "Ссылка на запись",
+    "recordingHint": "YouTube, Vimeo, Google Диск",
     "join": "Присоединиться",
     "joinAria": "Присоединиться к встрече — {{title}}",
     "linkLabel": "Ссылка на встречу",

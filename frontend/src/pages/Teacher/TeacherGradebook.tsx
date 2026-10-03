@@ -4,6 +4,7 @@ import { useParams, useSearchParams, Link } from "react-router-dom"
 import { isAxiosError } from "axios"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
+import { WriteToStudents } from "./gradebook/WriteToStudents"
 import { coursesService } from "@/services/courses"
 import type { GradingConfig, GradeSummaryResponse, StudentGrade } from "@/types"
 import { toast } from "@/lib/toast"
@@ -419,6 +420,7 @@ export default function TeacherGradebook() {
                 {t("gradebook.vedomost")}
               </Button>
             </Link>
+            {progressData && <WriteToStudents courseTitle={courseTitle} students={progressData.students} />}
             <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={exporting}>
               <Download className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
               {exporting ? t("gradebook.exporting") : t("gradebook.exportCsv")}

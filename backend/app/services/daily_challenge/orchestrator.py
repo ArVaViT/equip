@@ -214,7 +214,18 @@ def _too_long_to_read(candidate: dict[str, Any]) -> str | None:
 
 def _validate_candidate_scripture(candidate: dict[str, Any], book: str, chapter: int) -> tuple[bool, str | None]:
     """Stage 2 — scripture validation. The cited verse must exist in
-    BOTH KJV and Synodal. Returns ``(passed, reason)``."""
+    English and in the Russian edition the reader is shown. Returns
+    ``(passed, reason)``.
+
+    The Russian check used to ask the bundled Synodal file, which is
+    misaligned (#990): ``romans`` holds James, and eight books are missing
+    altogether. So every question on Romans 6-16 was rejected ("James has
+    five chapters"), every question on a missing book was rejected, and a
+    shifted book was measured against the wrong one's length. It now asks
+    the same edition the passage text in the prompt comes from
+    (``canonical_for_display``); a verse that edition numbers differently —
+    the Psalms — still fails, which is what the check is for.
+    """
     verse_start = candidate.get("verse_start")
     verse_end = candidate.get("verse_end")
     if not isinstance(verse_start, int) or verse_start <= 0:
@@ -230,8 +241,8 @@ def _validate_candidate_scripture(candidate: dict[str, Any], book: str, chapter:
     ref = BibleRef(book=slug, chapter=chapter, verse_start=verse_start, verse_end=v_end)
     if lookup(ref, "en") is None:
         return False, f"KJV lookup missed {book} {chapter}:{verse_start}"
-    if lookup(ref, "ru") is None:
-        return False, f"Synodal lookup missed {book} {chapter}:{verse_start}"
+    if canonical_for_display(ref, "ru") is None:
+        return False, f"Russian edition has no {book} {chapter}:{verse_start}"
     return True, None
 
 
