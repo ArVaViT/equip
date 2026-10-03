@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { BadgeCheck } from "lucide-react"
 
 import { toProxyImage } from "@/lib/images"
+import { organizationInitials } from "@/lib/organizationInitials"
 import type { OrganizationCard } from "@/services/organizations"
 
 /**
@@ -29,7 +30,7 @@ export function OrganizationCards({ cards }: { cards: OrganizationCard[] }) {
                   aria-hidden
                   className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-edge bg-muted/40 font-serif text-2xl font-semibold text-ink-muted"
                 >
-                  {card.public_name.trim().charAt(0).toUpperCase()}
+                  {organizationInitials(card.public_name)}
                 </span>
               )}
               <span className="min-w-0">

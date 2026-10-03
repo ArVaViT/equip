@@ -15,6 +15,7 @@ import { useNamedPageTitle } from "@/hooks/usePageTitle"
 import { activeIntlTag } from "@/i18n/config"
 import { toProxyImage } from "@/lib/images"
 import { getErrorCode } from "@/lib/errorCode"
+import { organizationInitials } from "@/lib/organizationInitials"
 import { cn } from "@/lib/utils"
 import { organizationsService, type LockedCourse, type OrganizationPage as Page } from "@/services/organizations"
 import { OrganizationProfileForm } from "./OrganizationProfileForm"
@@ -50,6 +51,8 @@ export default function OrganizationPage() {
   }
 
   const locale = activeIntlTag(i18n.resolvedLanguage ?? i18n.language)
+  // The place alone, above the name. «Организация · Индианаполис, США» said
+  // "organization" to a reader who had just read the organization's name.
   const place = [data.city, data.country ? countryName(data.country, locale) : null].filter(Boolean).join(", ")
   // With the day: «с 3 октября 2026 г.» — month and year alone come out in
   // the nominative («с октябрь»), which no reader would write.
@@ -59,14 +62,18 @@ export default function OrganizationPage() {
     <Section>
       <PageHeader
         cover={<OrganizationLogo page={data} />}
-        eyebrow={place ? `${t("organization.eyebrow")} · ${place}` : t("organization.eyebrow")}
+        eyebrow={place || undefined}
         title={data.public_name}
         meta={
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
             {data.verified && (
-              <span className="inline-flex items-center gap-1.5 font-medium text-success-ink">
+              // What "verified" stands for, on hover and to a screen reader:
+              // the badge is the platform's claim, and a claim should say
+              // what it covers.
+              <span className="inline-flex items-center gap-1.5 font-medium text-success-ink" title={t("organization.verifiedHint")}>
                 <BadgeCheck className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                 {t("organization.verified")}
+                <span className="sr-only">. {t("organization.verifiedHint")}</span>
               </span>
             )}
             {data.website_url && (
@@ -138,9 +145,19 @@ export default function OrganizationPage() {
             {t("organization.courses")}
           </h2>
           {data.courses.length === 0 && data.locked_courses.length === 0 ? (
+            // To its director the empty shelf is a next step, not a verdict:
+            // where courses come from, and the door to make one.
             <EmptyState
               icon={<BookOpen strokeWidth={1.75} aria-hidden />}
               title={t("organization.noCourses")}
+              description={data.viewer_can_edit ? t("organization.noCoursesYet") : undefined}
+              action={
+                data.viewer_can_edit ? (
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/teacher">{t("organization.createCourse")}</Link>
+                  </Button>
+                ) : undefined
+              }
             />
           ) : (
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3">
@@ -171,13 +188,13 @@ function OrganizationLogo({ page }: { page: Page }) {
   if (src) {
     return <img src={src} alt="" className="h-20 w-20 shrink-0 rounded-card border border-edge bg-surface object-contain" />
   }
-  // No logo yet: the name's first letter, quiet, in the place a logo goes.
+  // No logo yet: the name's initials, quiet, in the place a logo goes.
   return (
     <div
       aria-hidden
       className="flex h-20 w-20 shrink-0 items-center justify-center rounded-card border border-edge bg-muted/40 font-serif text-3xl font-semibold text-ink-muted"
     >
-      {page.public_name.trim().charAt(0).toUpperCase()}
+      {organizationInitials(page.public_name)}
     </div>
   )
 }
@@ -312,9 +329,10 @@ function LockedCourseCard({ course, page }: { course: LockedCourse; page: Page }
   )
 }
 
+/** «США», not «Соединённые Штаты»: the short form where the locale has one. */
 function countryName(code: string, locale: string): string {
   try {
-    return new Intl.DisplayNames([locale], { type: "region" }).of(code.toUpperCase()) ?? code
+    return new Intl.DisplayNames([locale], { type: "region", style: "short" }).of(code.toUpperCase()) ?? code
   } catch {
     return code
   }

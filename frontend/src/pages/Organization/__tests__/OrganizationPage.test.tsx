@@ -127,6 +127,42 @@ describe("an organization's page", () => {
     expect(screen.queryByText("курса")).toBeNull()
   })
 
+  it("gives the place without the word «organization», the country short, and says what «verified» covers", async () => {
+    vi.spyOn(organizationsService, "getPage").mockResolvedValue(page())
+    renderPage()
+    await screen.findByRole("heading", { level: 1, name: "UCOAT" })
+    expect(screen.getByText("Индианаполис, США")).toBeInTheDocument()
+    expect(screen.queryByText(/^Организация/)).toBeNull()
+    expect(screen.queryByText(/Соединенные Штаты/)).toBeNull()
+    const verified = screen.getByText("Проверена Equip").closest("span")
+    expect(verified).toHaveAttribute("title", "Equip подтвердил, что организация существует и ею руководит названный директор")
+  })
+
+  it("stands in for a missing logo with the name's own initials, not the kind of organization", async () => {
+    vi.spyOn(organizationsService, "getPage").mockResolvedValue(page({ public_name: "Церковь «Слово Жизни»" }))
+    renderPage()
+    await screen.findByRole("heading", { level: 1, name: "Церковь «Слово Жизни»" })
+    expect(screen.getByText("СЖ")).toBeInTheDocument()
+  })
+
+  it("tells its director where courses come from when there are none yet, and a visitor only that there are none", async () => {
+    vi.spyOn(organizationsService, "getPage").mockResolvedValue(
+      page({ courses: [], locked_courses: [], viewer_can_edit: true, id: "o1", show_member_count: true }),
+    )
+    renderPage()
+    expect(await screen.findByText("Курсов пока нет")).toBeInTheDocument()
+    expect(screen.getByText("Курсы появятся здесь после публикации.")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Создать курс →" })).toHaveAttribute("href", "/teacher")
+  })
+
+  it("promises a visitor nothing about courses that are not there", async () => {
+    vi.spyOn(organizationsService, "getPage").mockResolvedValue(page({ courses: [], locked_courses: [] }))
+    renderPage()
+    expect(await screen.findByText("Курсов пока нет")).toBeInTheDocument()
+    expect(screen.queryByText("Курсы появятся здесь после публикации.")).toBeNull()
+    expect(screen.queryByRole("link", { name: "Создать курс →" })).toBeNull()
+  })
+
   it("offers its director the edit form", async () => {
     vi.spyOn(organizationsService, "getPage").mockResolvedValue(page({ viewer_can_edit: true, id: "o1", show_member_count: true }))
     renderPage()

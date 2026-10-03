@@ -94,7 +94,10 @@
       "bodyNoDirector": "A course for members of {{org}}. Access is granted by its director.",
       "website": "Organization website",
       "signIn": "Sign in if you are already a member"
-    }
+    },
+    "verifiedHint": "Equip has confirmed that the organization exists and is run by the director named here",
+    "noCoursesYet": "Courses will appear here once they are published.",
+    "createCourse": "Create a course →"
   },
   "adminOrgs": {
     "loadError": "Could not load organizations",

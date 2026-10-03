@@ -94,7 +94,10 @@
       "bodyNoDirector": "Ein Kurs für Mitglieder von {{org}}. Den Zugang gibt die Leitung der Organisation.",
       "website": "Website der Organisation",
       "signIn": "Anmelden, wenn Sie bereits Mitglied sind"
-    }
+    },
+    "verifiedHint": "Equip hat bestätigt, dass die Organisation existiert und von der genannten Leitung geführt wird",
+    "noCoursesYet": "Kurse erscheinen hier, sobald sie veröffentlicht sind.",
+    "createCourse": "Kurs erstellen →"
   },
   "adminOrgs": {
     "loadError": "Organisationen konnten nicht geladen werden",
