@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { Building2, Users, GraduationCap, Mail, FileText, Languages, School, Scale } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -33,7 +34,9 @@ const TAB_META: Record<AdminTab, { icon: typeof Users; labelKey: string }> = {
 export function AdminTabs({ active, onChange, tabs }: Props) {
   const { t } = useTranslation()
   return (
-    <div className="mb-6 flex gap-1 border-b border-edge sm:mb-8" role="tablist">
+    // Eight tabs do not fit a laptop's width: the row scrolls sideways
+    // rather than wrapping a label onto two lines or running off the page.
+    <div className="no-scrollbar mb-6 flex gap-1 overflow-x-auto border-b border-edge sm:mb-8" role="tablist">
       {tabs.map((name) => {
         const { icon: Icon, labelKey } = TAB_META[name]
         return (
@@ -60,8 +63,14 @@ interface TabButtonProps {
 }
 
 function TabButton({ name, active, onClick, icon, label }: TabButtonProps) {
+  const ref = useRef<HTMLButtonElement>(null)
+  // A tab opened by link may sit past the row's scrolled edge: bring it in.
+  useEffect(() => {
+    if (active) ref.current?.scrollIntoView?.({ block: "nearest", inline: "nearest" })
+  }, [active])
   return (
     <button
+      ref={ref}
       type="button"
       role="tab"
       id={ADMIN_TAB_TRIGGER_ID[name]}
@@ -69,7 +78,7 @@ function TabButton({ name, active, onClick, icon, label }: TabButtonProps) {
       aria-selected={active}
       onClick={onClick}
       className={cn(
-        "relative min-h-[44px] px-3 py-2.5 text-sm font-medium transition-colors sm:min-h-0 sm:px-4",
+        "relative min-h-[44px] shrink-0 whitespace-nowrap px-3 py-2.5 text-sm font-medium transition-colors sm:min-h-0 sm:px-4",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 rounded-t-sm",
         active
           ? "text-brand"
@@ -85,7 +94,8 @@ function TabButton({ name, active, onClick, icon, label }: TabButtonProps) {
         // of the ``border-b`` of the parent strip — without it, the
         // underline floats one pixel above the border and the active
         // tab reads as detached from the content card below.
-        <div className="absolute -bottom-px left-0 right-0 h-0.5 rounded-t bg-brand" />
+        // Inside the row, not under it: a scrolling row clips what hangs below.
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t bg-brand" />
       )}
     </button>
   )
