@@ -12,13 +12,13 @@ from app.models.organization import Organization
 from app.models.user import User, UserRole
 from app.schemas.course import CourseResponse, CourseSummary, ModuleResponse
 from app.schemas.locale import LocaleCode, normalize_locale
+from app.services import guest_preview
 from app.services.course_service import (
     get_course,
     get_courses,
     get_module,
     get_teacher_courses,
 )
-from app.services.guest_preview import preview_chapter_id, reads_course_as_enrolled
 from app.services.reading_time import course_reading_minutes
 from app.services.translation.resolve_for_display import (
     build_localized_course_response_with_tree,
@@ -213,8 +213,8 @@ def get_course_detail(
     )
     # A guest, or a signed-in reader not enrolled yet: both may read the
     # first lesson before deciding.
-    if current_user is None or not reads_course_as_enrolled(db, course, current_user):
-        localized.preview_chapter_id = preview_chapter_id(db, course)
+    if current_user is None or not guest_preview.reads_course_as_enrolled(db, course, current_user):
+        localized.preview_chapter_id = guest_preview.preview_chapter_id(db, course)
     return localized
 
 
