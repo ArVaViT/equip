@@ -130,7 +130,7 @@
     "appointLabel": "Назначить директора (почта зарегистрированного аккаунта)",
     "appointPlaceholder": "director@example.com",
     "appoint": "Назначить",
-    "directorAppointed": "{{email}} назначен директором"
+    "directorAppointed": "Назначен директор: {{email}}"
   },
   "organizations": {
     "eyebrow": "На Equip",
@@ -146,7 +146,7 @@
     "eyebrow": "Ваша организация · {{role}}",
     "roles": {
       "director": "директор",
-      "teacher": "учитель",
+      "teacher": "преподаватель",
       "student": "участник"
     },
     "catalog": "Открытый каталог",
@@ -2286,10 +2286,10 @@
         "deleteUserFailed": "Не удалось удалить пользователя",
         "cannotDeleteSelf": "Вы не можете удалить свой собственный аккаунт отсюда.",
         "bulkUpdated": "Обновлено пользователей: {{count}}",
-        "bulkHeldByMembership_one": "{{count}} пользователь оставлен как есть: его роль держит организация",
-        "bulkHeldByMembership_few": "{{count}} пользователя оставлены как есть: их роль держит организация",
-        "bulkHeldByMembership_many": "{{count}} пользователей оставлены как есть: их роль держит организация",
-        "bulkHeldByMembership_other": "{{count}} пользователя оставлены как есть: их роль держит организация",
+        "bulkHeldByMembership_one": "{{count}} пользователь оставлен как есть: его роль задаёт организация",
+        "bulkHeldByMembership_few": "{{count}} пользователя оставлены как есть: их роль задаёт организация",
+        "bulkHeldByMembership_many": "{{count}} пользователей оставлено как есть: их роль задаёт организация",
+        "bulkHeldByMembership_other": "{{count}} пользователя оставлены как есть: их роль задаёт организация",
         "bulkUpdateFailed": "Массовое обновление не удалось",
         "userDeactivated": "Пользователь деактивирован",
         "userRestored": "Пользователь восстановлен",
@@ -2535,7 +2535,7 @@
     "roleSelector": {
       "makeAdmin": "Сделать администратором платформы",
       "revokeAdmin": "Снять права администратора",
-      "heldByMembership": "Учитель и директор — роли в организации: их дают назначение и приглашения."
+      "heldByMembership": "Преподаватель и директор — роли в организации: их дают назначение и приглашения."
     }
   },
   "roles": {

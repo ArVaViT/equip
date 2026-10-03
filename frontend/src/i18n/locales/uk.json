@@ -130,7 +130,7 @@
     "appointLabel": "Призначити директора (пошта зареєстрованого акаунта)",
     "appointPlaceholder": "director@example.com",
     "appoint": "Призначити",
-    "directorAppointed": "{{email}} призначено директором"
+    "directorAppointed": "Призначено директора: {{email}}"
   },
   "organizations": {
     "eyebrow": "На Equip",
@@ -2717,10 +2717,10 @@
         "deleteUserFailed": "Не вдалося видалити користувача",
         "cannotDeleteSelf": "Власний обліковий запис звідси видалити не можна.",
         "bulkUpdated": "Оновлено користувачів: {{count}}",
-        "bulkHeldByMembership_one": "{{count}} користувача залишено як є: його роль тримає організація",
-        "bulkHeldByMembership_few": "{{count}} користувачів залишено як є: їхню роль тримає організація",
-        "bulkHeldByMembership_many": "{{count}} користувачів залишено як є: їхню роль тримає організація",
-        "bulkHeldByMembership_other": "{{count}} користувача залишено як є: їхню роль тримає організація",
+        "bulkHeldByMembership_one": "{{count}} користувача залишено як є: його роль задає організація",
+        "bulkHeldByMembership_few": "{{count}} користувачів залишено як є: їхню роль задає організація",
+        "bulkHeldByMembership_many": "{{count}} користувачів залишено як є: їхню роль задає організація",
+        "bulkHeldByMembership_other": "{{count}} користувача залишено як є: їхню роль задає організація",
         "bulkUpdateFailed": "Групове оновлення не вдалося",
         "userDeactivated": "Користувача деактивовано",
         "userRestored": "Користувача відновлено",
