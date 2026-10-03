@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest"
 
-import { formatDate, formatDateTime, formatNextUtcMidnight, isoToLocalInput, localInputToIso } from "../format"
+import { formatDate, formatDateTime, isoToLocalInput, localInputToIso } from "../format"
 import {
   getDisplayTimeZone,
   isValidTimeZone,
@@ -116,11 +116,4 @@ describe("one instant, read in each person's zone", () => {
     expect(timeZoneOffsetMinutes("Asia/Kolkata", at)).toBe(330)
   })
 
-  it("says when the next Daily Challenge day starts on the reader's clock", () => {
-    const now = new Date("2026-10-05T15:00:00Z")
-    setDisplayTimeZone("America/Indiana/Indianapolis")
-    expect(formatNextUtcMidnight(now)).toMatch(/^(20:00|08:00\sPM) EDT$/)
-    setDisplayTimeZone("Europe/Kyiv")
-    expect(formatNextUtcMidnight(now)).toMatch(/^(03:00|3:00\sAM)/)
-  })
 })

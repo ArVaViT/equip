@@ -41,7 +41,7 @@ from app.services.daily_challenge import (
     get_user_streak,
     submit_today_attempt,
 )
-from app.services.daily_challenge.schedule import utc_today
+from app.services.daily_challenge.schedule import reader_today
 
 router = APIRouter(prefix="/daily-challenge", tags=["daily-challenge"])
 
@@ -69,7 +69,7 @@ def get_today(
     explanation, so a reload shows the same reveal the submit did.
     """
     response.headers["Vary"] = "Accept-Language"
-    today = utc_today()
+    today = reader_today(current_user.time_zone)
 
     schedule_q = get_today_question(db, on_date=today, allow_fallback=True)
     if schedule_q is None:
@@ -189,9 +189,10 @@ def submit_attempt(
             db,
             user_id=current_user.id,
             selected_option_id=data.selected_option_id,
+            today=reader_today(current_user.time_zone),
         )
     except NoScheduleError:
-        today = utc_today()
+        today = reader_today(current_user.time_zone)
         raise equip_error(
             ErrorCode.DAILY_CHALLENGE_NOT_SCHEDULED,
             status_code=status.HTTP_404_NOT_FOUND,
@@ -283,7 +284,7 @@ def get_streak(
             last_engaged_date=None,
         )
     last = streak.last_engaged_date
-    alive = last is not None and last >= utc_today() - timedelta(days=1)
+    alive = last is not None and last >= reader_today(current_user.time_zone) - timedelta(days=1)
     return DailyChallengeStreakResponse(
         current_streak=streak.current_streak if alive else 0,
         longest_streak=streak.longest_streak,

@@ -521,7 +521,7 @@
     "loadError": "Die heutige Aufgabe konnte nicht geladen werden",
     "notScheduled": {
       "title": "Heute keine Frage",
-      "body": "Die Aufgabe von morgen öffnet um {{time}} Ihrer Zeit."
+      "body": "Die Frage für morgen erscheint um Mitternacht."
     },
     "notTranslated": {
       "title": "Noch nicht in Ihrer Sprache",

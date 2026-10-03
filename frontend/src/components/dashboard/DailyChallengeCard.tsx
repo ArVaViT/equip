@@ -1,4 +1,3 @@
-import { formatNextUtcMidnight } from "@/i18n/format"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
@@ -277,7 +276,7 @@ export function DailyChallengeCard() {
           <EmptyState
             className="py-2"
             title={t("dailyChallenge.notScheduled.title")}
-            description={t("dailyChallenge.notScheduled.body", { time: formatNextUtcMidnight() })}
+            description={t("dailyChallenge.notScheduled.body")}
           />
         ) : notTranslated ? (
           <EmptyState

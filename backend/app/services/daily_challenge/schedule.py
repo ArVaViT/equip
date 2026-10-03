@@ -16,8 +16,9 @@ target question is valid.
 from __future__ import annotations
 
 import logging
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, tzinfo
 from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
@@ -34,9 +35,26 @@ logger = logging.getLogger(__name__)
 
 
 def utc_today() -> date:
-    """Single source of truth for "what's today?" — UTC-only, no
-    per-user timezone (deferred per the locked decisions)."""
+    """Today in UTC — what the server's jobs (replenishment, the
+    gap-filler's guard) count by. A reader's today is ``reader_today``."""
     return datetime.now(UTC).date()
+
+
+def reader_today(time_zone: str | None) -> date:
+    """Today on the reader's own calendar (2026-10-03).
+
+    The question used to turn over at UTC midnight for everybody — 20:00
+    on a Saturday evening in Indianapolis, right in the middle of the
+    class, and 03:00 in Kyiv. A day is the reader's day: the profile's
+    zone when it has one, UTC when it has none or names nothing real.
+    """
+    zone: tzinfo = UTC
+    if time_zone:
+        try:
+            zone = ZoneInfo(time_zone)
+        except (ZoneInfoNotFoundError, ValueError):
+            zone = UTC
+    return datetime.now(zone).date()
 
 
 def _autofill_today_schedule(db: Session, target_date: date) -> DailyChallengeSchedule | None:
@@ -117,7 +135,9 @@ def get_today_question(
         db.query(DailyChallengeSchedule).filter(DailyChallengeSchedule.challenge_date == target_date).one_or_none()
     )
     if schedule is None:
-        if not (allow_fallback and target_date == utc_today()):
+        # "Today" is somebody's today: between UTC-12 and UTC+14 that is
+        # at most a day either side of the server's.
+        if not (allow_fallback and abs((target_date - utc_today()).days) <= 1):
             return None
         schedule = _autofill_today_schedule(db, target_date)
         if schedule is None:
