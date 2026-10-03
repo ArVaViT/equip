@@ -10,6 +10,10 @@ import { BLOCK_TYPE_LABEL_KEYS, BLOCK_TYPES, type BlockType } from "./types"
 interface Props {
   onAdd: (type: BlockType) => void
   adding: boolean
+  /** The lesson already has a quiz block. A chapter holds one quiz — the
+   *  server refuses a second (``quiz.already_exists``) — so a second quiz
+   *  block could never be filled; it is not offered (2026-10-03). */
+  hasQuiz?: boolean
 }
 
 /**
@@ -26,7 +30,7 @@ interface Props {
  *  - viewport-aware horizontal anchor (flips to ``right-0`` near
  *    the right edge of the viewport)
  */
-export function AddBlockMenu({ onAdd, adding }: Props) {
+export function AddBlockMenu({ onAdd, adding, hasQuiz = false }: Props) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -91,7 +95,7 @@ export function AddBlockMenu({ onAdd, adding }: Props) {
             alignClass,
           )}
         >
-          {BLOCK_TYPES.map((bt) => {
+          {BLOCK_TYPES.filter((bt) => !(hasQuiz && bt.value === "quiz")).map((bt) => {
             const Icon = bt.icon
             return (
               <button

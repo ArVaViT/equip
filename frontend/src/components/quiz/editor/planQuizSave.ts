@@ -1,4 +1,4 @@
-import type { QuizOptionPatch, QuizQuestionPatch, QuizUpdateData } from "@/services/quizzes"
+import type { QuizQuestionSave, QuizUpdateData } from "@/services/quizzes"
 import type { Quiz } from "@/types"
 import type { DraftQuestion } from "./types"
 
@@ -20,18 +20,24 @@ export interface DraftSnapshot {
  *
  * Saving used to mean ``POST`` a new quiz and ``DELETE`` the old one, and
  * ``quiz_attempts.quiz_id`` cascades: a teacher fixing a typo deleted the
- * class's graded work. The backend has had ``PATCH /quizzes/questions/{id}``
- * and ``PATCH /quizzes/options/{id}`` for exactly this since #1167; the
- * editor never called them. Now it does, sending only what changed.
+ * class's graded work. Corrections go to the quiz that exists instead:
+ * the fields above the questions to ``PUT /quizzes/{id}``, and each
+ * changed question — whole, with every one of its options — to
+ * ``PUT /quizzes/questions/{id}``. Only questions with a change are sent.
+ *
+ * Whole, not field by field: the right answer moving from one option to
+ * another was two requests, and in between the question had no right
+ * answer — so the server could not refuse a question saved that way on
+ * purpose, and let one through (2026-10-03). One request per question is
+ * one state the server can judge the way it judges a new question.
  */
 export interface InPlacePlan {
   quiz: QuizUpdateData | null
-  questions: Array<{ id: string; patch: QuizQuestionPatch }>
-  options: Array<{ id: string; patch: QuizOptionPatch }>
+  questions: Array<{ id: string; question: QuizQuestionSave }>
 }
 
 export function isEmptyPlan(plan: InPlacePlan): boolean {
-  return plan.quiz === null && plan.questions.length === 0 && plan.options.length === 0
+  return plan.quiz === null && plan.questions.length === 0
 }
 
 function sameIds(a: ReadonlyArray<{ id: string }>, b: ReadonlyArray<{ id: string }>): boolean {
@@ -66,31 +72,44 @@ export function planInPlaceSave(existing: Quiz, draft: DraftSnapshot): InPlacePl
   if (draft.quizType !== existing.quiz_type) quiz.quiz_type = draft.quizType
 
   const questions: InPlacePlan["questions"] = []
-  const options: InPlacePlan["options"] = []
   for (const question of draft.questions) {
     const saved = byId.get(question.id)
     if (!saved) return null
-    const patch: QuizQuestionPatch = {}
-    if (question.question_text !== saved.question_text) patch.question_text = question.question_text
-    if (question.question_type !== saved.question_type) patch.question_type = question.question_type
-    if (question.order_index !== saved.order_index) patch.order_index = question.order_index
-    if (question.points !== saved.points) patch.points = question.points
-    if ((question.min_words ?? null) !== (saved.min_words ?? null)) patch.min_words = question.min_words ?? null
-    if (Object.keys(patch).length > 0) questions.push({ id: question.id, patch })
-
     const savedOptions = new Map(saved.options.map((option) => [option.id, option]))
+    let changed =
+      question.question_text !== saved.question_text ||
+      question.question_type !== saved.question_type ||
+      question.order_index !== saved.order_index ||
+      question.points !== saved.points ||
+      (question.min_words ?? null) !== (saved.min_words ?? null)
     for (const option of question.options) {
       const savedOption = savedOptions.get(option.id)
       if (!savedOption) return null
-      const optionPatch: QuizOptionPatch = {}
-      if (option.option_text !== savedOption.option_text) optionPatch.option_text = option.option_text
-      if (option.is_correct !== Boolean(savedOption.is_correct)) optionPatch.is_correct = option.is_correct
-      if (option.order_index !== savedOption.order_index) optionPatch.order_index = option.order_index
-      if (Object.keys(optionPatch).length > 0) options.push({ id: option.id, patch: optionPatch })
+      changed ||=
+        option.option_text !== savedOption.option_text ||
+        option.is_correct !== Boolean(savedOption.is_correct) ||
+        option.order_index !== savedOption.order_index
     }
+    if (!changed) continue
+    questions.push({
+      id: question.id,
+      question: {
+        question_text: question.question_text,
+        question_type: question.question_type,
+        order_index: question.order_index,
+        points: question.points,
+        min_words: question.question_type === "essay" ? (question.min_words ?? null) : null,
+        options: question.options.map((option) => ({
+          id: option.id,
+          option_text: option.option_text,
+          is_correct: option.is_correct,
+          order_index: option.order_index,
+        })),
+      },
+    })
   }
 
-  return { quiz: Object.keys(quiz).length > 0 ? quiz : null, questions, options }
+  return { quiz: Object.keys(quiz).length > 0 ? quiz : null, questions }
 }
 
 /**

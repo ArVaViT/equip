@@ -45,21 +45,31 @@ export type QuizUpdateData = {
   passing_score?: number
 }
 
-/** ``PATCH /quizzes/questions/{id}`` — one question, in place. Options
- *  are deliberately not here: they are corrected one at a time. */
-export type QuizQuestionPatch = {
-  question_text?: string
-  question_type?: QuizQuestionType
-  order_index?: number
-  points?: number
-  min_words?: number | null
-}
+/** ``POST /quizzes/{id}/replace`` — the quiz that takes the old one's
+ *  place. The chapter is the old quiz's, so it is not sent. */
+export type QuizReplaceData = Omit<QuizCreateData, "chapter_id">
 
-/** ``PATCH /quizzes/options/{id}`` — one answer option, in place. */
-export type QuizOptionPatch = {
-  option_text?: string
-  is_correct?: boolean
-  order_index?: number
+/**
+ * ``PUT /quizzes/questions/{id}`` — one question, whole: its fields and
+ * every one of its options, by id. Options were corrected one request at
+ * a time, so between two of them a question legitimately had no right
+ * answer — and the server could refuse none of them for it. Sent whole,
+ * the server checks the question the way it checks a new one and applies
+ * it in one transaction. The option ids are the server's own: nothing is
+ * added or removed in place, so every stored answer keeps its option.
+ */
+export type QuizQuestionSave = {
+  question_text: string
+  question_type: QuizQuestionType
+  order_index: number
+  points: number
+  min_words: number | null
+  options: Array<{
+    id: string
+    option_text: string
+    is_correct: boolean
+    order_index: number
+  }>
 }
 
 export const quizzesService = {
@@ -111,6 +121,30 @@ export const quizzesService = {
   },
 
   /**
+   * Rebuild a quiz whose shape changed, in one step on the server: the new
+   * quiz is built, the lesson's blocks are pointed at it, the old quiz goes
+   * — or none of it happens. Two requests (create, then delete) used to
+   * leave two quizzes on the chapter when the delete was refused
+   * (2026-10-03). Refused with 409 ``quiz.has_attempts`` once students have
+   * attempted the old quiz unless ``force`` is passed, which a caller does
+   * only after showing the teacher the number and hearing yes.
+   */
+  async replaceQuiz(
+    quizId: string,
+    data: QuizReplaceData,
+    chapterId: string,
+    opts: { force?: boolean } = {},
+  ): Promise<Quiz> {
+    const response = await api.post<Quiz>(
+      `/quizzes/${quizId}/replace`,
+      data,
+      opts.force ? { params: { force: true } } : undefined,
+    )
+    cacheInvalidate(`quiz:chapter:${chapterId}`)
+    return response.data
+  },
+
+  /**
    * Delete a quiz. Refused with 409 ``quiz.has_attempts`` once students
    * have attempted it — every attempt and grade goes with the quiz — unless
    * ``force`` is passed, which a caller does only after showing the teacher
@@ -135,14 +169,8 @@ export const quizzesService = {
     return response.data
   },
 
-  async updateQuizQuestion(questionId: string, patch: QuizQuestionPatch, chapterId: string): Promise<Quiz> {
-    const response = await api.patch<Quiz>(`/quizzes/questions/${questionId}`, patch)
-    cacheInvalidate(`quiz:chapter:${chapterId}`)
-    return response.data
-  },
-
-  async updateQuizOption(optionId: string, patch: QuizOptionPatch, chapterId: string): Promise<Quiz> {
-    const response = await api.patch<Quiz>(`/quizzes/options/${optionId}`, patch)
+  async saveQuizQuestion(questionId: string, question: QuizQuestionSave, chapterId: string): Promise<Quiz> {
+    const response = await api.put<Quiz>(`/quizzes/questions/${questionId}`, question)
     cacheInvalidate(`quiz:chapter:${chapterId}`)
     return response.data
   },

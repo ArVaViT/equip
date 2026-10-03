@@ -1,5 +1,6 @@
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Protocol
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -24,6 +25,49 @@ CHOICE_TYPES: frozenset[str] = frozenset({"multiple_choice", "true_false"})
 
 def _blank(text: str | None) -> bool:
     return text is None or not text.strip()
+
+
+class _HasIsCorrect(Protocol):
+    is_correct: bool
+
+
+def validate_answerable(question_type: str, options: Sequence[_HasIsCorrect]) -> None:
+    """Refuse a question shape nobody could answer, or that a student could not take.
+
+    One rule for every door. It was written for ``QuizQuestionCreate`` and
+    nowhere else, so a question that was answerable when it was created
+    could be edited into one that was not: the per-option PATCH route took
+    «unmark the only right answer» without a word, and the per-question
+    PATCH route turned a short answer into a multiple choice with no
+    options (2026-10-03). Every route that changes a question's type or
+    its options now ends by asking this the same question creation asks.
+
+    Raises ``PydanticCustomError`` so a schema can call it from a
+    validator and a route can turn it into the same 422 list the client
+    already translates by ``type``.
+    """
+    if question_type in CHOICE_TYPES:
+        if len(options) < 2:
+            raise PydanticCustomError(
+                "quiz_too_few_options",
+                "A {question_type} question needs at least two options",
+                {"question_type": question_type},
+            )
+        correct = sum(1 for option in options if option.is_correct)
+        if correct == 0:
+            raise PydanticCustomError("quiz_no_correct_option", "Exactly one option must be marked correct")
+        if correct > 1:
+            raise PydanticCustomError(
+                "quiz_many_correct_options",
+                "Only one option may be marked correct, {correct} are",
+                {"correct": correct},
+            )
+    elif options:
+        raise PydanticCustomError(
+            "quiz_options_not_allowed",
+            "A {question_type} question is answered in writing and has no options",
+            {"question_type": question_type},
+        )
 
 
 class QuizOptionCreate(RequestModel):
@@ -82,28 +126,7 @@ class QuizQuestionCreate(RequestModel):
 
     @model_validator(mode="after")
     def _answerable(self) -> "QuizQuestionCreate":
-        if self.question_type in CHOICE_TYPES:
-            if len(self.options) < 2:
-                raise PydanticCustomError(
-                    "quiz_too_few_options",
-                    "A {question_type} question needs at least two options",
-                    {"question_type": self.question_type},
-                )
-            correct = sum(1 for option in self.options if option.is_correct)
-            if correct == 0:
-                raise PydanticCustomError("quiz_no_correct_option", "Exactly one option must be marked correct")
-            if correct > 1:
-                raise PydanticCustomError(
-                    "quiz_many_correct_options",
-                    "Only one option may be marked correct, {correct} are",
-                    {"correct": correct},
-                )
-        elif self.options:
-            raise PydanticCustomError(
-                "quiz_options_not_allowed",
-                "A {question_type} question is answered in writing and has no options",
-                {"question_type": self.question_type},
-            )
+        validate_answerable(self.question_type, self.options)
         return self
 
 
@@ -152,6 +175,65 @@ class QuizOptionUpdate(RequestModel):
         return value
 
 
+class QuizOptionSave(RequestModel):
+    """One of a question's existing options, as it should read after the save.
+
+    ``id`` names a row the question already has. There is no way to add or
+    drop an option here, on purpose: a deleted option nulls every
+    ``quiz_answers.selected_option_id`` pointing at it and a graded attempt
+    stops saying what the student chose. A changed option list is a
+    rebuild (``POST /quizzes/{id}/replace``), which the editor asks about.
+    """
+
+    id: UUID
+    option_text: str = Field(..., min_length=1, max_length=500)
+    is_correct: bool = False
+    order_index: int = Field(0, ge=0)
+
+    @field_validator("option_text")
+    @classmethod
+    def _option_text_not_blank(cls, value: str) -> str:
+        if _blank(value):
+            raise PydanticCustomError("quiz_option_blank", "Option text must not be blank")
+        return value
+
+
+class QuizQuestionSave(RequestModel):
+    """A question and all of its options, saved in one request.
+
+    The per-field routes (``PATCH /quizzes/questions/{id}``,
+    ``PATCH /quizzes/options/{id}``) each see one row, so between two of
+    them a question is legitimately half-edited — the old right answer
+    unmarked, the new one not yet marked — and neither request can be
+    refused for it without refusing the edit itself. So neither was
+    checked, and a question could be saved with no right answer at all
+    (2026-10-03). This body carries the whole question, is validated the
+    way creation is, and is applied in one transaction.
+    """
+
+    question_text: str = Field(..., min_length=1, max_length=4000)
+    question_type: QuestionType = "multiple_choice"
+    order_index: int = Field(0, ge=0)
+    points: int = Field(1, ge=1, le=100)
+    min_words: int | None = Field(None, ge=1, le=10_000)
+    options: list[QuizOptionSave] = Field(default_factory=list, max_length=20)
+
+    @field_validator("question_text")
+    @classmethod
+    def _question_text_not_blank(cls, value: str) -> str:
+        if _blank(value):
+            raise PydanticCustomError("quiz_question_blank", "Question text must not be blank")
+        return value
+
+    @model_validator(mode="after")
+    def _answerable(self) -> "QuizQuestionSave":
+        validate_answerable(self.question_type, self.options)
+        ids = [option.id for option in self.options]
+        if len(set(ids)) != len(ids):
+            raise PydanticCustomError("quiz_option_repeated", "An option is listed more than once")
+        return self
+
+
 class QuizQuestionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -186,12 +268,11 @@ class QuizQuestionEditorResponse(QuizQuestionStudentResponse):
     options: list[QuizOptionEditorResponse] = []  # type: ignore[assignment]
 
 
-class QuizCreate(RequestModel):
-    # Chapter ids are UUIDs (36 chars). Cap at the schema layer so a crafted
-    # 1 MB string is rejected by Pydantic before the route runs ``verify_chapter_owner``
-    # against it. Matches the bounds already on ``AssignmentCreate.chapter_id``
-    # and ``CohortCourseAttach.course_id``.
-    chapter_id: str = Field(..., min_length=1, max_length=36)
+class QuizBody(RequestModel):
+    """The whole quiz as a teacher writes it: the fields above the questions
+    and the question tree. ``QuizCreate`` adds the chapter; ``QuizReplace``
+    takes it from the quiz being replaced."""
+
     title: str = Field(..., min_length=1, max_length=300)
     description: str | None = Field(None, max_length=5000)
     quiz_type: Literal["quiz", "exam"] = "quiz"
@@ -204,6 +285,26 @@ class QuizCreate(RequestModel):
     #: At least one: a quiz with no questions cannot be taken (``submit``
     #: needs an answer) and used to save with a 201 all the same.
     questions: list[QuizQuestionCreate] = Field(..., min_length=1, max_length=100)
+
+
+class QuizCreate(QuizBody):
+    # Chapter ids are UUIDs (36 chars). Cap at the schema layer so a crafted
+    # 1 MB string is rejected by Pydantic before the route runs ``verify_chapter_owner``
+    # against it. Matches the bounds already on ``AssignmentCreate.chapter_id``
+    # and ``CohortCourseAttach.course_id``.
+    chapter_id: str = Field(..., min_length=1, max_length=36)
+
+
+class QuizReplace(QuizBody):
+    """``POST /quizzes/{id}/replace``: the quiz that takes the old one's place.
+
+    The editor used to rebuild a quiz whose shape changed as two requests —
+    create the new quiz, delete the old — and when the delete was refused
+    (a student finished an attempt in between) the chapter was left with
+    two quizzes: students were shown one, the grade sheet counted both
+    (2026-10-03). The replacement is one transaction; the chapter is the
+    old quiz's, so it is not a field here.
+    """
 
 
 class QuizUpdate(RequestModel):

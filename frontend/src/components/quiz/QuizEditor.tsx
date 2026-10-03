@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next"
 import { ClipboardList, Loader2 } from "lucide-react"
 import { useConfirm } from "@/components/ui/alert-dialog"
 import { coursesService } from "@/services/courses"
+import type { QuizReplaceData } from "@/services/quizzes"
+import { getErrorCode } from "@/lib/errorCode"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
 import type { Quiz } from "@/types"
@@ -64,42 +66,50 @@ export default function QuizEditor({
     questions: draft.questions,
   })
 
-  const createFromDraft = (shape: DraftSnapshot) =>
-    coursesService.createQuiz({
-      chapter_id: chapterId,
-      title: shape.title,
-      description: shape.description,
-      quiz_type: chapterType,
-      max_attempts: shape.maxAttempts,
-      passing_score: shape.passingScore,
-      questions: shape.questions.map((q) => ({
-        question_text: q.question_text,
-        question_type: q.question_type,
-        order_index: q.order_index,
-        points: q.points,
-        min_words: q.question_type === "essay" ? (q.min_words ?? null) : null,
-        options: q.options.map((o) => ({
-          option_text: o.option_text,
-          is_correct: o.is_correct,
-          order_index: o.order_index,
-        })),
+  const quizBody = (shape: DraftSnapshot): QuizReplaceData => ({
+    title: shape.title,
+    description: shape.description,
+    quiz_type: chapterType,
+    max_attempts: shape.maxAttempts,
+    passing_score: shape.passingScore,
+    questions: shape.questions.map((q) => ({
+      question_text: q.question_text,
+      question_type: q.question_type,
+      order_index: q.order_index,
+      points: q.points,
+      min_words: q.question_type === "essay" ? (q.min_words ?? null) : null,
+      options: q.options.map((o) => ({
+        option_text: o.option_text,
+        is_correct: o.is_correct,
+        order_index: o.order_index,
       })),
-    })
+    })),
+  })
+
+  /**
+   * A new quiz, or — when one exists — the new quiz in the old one's place,
+   * in one request. Create-then-delete left two quizzes on the lesson when
+   * the delete was refused; the server now does both or neither
+   * (2026-10-03). ``force`` only after the teacher has seen the number of
+   * attempts and agreed.
+   */
+  const createOrReplace = (existing: Quiz | null, shape: DraftSnapshot) =>
+    existing
+      ? coursesService.replaceQuiz(existing.id, quizBody(shape), chapterId, { force: draft.attemptCount > 0 })
+      : coursesService.createQuiz({ chapter_id: chapterId, ...quizBody(shape) })
 
   /**
    * Corrections go to the quiz that exists. Each route answers with the
    * whole quiz re-read, so the last answer is the new baseline; sent one
    * after another so a refusal (a type change on an answered question,
-   * 409) stops the run where it happened and the draft stays as typed.
+   * 409; a question left without a right answer, 422) stops the run where
+   * it happened and the draft stays as typed.
    */
   const applyInPlace = async (existing: Quiz, plan: InPlacePlan): Promise<Quiz> => {
     let latest = existing
     if (plan.quiz) latest = await coursesService.updateQuiz(existing.id, plan.quiz, chapterId)
-    for (const { id, patch } of plan.questions) {
-      latest = await coursesService.updateQuizQuestion(id, patch, chapterId)
-    }
-    for (const { id, patch } of plan.options) {
-      latest = await coursesService.updateQuizOption(id, patch, chapterId)
+    for (const { id, question } of plan.questions) {
+      latest = await coursesService.saveQuizQuestion(id, question, chapterId)
     }
     return latest
   }
@@ -125,9 +135,9 @@ export default function QuizEditor({
     const plan = existing ? planInPlaceSave(existing, shape) : null
 
     // Adding or removing a question or an option is a rebuild — the only
-    // shape the in-place routes cannot reach — and a rebuild deletes every
-    // attempt. With attempts on the quiz, the teacher decides, knowing the
-    // number; without, there is nothing to lose.
+    // shape the in-place routes cannot reach — and a rebuild replaces the
+    // quiz, attempts and all. With attempts on the quiz, the teacher
+    // decides, knowing the number; without, there is nothing to lose.
     if (existing && !plan && draft.attemptCount > 0) {
       const ok = await confirm({
         title: t("quizEditor.confirmRebuild.title"),
@@ -149,7 +159,7 @@ export default function QuizEditor({
         return
       }
 
-      const quiz = await createFromDraft(shape)
+      const quiz = await createOrReplace(existing, shape)
       draft.setExistingQuiz(quiz)
       // The server's ids, so the next save corrects this quiz in place
       // instead of rebuilding it (and, once there are attempts, asking to
@@ -166,24 +176,9 @@ export default function QuizEditor({
       draft.markSaved(JSON.stringify(sentShape))
       draft.clearAttempts()
       onQuizSaved?.(quiz.id)
-      if (existing) {
-        // The new quiz is saved; the old one goes only after the teacher
-        // has agreed to lose its attempts (``force``). If the delete is
-        // refused all the same — a student finished an attempt in between
-        // — say so rather than leave two quizzes on the chapter in silence.
-        try {
-          await coursesService.deleteQuiz(existing.id, chapterId, { force: draft.attemptCount > 0 })
-        } catch (err) {
-          toast({
-            title: t("quizEditor.toast.oldQuizNotDeleted"),
-            description: getErrorDetail(err),
-            variant: "destructive",
-          })
-          return
-        }
-      }
       toast({ title: t("quizEditor.toast.quizSaved"), variant: "success" })
     } catch (err) {
+      if (await adoptServersQuiz(getErrorCode(err))) return
       toast({
         title: t("quizEditor.toast.quizSaveFailed"),
         description: getErrorDetail(err),
@@ -192,6 +187,29 @@ export default function QuizEditor({
     } finally {
       setSaving(false)
     }
+  }
+
+  /**
+   * The server's quiz is not the one on screen. Two refusals say so: the
+   * lesson already had a quiz when this editor tried to create one (a
+   * second quiz block, an editor opened before the first save landed),
+   * or somebody rebuilt the quiz after it was loaded here. Either way
+   * the draft cannot be saved onto it; the server's quiz is loaded in its
+   * place and the teacher is told — a toast about a failed save would
+   * leave them retrying against the same refusal.
+   */
+  const adoptServersQuiz = async (code: string | null): Promise<boolean> => {
+    if (code !== "quiz.already_exists" && code !== "quiz.options_changed") return false
+    const current = await coursesService.getChapterQuizForEdit(chapterId).catch(() => null)
+    if (!current) return false
+    draft.adoptQuiz(current)
+    draft.markSaved()
+    onQuizSaved?.(current.id)
+    toast({
+      title: t(code === "quiz.already_exists" ? "quizEditor.toast.existingQuizLoaded" : "quizEditor.toast.quizReloaded"),
+      variant: "destructive",
+    })
+    return true
   }
 
   const handleDelete = async () => {

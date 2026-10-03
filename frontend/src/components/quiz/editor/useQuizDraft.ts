@@ -29,6 +29,10 @@ interface UseQuizDraftResult {
   answeredQuestionIds: ReadonlySet<string>
   /** After a rebuild: the new quiz has no attempts yet. */
   clearAttempts: () => void
+  /** Show this quiz, replacing whatever was on screen: the editor found
+   *  out the server's quiz is not the one it was editing (the lesson
+   *  already had one; somebody rebuilt it meanwhile). */
+  adoptQuiz: (q: Quiz) => void
   title: string
   setTitle: (v: string) => void
   description: string
@@ -80,6 +84,25 @@ export function useQuizDraft({
   const [attemptCount, setAttemptCount] = useState(0)
   const [answeredQuestionIds, setAnsweredQuestionIds] = useState<ReadonlySet<string>>(() => new Set())
 
+  const adoptQuiz = useCallback((q: Quiz) => {
+    setExistingQuiz(q)
+    setTitle(q.title)
+    setDescription(q.description ?? "")
+    setPassingScore(q.passing_score)
+    setMaxAttempts(q.max_attempts ?? 1)
+    setQuestions(
+      q.questions
+        .sort((a, b) => a.order_index - b.order_index)
+        .map((qu) => ({
+          ...qu,
+          min_words: qu.min_words ?? null,
+          options: qu.options
+            .sort((a, b) => a.order_index - b.order_index)
+            .map((o) => ({ ...o, is_correct: !!o.is_correct })),
+        })),
+    )
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     const load = async () => {
@@ -93,22 +116,7 @@ export function useQuizDraft({
         const q = await coursesService.getChapterQuizForEdit(chapterId)
         if (cancelled) return
         if (q) {
-          setExistingQuiz(q)
-          setTitle(q.title)
-          setDescription(q.description ?? "")
-          setPassingScore(q.passing_score)
-          setMaxAttempts(q.max_attempts ?? 1)
-          setQuestions(
-            q.questions
-              .sort((a, b) => a.order_index - b.order_index)
-              .map((qu) => ({
-                ...qu,
-                min_words: qu.min_words ?? null,
-                options: qu.options
-                  .sort((a, b) => a.order_index - b.order_index)
-                  .map((o) => ({ ...o, is_correct: !!o.is_correct })),
-              })),
-          )
+          adoptQuiz(q)
           // What a rebuild would cost. Best-effort: if this fails the
           // editor still opens, the count reads 0, and the server's own
           // 409 is the backstop — it never deletes attempts unasked.
@@ -139,7 +147,7 @@ export function useQuizDraft({
     return () => {
       cancelled = true
     }
-  }, [chapterId, chapterType])
+  }, [chapterId, chapterType, adoptQuiz])
 
   const addQuestion = useCallback(() => {
     setQuestions((prev) => [...prev, makeDefaultQuestion(prev.length)])
@@ -293,6 +301,7 @@ export function useQuizDraft({
     attemptCount,
     answeredQuestionIds,
     clearAttempts,
+    adoptQuiz,
     title,
     setTitle,
     description,
