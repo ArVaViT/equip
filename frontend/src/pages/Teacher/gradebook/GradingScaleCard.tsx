@@ -117,7 +117,8 @@ export function GradingScaleCard({ courseId, canChange, onChanged }: Props) {
           })}
         </p>
         {bands.length > 0 && <p className="text-ink-muted">{describeBands(bands, whole)}</p>}
-        <p className="text-xs text-ink-muted">{t("gradebook.scale.directorDecides")}</p>
+        {/* Who decides — said to the teacher; the director is the answer. */}
+        {!canChange && <p className="text-xs text-ink-muted">{t("gradebook.scale.directorDecides")}</p>}
       </div>
       {canChange && (
         <>

@@ -81,6 +81,8 @@ describe("GradingScaleCard", () => {
   it("gives a director the Change button and a dialog with both values", async () => {
     const user = userEvent.setup()
     await show(true)
+    // The director is who decides: the card does not tell them to ask one.
+    expect(screen.queryByText("Шкалу выбирает директор школы.")).not.toBeInTheDocument()
 
     await user.click(screen.getByRole("button", { name: "Изменить" }))
 
