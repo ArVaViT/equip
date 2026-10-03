@@ -924,6 +924,7 @@
     "courseCloned": "Course copied",
     "cloneFailed": "Failed to clone course",
     "gradingWeightsSaved": "Grading weights saved",
+    "gradingSchemeSaved": "Grading scale saved",
     "gradingConfigSaveFailed": "Failed to save grading config",
     "gradeSaved": "Grade saved",
     "gradeCleared": "Hand-set grade removed — the calculated one applies again",
@@ -2213,6 +2214,21 @@
       "split": "Quizzes {{quiz}}% · Assignments {{assignment}}%",
       "saving": "Saving...",
       "save": "Save Weights"
+    },
+    "scale": {
+      "title": "Grading scale",
+      "summary": "{{scheme}} · pass mark {{threshold}}%",
+      "directorDecides": "The school's director decides the scale.",
+      "change": "Change",
+      "loadFailed": "Could not load the grading scale.",
+      "dialogTitle": "How this course is graded",
+      "scheme": "Scale",
+      "passThreshold": "Pass mark (%)",
+      "thresholdRange": "The pass mark is a number from 0 to 100.",
+      "fivePointMax": "On the five-point scale the pass mark is 75 or lower, otherwise a «3» is unreachable.",
+      "handSetGrades_one": "{{count}} grade in this course was set by hand under the old scale. Clear or re-enter it first, then change the scale.",
+      "handSetGrades_other": "{{count}} grades in this course were set by hand under the old scale. Clear or re-enter them first, then change the scale.",
+      "handSetGradesUnknown": "This course has grades set by hand under the old scale. Clear or re-enter them first, then change the scale."
     },
     "summary": {
       "title": "Student Grades",

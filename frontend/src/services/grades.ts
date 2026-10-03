@@ -11,6 +11,8 @@ import type {
   RetakeRequest,
   RetakeRequestResult,
   GradingConfig,
+  GradingSchemeResponse,
+  GradingSchemeUpdate,
   GradeSummaryResponse,
   StudentGrade,
 } from "@/types"
@@ -215,6 +217,37 @@ export const gradesService = {
     cacheInvalidate(`grades:summary:${courseId}`)
     cacheInvalidate(`grades:course:${courseId}`)
     cacheInvalidate(`analytics:course:${courseId}`)
+    return response.data
+  },
+
+  /** How this course is graded: scheme, pass line and the bands behind them. */
+  async getGradingScheme(courseId: string): Promise<GradingSchemeResponse> {
+    return cached(`grades:scheme:${courseId}`, CACHE_TTL.ONE_MINUTE, async () => {
+      const response = await api.get<GradingSchemeResponse>(`/grades/course/${courseId}/scheme`)
+      return response.data
+    })
+  },
+
+  /**
+   * Change how a course is graded — a director's decision (D1), both values
+   * at once (D8.1). The server refuses with 409 while hand-set grades exist
+   * under the old scheme; the caller reads that status, not this function.
+   *
+   * Every symbol in the course is read against the new bands, so the summary
+   * and the grade list are stale the moment this returns.
+   */
+  async updateGradingScheme(
+    courseId: string,
+    data: GradingSchemeUpdate,
+  ): Promise<GradingSchemeResponse> {
+    const response = await api.put<GradingSchemeResponse>(
+      `/grades/course/${courseId}/scheme`,
+      data,
+    )
+    cacheInvalidate(`grades:scheme:${courseId}`)
+    cacheInvalidate(`grades:summary:${courseId}`)
+    cacheInvalidate(`grades:course:${courseId}`)
+    cacheInvalidatePrefix("grades:my")
     return response.data
   },
 
