@@ -31,12 +31,12 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel, Field, model_validator
-from sqlalchemy import func, tuple_
+from sqlalchemy import false, func, tuple_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session  # noqa: TC002 — used by FastAPI Depends at runtime
 
@@ -45,19 +45,21 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.content_version import ContentVersion
-from app.models.course import CourseStatus
+from app.models.course import Course, CourseStatus
+from app.models.staged_content_version import StagedContentVersion
 from app.models.translation_job import TranslationJob, TranslationJobStatus
 from app.schemas.locale import LocaleCode  # noqa: TC001 — used by FastAPI Query at runtime
 from app.services.audit_service import log_action
 from app.services.course_service import get_course
+from app.services.staged_edits import promote_ready_fields
 from app.services.translation.completeness import promote_if_complete
 from app.services.translation.course_tree import iter_course_entities
+from app.services.translation.pipeline_hooks import translate_and_release_held_edits
 from app.services.translation.queue import enqueue_course_translation
 from app.services.translation.registry import ENTITY_MODEL, REGISTRY, EntityRegistration
 from app.services.translation.resolve_for_display import populate_spine_texts
 
 if TYPE_CHECKING:
-    from app.models.course import Course
     from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -303,22 +305,37 @@ def retry_reviewed(
 
     Never touches ``origin='human'``. A person's own translation is not
     the pipeline's to redo.
+
+    The same selector reaches the staging table. A held edit whose
+    translation was parked — or whose retries ran out — is ``blocked``:
+    invisible to every student, and until 2026-10-03 with no exit but
+    the teacher editing again. Re-opened here it goes back through the
+    staged pipeline, and the course is asked for a pass right away.
     """
     query = db.query(ContentVersion).filter(
         ContentVersion.status == "needs_review",
         ContentVersion.origin != "human",
         ContentVersion.superseded_by.is_(None),
     )
+    held_query = _held_rows_awaiting_a_person(db)
     if payload.ids is not None:
         query = query.filter(ContentVersion.id.in_(payload.ids))
+        held_query = held_query.filter(StagedContentVersion.id.in_(payload.ids))
     if payload.entity_type is not None:
         query = query.filter(ContentVersion.entity_type == payload.entity_type)
+        held_query = held_query.filter(StagedContentVersion.entity_type == payload.entity_type)
     if payload.locale is not None:
         query = query.filter(ContentVersion.locale == payload.locale)
+        held_query = held_query.filter(StagedContentVersion.locale == payload.locale)
 
     rows = query.order_by(ContentVersion.created_at).limit(payload.limit).all()
+    held_rows = (
+        held_query.order_by(StagedContentVersion.created_at).limit(max(payload.limit - len(rows), 0)).all()
+        if len(rows) < payload.limit
+        else []
+    )
     ids = [row.id for row in rows]
-    if not ids:
+    if not ids and not held_rows:
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
@@ -327,14 +344,25 @@ def retry_reviewed(
         )
 
     try:
-        affected = (
-            db.query(ContentVersion)
-            .filter(ContentVersion.id.in_(ids))
-            .update(
-                {ContentVersion.status: "failed", ContentVersion.attempts: 0},
-                synchronize_session=False,
+        affected = 0
+        if ids:
+            affected += (
+                db.query(ContentVersion)
+                .filter(ContentVersion.id.in_(ids))
+                .update(
+                    {ContentVersion.status: "failed", ContentVersion.attempts: 0},
+                    synchronize_session=False,
+                )
             )
-        )
+        if held_rows:
+            affected += (
+                db.query(StagedContentVersion)
+                .filter(StagedContentVersion.id.in_([row.id for row in held_rows]))
+                .update(
+                    {StagedContentVersion.status: "failed", StagedContentVersion.attempts: 0},
+                    synchronize_session=False,
+                )
+            )
         db.commit()
     except SQLAlchemyError:
         db.rollback()
@@ -345,6 +373,7 @@ def retry_reviewed(
     # one cycle from now; the operator who just pressed the button is
     # owed sooner than that, and so is the course waiting on the row.
     queued = _requeue_courses_of(db, rows, requested_by=admin.id)
+    queued_held = _retranslate_held_edits_of(db, held_rows)
 
     log_action(
         db,
@@ -358,9 +387,90 @@ def retry_reviewed(
         ",".join(str(i) for i in payload.ids[:10])
         if payload.ids is not None
         else f"{payload.entity_type}:{payload.locale or 'all'}",
-        details={"count": affected, "limit": payload.limit, "queued_courses": queued},
+        details={
+            "count": affected,
+            "limit": payload.limit,
+            "queued_courses": queued,
+            "held_edits": len(held_rows),
+            "requeued_held_courses": queued_held,
+        },
     )
     return ResetResponse(reset=affected)
+
+
+#: The staged statuses that stop a held edit from ever releasing on its
+#: own. ``failed`` is retried by the next pass; these two are not.
+_HELD_STATUSES_AWAITING_A_PERSON = ("needs_review", "failed_permanent")
+
+
+def _held_rows_awaiting_a_person(db: Session) -> Any:
+    """The staged translations a person has to act on.
+
+    A held edit is ``blocked`` when one of its machine translations was
+    parked by the check or ran out of retries (``staged_status_for_course``).
+    Both are listed, unlike the live queue, which lists parked rows only:
+    a live row the pipeline gave up on has a reader-facing fallback and
+    its own reset endpoint, while a held edit with such a row has no
+    reader-facing anything and had no endpoint at all.
+    """
+    return db.query(StagedContentVersion).filter(
+        StagedContentVersion.origin == "mt",
+        StagedContentVersion.status.in_(_HELD_STATUSES_AWAITING_A_PERSON),
+    )
+
+
+def _courses_of_held_rows(db: Session, rows: list[StagedContentVersion]) -> dict[str, Course]:
+    """The courses the held rows belong to, hydrated, keyed by id.
+
+    No tree walk here: a staged row carries its ``course_id``, which is
+    the reason the column exists.
+    """
+    course_ids = sorted({row.course_id for row in rows})
+    if not course_ids:
+        return {}
+    courses = db.query(Course).filter(Course.id.in_(course_ids)).all()
+    populate_spine_texts(db, courses, hydrate_modules=False)
+    return {course.id: course for course in courses}
+
+
+def _release_held_edits_of(db: Session, rows: list[StagedContentVersion]) -> list[str]:
+    """After held rows were accepted: release every field that is now whole.
+
+    Accepting the last parked translation of a held edit makes the field
+    whole, and nothing else would notice: the worker only runs when a
+    job is queued, and the sweep queues no job for a course whose only
+    gap was a person's to close. So the promotion runs here, in the
+    accept, and the edit the teacher has been looking at as «blocked»
+    reaches every language in the same request. Returns the ids of the
+    courses that released something.
+
+    A failure here never undoes the accept: the row is committed and
+    correct, and the teacher's next save on the course runs the same
+    promotion.
+    """
+    released: list[str] = []
+    for course_id, course in _courses_of_held_rows(db, rows).items():
+        try:
+            if promote_ready_fields(db, course).anything_promoted:
+                released.append(course_id)
+        except SQLAlchemyError:
+            db.rollback()
+            logger.exception("accept_reviewed: could not release held edits of course %s", course_id)
+    return released
+
+
+def _retranslate_held_edits_of(db: Session, rows: list[StagedContentVersion]) -> list[str]:
+    """After held rows were re-opened: ask for the pass that will redo them.
+
+    The same step a teacher's save triggers: a job in queue mode, the
+    staged pipeline inline without one. Either way the retry the
+    operator asked for happens now rather than on somebody else's save.
+    """
+    requeued: list[str] = []
+    for course_id, course in _courses_of_held_rows(db, rows).items():
+        translate_and_release_held_edits(db, course, entity_type="course", entity_id=course_id)
+        requeued.append(course_id)
+    return requeued
 
 
 def _courses_touched_by(db: Session, rows: list[ContentVersion]) -> list[Course]:
@@ -644,6 +754,13 @@ def accept_reviewed(
 
     Never touches ``origin='human'``: those are not parked in the first
     place, and the guard costs nothing.
+
+    An id may name a row in the staging table instead — the parked
+    translation of an edit held on a live course. Accepting it marks it
+    ``ok`` there and runs the promotion for that course, so an edit that
+    was whole but for this row reaches every language now. A held row
+    the pipeline gave up on has no text to accept and is not matched;
+    the queue shows it with retry as its one action.
     """
     rows = (
         db.query(ContentVersion)
@@ -655,7 +772,16 @@ def accept_reviewed(
         )
         .all()
     )
-    if not rows:
+    held_rows = (
+        db.query(StagedContentVersion)
+        .filter(
+            StagedContentVersion.id.in_(payload.ids),
+            StagedContentVersion.status == "needs_review",
+            StagedContentVersion.origin == "mt",
+        )
+        .all()
+    )
+    if not rows and not held_rows:
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
@@ -664,33 +790,49 @@ def accept_reviewed(
         )
 
     accepted = [(str(row.id), row.entity_type, row.locale, row.review_reason) for row in rows]
+    held_accepted = [(str(row.id), row.entity_type, row.locale, row.review_reason) for row in held_rows]
     try:
-        affected = (
-            db.query(ContentVersion)
-            .filter(ContentVersion.id.in_([row.id for row in rows]))
-            .update({ContentVersion.status: "ok"}, synchronize_session=False)
-        )
+        affected = 0
+        if rows:
+            affected += (
+                db.query(ContentVersion)
+                .filter(ContentVersion.id.in_([row.id for row in rows]))
+                .update({ContentVersion.status: "ok"}, synchronize_session=False)
+            )
+        if held_rows:
+            affected += (
+                db.query(StagedContentVersion)
+                .filter(StagedContentVersion.id.in_([row.id for row in held_rows]))
+                .update({StagedContentVersion.status: "ok"}, synchronize_session=False)
+            )
         db.commit()
     except SQLAlchemyError:
         db.rollback()
         raise
 
-    # The row is servable; now the course it may have completed.
-    promoted = _promote_courses_of(db, rows)
+    # The row is servable; now the course it may have completed — and
+    # the held edit it may have made whole.
+    promoted = _promote_courses_of(db, rows) if rows else []
+    released = _release_held_edits_of(db, held_rows) if held_rows else []
 
     log_action(
         db,
         admin.id,
         "accept_needs_review",
         "content_version",
-        ",".join(item[0] for item in accepted)[:200],
+        ",".join(item[0] for item in [*accepted, *held_accepted])[:200],
         details={
             "count": affected,
             "rows": [
                 {"id": rid, "entity_type": etype, "locale": locale, "reason": reason}
                 for rid, etype, locale, reason in accepted
             ],
+            "held_edits": [
+                {"id": rid, "entity_type": etype, "locale": locale, "reason": reason}
+                for rid, etype, locale, reason in held_accepted
+            ],
             "promoted_courses": promoted,
+            "released_courses": released,
         },
     )
     return ResetResponse(reset=affected)
@@ -708,6 +850,12 @@ def accept_reviewed(
 # retried anything, and every row the structural check parked stayed
 # parked. A course with one such row stays out of the catalogue; a
 # staged edit waiting on one stays unpublished. This is the read half.
+#
+# Both tables, since 2026-10-03. The queue read ``content_versions``
+# alone while this comment claimed the staged edit was covered: a held
+# edit whose translation was parked showed the teacher «blocked» for as
+# long as they cared to look, and the only thing that moved it was
+# editing again — which produced the same text and the same verdict.
 
 
 class NeedsReviewRow(BaseModel):
@@ -743,6 +891,17 @@ class NeedsReviewRow(BaseModel):
     #: course. Flagged explicitly so the UI can say "Daily Challenge"
     #: rather than render an empty course column and look broken.
     is_daily_challenge: bool
+    #: ``needs_review``: the text came back and failed its check — a person
+    #: can read it and accept it. ``failed_permanent``: nothing usable came
+    #: back and the pipeline stopped asking; listed for held edits only,
+    #: where it is the other way an edit gets stuck with no exit. There is
+    #: nothing to accept, so retry is its one action.
+    status: Literal["needs_review", "failed_permanent"] = "needs_review"
+    #: A row from the staging table: the translation of an edit, or of new
+    #: content, on a course students are reading right now. Every reader
+    #: is kept from that edit until this row is resolved, which is why a
+    #: reviewer should see the two kinds apart.
+    held_edit: bool = False
 
 
 class NeedsReviewPage(BaseModel):
@@ -920,14 +1079,23 @@ def list_needs_review(
     That is the same walk the readiness panel counts through, which is
     the point: the number on the card and the rows on this page cannot
     disagree about which course a chapter belongs to.
+
+    Held edits are in the same list, marked. They live in another table
+    with their own ids, so the page is the two sets merged by age: each
+    table contributes at most its first ``offset + limit`` rows, which
+    is every row that could fall on this page, and the window is cut
+    from the merge. ``total`` is the sum of both counts, so the pager
+    and the header stay honest about what is left.
     """
     query = db.query(ContentVersion).filter(
         ContentVersion.status == "needs_review",
         ContentVersion.origin != "human",
         ContentVersion.superseded_by.is_(None),
     )
+    held_query = _held_rows_awaiting_a_person(db)
     if locale is not None:
         query = query.filter(ContentVersion.locale == locale)
+        held_query = held_query.filter(StagedContentVersion.locale == locale)
 
     if course_id is not None:
         course = get_course(db, course_id)
@@ -942,23 +1110,61 @@ def list_needs_review(
             (entity_type, str(entity.id))  # type: ignore[attr-defined]
             for entity_type, entity in iter_course_entities(db, course)
         ]
-        if not entity_keys:
-            return NeedsReviewPage(items=[], total=0, limit=limit, offset=offset)
-        query = query.filter(tuple_(ContentVersion.entity_type, ContentVersion.entity_id).in_(entity_keys))
+        # A course with no entities has no live rows, and may still have
+        # a held one: a new chapter is in the staging table before it is
+        # anywhere the walk looks.
+        query = (
+            query.filter(tuple_(ContentVersion.entity_type, ContentVersion.entity_id).in_(entity_keys))
+            if entity_keys
+            else query.filter(false())
+        )
+        held_query = held_query.filter(StagedContentVersion.course_id == course_id)
 
-    total = query.count()
+    total = query.count() + held_query.count()
     # Oldest first: the row that has been unreadable the longest is the
     # one to look at next. ``id`` breaks ties so paging cannot repeat or
     # skip a row when several land in the same transaction.
-    rows = query.order_by(ContentVersion.created_at, ContentVersion.id).offset(offset).limit(limit).all()
-    if not rows:
+    window = offset + limit
+    live_rows = query.order_by(ContentVersion.created_at, ContentVersion.id).limit(window).all()
+    held_rows = held_query.order_by(StagedContentVersion.created_at, StagedContentVersion.id).limit(window).all()
+    page: list[ContentVersion | StagedContentVersion] = sorted(
+        [*live_rows, *held_rows], key=lambda row: (row.created_at, str(row.id))
+    )[offset:window]
+    if not page:
         return NeedsReviewPage(items=[], total=total, limit=limit, offset=offset)
 
-    courses = _courses_for_rows(db, rows)
-    source_texts = _source_texts_for_rows(db, rows)
+    live_on_page = [row for row in page if isinstance(row, ContentVersion)]
+    held_on_page = [row for row in page if isinstance(row, StagedContentVersion)]
+    courses = _courses_for_rows(db, live_on_page)
+    source_texts = _source_texts_for_rows(db, live_on_page)
+    held_courses = _courses_of_held_rows(db, held_on_page)
+    held_sources = _source_texts_for_held_rows(db, held_on_page)
 
-    return NeedsReviewPage(
-        items=[
+    items: list[NeedsReviewRow] = []
+    for row in page:
+        if isinstance(row, StagedContentVersion):
+            course_of_row = held_courses.get(row.course_id)
+            items.append(
+                NeedsReviewRow(
+                    id=row.id,
+                    entity_type=row.entity_type,
+                    entity_id=row.entity_id,
+                    field=row.field,
+                    locale=row.locale,
+                    source_locale=row.source_locale,
+                    review_reason=row.review_reason,
+                    text=row.text,
+                    source_text=held_sources.get(row.id),
+                    created_at=row.created_at,
+                    course_id=row.course_id,
+                    course_title=getattr(course_of_row, "title", None) or None,
+                    is_daily_challenge=False,
+                    status="failed_permanent" if row.status == "failed_permanent" else "needs_review",
+                    held_edit=True,
+                )
+            )
+            continue
+        items.append(
             NeedsReviewRow(
                 id=row.id,
                 entity_type=row.entity_type,
@@ -976,12 +1182,45 @@ def list_needs_review(
                 course_title=getattr(courses.get((row.entity_type, row.entity_id)), "title", None) or None,
                 is_daily_challenge=row.entity_type.startswith("daily_challenge"),
             )
-            for row in rows
-        ],
-        total=total,
-        limit=limit,
-        offset=offset,
+        )
+    return NeedsReviewPage(items=items, total=total, limit=limit, offset=offset)
+
+
+def _source_texts_for_held_rows(db: Session, rows: list[StagedContentVersion]) -> dict[UUID, str]:
+    """The text each held translation was made from, keyed by row id.
+
+    For a held edit the source is right beside it: the teacher's own
+    staged row for the same field. No version link to follow and no
+    fallback to the live row — the live row is the wording this edit
+    replaces, and showing it as the source would have the reviewer judge
+    the translation against the wrong sentence.
+    """
+    if not rows:
+        return {}
+    keys = list({(row.entity_type, row.entity_id, row.field) for row in rows})
+    humans = (
+        db.query(
+            StagedContentVersion.entity_type,
+            StagedContentVersion.entity_id,
+            StagedContentVersion.field,
+            StagedContentVersion.text,
+        )
+        .filter(
+            tuple_(
+                StagedContentVersion.entity_type,
+                StagedContentVersion.entity_id,
+                StagedContentVersion.field,
+            ).in_(keys),
+            StagedContentVersion.origin == "human",
+        )
+        .all()
     )
+    by_key = {(entity_type, entity_id, field): text for entity_type, entity_id, field, text in humans}
+    return {
+        row.id: by_key[(row.entity_type, row.entity_id, row.field)]
+        for row in rows
+        if (row.entity_type, row.entity_id, row.field) in by_key
+    }
 
 
 class QueueStatusByState(BaseModel):

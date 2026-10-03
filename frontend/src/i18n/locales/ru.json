@@ -2353,6 +2353,8 @@
       },
       "dailyChallenge": "Вопрос дня",
       "unknownCourse": "Без курса",
+      "heldEdit": "Отложенная правка",
+      "failedPermanent": "Перевод не пришёл: конвейер отказался от этого языка. «Перевести заново» спросит ещё раз.",
       "sourceLabel": "Оригинал ({{language}})",
       "sourceGone": "Исходный текст больше недоступен.",
       "translationLabel": "Перевод ({{language}})",

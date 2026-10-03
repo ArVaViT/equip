@@ -2690,6 +2690,8 @@
       },
       "dailyChallenge": "Daily Challenge",
       "unknownCourse": "No course",
+      "heldEdit": "Held edit",
+      "failedPermanent": "Nothing came back: the pipeline gave up on this language. Retry asks it again.",
       "sourceLabel": "Source ({{language}})",
       "sourceGone": "The source text is no longer available.",
       "translationLabel": "Translation ({{language}})",

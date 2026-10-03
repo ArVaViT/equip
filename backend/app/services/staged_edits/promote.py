@@ -66,6 +66,7 @@ def promote_ready_fields(db: Session, course: Course) -> PromotionReport:
     promoted = 0
     waiting = 0
     blocked = 0
+    chapters_released = False
     for status in statuses:
         if status.state == "blocked":
             blocked += 1
@@ -81,8 +82,11 @@ def promote_ready_fields(db: Session, course: Course) -> PromotionReport:
             field=status.field,
         ):
             promoted += 1
+            chapters_released = chapters_released or status.entity_type == "chapter"
         else:
             waiting += 1
+    if chapters_released:
+        _recount_progress(db, str(course.id))
 
     if promoted or blocked:
         logger.info(
@@ -247,7 +251,25 @@ def promote_staged_entity_unconditionally(db: Session, *, course_id: str) -> int
         db.delete(row)
     db.commit()
     logger.info("staged_edits: course %s left published; released %d held fields as-is", course_id, released)
+    if any(entity_type == "chapter" for entity_type, _, _ in by_field):
+        _recount_progress(db, course_id)
     return released
+
+
+def _recount_progress(db: Session, course_id: str) -> None:
+    """A chapter just reached readers for the first time; count it now.
+
+    Until its first release a new chapter is not counted against anybody
+    (``staged_edits.visibility``), and ``create_chapter`` recounted
+    progress while it was still held — so nothing moved. The release is
+    the structural change, and the recount belongs to it: without this a
+    student stayed at 100% of a course that had just grown a lesson they
+    had not read (2026-10-03). Imported here rather than at the top:
+    ``course_service`` reads the visibility predicate from this package.
+    """
+    from app.services.course_service import resync_course_progress
+
+    resync_course_progress(db, course_id)
 
 
 __all__ = [

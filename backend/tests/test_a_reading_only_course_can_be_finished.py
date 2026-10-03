@@ -192,7 +192,11 @@ def test_deleting_the_only_quiz_does_not_strand_a_student_who_read_everything(
     assert _progress(c, cid) == 100
 
 
-def test_a_lesson_added_or_removed_moves_a_reading_course(c: TestClient, teacher: User, student: User) -> None:
+def test_a_lesson_added_or_removed_moves_a_reading_course(
+    c: TestClient, db: Session, teacher: User, student: User
+) -> None:
+    from app.services.staged_edits import promote_staged_entity_unconditionally
+
     cid, readings, _quiz, module = _course(c, teacher, with_quiz=False)
     _as(student)
     _ok(c.post(f"{API}/courses/{cid}/enroll", json={}))
@@ -209,6 +213,11 @@ def test_a_lesson_added_or_removed_moves_a_reading_course(c: TestClient, teacher
         201,
     )
     _as(student)
+    # The course is live, so the new lesson is held until every language
+    # has it — nobody can open it yet, and it is not counted against anybody
+    # (2026-10-03). It moves the number the moment it is released.
+    assert _progress(c, cid) == 100
+    promote_staged_entity_unconditionally(db, course_id=cid)
     assert _progress(c, cid) == 67  # a new lesson nobody has read yet
 
     _as(teacher)

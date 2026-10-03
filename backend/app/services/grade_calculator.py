@@ -16,6 +16,7 @@ from app.models.user import User
 from app.schemas.grade import GradeBreakdown
 from app.services.grade_exemption_service import excused_item_ids
 from app.services.grading_scheme import effective_bands, get_org_settings, score_to_symbol
+from app.services.staged_edits.visibility import chapter_awaits_first_release
 
 
 def resolve_symbol(score: float, course: Course, settings: OrgSettings) -> str:
@@ -47,13 +48,20 @@ def resolve_symbol(score: float, course: Course, settings: OrgSettings) -> str:
 
 
 def _get_course_chapter_ids(db: Session, course_id: str) -> list[str]:
-    """Get chapter IDs for gradable chapters (quiz/exam/assignment) in a course, excluding soft-deleted."""
+    """Get chapter IDs for gradable chapters (quiz/exam/assignment) in a course, excluding soft-deleted.
+
+    And excluding chapters held for their first release: a quiz added to a
+    live course is invisible to students until every language has it, and
+    an invisible quiz weighed on the grade as one nobody had taken
+    (2026-10-03).
+    """
     rows = (
         db.query(Chapter.id)
         .filter(
             Chapter.course_id == course_id,
             Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES),
             Chapter.deleted_at.is_(None),
+            ~chapter_awaits_first_release(),
         )
         .all()
     )

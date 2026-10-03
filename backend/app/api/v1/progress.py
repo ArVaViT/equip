@@ -26,6 +26,7 @@ from app.schemas.locale import normalize_locale
 from app.services.audit_service import log_action
 from app.services.course_service import sync_enrollment_progress
 from app.services.domain_access import resolve_chapter_course_id
+from app.services.staged_edits.visibility import chapter_awaits_first_release, chapter_is_held
 from app.services.student_progress_service import (
     build_course_gradebook_matrix,
     build_course_student_progress,
@@ -182,6 +183,16 @@ def mark_chapter_read(
     privileged = current_user.role == UserRole.ADMIN.value or (
         course is not None and str(course.created_by) == str(current_user.id)
     )
+    # Held for its first release: not in the student's tree, so not theirs
+    # to mark read by id either — the same 404 ``verify_chapter_access``
+    # gives the lesson itself (2026-10-03).
+    if not privileged and chapter_is_held(db, chapter_id):
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Chapter not found",
+            context={"resource_type": "chapter", "chapter_id": chapter_id},
+        )
     enrolled = (
         db.query(Enrollment).filter(Enrollment.user_id == current_user.id, Enrollment.course_id == course_id).first()
     )
@@ -236,6 +247,9 @@ def _has_live_gradable_chapter(db: Session, course_id: str) -> bool:
             Chapter.course_id == course_id,
             Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES),
             Chapter.deleted_at.is_(None),
+            # Until its first release a new quiz is not part of the course
+            # students have (2026-10-03): reading keeps moving progress.
+            ~chapter_awaits_first_release(),
         )
         .first()
         is not None

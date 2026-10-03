@@ -14,6 +14,7 @@ from app.core.metrics import increment
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course
 from app.models.enrollment import Enrollment
+from app.services.staged_edits.visibility import chapter_awaits_first_release
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -222,6 +223,10 @@ def reading_progress_by_course(
             # work through instead of silently vanishing from both numbers.
             Chapter.chapter_type.notin_(GRADABLE_CHAPTER_TYPES),
             Chapter.deleted_at.is_(None),
+            # A lesson added to a live course is held until every language
+            # has it. Counted here it was «one more to read» that opened as
+            # an empty page (2026-10-03).
+            ~chapter_awaits_first_release(),
         )
         .group_by(Chapter.course_id)
         .all()
@@ -253,6 +258,9 @@ def fresh_progress(db: Session, user_id: str | UUID, course_id: str | UUID) -> i
             Chapter.course_id == course_id,
             Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES),
             Chapter.deleted_at.is_(None),
+            # A quiz students cannot see yet is not one they are behind on
+            # (2026-10-03). Same clause in every denominator below.
+            ~chapter_awaits_first_release(),
         )
         .one()
     )
@@ -269,7 +277,7 @@ def fresh_progress(db: Session, user_id: str | UUID, course_id: str | UUID) -> i
             ChapterProgress,
             (ChapterProgress.chapter_id == Chapter.id) & (ChapterProgress.user_id == user_id),
         )
-        .filter(Chapter.course_id == course_id, Chapter.deleted_at.is_(None))
+        .filter(Chapter.course_id == course_id, Chapter.deleted_at.is_(None), ~chapter_awaits_first_release())
         .one()
     )
     to_read, read = int(reading[0] or 0), int(reading[1] or 0)
@@ -291,6 +299,7 @@ def _course_progress_rule(db: Session, course_id: str | UUID) -> Callable[[str],
             .filter(
                 Chapter.course_id == course_id,
                 Chapter.deleted_at.is_(None),
+                ~chapter_awaits_first_release(),
                 ChapterProgress.completed.is_(True),
                 *conditions,
             )
@@ -302,7 +311,12 @@ def _course_progress_rule(db: Session, course_id: str | UUID) -> Callable[[str],
     def _total(*conditions: Any) -> int:
         return int(
             db.query(func.count(Chapter.id))
-            .filter(Chapter.course_id == course_id, Chapter.deleted_at.is_(None), *conditions)
+            .filter(
+                Chapter.course_id == course_id,
+                Chapter.deleted_at.is_(None),
+                ~chapter_awaits_first_release(),
+                *conditions,
+            )
             .scalar()
             or 0
         )

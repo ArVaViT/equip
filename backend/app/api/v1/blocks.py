@@ -121,7 +121,16 @@ def list_blocks(
             fallback="source_then_any",
         )
     display_locale: LocaleCode = normalize_locale(accept_language)
-    return localize_chapter_block_rows(db, rows, display_locale=display_locale, source_locale=ctx.source_locale)
+    # A block held for its first release is not a reader's yet. The owner
+    # previewing their lesson in another language still sees it, as they
+    # do in the editor.
+    return localize_chapter_block_rows(
+        db,
+        rows,
+        display_locale=display_locale,
+        source_locale=ctx.source_locale,
+        hide_unreleased=not ctx.is_owner_or_admin,
+    )
 
 
 @router.post(

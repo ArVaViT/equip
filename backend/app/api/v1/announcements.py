@@ -36,6 +36,7 @@ from app.services.course_notifications import (
     entity_title_for_locale,
 )
 from app.services.notification_service import create_notifications_bulk, notification_text
+from app.services.staged_edits import awaiting_first_release
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import localize_announcement_rows
 
@@ -243,6 +244,21 @@ def list_announcements(
         )
     # Admin without course_id sees all announcements (paginated, capped by limit).
 
+    # A post on a live course waits in the staging table until every
+    # language has it, and a reader has nothing to see until then — it
+    # listed as an empty title over an empty body (2026-10-03). Excluded
+    # before the page is cut, so the page is never short by what it hid.
+    # The author keeps seeing their own post, as they do in the editor;
+    # an admin and the ``?source=1`` editor see everything.
+    if not source and not is_admin:
+        unreleased = awaiting_first_release(
+            db, entity_type="announcement", fields=list(_TRANSLATABLE_ANNOUNCEMENT_FIELDS)
+        )
+        if unreleased:
+            query = query.filter(
+                Announcement.id.notin_([UUID(aid) for aid in unreleased]) | (Announcement.created_by == current_user.id)
+            )
+
     rows = query.order_by(Announcement.created_at.desc()).offset(skip).limit(limit).all()
 
     # Locale wins. Every reader — students, teachers, admins — gets the
@@ -382,6 +398,17 @@ def create_announcement(
         # does not — in short: a same-language reader gets the author's
         # text, anyone else gets «an announcement» rather than a
         # language they did not choose.
+        #
+        # Sent now, not at release. On a live course the post itself is
+        # hidden from readers until every language has it (see
+        # ``list_announcements``), so for a short while the bell points
+        # at a course page that does not list it yet. That is harmless:
+        # the bell names the course, not the post, carries no language
+        # the reader did not choose, and the gap is the worker's one
+        # pass. Deferring the fan-out to promotion would need the
+        # per-field promoter to know what an announcement is and when
+        # both of its fields are out — a second notification path for a
+        # minute of latency (decision 2026-10-03).
         recipients_by_locale = enrolled_recipients_by_locale(db, course_id=course.id, exclude_user_id=teacher.id)
         ann_source_locale = normalize_locale(course.source_locale)
         for locale, recipients in recipients_by_locale.items():

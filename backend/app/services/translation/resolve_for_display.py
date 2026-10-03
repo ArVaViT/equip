@@ -49,6 +49,7 @@ from app.services.content_versions import (
     fetch_cv_text_bulk,
 )
 from app.services.language_detection import carries_language, detect_locale
+from app.services.staged_edits.visibility import awaiting_first_release
 from app.services.translation.service import is_translation_enabled
 
 
@@ -678,8 +679,16 @@ def build_localized_course_response_with_tree(
     db: Session,
     course: Course,
     display_locale: LocaleCode,
+    *,
+    hide_unreleased: bool = False,
 ) -> CourseResponse:
     """Localized course title/description plus module and chapter titles for students.
+
+    ``hide_unreleased`` is what a reader gets: a chapter added to a live
+    course is held until every language has its title, and until then it
+    is not in their tree at all. It used to be listed under its spine
+    title and opened as an empty lesson (2026-10-03). The owner and an
+    admin pass ``False`` and see the course as it will be.
 
     Every title resolves to ``""`` when this language does not have one.
     It used to fall back to ``mod.title`` — the source column, in the
@@ -713,6 +722,15 @@ def build_localized_course_response_with_tree(
     # twice would let anyone counting both lists count them twice.
     ungrouped = [ch for ch in course.chapters if ch.module_id is None]
     specs.extend(("chapter", str(ch.id), "title") for ch in ungrouped)
+
+    hidden: set[str] = set()
+    if hide_unreleased:
+        hidden = awaiting_first_release(
+            db,
+            entity_type="chapter",
+            entity_ids=[eid for etype, eid, _ in specs if etype == "chapter"],
+            fields=["title"],
+        )
 
     loc = Localizer.build(
         db,
@@ -763,7 +781,7 @@ def build_localized_course_response_with_tree(
     for mod in course.modules:
         mt = loc.pick("module", str(mod.id), "title", mod.title)
         md = loc.pick("module", str(mod.id), "description", mod.description)
-        new_chapters = [localized_chapter(ch) for ch in mod.chapters]
+        new_chapters = [localized_chapter(ch) for ch in mod.chapters if str(ch.id) not in hidden]
         new_modules.append(
             ModuleResponse.model_validate(
                 {
@@ -793,7 +811,7 @@ def build_localized_course_response_with_tree(
             "enrollment_start": course.enrollment_start,
             "enrollment_end": course.enrollment_end,
             "modules": new_modules,
-            "chapters": [localized_chapter(ch) for ch in ungrouped],
+            "chapters": [localized_chapter(ch) for ch in ungrouped if str(ch.id) not in hidden],
         }
     )
 
@@ -1034,8 +1052,16 @@ def localize_chapter_block_rows(
     source_locale: LocaleCode,
     prefer_human: bool = False,
     fallback: Literal["auto", "none", "source_then_any"] = "auto",
+    hide_unreleased: bool = False,
 ) -> list[BlockResponse]:
     """Apply stored translations to TipTap HTML stored on chapter blocks.
+
+    ``hide_unreleased`` drops the blocks a reader cannot have yet: a text
+    block added to a live lesson is held until every language has it,
+    and until then it came back as a block with ``content: None`` —
+    rendered as «not translated yet» in the middle of a lesson that was
+    otherwise whole (2026-10-03). Quiz, assignment and file blocks carry
+    no text to hold, so the predicate never names them.
 
     The legacy ``content`` column was dropped. Both the
     source text and the localised overlay live in ``content_versions``
@@ -1062,12 +1088,23 @@ def localize_chapter_block_rows(
     When ``prefer_human`` is set, the any-locale tier prefers
     human-authored rows over MT ones — used by the ``?source=1`` editor
     view so a teacher never sees a stale MT row as the "source" content
-    for a block whose source-locale row went missing.
+    for a block whose source-locale row went missing. It is also the
+    author's own view, so their held edits win here, as they do in
+    ``fetch_cv_entity_texts_with_fallback``: the editor reopened a live
+    lesson and showed the wording the teacher had just replaced — and a
+    block they had just added as empty (2026-10-03).
     """
     if fallback == "auto":
         fallback = "none" if is_translation_enabled() else "source_then_any"
     if not blocks:
         return []
+    if hide_unreleased:
+        hidden = awaiting_first_release(
+            db, entity_type="chapter_block", entity_ids=[str(b.id) for b in blocks], fields=["content"]
+        )
+        blocks = [b for b in blocks if str(b.id) not in hidden]
+        if not blocks:
+            return []
     block_ids = [str(b.id) for b in blocks]
     # All-locale bulk fetch: one indexed query covers display + source
     # + any-locale tiers. Ordered by created_at so we deterministically
@@ -1092,10 +1129,15 @@ def localize_chapter_block_rows(
         any_by_block.setdefault(eid, text)
         if origin == "human":
             human_by_block.setdefault(eid, text)
+    held: dict[tuple[str, str], str] = {}
+    if prefer_human:
+        from app.services.staged_edits.read import author_texts_bulk
+
+        held = author_texts_bulk(db, entity_type="chapter_block", entity_ids=block_ids, fields=["content"])
     out: list[BlockResponse] = []
     for b in blocks:
         bid = str(b.id)
-        content = by_block_locale.get((bid, display_locale))
+        content = held.get((bid, "content")) or by_block_locale.get((bid, display_locale))
         if content is None and fallback == "source_then_any":
             any_tier = human_by_block.get(bid) or any_by_block.get(bid) if prefer_human else any_by_block.get(bid)
             content = by_block_locale.get((bid, source_locale)) or any_tier
@@ -1126,6 +1168,7 @@ def build_localized_module_response(
     *,
     display_locale: LocaleCode,
     source_locale: LocaleCode,
+    hide_unreleased: bool = False,
 ) -> ModuleResponse:
     """Localized module title/description plus chapter titles.
 
@@ -1133,19 +1176,26 @@ def build_localized_module_response(
     single module — the dedicated module-detail endpoint hits this so a
     student opening a module sees module + chapter titles in the active
     locale (was returning raw RU even though chapter titles were already in
-    ``content_translations``).
+    ``content_translations``). ``hide_unreleased`` means the same here as
+    there: a reader is not shown a chapter held for its first release.
     """
+    chapters = list(module.chapters)
+    if hide_unreleased:
+        hidden = awaiting_first_release(
+            db, entity_type="chapter", entity_ids=[str(ch.id) for ch in chapters], fields=["title"]
+        )
+        chapters = [ch for ch in chapters if str(ch.id) not in hidden]
     specs: list[tuple[str, str, str]] = [
         ("module", str(module.id), "title"),
         ("module", str(module.id), "description"),
-        *(("chapter", str(ch.id), "title") for ch in module.chapters),
+        *(("chapter", str(ch.id), "title") for ch in chapters),
     ]
     loc = Localizer.build(db, specs, source_locale=source_locale, display_locale=display_locale)
 
     mt = loc.pick("module", str(module.id), "title", module.title) or ""
     md = loc.pick("module", str(module.id), "description", module.description)
     new_chapters: list[ChapterResponse] = []
-    for ch in module.chapters:
+    for ch in chapters:
         cht = loc.pick("chapter", str(ch.id), "title", ch.title) or ""
         ch_base = ChapterResponse.model_validate(ch, from_attributes=True)
         new_chapters.append(ch_base.model_copy(update={"title": cht}))

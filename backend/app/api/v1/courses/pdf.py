@@ -75,6 +75,11 @@ def _attach_localized_blocks(
     # lesson heading in the author's language whatever the reader asked
     # for. One bulk read at the reader's locale, same rule as the rest
     # of the tree: what this language does not have, it does not get.
+    # The owner and an admin ask with ``source_then_any`` and are the
+    # author's side of the staging table: a lesson they added to a live
+    # course, still held for its first release, prints under its own
+    # heading rather than a blank one (2026-10-03).
+    for_author = fallback == "source_then_any"
     chapter_titles = fetch_cv_entity_texts_with_fallback(
         db,
         entity_type="chapter",
@@ -83,6 +88,7 @@ def _attach_localized_blocks(
         display_locale=display_locale,
         source_locale=normalize_locale(course.source_locale),
         fallback=fallback,
+        include_author_edits=for_author,
     )
     # Onto a runtime attribute, not ``chapter.title``: that is a real
     # column, and a flush in this session would have written the reader's
@@ -101,6 +107,7 @@ def _attach_localized_blocks(
         display_locale=display_locale,
         source_locale=normalize_locale(course.source_locale),
         fallback=fallback,
+        prefer_human=for_author,
     )
     content_by_id = {str(row.id): (row.content or "") for row in resolved}
     by_chapter: dict[str, list[ChapterBlock]] = {}
@@ -194,7 +201,19 @@ def export_course_pdf(
     # shipping with no lesson text in it at all, in any language.
     _attach_localized_blocks(db, course, display_locale=display_locale, fallback=fallback)
 
-    pdf_bytes = render_course_pdf(course, display_locale)
+    # A student's export is the course as they see it: a chapter held for
+    # its first release is not in their tree, and not in their document
+    # (2026-10-03). The owner and an admin print the course as it will be.
+    omitted: frozenset[str] = frozenset()
+    if not (is_owner or is_admin):
+        from app.services.staged_edits import awaiting_first_release
+
+        omitted = frozenset(
+            awaiting_first_release(
+                db, entity_type="chapter", entity_ids=[str(ch.id) for ch in course.chapters or []], fields=["title"]
+            )
+        )
+    pdf_bytes = render_course_pdf(course, display_locale, omit_chapter_ids=omitted)
 
     safe_title = "".join(c for c in (course.title or "") if c.isascii() and (c.isalnum() or c in " -_"))[:50].strip()
     if not safe_title:

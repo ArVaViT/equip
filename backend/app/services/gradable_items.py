@@ -14,6 +14,7 @@ from app.constants import GRADABLE_CHAPTER_TYPES
 from app.models.assignment import Assignment
 from app.models.course import Chapter
 from app.models.quiz import Quiz
+from app.services.staged_edits.visibility import chapter_awaits_first_release
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -23,7 +24,9 @@ def course_items(db: Session, course_id: str) -> tuple[list[Any], list[Any]]:
     """Every gradable item in the course, with its chapter title.
 
     Soft-deleted chapters are excluded here for the same reason the calculator
-    excludes them: work in a deleted chapter is not owed.
+    excludes them: work in a deleted chapter is not owed. Neither is work in a
+    chapter students cannot see yet — one held for its first release
+    (2026-10-03).
     """
     base = (
         db.query(Chapter.id.label("chapter_id"), Chapter.title.label("chapter_title"))
@@ -31,6 +34,7 @@ def course_items(db: Session, course_id: str) -> tuple[list[Any], list[Any]]:
             Chapter.course_id == course_id,
             Chapter.deleted_at.is_(None),
             Chapter.chapter_type.in_(GRADABLE_CHAPTER_TYPES),
+            ~chapter_awaits_first_release(),
         )
         .subquery()
     )

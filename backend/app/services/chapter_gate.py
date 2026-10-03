@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING
 from app.constants import GRADABLE_CHAPTER_TYPES
 from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter
+from app.services.staged_edits.visibility import chapter_awaits_first_release
 
 if TYPE_CHECKING:
     import uuid
@@ -41,12 +42,17 @@ def _predecessor(db: Session, chapter: Chapter) -> Chapter | None:
     Reading order is ``order_index`` across the whole course. Modules
     group chapters for display; they do not restart the count, and a
     chapter in no module is still in the order.
+
+    A chapter held for its first release is not in the reader's order
+    yet: a quiz nobody can open cannot be the thing a locked lesson waits
+    on (2026-10-03).
     """
     return (
         db.query(Chapter)
         .filter(
             Chapter.course_id == chapter.course_id,
             Chapter.deleted_at.is_(None),
+            ~chapter_awaits_first_release(),
             Chapter.order_index < chapter.order_index,
         )
         .order_by(Chapter.order_index.desc())

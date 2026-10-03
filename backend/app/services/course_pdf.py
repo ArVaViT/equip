@@ -69,8 +69,12 @@ class CourseSection:
     chapters: list[Chapter] = field(default_factory=list)
 
 
-def build_course_outline(course: Course) -> list[CourseSection]:
+def build_course_outline(course: Course, *, omit_chapter_ids: frozenset[str] = frozenset()) -> list[CourseSection]:
     """Split the course's chapters into the runs the document prints.
+
+    ``omit_chapter_ids`` are the chapters this reader is not shown — held
+    for their first release — passed in by the route, which knows who is
+    asking; this module stays free of the database and of permissions.
 
     The order is not this module's to decide: it comes from
     :func:`~app.services.course_structure.build_spine`, the one function
@@ -86,7 +90,8 @@ def build_course_outline(course: Course) -> list[CourseSection]:
     leave an empty rubric behind; the spine still carries it, for the
     surfaces that show a teacher the heading they made.
     """
-    spine = build_spine(list(course.modules or []), list(course.chapters or []))
+    chapters = [ch for ch in (course.chapters or []) if str(ch.id) not in omit_chapter_ids]
+    spine = build_spine(list(course.modules or []), chapters)
     return [CourseSection(module=run.module, chapters=list(run.chapters)) for run in spine.runs if run.chapters]
 
 
@@ -231,7 +236,7 @@ def _chapter_title(chapter: Chapter) -> str:
     return chapter.title or ""
 
 
-def render_course_pdf(course: Course, locale: str = "en") -> bytes:
+def render_course_pdf(course: Course, locale: str = "en", *, omit_chapter_ids: frozenset[str] = frozenset()) -> bytes:
     """Return the PDF bytes for the given hydrated course.
 
     Caller is responsible for hydrating the course's title /
@@ -271,7 +276,7 @@ def render_course_pdf(course: Course, locale: str = "en") -> bytes:
     story.append(Paragraph(labels["generated"], styles["footer"]))
     story.append(PageBreak())
 
-    sections = build_course_outline(course)
+    sections = build_course_outline(course, omit_chapter_ids=omit_chapter_ids)
 
     # Table of contents. A course with nothing in it yet gets no
     # "Contents" page — the same rule that keeps a module without lessons

@@ -17,6 +17,7 @@ from app.models.enrollment import Enrollment
 from app.models.user import User
 from app.schemas.calendar import CalendarEvent
 from app.schemas.locale import LocaleCode, normalize_locale
+from app.services.staged_edits.visibility import chapter_awaits_first_release
 from app.services.translation.resolve_for_display import (
     fetch_course_titles_by_id,
     populate_module_texts,
@@ -114,6 +115,9 @@ def build_calendar_events(
         .filter(
             Chapter.course_id.in_(enrolled_course_ids),
             Chapter.deleted_at.is_(None),
+            # A deadline in a chapter nobody can open yet is not a date
+            # anybody can keep (2026-10-03).
+            ~chapter_awaits_first_release(),
         )
         .all()
     )

@@ -12,6 +12,9 @@ Public surface, in the order the lifecycle uses it:
   together.
 * ``clear_staged_entity`` — an entity was deleted; its unreleased edit
   goes with it.
+* ``awaiting_first_release`` / ``chapter_awaits_first_release`` — new
+  content whose text has never been released: readers are not shown it
+  and are not counted against it (2026-10-03).
 """
 
 from app.services.staged_edits.promote import (
@@ -27,6 +30,12 @@ from app.services.staged_edits.read import (
     staged_status_for_course,
     staged_texts_for_entity,
 )
+from app.services.staged_edits.visibility import (
+    awaiting_first_release,
+    awaiting_first_release_sql,
+    chapter_awaits_first_release,
+    chapter_is_held,
+)
 from app.services.staged_edits.write import (
     clear_staged_entity,
     clear_staged_field,
@@ -40,6 +49,10 @@ __all__ = [
     "StagedFieldStatus",
     "author_text",
     "author_texts_bulk",
+    "awaiting_first_release",
+    "awaiting_first_release_sql",
+    "chapter_awaits_first_release",
+    "chapter_is_held",
     "clear_staged_entity",
     "clear_staged_field",
     "course_of_entity",
