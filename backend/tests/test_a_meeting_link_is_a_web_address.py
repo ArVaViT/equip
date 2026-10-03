@@ -199,7 +199,7 @@ def _create_event(client: TestClient, course_id: str, **extra: object) -> dict:
     payload = {
         "title": "Занятие по проповеди",
         "event_type": "live_session",
-        "event_date": "2026-10-03T18:00:00Z",
+        "event_date": "2099-10-03T18:00:00Z",
         **extra,
     }
     return client.post(f"{COURSES}/{course_id}/events", json=payload)  # type: ignore[return-value]
@@ -336,7 +336,7 @@ class TestTheLinkReachesTheStudent:
     def test_the_reschedule_notice_carries_the_link_too(self, client: TestClient, db: Session, student: User) -> None:
         course_id = _published_course_with_student(db, student)
         event_id = _create_event(client, course_id, meeting_url=ZOOM).json()["id"]
-        client.put(f"{COURSES}/{course_id}/events/{event_id}", json={"event_date": "2026-10-10T18:00:00Z"})
+        client.put(f"{COURSES}/{course_id}/events/{event_id}", json={"event_date": "2099-10-10T18:00:00Z"})
         moved = db.query(Notification).filter(Notification.type == "event_rescheduled").all()
         assert len(moved) == 1
         assert moved[0].meta["meeting_url"] == ZOOM
@@ -366,7 +366,7 @@ def _ics_event(meeting_url: str | None) -> CalendarEvent:
         title="Занятие по проповеди",
         description=None,
         event_type="live_session",
-        event_date=datetime(2026, 10, 3, 18, 0, tzinfo=UTC),
+        event_date=datetime(2099, 10, 3, 18, 0, tzinfo=UTC),
         meeting_url=meeting_url,
         course_id="c-1",
         course_title="Карта в кармане",
@@ -494,7 +494,7 @@ class TestALinkInTheDescriptionStillReachesTheStudent:
 
         moved = client.put(
             f"{COURSES}/{course_id}/events/{event_id}",
-            json={"event_date": "2026-10-10T18:00:00Z"},
+            json={"event_date": "2099-10-10T18:00:00Z"},
         )
         assert moved.status_code == 200
         assert moved.json()["meeting_url"] is None
