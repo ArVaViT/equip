@@ -5,7 +5,8 @@ import { BadgeCheck, BookOpen, ExternalLink, GraduationCap, Library, Lock, Penci
 
 import CourseCard from "@/components/course/CourseCard"
 import { CourseCoverFallback } from "@/components/course/CourseCoverFallback"
-import { EmptyState, ErrorState, Eyebrow } from "@/components/patterns"
+import { EmptyState, ErrorState, PageHeader } from "@/components/patterns"
+import { Section } from "@/components/layout/Section"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { Button } from "@/components/ui/button"
 import { useAsyncData } from "@/hooks/useAsyncData"
@@ -33,7 +34,7 @@ export default function OrganizationPage() {
   if (error || !data) {
     const notFound = getErrorCode(error) === "resource.not_found"
     return (
-      <div className="container mx-auto px-4 py-12">
+      <Section>
         <ErrorState
           title={notFound ? t("organization.notFound") : t("organization.loadError")}
           action={
@@ -42,7 +43,7 @@ export default function OrganizationPage() {
             </Link>
           }
         />
-      </div>
+      </Section>
     )
   }
 
@@ -53,15 +54,13 @@ export default function OrganizationPage() {
   const since = new Date(data.since).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })
 
   return (
-    <div className="container mx-auto max-w-5xl px-4 py-10">
-      <header className="flex flex-col gap-6 sm:flex-row sm:items-start">
-        <OrganizationLogo page={data} />
-        <div className="min-w-0 flex-1">
-          <Eyebrow>{place ? `${t("organization.eyebrow")} · ${place}` : t("organization.eyebrow")}</Eyebrow>
-          <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight text-wrap-safe sm:text-4xl">
-            {data.public_name}
-          </h1>
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+    <Section>
+      <PageHeader
+        cover={<OrganizationLogo page={data} />}
+        eyebrow={place ? `${t("organization.eyebrow")} · ${place}` : t("organization.eyebrow")}
+        title={data.public_name}
+        meta={
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
             {data.verified && (
               <span className="inline-flex items-center gap-1.5 font-medium text-success-ink">
                 <BadgeCheck className="h-4 w-4" strokeWidth={1.75} aria-hidden />
@@ -80,14 +79,16 @@ export default function OrganizationPage() {
               </a>
             )}
           </div>
-        </div>
-        {data.viewer_can_edit && data.id && !editing && (
-          <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="self-start">
-            <Pencil className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-            {t("organization.edit")}
-          </Button>
-        )}
-      </header>
+        }
+        actions={
+          data.viewer_can_edit && data.id && !editing ? (
+            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+              <Pencil className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+              {t("organization.edit")}
+            </Button>
+          ) : null
+        }
+      />
 
       {editing && data.id ? (
         <OrganizationProfileForm
@@ -162,7 +163,7 @@ export default function OrganizationPage() {
           {t("organization.verifyCertificate")}
         </Link>
       </footer>
-    </div>
+    </Section>
   )
 }
 

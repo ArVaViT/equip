@@ -2,7 +2,8 @@ import { useTranslation } from "react-i18next"
 import { Building2 } from "lucide-react"
 
 import { OrganizationCards } from "@/components/organization/OrganizationCards"
-import { EmptyState, ErrorState, Eyebrow } from "@/components/patterns"
+import { EmptyState, ErrorState, PageHeader } from "@/components/patterns"
+import { Section } from "@/components/layout/Section"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import { SUPPORT_EMAIL } from "@/lib/brand"
@@ -18,10 +19,12 @@ export default function OrganizationsPage() {
   const { data, loading, error } = useAsyncData(() => organizationsService.list(), [])
 
   return (
-    <div className="container mx-auto max-w-5xl px-4 py-10">
-      <Eyebrow>{t("organizations.eyebrow")}</Eyebrow>
-      <h1 className="mt-2 font-serif text-3xl font-semibold tracking-tight sm:text-4xl">{t("organizations.title")}</h1>
-      <p className="mt-3 max-w-prose text-ink-muted">{t("organizations.lead")}</p>
+    <Section>
+      <PageHeader
+        eyebrow={t("organizations.eyebrow")}
+        title={t("organizations.title")}
+        description={t("organizations.lead")}
+      />
 
       <div className="mt-8">
         {loading && !data ? (
@@ -47,6 +50,6 @@ export default function OrganizationsPage() {
           {SUPPORT_EMAIL}
         </a>
       </section>
-    </div>
+    </Section>
   )
 }
