@@ -648,6 +648,9 @@ export default function ChapterView() {
   // page does when the same request fails.
   const offersEnrolling = Boolean(user && course?.preview_chapter_id)
   useEffect(() => {
+    // Another course's cohorts must not stand in for this one's while its
+    // own are on the way.
+    setCohorts(null)
     if (!courseId || !offersEnrolling) return
     let cancelled = false
     coursesService
@@ -880,7 +883,7 @@ export default function ChapterView() {
           variant={user ? "enrollWall" : "wall"}
           offer={
             user && course && cohorts
-              ? { course, cohorts, then: chapterHref(courseId, chapter.id), onEnrolled: handleEnrolled }
+              ? { course, cohorts, then: chapterHref(courseId, chapter.id), replace: true, onEnrolled: handleEnrolled }
               : undefined
           }
         />

@@ -23,6 +23,9 @@ export interface EnrollOffer {
   course: Course
   cohorts: Cohort[]
   then: string
+  /** The next page stands in for this one in history (from the wall:
+   *  the same lesson, whatever shape its address had). */
+  replace?: boolean
   onEnrolled: () => void
 }
 
@@ -77,7 +80,7 @@ function EnrollButton({ offer, courseHref }: { offer?: EnrollOffer; courseHref: 
       toast({ title: t("toast.enrolledSuccess"), variant: "success" })
       // From the wall the next page is this one: replace it, or Back
       // would have to be pressed twice.
-      navigate(offer.then, { replace: offer.then === `${location.pathname}${location.search}` })
+      navigate(offer.then, { replace: offer.replace ?? offer.then === `${location.pathname}${location.search}` })
     } catch {
       toast({ title: t("toast.enrolledFailed"), variant: "destructive" })
     } finally {
