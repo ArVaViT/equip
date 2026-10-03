@@ -1730,7 +1730,9 @@
   "calendar": {
     "addOne": {
       "label": "До календаря",
-      "aria": "Додати «{{title}}» до календаря"
+      "aria": "Додати «{{title}}» до календаря",
+      "google": "Google Календар",
+      "file": "Apple, Outlook (.ics)"
     },
     "subscribe": {
       "open": "Підписатися",

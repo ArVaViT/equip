@@ -110,3 +110,24 @@ export function icsFileName(event: CalendarEvent): string {
     .slice(0, 60)
   return `${slug || "event"}.ics`
 }
+
+/**
+ * The same event as a Google Calendar "add" link — for the reader whose
+ * calendar is Google on an Android phone or in a browser, where an `.ics`
+ * download lands in Files and goes no further.
+ */
+export function googleCalendarUrl(event: CalendarEvent, recordingLabel?: string): string {
+  const start = new Date(event.event_date)
+  const minutes = event.duration_minutes ?? (takesTimeOfDay(event.event_type) ? 60 : 0)
+  const end = new Date(start.getTime() + minutes * 60_000)
+  const recording = event.recording_url ? `${recordingLabel ?? "Recording"}: ${event.recording_url}` : null
+  const details = [event.course_title, event.description, event.meeting_url, recording].filter(Boolean).join("\n")
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: event.title,
+    dates: `${formatUtc(start)}/${formatUtc(end)}`,
+  })
+  if (details) params.set("details", details)
+  if (event.meeting_url) params.set("location", event.meeting_url)
+  return `https://calendar.google.com/calendar/render?${params.toString()}`
+}

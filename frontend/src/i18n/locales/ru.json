@@ -1299,7 +1299,9 @@
   "calendar": {
     "addOne": {
       "label": "В календарь",
-      "aria": "Добавить «{{title}}» в календарь"
+      "aria": "Добавить «{{title}}» в календарь",
+      "google": "Google Календарь",
+      "file": "Apple, Outlook (.ics)"
     },
     "subscribe": {
       "open": "Подписаться",

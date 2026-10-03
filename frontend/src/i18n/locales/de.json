@@ -1666,7 +1666,9 @@
   "calendar": {
     "addOne": {
       "label": "In den Kalender",
-      "aria": "„{{title}}“ in den Kalender eintragen"
+      "aria": "„{{title}}“ in den Kalender eintragen",
+      "google": "Google Kalender",
+      "file": "Apple, Outlook (.ics)"
     },
     "subscribe": {
       "open": "Abonnieren",
