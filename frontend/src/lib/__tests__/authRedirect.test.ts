@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest"
-import { RETURN_PATH_TTL_MS, rememberReturnPath, returnPathFrom, takeReturnPath } from "@/lib/authRedirect"
+import { RETURN_PATH_TTL_MS, peekReturnPath, rememberReturnPath, returnPathFrom, takeReturnPath } from "@/lib/authRedirect"
 
 /**
  * Where a sign-in sends the person afterwards.
@@ -32,6 +32,14 @@ describe("returnPathFrom", () => {
  * The path across a full page load — and across the tab the confirmation
  * mail opens, which has none of the first tab's session storage.
  */
+describe("returnPathFrom — the backslash form", () => {
+  it("refuses «/\\host», which a URL parser reads as «//host»", () => {
+    expect(returnPathFrom({ from: "/\\evil.com" })).toBeNull()
+    expect(returnPathFrom({ from: "/courses\\x" })).toBeNull()
+    expect(returnPathFrom({ from: "/courses/c-1/chapters/ch-2?x=1" })).toBe("/courses/c-1/chapters/ch-2?x=1")
+  })
+})
+
 describe("rememberReturnPath / takeReturnPath", () => {
   const LESSON = "/courses/c1/chapters/ch2"
   const T0 = 1_700_000_000_000
@@ -85,5 +93,13 @@ describe("rememberReturnPath / takeReturnPath", () => {
     localStorage.setItem("equip:returnTo", "not json at all")
     expect(takeReturnPath(T0)).toBeNull()
     expect(localStorage.getItem("equip:returnTo")).toBeNull()
+  })
+
+  it("can be looked at without being spent — a render may run twice", () => {
+    rememberReturnPath({ from: "/courses/c-1/chapters/ch-2" })
+    expect(peekReturnPath()).toBe("/courses/c-1/chapters/ch-2")
+    expect(peekReturnPath()).toBe("/courses/c-1/chapters/ch-2")
+    expect(takeReturnPath()).toBe("/courses/c-1/chapters/ch-2")
+    expect(peekReturnPath()).toBeNull()
   })
 })

@@ -22,7 +22,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { useGrandTour } from "@/hooks/useGrandTour"
 import { takePendingInviteToken } from "@/lib/pendingInvite"
 import { inviteAcceptPath } from "@/lib/inviteLink"
-import { returnPathFrom } from "@/lib/authRedirect"
+import { peekReturnPath, returnPathFrom, takeReturnPath } from "@/lib/authRedirect"
 import { canDirect, canTeach } from "@/lib/roles"
 import { DeniedRedirect } from "@/components/auth/DeniedRedirect"
 import { getTeacherAgreementOwed, subscribeTeacherAgreement } from "@/components/legal/useTeacherAgreement"
@@ -96,6 +96,20 @@ const DailyChallengeReviewPage = lazyRoute(() => import("./pages/Admin/dailyChal
 const DailyChallengeReviewDetailPage = lazyRoute(() => import("./pages/Admin/dailyChallenge/DailyChallengeReviewDetailPage"))
 
 /**
+ * Signed in on a public page (a password sign-in on /login): off to where
+ * the person was going — the router state first, else the path kept across
+ * a page load. Both stored copies are spent here either way, so the next
+ * person to sign in on this browser is not sent to someone else's lesson.
+ */
+function ReturnFromPublic({ state }: { state: unknown }) {
+  const target = returnPathFrom(state) ?? peekReturnPath() ?? "/"
+  useEffect(() => {
+    takeReturnPath()
+  }, [])
+  return <Navigate to={target} replace />
+}
+
+/**
  * a11y: after a client-side route change, move keyboard / screen-reader
  * focus to the ``#main-content`` landmark so the next Tab starts inside
  * the freshly-rendered page instead of wherever the clicked link left
@@ -147,7 +161,7 @@ function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }
   if (mode === "public") {
     // Back to the page a private gate refused, once there is someone to
     // let in; the dashboard otherwise. See `lib/authRedirect.ts`.
-    return user ? <Navigate to={returnPathFrom(location.state) ?? "/"} replace /> : <>{children}</>
+    return user ? <ReturnFromPublic state={location.state} /> : <>{children}</>
   }
   if (!user) {
     return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />
