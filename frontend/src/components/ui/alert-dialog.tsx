@@ -266,7 +266,22 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 <AlertDialogCancel type="button" onClick={() => handlePromptDone(null)}>
                   {promptState.cancelLabel ?? t("common.cancel")}
                 </AlertDialogCancel>
-                <AlertDialogAction type="submit">
+                {/* ``AlertDialogAction`` closes the dialog on click, and closing
+                    answers ``null`` through ``onOpenChange`` before the form's
+                    submit ever runs — so a click on OK reported "cancelled" and
+                    only Enter worked (the lesson editor's media links, the
+                    calendar's recording link). The click answers itself and
+                    stops the close; Enter still submits the form. */}
+                <AlertDialogAction
+                  type="submit"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    // The form's own check first — a url prompt refuses "abc"
+                    // in place, as it did when the form's submit decided.
+                    if (e.currentTarget.form && !e.currentTarget.form.reportValidity()) return
+                    handlePromptDone(promptState.value)
+                  }}
+                >
                   {promptState.confirmLabel ?? t("common.ok")}
                 </AlertDialogAction>
               </AlertDialogFooter>

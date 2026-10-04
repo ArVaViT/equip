@@ -130,7 +130,7 @@ class TestAnEventTellsTheClass:
         course_id = _published_course_with_student(db, student, locale="ru")
         r = client.post(
             f"{COURSES}/{course_id}/events",
-            json={"title": "Итоговый зачёт", "event_type": "exam", "event_date": "2026-10-01T18:00:00Z"},
+            json={"title": "Итоговый зачёт", "event_type": "exam", "event_date": "2099-10-01T18:00:00Z"},
         )
         assert r.status_code == 201
         everyone = db.query(Notification).filter(Notification.type == "new_event").all()
@@ -149,17 +149,17 @@ class TestAnEventTellsTheClass:
         course_id = _published_course_with_student(db, student, locale="ru")
         created = client.post(
             f"{COURSES}/{course_id}/events",
-            json={"title": "Зачёт", "event_type": "exam", "event_date": "2026-10-01T18:00:00Z"},
+            json={"title": "Зачёт", "event_type": "exam", "event_date": "2099-10-01T18:00:00Z"},
         )
         event_id = created.json()["id"]
 
         client.put(f"{COURSES}/{course_id}/events/{event_id}", json={"title": "Зачёт по Деяниям"})
         assert _notifications(db, "event_rescheduled") == []
 
-        client.put(f"{COURSES}/{course_id}/events/{event_id}", json={"event_date": "2026-10-01T18:00:00Z"})
+        client.put(f"{COURSES}/{course_id}/events/{event_id}", json={"event_date": "2099-10-01T18:00:00Z"})
         assert _notifications(db, "event_rescheduled") == [], "the same instant is not a move"
 
-        client.put(f"{COURSES}/{course_id}/events/{event_id}", json={"event_date": "2026-10-08T18:00:00Z"})
+        client.put(f"{COURSES}/{course_id}/events/{event_id}", json={"event_date": "2099-10-08T18:00:00Z"})
         moved = _notifications(db, "event_rescheduled")
         assert len(moved) == 1
         assert moved[0].title == "Событие перенесено"
@@ -171,10 +171,10 @@ class TestAnEventTellsTheClass:
         course_id = _published_course_with_student(db, student, locale="ru")
         created = client.post(
             f"{COURSES}/{course_id}/events",
-            json={"title": "Зачёт", "event_type": "exam", "event_date": "2026-10-01T18:00:00Z"},
+            json={"title": "Зачёт", "event_type": "exam", "event_date": "2099-10-01T18:00:00Z"},
         )
         event_id = created.json()["id"]
-        client.put(f"{COURSES}/{course_id}/events/{event_id}", json={"event_date": "2026-10-08T18:00:00Z"})
+        client.put(f"{COURSES}/{course_id}/events/{event_id}", json={"event_date": "2099-10-08T18:00:00Z"})
         assert len(_notifications(db, "new_event")) == 1
         assert len(_notifications(db, "event_rescheduled")) == 1
 
@@ -189,7 +189,7 @@ class TestAnEventTellsTheClass:
         db.commit()
         client.post(
             f"{COURSES}/{course_id}/events",
-            json={"title": "Зачёт", "event_type": "exam", "event_date": "2026-10-01T18:00:00Z"},
+            json={"title": "Зачёт", "event_type": "exam", "event_date": "2099-10-01T18:00:00Z"},
         )
         assert _notifications(db, "new_event") == []
 
@@ -199,7 +199,7 @@ class TestTheTeachersOwnCalendar:
         course_id = _published_course_with_student(db, student, locale="ru")
         client.post(
             f"{COURSES}/{course_id}/events",
-            json={"title": "Зачёт", "event_type": "exam", "event_date": "2026-10-01T18:00:00Z"},
+            json={"title": "Зачёт", "event_type": "exam", "event_date": "2099-10-01T18:00:00Z"},
         )
         r = client.get(CALENDAR)
         assert r.status_code == 200
@@ -213,7 +213,7 @@ class TestTheTeachersOwnCalendar:
         for cid in (first, second):
             client.post(
                 f"{COURSES}/{cid}/events",
-                json={"title": "Зачёт", "event_type": "exam", "event_date": "2026-10-01T18:00:00Z"},
+                json={"title": "Зачёт", "event_type": "exam", "event_date": "2099-10-01T18:00:00Z"},
             )
         r = client.get(CALENDAR, params={"course_id": second})
         assert [e["course_id"] for e in r.json()] == [second]
@@ -238,7 +238,7 @@ class TestPlainTextStaysPlain:
                 "title": "Встреча",
                 "description": "https://zoom.us/j/1?pwd=a&b\nПароль: 5 < 10",
                 "event_type": "live_session",
-                "event_date": "2026-10-01T18:00:00Z",
+                "event_date": "2099-10-01T18:00:00Z",
             },
         )
         assert r.json()["description"] == "https://zoom.us/j/1?pwd=a&b\nПароль: 5 < 10"

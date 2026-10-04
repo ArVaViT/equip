@@ -124,6 +124,8 @@ export type MailKind = (typeof MAIL_KINDS)[number]
 
 export interface Course {
   id: string
+  /** The lesson a guest may read before signing up; set only on a guest's course page. */
+  preview_chapter_id?: string | null
   title: string
   description: string | null
   image_url: string | null
@@ -241,6 +243,29 @@ export interface GradingConfig {
   quiz_weight: number
   assignment_weight: number
   participation_weight: number
+}
+
+/** Mirrors `GradingScheme` in `backend/app/services/grading_scheme.py`. */
+export const GRADING_SCHEMES = ["pass_fail", "percent", "five_point", "letter"] as const
+export type GradingScheme = (typeof GRADING_SCHEMES)[number]
+
+/**
+ * How one course is graded, as `GET /grades/course/{id}/scheme` answers it.
+ *
+ * `bands` is `[floor, symbol]`, highest floor first, and empty for the two
+ * schemes that have none (`pass_fail`, `percent`). Decimals arrive as strings.
+ */
+export interface GradingSchemeResponse {
+  grading_scheme: string
+  pass_threshold: string
+  bands: [string, string][]
+}
+
+/** Scheme and pass line, written together or not at all (D8.1). */
+export interface GradingSchemeUpdate {
+  grading_scheme: GradingScheme
+  pass_threshold: number
+  reason?: string
 }
 
 export interface GradeBreakdown {
@@ -569,6 +594,7 @@ export type NotificationType =
   | 'new_event'
   | 'event_rescheduled'
   | 'recording_ready'
+  | 'event_reminder'
   | 'retake_requested'
 
 export interface Notification {
@@ -634,7 +660,7 @@ export interface Profile {
 }
 
 type CalendarEventType = 'deadline' | 'live_session' | 'exam' | 'other'
-type CalendarEventSource = 'module_deadline' | 'assignment_deadline' | 'course_event'
+type CalendarEventSource = 'module_deadline' | 'assignment_deadline' | 'course_event' | 'cohort_start' | 'cohort_end'
 
 export interface CalendarEvent {
   id: string
@@ -648,6 +674,25 @@ export interface CalendarEvent {
   meeting_url: string | null
   /** Where to watch it afterwards, once the teacher has added it. */
   recording_url?: string | null
+  /** Minutes, when the event is a span (a class, an exam) and its teacher
+   *  gave a length. Absent on deadlines and on events from before lengths. */
+  duration_minutes?: number | null
+  /** Shared by the occurrences of one weekly series. */
+  series_id?: string | null
+  /** This lesson's place in its series (1-based) and the series' length,
+   *  from the server — the client may not hold the whole series. */
+  series_index?: number | null
+  series_count?: number | null
+  /** Where a deadline leads: the lesson to open (a module's first, or the
+   *  one holding the assignment), and the assignment itself when it is one. */
+  chapter_id?: string | null
+  assignment_id?: string | null
+  /** A day rather than a moment — a group's first or last day. Shown as
+   *  "all day", never as 00:00. */
+  all_day?: boolean
+  /** The `YYYY-MM-DD` of an all-day item, fixed on the server for every
+   *  reader. Filed under this day, never under the instant's day here. */
+  day?: string | null
   course_id: string
   course_title: string | null
   source: CalendarEventSource
@@ -821,6 +866,11 @@ export interface CourseEvent {
   event_date: string
   meeting_url: string | null
   recording_url?: string | null
+  duration_minutes?: number | null
+  series_id?: string | null
+  /** As on `CalendarEvent`: «2 из 4» next to the repeat mark. */
+  series_index?: number | null
+  series_count?: number | null
   created_by: string
   created_at: string
 }

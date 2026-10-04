@@ -11,15 +11,21 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { CalendarDays, Pencil, Save, Trash2 } from "lucide-react"
+import { CalendarDays, Pencil, Repeat, Save, Trash2 } from "lucide-react"
 import { EmptyState, Modal } from "@/components/patterns"
 import { EventTypeBadge } from "./badges"
-import type { EventFormState } from "./types"
+import { DURATION_CHOICES, MAX_SERIES, takesTime, withEventType, type EventFormState } from "./types"
+import type { PendingScope } from "./useEventsSection"
 import type { CourseEvent } from "@/types"
+import type { SeriesScope } from "@/services/calendar"
+import { SeriesScopeDialog } from "@/components/calendar/SeriesScopeDialog"
+import { formatDurationMinutes, formatEventTimeRange } from "@/components/calendar/eventTimeFormat"
+import { seriesLastDay } from "@/lib/eventTime"
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
 import { RecordingLink } from "@/components/calendar/RecordingLink"
 import { isAbsoluteHttpUrl } from "@/lib/url"
 import { formatDateLong, formatDateTime } from "@/i18n/format"
+import { useId, type ReactNode } from "react"
 
 /** Mirrors ``CourseEventCreate`` on the server (``max_length``). */
 const TITLE_MAX = 255
@@ -39,6 +45,14 @@ interface Props {
   onCancelEdit: () => void
   onEdit: (e: CourseEvent) => void
   onDelete: (id: string) => void
+  pendingScope?: PendingScope | null
+  onChooseScope?: (scope: SeriesScope) => void
+  onCancelScope?: () => void
+  /** Above the form — the calendar puts its course picker here. */
+  header?: ReactNode
+  /** The hour a freshly picked day starts at — the course's usual class
+   *  time, when the calendar knows it. */
+  defaultTime?: { hh: number; mm: number }
 }
 
 import { EVENT_TYPE_LABEL_KEYS } from "./eventTypes"
@@ -57,9 +71,16 @@ export function EventsModal({
   onCancelEdit,
   onEdit,
   onDelete,
+  pendingScope = null,
+  onChooseScope,
+  onCancelScope,
+  header,
+  defaultTime,
 }: Props) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const ids = useId()
   const patch = (p: Partial<EventFormState>) => onFormChange({ ...form, ...p })
+  const editing = editingId ? events.find((e) => e.id === editingId) : undefined
   // Blank is fine — most events have no meeting. Only a link that has
   // been typed and is not a link is an error, and it blocks the save so
   // the teacher is not told about it by a toast after the fact.
@@ -67,16 +88,37 @@ export function EventsModal({
   const meetingUrlBroken = meetingUrlTyped !== "" && !isAbsoluteHttpUrl(meetingUrlTyped)
   const recordingTyped = form.recording_url.trim()
   const recordingBroken = recordingTyped !== "" && !isAbsoluteHttpUrl(recordingTyped)
-  const canSubmit = form.title.trim() && form.event_date && !meetingUrlBroken && !recordingBroken && !saving
+  const repeating = !editingId && takesTime(form.event_type) && form.repeat_every !== "0"
+  const count = Number(form.repeat_count)
+  const countBroken = repeating && !(Number.isInteger(count) && count >= 2 && count <= MAX_SERIES)
+  const lastDay = repeating && !countBroken ? seriesLastDay(form.event_date, Number(form.repeat_every), count) : null
+  const seriesHint = countBroken
+    ? t("eventSeries.countRange", { max: MAX_SERIES })
+    : lastDay
+      ? t("eventSeries.lastOn", {
+          date: formatDateLong(`${lastDay}T12:00:00Z`, { timeZone: "UTC" }),
+        })
+      : ""
+  const canSubmit =
+    form.title.trim() && form.event_date && !meetingUrlBroken && !recordingBroken && !countBroken && !saving
 
   return (
     <Modal open={open} onClose={onClose} title={t("teacherEditor.modals.events.title")}>
       <div className="space-y-4">
+        {header}
         <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+          {/* The heading names what is being edited — «Изменить: Урок ·
+              сб, 10 окт.» — because in a series every row is «Урок», and
+              the form alone did not say which Saturday it had open. */}
           <p className="text-xs font-medium text-ink-muted uppercase tracking-wide">
-            {editingId
-              ? t("teacherEditor.modals.events.editEvent")
-              : t("teacherEditor.modals.events.createEvent")}
+            {editing
+              ? t("teacherEditor.modals.events.editNamed", {
+                  title: editing.title,
+                  date: formatDateLong(editing.event_date, { year: undefined, weekday: "short", month: "short", day: "numeric" }),
+                })
+              : editingId
+                ? t("teacherEditor.modals.events.editEvent")
+                : t("teacherEditor.modals.events.createEvent")}
           </p>
           <Input
             value={form.title}
@@ -93,12 +135,14 @@ export function EventsModal({
           />
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <Label className="text-xs">{t("teacherEditor.modals.events.type")}</Label>
+              <Label className="text-xs" htmlFor={`${ids}-type`}>
+                {t("teacherEditor.modals.events.type")}
+              </Label>
               <Select
                 value={form.event_type}
-                onValueChange={(v) => patch({ event_type: v })}
+                onValueChange={(v) => onFormChange(withEventType(form, v))}
               >
-                <SelectTrigger size="sm">
+                <SelectTrigger size="sm" id={`${ids}-type`}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -116,9 +160,81 @@ export function EventsModal({
                 value={form.event_date}
                 onChange={(next) => patch({ event_date: next })}
                 className="w-full"
+                defaultTime={defaultTime}
               />
             </div>
           </div>
+          {takesTime(form.event_type) && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs" htmlFor={`${ids}-duration`}>
+                  {t("eventSeries.duration")}
+                </Label>
+                <Select
+                  value={form.duration_minutes || "none"}
+                  onValueChange={(v) => patch({ duration_minutes: v === "none" ? "" : v })}
+                >
+                  <SelectTrigger size="sm" id={`${ids}-duration`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t("eventSeries.durationNone")}</SelectItem>
+                    {DURATION_CHOICES.map((m) => (
+                      <SelectItem key={m} value={String(m)}>
+                        {formatDurationMinutes(m, i18n.language)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* A series is made once, when the event is created; after
+                  that each lesson is its own row, edited one or many at
+                  a time through the scope question. */}
+              {!editingId && (
+                <div className="space-y-1">
+                  <Label className="text-xs" htmlFor={`${ids}-repeat`}>
+                    {t("eventSeries.repeat")}
+                  </Label>
+                  <Select
+                    value={form.repeat_every}
+                    onValueChange={(v) => patch({ repeat_every: v as EventFormState["repeat_every"] })}
+                  >
+                    <SelectTrigger size="sm" id={`${ids}-repeat`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">{t("eventSeries.repeatNone")}</SelectItem>
+                      <SelectItem value="1">{t("eventSeries.repeatWeekly")}</SelectItem>
+                      <SelectItem value="2">{t("eventSeries.repeatBiweekly")}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          )}
+          {!editingId && takesTime(form.event_type) && form.repeat_every !== "0" && (
+            <div className="space-y-1">
+              <Label className="text-xs" htmlFor={`${ids}-count`}>
+                {t("eventSeries.count")}
+              </Label>
+              <div className="flex items-center gap-3">
+                <Input
+                  id={`${ids}-count`}
+                  type="number"
+                  inputMode="numeric"
+                  min={2}
+                  max={MAX_SERIES}
+                  className="w-24"
+                  value={form.repeat_count}
+                  onChange={(e) => patch({ repeat_count: e.target.value })}
+                  aria-describedby={`${ids}-count-hint`}
+                />
+                <p id={`${ids}-count-hint`} className="text-xs text-ink-muted">
+                  {seriesHint}
+                </p>
+              </div>
+            </div>
+          )}
           {/* Optional, and it looks optional: its own labelled row after
               the type and the date, never a required-field asterisk. A
               deadline and an exam in a room have nothing to join, and
@@ -210,13 +326,21 @@ export function EventsModal({
             title={t("teacherEditor.modals.events.empty")}
           />
         ) : (
-          <div className="space-y-2 max-h-72 overflow-y-auto">
+          // No scroll of its own: the dialog scrolls (capped at 85vh), and a list
+          // scrolling inside a scrolling sheet trapped the thumb on a phone.
+          <div className="space-y-2">
             {events.map((event) => (
               <EventRow key={event.id} event={event} onEdit={onEdit} onDelete={onDelete} />
             ))}
           </div>
         )}
       </div>
+      <SeriesScopeDialog
+        open={pendingScope !== null}
+        action={pendingScope?.action ?? "save"}
+        onChoose={(scope) => onChooseScope?.(scope)}
+        onCancel={() => onCancelScope?.()}
+      />
     </Modal>
   )
 }
@@ -247,7 +371,16 @@ function EventRow({
           dateTime={event.event_date}
           title={formatDateTime(event.event_date)}
         >
-          {formatDateLong(event.event_date, { hour: "2-digit", minute: "2-digit" })}
+          {formatDateLong(event.event_date, { weekday: "short" })}, {formatEventTimeRange(event)}
+          {event.series_id && (
+            <span className="ml-1.5 inline-flex items-center gap-1 align-middle" title={t("eventSeries.partOfSeries")}>
+              <Repeat className="h-3 w-3" strokeWidth={1.75} aria-hidden />
+              <span className="sr-only">{t("eventSeries.partOfSeries")}</span>
+              {event.series_index && event.series_count && (
+                <span>{t("eventSeries.position", { index: event.series_index, count: event.series_count })}</span>
+              )}
+            </span>
+          )}
         </time>
         {event.description && (
           <p className="text-xs text-ink-muted mt-0.5 line-clamp-1">

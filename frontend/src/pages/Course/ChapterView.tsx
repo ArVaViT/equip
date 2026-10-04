@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo, memo, lazy, Suspense } from "react"
+import { useContext, useEffect, useRef, useState, useCallback, useMemo, memo, lazy, Suspense } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { isAxiosError } from "axios"
@@ -17,13 +17,15 @@ import { progressService } from "@/services/progress"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
 import { useAuth } from "@/context/useAuth"
+import { AuthContext } from "@/context/auth-context"
+import { GuestPrompt, LockedBlock } from "@/components/chapter/GuestPrompt"
 import {
   chapterHref,
   findChapter,
   readCourseStructure,
 } from "@/lib/courseStructure"
 import { isChapterLocked } from "./moduleProgress"
-import type { Course, Chapter, ChapterBlock } from "@/types"
+import type { Cohort, Course, Chapter, ChapterBlock } from "@/types"
 import {
   ArrowLeft,
   ArrowRight,
@@ -83,9 +85,12 @@ function TextBlockRender({ html }: { html: string }) {
   // Found by the server after the block renders; until then, plain text.
   const [passages, setPassages] = useState<Passage[]>([])
   const [verse, setVerse] = useState<{ anchor: HTMLElement; passage: Passage } | null>(null)
+  // Verse lookups go to a paid scripture API and need an account; a guest
+  // reads the references as plain text.
+  const signedIn = Boolean(useContext(AuthContext)?.user)
   useEffect(() => {
     const root = ref.current
-    if (!root) return
+    if (!root || !signedIn) return
     let live = true
     setVerse(null)
     void scriptureService.passagesIn(textForScripture(root)).then((found) => {
@@ -100,7 +105,7 @@ function TextBlockRender({ html }: { html: string }) {
     return () => {
       live = false
     }
-  }, [html, t])
+  }, [html, t, signedIn])
   useEffect(() => {
     // Order matters: ``renderToggleCalloutsIn`` rewrites parent
     // elements (``div[data-callout="toggle"]`` → ``<details>``), so
@@ -189,10 +194,27 @@ const BlockRenderer = memo(function BlockRenderer({
   onAssignmentCountLoaded?: (count: number) => void
 }) {
   const { t } = useTranslation()
+  // Read without ``useAuth``'s throw: a block is rendered on its own in
+  // places with no session at all (tests, previews), and "no provider"
+  // is not "a guest".
+  const auth = useContext(AuthContext)
+  const guest = auth !== null && !auth.loading && !auth.user
   const sanitizedContent = useMemo(
     () => (block.content ? sanitize(block.content) : ""),
     [block.content],
   )
+  // A guest reads the text of the preview lesson; a test, an assignment
+  // and a file are things to keep or hand in, and those need an account.
+  // In the preview — a guest's, or a reader not enrolled yet — the server
+  // sends a test, an assignment or a file without its ids and path.
+  const kind = block.block_type === "text" ? null : block.block_type
+  const withheld =
+    (kind === "quiz" && !block.quiz_id) ||
+    (kind === "assignment" && !block.assignment_id) ||
+    (kind === "file" && !block.file_path)
+  if (kind && (withheld || guest)) {
+    return <LockedBlock kind={kind} />
+  }
 
   switch (block.block_type) {
     case "text":
@@ -555,11 +577,17 @@ export default function ChapterView() {
     setBlocksReloadKey((k) => k + 1)
   }, [])
   const [hasAssignments, setHasAssignments] = useState(false)
+  // For the «Записаться на курс» button at the end of the preview and on the
+  // wall: whether one press can enrol, or a cohort has to be chosen first.
+  // ``null`` until asked: a button pressed before the answer would enrol
+  // outside any cohort where the course page would have seated or asked.
+  const [cohorts, setCohorts] = useState<Cohort[] | null>(null)
 
   useUserTour({
     tourId: "chapter-view-v1",
     steps: chapterViewSteps(t),
-    ready: !loading && !error && course !== null,
+    // The tour is for the course's own readers, not for a preview.
+    ready: !loading && !error && course !== null && Boolean(user) && !course.preview_chapter_id,
   })
 
   useEffect(() => {
@@ -586,7 +614,8 @@ export default function ChapterView() {
           // See `moduleProgress.ts` — `[]` and "unknown" must not be the
           // same value. Here it only drives the read tick, which now simply
           // does not draw rather than drawing a false "not read".
-          coursesService.getMyChapterProgress(courseId).catch(() => null),
+          // A guest has no progress to fetch.
+          user ? coursesService.getMyChapterProgress(courseId).catch(() => null) : Promise.resolve(null),
         ])
         if (cancelled) return
         setCourse(fullCourse)
@@ -613,6 +642,37 @@ export default function ChapterView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, user?.id, i18n.language])
 
+  // Only a signed-in reader who is not enrolled yet is offered the button,
+  // and only such a reader is sent a preview — so the cohorts are asked for
+  // exactly then. Unknown cohorts enrol into the course itself, as the course
+  // page does when the same request fails.
+  const offersEnrolling = Boolean(user && course?.preview_chapter_id)
+  useEffect(() => {
+    // Another course's cohorts must not stand in for this one's while its
+    // own are on the way.
+    setCohorts(null)
+    if (!courseId || !offersEnrolling) return
+    let cancelled = false
+    coursesService
+      .getCourseCohorts(courseId)
+      .catch(() => [] as Cohort[])
+      .then((list) => {
+        if (!cancelled) setCohorts(list)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [courseId, offersEnrolling])
+
+  // Enrolled from the lesson: the course in hand still names a preview
+  // lesson, and that is what makes this page ask to enrol. Forget it, and
+  // ask for the blocks again — the first request for a walled lesson was
+  // refused, and its refusal is what would show once the wall is gone.
+  const handleEnrolled = useCallback(() => {
+    setCourse((current) => (current ? { ...current, preview_chapter_id: null } : current))
+    setBlocksReloadKey((k) => k + 1)
+  }, [])
+
   // Studying a chapter counts as opening the course for the dashboard's
   // "recently viewed" row. Signed-in only; filtered against real
   // enrollments at render time.
@@ -629,6 +689,20 @@ export default function ChapterView() {
   const placement = findChapter(structure, chapterId)
 
   const chapter = placement?.chapter ?? null
+  // Reading as a guest or before enrolling: the server names a preview
+  // lesson for exactly those readers. A guest on a course without one
+  // previews nothing and meets the invitation on every lesson.
+  const previewing = !user || Boolean(course?.preview_chapter_id)
+  // For the blocks request only: a signed-in reader never waits on this
+  // (the request starts with the course, see below); a guest asks once the
+  // course has said which lesson is theirs.
+  const guestGate: "member" | "pending" | "preview" | "wall" = user
+    ? "member"
+    : !course
+      ? "pending"
+      : course.preview_chapter_id === chapterId
+        ? "preview"
+        : "wall"
   // The reader's own text size and easy-reading mode (the "Aa" in the header).
   const [readingPrefs, setReadingPrefs] = useReadingPrefs()
   // Named by the lesson, as the course page is by the course.
@@ -640,10 +714,12 @@ export default function ChapterView() {
   // ordinary answer now, not a broken payload — so nothing that depends on it
   // may be on the path a lesson without one has to walk.
   const parentModule = placement?.group.module ?? null
-  const backHref = parentModule
-    ? `/courses/${courseId}/modules/${parentModule.id}`
+  // A previewer goes back to the course: the module page is for the enrolled.
+  const backToModule = Boolean(parentModule && user && !course?.preview_chapter_id)
+  const backHref = backToModule
+    ? `/courses/${courseId}/modules/${parentModule?.id}`
     : `/courses/${courseId}`
-  const backLabel = parentModule ? t("course.backToModule") : t("course.backToCourse")
+  const backLabel = backToModule ? t("course.backToModule") : t("course.backToCourse")
 
   /**
    * The chapter's own text, fetched from the URL rather than from the course.
@@ -667,6 +743,13 @@ export default function ChapterView() {
     let cancelled = false
 
     setHasAssignments(false)
+
+    // A guest's blocks wait for the course: it says whether this lesson is
+    // the preview, and asking for any other one is a 401 by design.
+    if (guestGate === "pending" || guestGate === "wall") {
+      setChapterBlocks([])
+      return
+    }
 
     // Only reading chapters carry blocks; quiz/exam/assignment render their
     // own dedicated panels. `chapter` may not have arrived yet — in that case
@@ -707,7 +790,7 @@ export default function ChapterView() {
     // `chapterId` drives it, not `chapter` — that dependency was the
     // waterfall. `chapter` stays so the type guard re-runs once the course
     // lands and can discard blocks for a non-reading chapter.
-  }, [chapterId, chapter, i18n.language, blocksReloadKey])
+  }, [chapterId, chapter, i18n.language, blocksReloadKey, guestGate])
 
   /**
    * Is this lesson walled off until the one before it is done?
@@ -774,6 +857,34 @@ export default function ChapterView() {
                 <Button variant="outline" size="sm">{t("course.goHome")}</Button>
               </Link>
             )
+          }
+        />
+      </div>
+    )
+  }
+
+  // A guest reads the preview lesson and meets an invitation everywhere
+  // else in the course — before the blocks' 401 can show as an error. A
+  // signed-in reader not enrolled yet (the server names a preview only for
+  // them) reads it too, and is asked to enrol for the rest.
+  if (previewing && course?.preview_chapter_id !== chapter.id) {
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-3xl">
+        <Link to={`/courses/${courseId}`} className="-mx-2 mb-6 inline-flex">
+          <Button variant="ghost" size="sm" className="h-11 text-xs sm:h-8">
+            <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+            {t("course.backToCourse")}
+          </Button>
+        </Link>
+        <h1 className="mb-6 font-serif text-3xl font-semibold tracking-tight text-wrap-safe">
+          {orNotTranslated(t, chapter.title)}
+        </h1>
+        <GuestPrompt
+          variant={user ? "enrollWall" : "wall"}
+          offer={
+            user && course && cohorts
+              ? { course, cohorts, then: chapterHref(courseId, chapter.id), replace: true, onEnrolled: handleEnrolled }
+              : undefined
           }
         />
       </div>
@@ -913,7 +1024,7 @@ export default function ChapterView() {
 
       {/* The reader's own margin, under the lesson it belongs to. Only for
           lessons to read: a test or an assignment has its own box to write in. */}
-      {chapterType === "reading" && <LessonNote key={chapter.id} chapterId={chapter.id} />}
+      {chapterType === "reading" && !previewing && <LessonNote key={chapter.id} chapterId={chapter.id} />}
 
       {/* Reading chapters get an act of their own.
           Until now a chapter of pure text could not be finished by the person
@@ -921,7 +1032,26 @@ export default function ChapterView() {
           product left no trace. The control is explicit rather than a scroll
           heuristic: a heuristic credits the skimmer who reaches the bottom and
           misses the careful reader on a phone who closes the tab. */}
-      {chapterType === "reading" && !hasAssignments && (
+      {/* The end of the preview: what reading on and keeping a mark takes. */}
+      {previewing && (
+        <GuestPrompt
+          variant={user ? "enrollFinish" : "finish"}
+          className="mt-8"
+          offer={
+            user && course && cohorts
+              ? {
+                  course,
+                  cohorts,
+                  // On to the next lesson; a course of one lesson goes to its page.
+                  then: nextChapter ? chapterHref(courseId, nextChapter.id) : `/courses/${courseId}`,
+                  onEnrolled: handleEnrolled,
+                }
+              : undefined
+          }
+        />
+      )}
+
+      {chapterType === "reading" && !hasAssignments && !previewing && (
         <div className="mt-8 border-t border-edge pt-5">
           {isCompleted ? (
             <p className="flex items-center gap-2 text-sm font-medium text-success">

@@ -1,8 +1,10 @@
-import { zonedCalendarDate, zonedToday } from "@/i18n/timeZone";
+import { zonedToday } from "@/i18n/timeZone";
 import { useMemo, useState } from "react";
 
 import type { CalendarEvent } from "@/types";
+import { addDays, startOfWeekMon, weekdayMonStart } from "@/lib/calendar";
 import { calendarDayKey } from "./utils";
+import { eventDayKey } from "@/lib/eventTime";
 
 interface DayCell {
   date: Date;
@@ -10,13 +12,13 @@ interface DayCell {
 }
 
 /**
- * Derives everything the calendar UI needs to render a month at a time:
- * the Sunday-padded grid of day cells, a `Map` of events keyed by day,
- * the events for the currently-selected day, and the next 14 days of
- * upcoming events.
+ * Derives everything the calendar views need: the Monday-start grid of the
+ * visible month, the seven days of the visible week, a `Map` of events keyed
+ * by day in the reader's zone, and the selected day's events.
  *
- * Everything is memoised so re-rendering on selection doesn't rebuild
- * the grid or the bucket.
+ * One anchor drives both the month and the week: moving a week across a
+ * month boundary moves the month with it, so switching views never lands
+ * the reader somewhere else in time.
  */
 export function useMonthGrid(events: CalendarEvent[]) {
   // Today on the reader's calendar (profile zone), not the browser's.
@@ -29,7 +31,7 @@ export function useMonthGrid(events: CalendarEvent[]) {
   const calendarDays = useMemo<DayCell[]>(() => {
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const startOffset = firstDay.getDay();
+    const startOffset = weekdayMonStart(firstDay);
     const days: DayCell[] = [];
 
     for (let i = startOffset - 1; i >= 0; i--) {
@@ -47,18 +49,29 @@ export function useMonthGrid(events: CalendarEvent[]) {
     return days;
   }, [year, month]);
 
+  const weekStart = startOfWeekMon(selectedDay ?? currentDate);
+  const weekStartKey = calendarDayKey(weekStart);
+  const weekDays = useMemo(
+    () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by the day, not the Date object
+    [weekStartKey],
+  );
+
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
     for (const evt of events) {
       if (!evt.event_date) continue;
-      const d = new Date(evt.event_date);
-      if (Number.isNaN(d.getTime())) continue;
-      // The day the event falls on in the reader's zone.
-      const key = calendarDayKey(zonedCalendarDate(d));
+      // The day the event falls on in the reader's zone (an all-day
+      // item's own day).
+      const day = eventDayKey(evt);
+      if (!day) continue;
+      const [y, m, d] = day.split("-").map(Number);
+      const key = calendarDayKey(new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1));
       const bucket = map.get(key);
       if (bucket) bucket.push(evt);
       else map.set(key, [evt]);
     }
+    for (const bucket of map.values()) bucket.sort((a, b) => a.event_date.localeCompare(b.event_date));
     return map;
   }, [events]);
 
@@ -67,47 +80,32 @@ export function useMonthGrid(events: CalendarEvent[]) {
     return eventsByDate.get(calendarDayKey(selectedDay)) ?? [];
   }, [selectedDay, eventsByDate]);
 
-  const upcomingEvents = useMemo(() => {
-    const now = new Date();
-    const twoWeeks = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
-    return events.filter((e) => {
-      if (!e.event_date) return false;
-      const d = new Date(e.event_date);
-      if (Number.isNaN(d.getTime())) return false;
-      return d >= now && d <= twoWeeks;
-    });
-  }, [events]);
+  const goTo = (day: Date) => {
+    setCurrentDate(new Date(day.getFullYear(), day.getMonth(), 1));
+    setSelectedDay(day);
+  };
 
   return {
     year,
     month,
     calendarDays,
+    weekDays,
     eventsByDate,
     selectedDay,
-    setSelectedDay,
+    // Picking a day in the month's leading or trailing week moves the
+    // month there too, so the grid and the day panel never disagree.
+    setSelectedDay: (day: Date) => goTo(day),
     selectedDayEvents,
-    upcomingEvents,
-    // ``selectedDay`` needs to follow the visible month -- otherwise
-    // navigating May -> June while May-15 was selected leaves the
-    // right-side panel claiming "events for May 15" while rendering
-    // an empty June grid. Anchor selectedDay to the 1st of the
-    // destination month so the panel reads the new month's data on
-    // navigation; ``goToday`` snaps both the grid AND selection back
-    // to today.
-    prevMonth: () => {
-      const nextMonthStart = new Date(year, month - 1, 1)
-      setCurrentDate(nextMonthStart)
-      setSelectedDay(nextMonthStart)
-    },
-    nextMonth: () => {
-      const nextMonthStart = new Date(year, month + 1, 1)
-      setCurrentDate(nextMonthStart)
-      setSelectedDay(nextMonthStart)
-    },
-    goToday: () => {
-      const today = zonedToday()
-      setCurrentDate(today)
-      setSelectedDay(today)
-    },
+    // ``selectedDay`` follows the visible month -- otherwise navigating
+    // May -> June while May-15 was selected leaves the side panel claiming
+    // "events for May 15" under an empty June grid. Anchor it to the 1st of
+    // the destination month; ``goToday`` snaps both back to today.
+    prevMonth: () => goTo(new Date(year, month - 1, 1)),
+    nextMonth: () => goTo(new Date(year, month + 1, 1)),
+    // From the selected day, not from Monday: a week on keeps Thursday
+    // selected, and the month follows the day the reader is looking at.
+    prevWeek: () => goTo(addDays(selectedDay ?? weekStart, -7)),
+    nextWeek: () => goTo(addDays(selectedDay ?? weekStart, 7)),
+    goToday: () => goTo(zonedToday()),
   };
 }

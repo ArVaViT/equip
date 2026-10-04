@@ -206,6 +206,9 @@ class CourseResponse(_ReadTitle):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    #: The lesson a visitor who is not signed in may read (``services/guest_preview``).
+    #: Set only on the guest's own course page; ``None`` everywhere else.
+    preview_chapter_id: str | None = None
     status: str = "draft"
     # Controls the enroll button on the catalog: ``public`` shows
     # "Записаться", ``institute`` shows "Доступно только по приглашению".

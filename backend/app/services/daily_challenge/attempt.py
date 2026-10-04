@@ -41,6 +41,8 @@ from app.services.daily_challenge.schedule import get_today_question, utc_today
 from app.services.daily_challenge.streak import apply_streak_for_attempt
 
 if TYPE_CHECKING:
+    from datetime import date
+
     from sqlalchemy.orm import Session
 
 
@@ -92,6 +94,7 @@ def submit_today_attempt(
     *,
     user_id: uuid.UUID,
     selected_option_id: uuid.UUID,
+    today: date | None = None,
 ) -> DailyChallengeAttemptOutcome:
     """Submit an attempt at today's question.
 
@@ -108,11 +111,12 @@ def submit_today_attempt(
     and ``InvalidOptionError`` when ``selected_option_id`` belongs to
     a different question.
     """
-    today = utc_today()
+    # The reader's day, passed by the route; UTC only for a caller that has no reader.
+    today = today or utc_today()
 
     schedule_q = get_today_question(db, on_date=today, allow_fallback=True)
     if schedule_q is None:
-        raise NoScheduleError(f"no question scheduled for UTC date {today.isoformat()}")
+        raise NoScheduleError(f"no question scheduled for {today.isoformat()}")
     schedule, question = schedule_q
 
     # Validate the option belongs to today's question. Done as one

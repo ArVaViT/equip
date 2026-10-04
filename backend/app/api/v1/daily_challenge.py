@@ -41,7 +41,7 @@ from app.services.daily_challenge import (
     get_user_streak,
     submit_today_attempt,
 )
-from app.services.daily_challenge.schedule import utc_today
+from app.services.daily_challenge.schedule import reader_today
 
 router = APIRouter(prefix="/daily-challenge", tags=["daily-challenge"])
 
@@ -69,7 +69,7 @@ def get_today(
     explanation, so a reload shows the same reveal the submit did.
     """
     response.headers["Vary"] = "Accept-Language"
-    today = utc_today()
+    today = reader_today(current_user.time_zone)
 
     schedule_q = get_today_question(db, on_date=today, allow_fallback=True)
     if schedule_q is None:
@@ -184,14 +184,22 @@ def submit_attempt(
     Race-safe — the partial unique constraint catches the two-tab
     race; the service layer re-reads and returns the winning attempt.
     """
+    today = reader_today(current_user.time_zone)
+    # The question on the reader's screen, when it is within a day of their
+    # today; anything further is a stale card and answers to today.
+    day = (
+        data.challenge_date
+        if data.challenge_date is not None and abs((data.challenge_date - today).days) <= 1
+        else today
+    )
     try:
         outcome = submit_today_attempt(
             db,
             user_id=current_user.id,
             selected_option_id=data.selected_option_id,
+            today=day,
         )
     except NoScheduleError:
-        today = utc_today()
         raise equip_error(
             ErrorCode.DAILY_CHALLENGE_NOT_SCHEDULED,
             status_code=status.HTTP_404_NOT_FOUND,
@@ -283,7 +291,7 @@ def get_streak(
             last_engaged_date=None,
         )
     last = streak.last_engaged_date
-    alive = last is not None and last >= utc_today() - timedelta(days=1)
+    alive = last is not None and last >= reader_today(current_user.time_zone) - timedelta(days=1)
     return DailyChallengeStreakResponse(
         current_streak=streak.current_streak if alive else 0,
         longest_streak=streak.longest_streak,

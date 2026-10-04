@@ -27,6 +27,7 @@ import { CourseOutline } from "./CourseOutline"
 import { WeeklyReview } from "@/components/review/WeeklyReview"
 import { MyGradeCard } from "./MyGradeCard"
 import { UpcomingEvents } from "./UpcomingEvents"
+import { CourseRecordings } from "./CourseRecordings"
 
 interface Props {
   course: Course
@@ -125,6 +126,8 @@ export function EnrolledView({
       <CourseAnnouncements courseId={course.id} />
 
       <UpcomingEvents events={calendarEvents} />
+
+      <CourseRecordings events={calendarEvents} />
 
       <div data-tour="module-list">
         <CourseOutline

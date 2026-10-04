@@ -3,7 +3,9 @@ import { AlertTriangle, CalendarDays, ChevronDown } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import type { CalendarEvent } from "@/types"
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
-import { isOver } from "@/lib/eventTime"
+import { eventDayKey, isJoinableNow, isOver } from "@/lib/eventTime"
+import { zonedDayKey } from "@/i18n/timeZone"
+import { formatEventTimeRange } from "@/components/calendar/eventTimeFormat"
 import { RecordingLink } from "@/components/calendar/RecordingLink"
 import { formatDateLong, formatDateTime } from "@/i18n/format"
 
@@ -26,11 +28,21 @@ export function UpcomingEvents({ events }: Props) {
   if (events.length === 0) return null
 
   const now = new Date()
+  // The join link belongs to the day of the class, on the reader's
+  // calendar. A week early it was a button on the course page beside a
+  // date a week away — something to press now, which it is not.
+  const todayKey = zonedDayKey(now)
+  // Still ahead, or on now — and a deadline missed within the day, which
+  // stays on top as a warning. A class already over is not "upcoming":
+  // it led this list with yesterday's lesson while today's ran folded
+  // away, and its recording is listed under "Recordings" anyway.
   const upcoming = events
     .filter((e) => {
       if (!e.event_date) return false
       const ts = new Date(e.event_date).getTime()
-      return !Number.isNaN(ts) && ts > now.getTime() - 24 * 60 * 60 * 1000
+      if (Number.isNaN(ts)) return false
+      if (!isOver(e, now.getTime())) return true
+      return e.event_type === "deadline" && ts > now.getTime() - 24 * 60 * 60 * 1000
     })
     .slice(0, 5)
 
@@ -79,7 +91,14 @@ export function UpcomingEvents({ events }: Props) {
                   two buttons beside the title pushed the row off the
                   screen. Renders nothing when there is nothing to open. */}
               <span className="order-last flex basis-full flex-wrap gap-2 pl-4 empty:hidden sm:order-none sm:basis-auto sm:pl-0">
-                {!isOver(evt) && <JoinMeetingLink url={evt.meeting_url} title={evt.title} />}
+                {!isOver(evt, now.getTime()) && eventDayKey(evt) === todayKey && (
+                  <JoinMeetingLink
+                    url={evt.meeting_url}
+                    title={evt.title}
+                    prominent={isJoinableNow(evt, now.getTime())}
+                    quiet={!isJoinableNow(evt, now.getTime())}
+                  />
+                )}
                 <RecordingLink url={evt.recording_url} title={evt.title} />
               </span>
               {/* Date AND time, in the reader's zone. This row used to say
@@ -91,13 +110,10 @@ export function UpcomingEvents({ events }: Props) {
                 title={formatDateTime(evt.event_date)}
                 className="text-xs text-ink-muted whitespace-nowrap tabular-nums"
               >
-                {formatDateLong(evtDate, {
-                  year: undefined,
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {/* The weekday too: «сб, 10 окт.» answers "which evening"
+                    without a trip to the calendar. */}
+                {formatDateLong(evtDate, { year: undefined, weekday: "short", month: "short", day: "numeric" })},{" "}
+                {formatEventTimeRange(evt)}
               </time>
             </div>
           )

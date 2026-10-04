@@ -8,6 +8,36 @@
     "invalid": "Dieser Link funktioniert nicht. E-Mails schalten Sie im Profil unter „Einstellungen“ ab.",
     "toProfile": "Profil öffnen"
   },
+  "guest": {
+    "readFirst": "Erste Lektion lesen",
+    "readFirstFree": "Erste Lektion lesen — ohne Konto",
+    "openToAll": "Für alle offen",
+    "afterEnrolling": "Nach der Einschreibung",
+    "register": "Konto erstellen",
+    "signIn": "Anmelden",
+    "block": {
+      "quiz": "Hier ist ein Test — er öffnet sich nach der Einschreibung",
+      "assignment": "Hier ist eine Aufgabe — sie öffnet sich nach der Einschreibung",
+      "file": "Hier ist eine Datei — sie öffnet sich nach der Einschreibung"
+    },
+    "finish": {
+      "title": "Gefallen? Mit einem Konto weiterlesen",
+      "body": "Erstellen Sie ein kostenloses Konto, um sich einzuschreiben, weiterzulesen und Gelesenes zu markieren."
+    },
+    "wall": {
+      "title": "Diese Lektion ist für Eingeschriebene",
+      "body": "Die erste Lektion ist für alle offen. Um weiterzulesen, erstellen Sie ein kostenloses Konto und schreiben Sie sich ein."
+    },
+    "toCourse": "Kurs belegen",
+    "enrollFinish": {
+      "title": "Gefallen? Belegen Sie den Kurs",
+      "body": "Mit der Einschreibung öffnen sich die weiteren Lektionen, Tests und das Markieren als gelesen."
+    },
+    "enrollWall": {
+      "title": "Diese Lektion ist für Eingeschriebene",
+      "body": "Die erste Lektion ist für alle offen. Belegen Sie den Kurs, um weiterzulesen."
+    }
+  },
   "common": {
     "late": "Verspätet",
     "appName": "Equip",
@@ -266,7 +296,8 @@
       "openFull": "Ganzer Kalender",
       "empty": "Heute ist nichts geplant. Als Nächstes:",
       "nothingAhead": "Nichts Anstehendes.",
-      "ahead": "Als Nächstes"
+      "ahead": "Als Nächstes",
+      "over": "Vorbei"
     },
     "readingProgress_one": "{{read}} von {{count}} Lektion gelesen",
     "readingProgress_other": "{{read}} von {{count}} Lektionen gelesen",
@@ -635,7 +666,7 @@
     "loadError": "Die heutige Aufgabe konnte nicht geladen werden",
     "notScheduled": {
       "title": "Heute keine Frage",
-      "body": "Die Aufgabe von morgen öffnet um {{time}} Ihrer Zeit."
+      "body": "Die Frage für morgen erscheint um Mitternacht."
     },
     "notTranslated": {
       "title": "Noch nicht in Ihrer Sprache",
@@ -1004,7 +1035,8 @@
       "quiz_option_repeated": "dieselbe Option ist zweimal aufgeführt",
       "meeting_url_not_a_web_address": "muss mit http:// oder https:// beginnen — fügen Sie die vollständige Adresse aus der Adresszeile des Browsers ein, zum Beispiel https://zoom.us/j/1234567890",
       "meeting_url_credentials_in_url": "darf kein @ vor der Adresse der Website enthalten — ein solcher Link öffnet eine andere Website, als er vorgibt. Kopieren Sie die Adresse des Meetings erneut",
-      "meeting_url_too_long": "ist zu lang — höchstens 2048 Zeichen"
+      "meeting_url_too_long": "ist zu lang — höchstens 2048 Zeichen",
+      "time_zone_unknown": "unbekannte Zeitzone — wählen Sie eine in Ihrem Profil"
     },
     "storage": {
       "tooLarge": "Die Datei ist {{sizeMb}} MB groß, erlaubt sind {{maxMb}} MB.",
@@ -1039,6 +1071,7 @@
     "courseCloned": "Kurs kopiert",
     "cloneFailed": "Kurs konnte nicht kopiert werden",
     "gradingWeightsSaved": "Gewichtung gespeichert",
+    "gradingSchemeSaved": "Notenskala gespeichert",
     "gradingConfigSaveFailed": "Bewertungseinstellungen konnten nicht gespeichert werden",
     "gradeSaved": "Note gespeichert",
     "gradeCleared": "Handnote entfernt — es gilt wieder die berechnete",
@@ -1780,7 +1813,9 @@
   "calendar": {
     "addOne": {
       "label": "In den Kalender",
-      "aria": "„{{title}}“ in den Kalender eintragen"
+      "aria": "„{{title}}“ in den Kalender eintragen",
+      "google": "Google Kalender",
+      "file": "Apple, Outlook (.ics)"
     },
     "subscribe": {
       "open": "Abonnieren",
@@ -1788,11 +1823,12 @@
       "description": "Termine und Fristen Ihrer Kurse erscheinen in Ihrem Kalender und bleiben aktuell.",
       "replaces": "Der Link ist persönlich. Wenn Sie schon abonniert haben, funktioniert der alte Link nicht mehr.",
       "create": "Link erstellen",
-      "apple": "Apple und Outlook",
+      "apple": "Apple-Kalender, Outlook",
       "google": "Google Kalender",
       "copy": "Link kopieren",
       "copied": "Kopiert",
       "private": "Leiten Sie den Link nicht weiter: Er zeigt Ihren Stundenplan.",
+      "delay": "Kalender übernehmen Änderungen selbst, aber nicht sofort: Google prüft alle paar Stunden. Eine verschobene Stunde sehen Sie in Equip sofort.",
       "failed": "Der Link konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
       "copyFailed": "Der Link konnte nicht kopiert werden."
     },
@@ -1821,7 +1857,46 @@
       "live_session": "Live-Termin",
       "exam": "Prüfung",
       "other": "Sonstiges"
-    }
+    },
+    "tomorrow": "Morgen",
+    "prevWeek": "Vorherige Woche",
+    "nextWeek": "Nächste Woche",
+    "nextUp": "Nächster Termin",
+    "week": {
+      "free": "Frei"
+    },
+    "views": {
+      "label": "Kalenderansicht",
+      "agenda": "Termine",
+      "week": "Woche",
+      "month": "Monat"
+    },
+    "agenda": {
+      "emptyTitle": "Nichts geplant",
+      "emptyDescription": "Sobald Ihre Lehrkraft einen Termin oder eine Frist festlegt, erscheint sie hier.",
+      "past_one": "Vergangen — {{count}} Termin",
+      "past_other": "Vergangen — {{count}} Termine"
+    },
+    "card": {
+      "onNow": "Läuft gerade",
+      "inMinutes_one": "In {{count}} Minute",
+      "inMinutes_other": "In {{count}} Minuten",
+      "addRecording": "Aufzeichnung hinzufügen",
+      "addRecordingTitle": "Aufzeichnung von „{{title}}“",
+      "addRecordingSave": "Speichern",
+      "recordingAdded": "Aufzeichnung hinzugefügt — die Teilnehmenden werden benachrichtigt",
+      "openAssignment": "Aufgabe öffnen",
+      "openLesson": "Lektion öffnen"
+    },
+    "yesterday": "Gestern",
+    "newEvent": {
+      "open": "Neuer Termin",
+      "course": "Kurs"
+    },
+    "zone": "Zeiten in Ihrer Zeitzone: {{zone}}.",
+    "zoneChange": "Ändern",
+    "allDay": "Ganztägig",
+    "untitledOther": "Termin"
   },
   "teacher": {
     "dashboardTitle": "Meine Kurse",
@@ -1965,6 +2040,7 @@
       "events": {
         "title": "Kurstermine",
         "editEvent": "Termin bearbeiten",
+        "editNamed": "Bearbeiten: {{title}} · {{date}}",
         "createEvent": "Termin erstellen",
         "titlePlaceholder": "Titel des Termins",
         "descriptionPlaceholder": "Beschreibung (optional)",
@@ -2139,7 +2215,8 @@
       "announcements": "Ankündigungen",
       "materials": "Materialien",
       "events": "Termine",
-      "accessMode": "Zugangsart"
+      "accessMode": "Zugangsart",
+      "downloadPdf": "PDF herunterladen"
     },
     "accessMode": {
       "title": "Zugang zum Kurs",
@@ -2156,6 +2233,10 @@
       "title": "Veröffentlichung dieses Kurses aufheben?",
       "description": "Der Kurs verschwindet aus dem Katalog, und Lernende – auch bereits eingeschriebene – können seine Lektionen erst wieder öffnen, wenn Sie ihn erneut veröffentlichen. Fortschritt und Noten bleiben erhalten.",
       "confirm": "Veröffentlichung aufheben"
+    },
+    "pdf": {
+      "preparing": "Kurs-PDF wird erstellt…",
+      "failed": "Das PDF konnte nicht erstellt werden. Bitte erneut versuchen."
     }
   },
   "chapterEditor": {
@@ -2283,6 +2364,12 @@
       "heading": "Inhalt",
       "emptyModule": "Dieses Modul hat noch keine Lektionen.",
       "empty": "Noch keine Lektionen — fügen Sie sie im Editor hinzu."
+    },
+    "recordings": {
+      "heading": "Aufzeichnungen",
+      "showAll_one": "Alle Aufzeichnungen — {{count}}",
+      "showAll_other": "Alle Aufzeichnungen — {{count}}",
+      "showLess": "Weniger anzeigen"
     }
   },
   "gradebook": {
@@ -2328,6 +2415,21 @@
       "split": "Tests {{quiz}} % · Aufgaben {{assignment}} %",
       "saving": "Wird gespeichert …",
       "save": "Gewichtung speichern"
+    },
+    "scale": {
+      "title": "Notenskala",
+      "summary": "{{scheme}} · Bestehensgrenze {{threshold}} %",
+      "directorDecides": "Die Skala legt die Schulleitung fest.",
+      "change": "Ändern",
+      "loadFailed": "Die Notenskala konnte nicht geladen werden.",
+      "dialogTitle": "So wird dieser Kurs bewertet",
+      "scheme": "Skala",
+      "passThreshold": "Bestehensgrenze (%)",
+      "thresholdRange": "Die Bestehensgrenze ist eine Zahl von 0 bis 100.",
+      "fivePointMax": "Bei der Fünf-Punkte-Skala liegt die Bestehensgrenze bei höchstens 75, sonst ist die «3» unerreichbar.",
+      "handSetGrades_one": "{{count}} Note in diesem Kurs wurde von Hand nach der alten Skala gesetzt. Entfernen oder erfassen Sie sie zuerst neu, dann ändern Sie die Skala.",
+      "handSetGrades_other": "{{count}} Noten in diesem Kurs wurden von Hand nach der alten Skala gesetzt. Entfernen oder erfassen Sie sie zuerst neu, dann ändern Sie die Skala.",
+      "handSetGradesUnknown": "In diesem Kurs gibt es Noten, die von Hand nach der alten Skala gesetzt wurden. Entfernen oder erfassen Sie sie zuerst neu, dann ändern Sie die Skala."
     },
     "summary": {
       "title": "Noten der Studierenden",
@@ -3312,10 +3414,12 @@
     "recordingLabel": "Link zur Aufzeichnung",
     "recordingHint": "YouTube, Vimeo, Google Drive",
     "join": "Beitreten",
+    "linkQuiet": "Link zur Stunde",
+    "joinVia": "Über {{provider}} beitreten",
     "joinAria": "Dem Meeting beitreten — {{title}}",
     "linkLabel": "Link zum Meeting",
     "linkPlaceholder": "https://zoom.us/j/…",
-    "linkHint": "Optional. Zoom, Google Meet — ein beliebiger Link. Studenten sehen dann eine Schaltfläche „Beitreten“."
+    "linkHint": "Optional. Zoom, Google Meet — ein beliebiger Link. Studenten sehen dann eine Schaltfläche zum Beitreten — bei Zoom „Über Zoom beitreten“."
   },
   "dmca": {
     "title": "Urheberrechtsbeschwerden",
@@ -3354,5 +3458,29 @@
   "theme": {
     "switchToLight": "Helles Design",
     "switchToDark": "Dunkles Design"
+  },
+  "eventSeries": {
+    "duration": "Dauer",
+    "durationNone": "Keine Angabe",
+    "repeat": "Wiederholen",
+    "repeatNone": "Keine Wiederholung",
+    "repeatWeekly": "Jede Woche",
+    "repeatBiweekly": "Alle zwei Wochen",
+    "count": "Anzahl der Termine",
+    "countRange": "Von 2 bis {{max}}",
+    "lastOn": "der letzte am {{date}}",
+    "partOfSeries": "Wiederkehrender Termin",
+    "position": "{{index}} von {{count}}",
+    "created_one": "{{count}} Termin erstellt",
+    "created_other": "{{count}} Termine erstellt",
+    "scope": {
+      "saveTitle": "Wiederkehrenden Termin bearbeiten",
+      "deleteTitle": "Wiederkehrenden Termin löschen",
+      "this": "Nur dieser Termin",
+      "following": "Dieser und alle folgenden",
+      "all": "Alle Termine der Serie",
+      "saveAction": "Speichern",
+      "deleteAction": "Löschen"
+    }
   }
 }

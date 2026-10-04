@@ -109,6 +109,33 @@ class TestCalendarEvents:
         assert assignment_events[0]["description"] == "Do the thing"
         assert assignment_events[0]["event_type"] == "deadline"
 
+    def test_a_deadline_says_where_the_work_is(
+        self,
+        student_client: TestClient,
+        db: Session,
+    ) -> None:
+        """A date on the calendar with no way to the work it names was a
+        dead end: the card now links to the lesson. An assignment's
+        deadline carries its chapter and itself; a module's carries the
+        module's first lesson."""
+        course_id, chapter_id, assignment_id = _seed_published_course_with_assignment(db, course_id="cal-assign-3")
+        second = Chapter(
+            id=f"{course_id}-ch-2",
+            module_id=db.query(Chapter).filter(Chapter.id == chapter_id).one().module_id,
+            title="Chapter 2",
+            order_index=1,
+        )
+        db.add(second)
+        db.commit()
+
+        r = student_client.get("/api/v1/calendar/events", headers={"Accept-Language": "en"})
+        assert r.status_code == 200
+        by_source = {e["source"]: e for e in r.json()}
+        assert by_source["assignment_deadline"]["chapter_id"] == chapter_id
+        assert by_source["assignment_deadline"]["assignment_id"] == str(assignment_id)
+        assert by_source["module_deadline"]["chapter_id"] == chapter_id
+        assert by_source["module_deadline"]["assignment_id"] is None
+
     def test_a_language_with_no_row_gets_no_title_rather_than_another_language(
         self,
         student_client: TestClient,

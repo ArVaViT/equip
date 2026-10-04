@@ -7,6 +7,9 @@ arguments only — no FastAPI ``Request``/``Response``/``Depends``
 objects; header parsing and cache/Vary headers stay in the routes.
 """
 
+import uuid
+from datetime import UTC
+
 from sqlalchemy.orm import Session
 
 from app.core.i18n import t
@@ -17,6 +20,7 @@ from app.models.enrollment import Enrollment
 from app.models.user import User
 from app.schemas.calendar import CalendarEvent
 from app.schemas.locale import LocaleCode, normalize_locale
+from app.services.event_series import series_positions
 from app.services.staged_edits.visibility import chapter_awaits_first_release
 from app.services.translation.resolve_for_display import (
     fetch_course_titles_by_id,
@@ -25,6 +29,91 @@ from app.services.translation.resolve_for_display import (
 
 #: Event kinds with a label of their own (``event_type.*`` in ``app.core.i18n``).
 _EVENT_TYPE_LABELS = frozenset({"deadline", "live_session", "exam", "other"})
+
+
+def _cohort_days(
+    db: Session,
+    *,
+    user: User,
+    course_ids: list[str],
+    display_locale: LocaleCode,
+    titles: dict[str, str],
+) -> list[CalendarEvent]:
+    """The first and last day of each group the reader studies in.
+
+    A student placed in a group ("UCOAT, autumn 2026") had its dates on the
+    director's screen and nowhere on their own calendar. One pair per group,
+    not per course: a group can take three courses together. Named by the
+    group when it has a name in any language, by "your group" when not.
+    """
+    from app.models.cohort import Cohort
+    from app.models.content_version import ContentVersion, ContentVersionStatus
+    from app.services.event_series import zone_or_utc
+
+    rows = (
+        db.query(Enrollment.cohort_id, Enrollment.course_id)
+        .filter(
+            Enrollment.user_id == user.id,
+            Enrollment.cohort_id.isnot(None),
+            Enrollment.course_id.in_(course_ids),
+        )
+        # The same course on the card every time, not whichever row came first.
+        .order_by(Enrollment.course_id)
+        .all()
+    )
+    course_of: dict[str, str] = {}
+    for cohort_id, crs_id in rows:
+        course_of.setdefault(str(cohort_id), crs_id)
+    if not course_of:
+        return []
+    cohorts = db.query(Cohort).filter(Cohort.id.in_([uuid.UUID(cid) for cid in course_of])).all()
+    # The day is the one the director picked, in the zone they picked it
+    # in — the dates are stored as instants (09:00 of their day by
+    # default). Read in each reader's own zone, Kyiv's 5th was LA's 4th.
+    # Nobody to ask (the author's account is gone or never set a zone):
+    # UTC, so at least every reader sees the same day.
+    creator_ids = {c.created_by for c in cohorts if c.created_by}
+    zone_of: dict[uuid.UUID, str | None] = {
+        uid: tz for uid, tz in db.query(User.id, User.time_zone).filter(User.id.in_(creator_ids)).all()
+    }
+    names: dict[tuple[str, str], str] = {}
+    for eid, loc, text in (
+        db.query(ContentVersion.entity_id, ContentVersion.locale, ContentVersion.text)
+        .filter(
+            ContentVersion.entity_type == "cohort",
+            ContentVersion.entity_id.in_(list(course_of)),
+            ContentVersion.field == "title",
+            ContentVersion.superseded_by.is_(None),
+            ContentVersion.status == ContentVersionStatus.OK,
+        )
+        .all()
+    ):
+        names.setdefault((eid, loc), text)
+        names.setdefault((eid, "*"), text)
+    out: list[CalendarEvent] = []
+    for cohort in cohorts:
+        cid = str(cohort.id)
+        name = names.get((cid, display_locale)) or names.get((cid, "*")) or t(display_locale, "calendar.cohort.unnamed")
+        crs_id = course_of[cid]
+        zone = zone_or_utc(zone_of.get(cohort.created_by) if cohort.created_by else None)
+        for source, key, when in (
+            ("cohort_start", "calendar.cohort.start", cohort.start_date),
+            ("cohort_end", "calendar.cohort.end", cohort.end_date),
+        ):
+            out.append(
+                CalendarEvent(
+                    id=f"{source}-{cid}",
+                    title=t(display_locale, key, name=name),
+                    event_type="other",
+                    event_date=when,
+                    course_id=crs_id,
+                    course_title=titles.get(crs_id),
+                    source=source,  # type: ignore[arg-type]
+                    all_day=True,
+                    day=(when if when.tzinfo else when.replace(tzinfo=UTC)).astimezone(zone).date(),
+                )
+            )
+    return out
 
 
 def build_calendar_events(
@@ -90,6 +179,22 @@ def build_calendar_events(
     # «Модуль 3. Толкование Писания — Due» for every module deadline.
     # The reader's locale is what a calendar entry is for.
     populate_module_texts(db, modules, source_locale=display_locale)
+    # A module's deadline opens its first lesson the reader may see — the
+    # card's «open the work» link. First by order, skipping what is deleted
+    # or still waiting for its first release.
+    first_chapter_of_module: dict[str, str] = {}
+    if modules:
+        for ch_id, mod_id in (
+            db.query(Chapter.id, Chapter.module_id)
+            .filter(
+                Chapter.module_id.in_([m.id for m in modules]),
+                Chapter.deleted_at.is_(None),
+                ~chapter_awaits_first_release(),
+            )
+            .order_by(Chapter.module_id, Chapter.order_index, Chapter.id)
+            .all()
+        ):
+            first_chapter_of_module.setdefault(str(mod_id), str(ch_id))
     for m in modules:
         assert m.due_date is not None
         events.append(
@@ -103,6 +208,7 @@ def build_calendar_events(
                 description=m.description,
                 event_type="deadline",
                 event_date=m.due_date,
+                chapter_id=first_chapter_of_module.get(str(m.id)),
                 course_id=m.course_id,
                 course_title=course_titles.get(m.course_id),
                 source="module_deadline",
@@ -186,6 +292,8 @@ def build_calendar_events(
                     description=asg_description,
                     event_type="deadline",
                     event_date=a.due_date,
+                    chapter_id=str(a.chapter_id),
+                    assignment_id=aid,
                     course_id=crs_id,
                     course_title=course_titles.get(crs_id),
                     source="assignment_deadline",
@@ -193,6 +301,7 @@ def build_calendar_events(
             )
 
     course_events = db.query(CourseEvent).filter(CourseEvent.course_id.in_(enrolled_course_ids)).all()
+    positions = series_positions(db, course_events)
 
     # course_events.title + description columns dropped — one
     # cv read covers every event, with the picker applying the
@@ -249,11 +358,19 @@ def build_calendar_events(
                 # ``None``: a module's due date is a moment, not a room.
                 meeting_url=ce.meeting_url,
                 recording_url=ce.recording_url,
+                duration_minutes=ce.duration_minutes,
+                series_id=str(ce.series_id) if ce.series_id else None,
+                series_index=positions.get(ce_id, (None, None))[0],
+                series_count=positions.get(ce_id, (None, None))[1],
                 course_id=ce.course_id,
                 course_title=course_titles.get(ce.course_id),
                 source="course_event",
             )
         )
+
+    events.extend(
+        _cohort_days(db, user=user, course_ids=enrolled_course_ids, display_locale=display_locale, titles=course_titles)
+    )
 
     events.sort(key=lambda e: e.event_date)
     # Apply defensive cap AFTER sorting so the oldest events
