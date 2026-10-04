@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { I18nextProvider } from "react-i18next"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "@/i18n/config"
 import { TodayCard } from "../TodayCard"
 
@@ -164,6 +164,15 @@ describe("TodayCard", () => {
   describe("a class that has already ended", () => {
     // The Home card showed the day's class long after it had ended with
     // nothing to tell it from one still ahead — not even that it was over.
+    // «Hours ago» must still be today: pinned to mid-afternoon, or a run
+    // at 02:00 puts the class on yesterday (CI runs in UTC, 2026-10-04).
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      vi.setSystemTime(new Date(2026, 9, 3, 15, 0, 0))
+    })
+    afterEach(() => {
+      vi.useRealTimers()
+    })
     const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString()
     const inDays = (n: number) => {
       const d = new Date()
