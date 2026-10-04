@@ -251,50 +251,6 @@ def author_texts_bulk(
     return {(entity_id, field): text for entity_id, field, text in rows}
 
 
-def author_texts_in_locale(
-    db: Session,
-    *,
-    entity_type: str,
-    entity_ids: list[str],
-    fields: list[str],
-    locale: str,
-) -> dict[tuple[str, str], str]:
-    """The author's held text, for a reader of the language it was written in.
-
-    The one tier a *reader* may take from this table, and the same one
-    the bell already takes (``entity_title_for_locale``): a new event on
-    a published course has no released title in any language until the
-    pipeline has all four, and in the meantime a Russian student was
-    reading «Живое занятие» for the class her Russian teacher had named
-    «Разбор проповеди» — a title that sat one table over, in her own
-    language. The teacher's words in the reader's language are the right
-    words; a reader of another language still waits for the translation.
-
-    Human rows only, and only at ``locale``: a machine translation still
-    in staging has not passed its checks yet, and the author's text in a
-    language the reader did not choose is exactly what every other reading
-    path refuses to serve.
-    """
-    if not entity_ids or not fields:
-        return {}
-    rows = (
-        db.query(
-            StagedContentVersion.entity_id,
-            StagedContentVersion.field,
-            StagedContentVersion.text,
-        )
-        .filter(
-            StagedContentVersion.entity_type == entity_type,
-            StagedContentVersion.entity_id.in_(entity_ids),
-            StagedContentVersion.field.in_(fields),
-            StagedContentVersion.locale == locale,
-            StagedContentVersion.origin == "human",
-        )
-        .all()
-    )
-    return {(entity_id, field): text for entity_id, field, text in rows}
-
-
 def staged_texts_for_entity(
     db: Session,
     *,
@@ -335,7 +291,6 @@ __all__ = [
     "StagedFieldStatus",
     "author_text",
     "author_texts_bulk",
-    "author_texts_in_locale",
     "staged_field_specs",
     "staged_human_rows",
     "staged_status_for_course",
