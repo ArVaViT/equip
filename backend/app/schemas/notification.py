@@ -31,6 +31,7 @@ NOTIFICATION_TYPES: frozenset[str] = frozenset(
         "new_event",
         "event_rescheduled",
         "recording_ready",
+        "event_reminder",
         "retake_requested",
     }
 )

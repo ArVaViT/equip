@@ -1274,9 +1274,13 @@ def localize_course_event_rows(
         source_locale=source_locale,
         prefer_human=prefer_human,
     )
+    from app.services.event_series import series_positions
+
+    positions = series_positions(db, events)
     out: list[CourseEventResponse] = []
     for e in events:
         eid = str(e.id)
+        index, count = positions.get(eid, (None, None))
         out.append(
             CourseEventResponse.model_validate(
                 {
@@ -1296,6 +1300,10 @@ def localize_course_event_rows(
                     # German reader as for a Russian one.
                     "meeting_url": e.meeting_url,
                     "recording_url": e.recording_url,
+                    "duration_minutes": e.duration_minutes,
+                    "series_id": e.series_id,
+                    "series_index": index,
+                    "series_count": count,
                     "created_by": e.created_by,
                     "created_at": e.created_at,
                 }

@@ -94,6 +94,13 @@ class DailyChallengeAttemptCreate(RequestModel):
     """``POST /daily-challenge/today/attempt`` body."""
 
     selected_option_id: UUID
+    #: The day of the question the card is showing (its ``challenge_date``).
+    #: The reader's day can move under an open card — midnight passes, or the
+    #: profile's zone is first recorded while the card loads — and an answer
+    #: to the question on screen must be judged against that question, not
+    #: against a different one the server now calls today. Accepted within a
+    #: day of the reader's today; omitted, today.
+    challenge_date: date | None = None
 
 
 class DailyChallengeAttemptResponse(BaseModel):

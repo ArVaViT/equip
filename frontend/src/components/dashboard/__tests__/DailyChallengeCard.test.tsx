@@ -143,7 +143,8 @@ describe("DailyChallengeCard", () => {
     const button = await screen.findByRole("button", { name: /his only begotten son/i })
     await userEvent.click(button)
 
-    expect(submitAttempt).toHaveBeenCalledWith("o-1")
+    // With the day of the question on screen, so the answer is judged against it.
+    expect(submitAttempt).toHaveBeenCalledWith("o-1", "2026-05-29")
     expect(
       await screen.findByText(/john 3:16 — god so loved the world\./i),
     ).toBeInTheDocument()

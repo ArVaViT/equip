@@ -129,6 +129,13 @@ const courseCrud = {
     return response.data
   },
 
+  /** The course as a printable PDF, in the reader's language (owner, admin
+   *  or enrolled reader). Built on demand on the server. */
+  async exportCoursePdf(courseId: string): Promise<Blob> {
+    const response = await api.get(`/courses/${courseId}/export.pdf`, { responseType: "blob" })
+    return response.data as Blob
+  },
+
   async getTeacherCourses(): Promise<Course[]> {
     return cached("courses:teacher", CACHE_TTL.ONE_MINUTE, async () => {
       const response = await api.get<Course[]>("/courses/my")

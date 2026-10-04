@@ -113,7 +113,8 @@ def delete_notifications_about(
     types: tuple[str, ...],
     link: str,
     meta_key: str,
-    target_id: uuid.UUID | str,
+    target_id: uuid.UUID | str | None = None,
+    target_ids: list[uuid.UUID] | list[str] | None = None,
 ) -> int:
     """Drop the notification rows a deleted post left in every recipient's
     bell.
@@ -124,10 +125,17 @@ def delete_notifications_about(
     the ``meta`` match happens in Python — sidesteps the ``->>`` /
     ``json_extract`` dialect split while keeping the candidate count
     bounded by one course's enrollment.
+
+    ``target_ids`` takes several at once — a deleted series is one scan of
+    the course's notices, not one per lesson.
     """
-    target = str(target_id)
+    targets = {str(t) for t in (target_ids or [])}
+    if target_id is not None:
+        targets.add(str(target_id))
+    if not targets:
+        return 0
     candidates = db.query(Notification).filter(Notification.type.in_(types), Notification.link == link).all()
-    stale_ids = [n.id for n in candidates if isinstance(n.meta, dict) and str(n.meta.get(meta_key)) == target]
+    stale_ids = [n.id for n in candidates if isinstance(n.meta, dict) and str(n.meta.get(meta_key)) in targets]
     if not stale_ids:
         return 0
     db.query(Notification).filter(Notification.id.in_(stale_ids)).delete(synchronize_session=False)

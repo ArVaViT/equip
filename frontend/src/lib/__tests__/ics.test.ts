@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { CalendarEvent } from "@/types"
-import { escapeText, eventToIcs, foldLine, formatUtc, icsFileName } from "../ics"
+import { escapeText, eventToIcs, foldLine, formatUtc, googleCalendarUrl, icsFileName } from "../ics"
 
 const event = (over: Partial<CalendarEvent> = {}): CalendarEvent => ({
   id: "e1",
@@ -30,6 +30,13 @@ describe("one event as an .ics file", () => {
     // A teacher's own course event can be a deadline too: it stays a moment.
     expect(eventToIcs(event({ event_type: "deadline" }))).toContain("DURATION:PT0S")
     expect(formatUtc(new Date("2026-01-02T03:04:05.678Z"))).toBe("20260102T030405Z")
+  })
+
+  it("uses the event's own length and rings half an hour before a class, never before a deadline", () => {
+    const ics = eventToIcs(event({ duration_minutes: 90 }))
+    expect(ics).toContain("DURATION:PT90M")
+    expect(ics).toContain("TRIGGER:-PT30M")
+    expect(eventToIcs(event({ event_type: "deadline" }))).not.toContain("VALARM")
   })
 
   it("escapes text so a comma does not swallow the rest of the title", () => {
@@ -76,5 +83,18 @@ describe("a recording on the event", () => {
       "Запись занятия",
     )
     expect(ics.replace(/\r\n /g, "")).toContain("DESCRIPTION:Acts\\nЗапись занятия: https://youtu.be/abc")
+  })
+
+  it("builds a Google add link with the class's span and its meeting", () => {
+    const url = new URL(googleCalendarUrl(event({ duration_minutes: 90, meeting_url: "https://zoom.us/j/1" })) ?? "")
+    expect(url.origin + url.pathname).toBe("https://calendar.google.com/calendar/render")
+    expect(url.searchParams.get("action")).toBe("TEMPLATE")
+    expect(url.searchParams.get("dates")).toBe("20261011T130000Z/20261011T143000Z")
+    expect(url.searchParams.get("location")).toBe("https://zoom.us/j/1")
+    // A deadline is a moment: start and end are the same instant.
+    const ddl = new URL(googleCalendarUrl(event({ event_type: "deadline" })) ?? "")
+    expect(ddl.searchParams.get("dates")).toBe("20261011T130000Z/20261011T130000Z")
+    // No readable start: no link rather than a thrown RangeError mid-render.
+    expect(googleCalendarUrl(event({ event_date: "" }))).toBeNull()
   })
 })

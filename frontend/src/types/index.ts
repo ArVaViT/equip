@@ -551,6 +551,7 @@ export type NotificationType =
   | 'new_event'
   | 'event_rescheduled'
   | 'recording_ready'
+  | 'event_reminder'
   | 'retake_requested'
 
 export interface Notification {
@@ -616,7 +617,7 @@ export interface Profile {
 }
 
 type CalendarEventType = 'deadline' | 'live_session' | 'exam' | 'other'
-type CalendarEventSource = 'module_deadline' | 'assignment_deadline' | 'course_event'
+type CalendarEventSource = 'module_deadline' | 'assignment_deadline' | 'course_event' | 'cohort_start' | 'cohort_end'
 
 export interface CalendarEvent {
   id: string
@@ -630,6 +631,25 @@ export interface CalendarEvent {
   meeting_url: string | null
   /** Where to watch it afterwards, once the teacher has added it. */
   recording_url?: string | null
+  /** Minutes, when the event is a span (a class, an exam) and its teacher
+   *  gave a length. Absent on deadlines and on events from before lengths. */
+  duration_minutes?: number | null
+  /** Shared by the occurrences of one weekly series. */
+  series_id?: string | null
+  /** This lesson's place in its series (1-based) and the series' length,
+   *  from the server — the client may not hold the whole series. */
+  series_index?: number | null
+  series_count?: number | null
+  /** Where a deadline leads: the lesson to open (a module's first, or the
+   *  one holding the assignment), and the assignment itself when it is one. */
+  chapter_id?: string | null
+  assignment_id?: string | null
+  /** A day rather than a moment — a group's first or last day. Shown as
+   *  "all day", never as 00:00. */
+  all_day?: boolean
+  /** The `YYYY-MM-DD` of an all-day item, fixed on the server for every
+   *  reader. Filed under this day, never under the instant's day here. */
+  day?: string | null
   course_id: string
   course_title: string | null
   source: CalendarEventSource
@@ -803,6 +823,11 @@ export interface CourseEvent {
   event_date: string
   meeting_url: string | null
   recording_url?: string | null
+  duration_minutes?: number | null
+  series_id?: string | null
+  /** As on `CalendarEvent`: «2 из 4» next to the repeat mark. */
+  series_index?: number | null
+  series_count?: number | null
   created_by: string
   created_at: string
 }

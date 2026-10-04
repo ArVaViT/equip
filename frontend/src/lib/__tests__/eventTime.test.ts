@@ -1,0 +1,76 @@
+import { describe, expect, it } from "vitest"
+import { eventDayKey, eventEnd, isJoinableNow, isOver, minutesUntil, seriesLastDay } from "../eventTime"
+
+const start = "2026-10-25T00:00:00Z"
+const t = (iso: string) => Date.parse(iso)
+
+describe("event time", () => {
+  it("ends after its own length", () => {
+    const e = { event_date: start, event_type: "live_session" as const, duration_minutes: 90 }
+    expect(eventEnd(e)?.toISOString()).toBe("2026-10-25T01:30:00.000Z")
+    expect(isOver(e, t("2026-10-25T01:29:00Z"))).toBe(false)
+    expect(isOver(e, t("2026-10-25T01:30:00Z"))).toBe(true)
+  })
+
+  it("without a length is over three hours after the start, as before", () => {
+    const e = { event_date: start, event_type: "live_session" as const }
+    expect(eventEnd(e)).toBeNull()
+    expect(isOver(e, t("2026-10-25T02:59:00Z"))).toBe(false)
+    expect(isOver(e, t("2026-10-25T03:01:00Z"))).toBe(true)
+  })
+
+  it("can be joined from fifteen minutes before the start until ten minutes past the end", () => {
+    const e = { event_date: start, event_type: "live_session" as const, duration_minutes: 60 }
+    expect(isJoinableNow(e, t("2026-10-24T23:44:00Z"))).toBe(false)
+    expect(isJoinableNow(e, t("2026-10-24T23:45:00Z"))).toBe(true)
+    expect(isJoinableNow(e, t("2026-10-25T00:59:00Z"))).toBe(true)
+    // Ten minutes of grace past the end: a class that runs over keeps its door.
+    expect(isJoinableNow(e, t("2026-10-25T01:09:00Z"))).toBe(true)
+    expect(isJoinableNow(e, t("2026-10-25T01:10:00Z"))).toBe(false)
+  })
+
+  it("counts whole minutes until the start, and none once it began", () => {
+    const e = { event_date: start, event_type: "live_session" as const }
+    expect(minutesUntil(e, t("2026-10-24T23:00:30Z"))).toBe(60)
+    expect(minutesUntil(e, t("2026-10-25T00:00:00Z"))).toBeNull()
+  })
+
+  it("puts the last class of a series on the right day, across a month end", () => {
+    expect(seriesLastDay("2026-10-24T20:00", 1, 8)).toBe("2026-12-12")
+    expect(seriesLastDay("2026-10-24T20:00", 2, 3)).toBe("2026-11-21")
+    expect(seriesLastDay("2026-10-24T20:00", 1, 1)).toBe("2026-10-24")
+    expect(seriesLastDay("garbage", 1, 4)).toBeNull()
+  })
+})
+
+describe("a deadline", () => {
+  it("is missed the minute it passes, not three hours later", () => {
+    const e = { event_date: start, event_type: "deadline" as const }
+    expect(isOver(e, t("2026-10-24T23:59:00Z"))).toBe(false)
+    expect(isOver(e, t("2026-10-25T00:00:00Z"))).toBe(true)
+  })
+})
+
+describe("a group's day", () => {
+  it("lasts the day", () => {
+    const e = { event_date: "2026-10-05T04:00:00Z", event_type: "other" as const, all_day: true }
+    expect(eventEnd(e)?.toISOString()).toBe("2026-10-06T04:00:00.000Z")
+    expect(isOver(e, Date.parse("2026-10-05T20:00:00Z"))).toBe(false)
+  })
+})
+
+describe("an all-day item keeps the day the server gave it", () => {
+  // 21:30Z on the 4th: the 4th in Los Angeles, but the group starts on the 5th.
+  const groupStart = { event_date: "2099-10-04T21:30:00Z", event_type: "other" as const, all_day: true, day: "2099-10-05" }
+
+  it("is filed under its own day, not the instant's", () => {
+    expect(eventDayKey(groupStart)).toBe("2099-10-05")
+    expect(eventDayKey({ event_date: "not a date" })).toBeNull()
+  })
+
+  it("is over only once the reader's today has passed it", () => {
+    // Noon on the 5th in UTC is still the 5th in most zones: not over.
+    expect(isOver(groupStart, Date.parse("2099-10-05T12:00:00Z"))).toBe(false)
+    expect(isOver(groupStart, Date.parse("2099-10-07T12:00:00Z"))).toBe(true)
+  })
+})

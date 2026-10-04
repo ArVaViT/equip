@@ -1,11 +1,12 @@
 import { useTranslation } from "react-i18next";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import type { CalendarEvent } from "@/types";
 import { EVENT_COLORS, getDayShortName, getEventColor, getMonthName } from "./constants";
 import { calendarDayKey, isSameDay } from "./utils";
+import { formatEventTimeRange } from "@/components/calendar/eventTimeFormat";
 
 interface MonthGridProps {
   year: number;
@@ -42,7 +43,13 @@ export function MonthGrid({
   // previously this file read hard-coded English ``MONTH_NAMES`` /
   // ``DAY_NAMES`` arrays, so the calendar grid rendered "January Sun
   // Mon Tue" regardless of the user's language.
-  const dayLabels = Array.from({ length: 7 }, (_, i) => getDayShortName(i, locale));
+  // Monday first: ``getDayShortName`` counts from Sunday = 0.
+  const dayLabels = Array.from({ length: 7 }, (_, i) => getDayShortName((i + 1) % 7, locale));
+  // In the palette's order, so the legend reads the same from month to month.
+  const present = new Set<string>(
+    calendarDays.flatMap(({ date }) => (eventsByDate.get(calendarDayKey(date)) ?? []).map((evt) => evt.event_type)),
+  );
+  const legendTypes = Object.keys(EVENT_COLORS).filter((type) => present.has(type));
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -54,9 +61,10 @@ export function MonthGrid({
             {/* ``Intl`` gives «сентябрь» in lower case, and a heading
                 wants «Сентябрь». `first-letter:uppercase`, never
                 `capitalize` — see datesAreNotCssCapitalized. */}
-            <CardTitle className="first-letter:uppercase">
+            {/* An h2: the month is the page's section, its days' cards beside it are h3. */}
+            <h2 className="font-serif text-lg font-semibold leading-none tracking-tight first-letter:uppercase">
               {getMonthName(month, locale)}
-            </CardTitle>
+            </h2>
           </div>
           <div className="flex items-center gap-1">
             <Button
@@ -115,7 +123,7 @@ export function MonthGrid({
                 onClick={() => onSelectDay(date)}
                 aria-pressed={isSelected}
                 className={`
-                  relative min-h-[78px] border-b border-r border-edge p-1.5 text-left transition-colors sm:min-h-[88px]
+                  relative flex min-h-[78px] flex-col items-start justify-start border-b border-r border-edge p-1.5 text-left transition-colors sm:min-h-[88px]
                   ${inMonth ? (isWeekend ? "bg-muted/15" : "bg-surface") : "bg-muted/30"}
                   ${isSelected ? "ring-2 ring-primary ring-inset" : "hover:bg-muted/40"}
                 `}
@@ -130,22 +138,38 @@ export function MonthGrid({
                   {date.getDate()}
                 </span>
 
+                {/* A phone cell is ~48px wide: a title cut to two letters
+                    says nothing. Dots say "something here, of this kind",
+                    and the day's cards open below on a tap. */}
                 {dayEvents.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-0.5">
+                  <div className="mt-1 flex w-full flex-wrap gap-1 sm:hidden" aria-hidden>
+                    {dayEvents.slice(0, 4).map((evt) => (
+                      <span key={evt.id} className={`h-1.5 w-1.5 rounded-full ${getEventColor(evt.event_type).dot}`} />
+                    ))}
+                  </div>
+                )}
+                {dayEvents.length > 0 && (
+                  <span className="sr-only">{t("calendar.eventCount", { count: dayEvents.length })}</span>
+                )}
+                {dayEvents.length > 0 && (
+                  <div className="mt-1 hidden w-full min-w-0 flex-col gap-0.5 sm:flex">
                     {dayEvents.slice(0, 3).map((evt) => {
                       const color = getEventColor(evt.event_type);
                       return (
                         <span
                           key={evt.id}
                           className={`block w-full truncate rounded px-1 py-0.5 text-xs leading-tight ${color.bg} ${color.text}`}
-                          title={evt.title}
+                          title={`${formatEventTimeRange(evt)} · ${evt.title}`}
                         >
+                          {evt.event_type !== "deadline" && !evt.all_day && (
+                            <span className="tabular-nums font-medium">{formatEventTimeRange(evt).split("–")[0]} </span>
+                          )}
                           {evt.title}
                         </span>
                       );
                     })}
                     {dayEvents.length > 3 && (
-                      <span className="pl-1 text-xs text-ink-muted">
+                      <span className="pl-1 text-xs text-ink-muted" aria-hidden>
                         {t("calendar.moreEvents", { count: dayEvents.length - 3 })}
                       </span>
                     )}
@@ -156,16 +180,21 @@ export function MonthGrid({
           })}
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
-          {Object.entries(EVENT_COLORS).map(([type, color]) => (
-            <span key={type} className="flex items-center gap-1.5">
-              <span className={`h-2 w-2 shrink-0 rounded-full ${color.dot}`} aria-hidden />
-              <span className="text-ink-muted">
-                {t(`calendar.eventTypes.${type}`, { defaultValue: type.replace("_", " ") })}
+        {/* Only the kinds that are on the grid. Four dots explained under
+            a month of two lessons told the reader to look for deadlines
+            and exams that were not there — and took a line on a phone. */}
+        {legendTypes.length > 0 && (
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+            {legendTypes.map((type) => (
+              <span key={type} className="flex items-center gap-1.5">
+                <span className={`h-2 w-2 shrink-0 rounded-full ${getEventColor(type).dot}`} aria-hidden />
+                <span className="text-ink-muted">
+                  {t(`calendar.eventTypes.${type}`, { defaultValue: type.replace("_", " ") })}
+                </span>
               </span>
-            </span>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

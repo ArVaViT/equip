@@ -637,7 +637,11 @@ CREATE TABLE public.course_events (
     created_by uuid NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     meeting_url character varying(2048),
-    recording_url character varying(2048)
+    recording_url character varying(2048),
+    duration_minutes integer,
+    series_id uuid,
+    reminded_at timestamp with time zone,
+    CONSTRAINT course_events_duration_minutes_check CHECK (((duration_minutes IS NULL) OR ((duration_minutes >= 1) AND (duration_minutes <= 1440))))
 );
 
 
@@ -2193,6 +2197,20 @@ CREATE INDEX ix_content_versions_twin_lookup ON public.content_versions USING bt
 --
 
 CREATE INDEX ix_course_events_course_id ON public.course_events USING btree (course_id);
+
+
+--
+-- Name: ix_course_events_series_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_course_events_series_id ON public.course_events USING btree (series_id) WHERE (series_id IS NOT NULL);
+
+
+--
+-- Name: ix_course_events_unreminded; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_course_events_unreminded ON public.course_events USING btree (event_date) WHERE (reminded_at IS NULL);
 
 
 --

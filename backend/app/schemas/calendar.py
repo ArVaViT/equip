@@ -1,6 +1,7 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Literal
 from uuid import UUID
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_core import PydanticCustomError
@@ -47,6 +48,38 @@ def _as_utc_instant(value: datetime | None) -> datetime | None:
     return value.replace(tzinfo=UTC)
 
 
+def _known_time_zone(value: str | None) -> str | None:
+    """An IANA zone the server can step a series in, or ``None``.
+
+    Refused rather than read as UTC: a series stepped in the wrong zone
+    drifts by an hour at the next clock change, months after the save
+    that caused it, with nothing to say why.
+    """
+    if value is None:
+        return None
+    try:
+        ZoneInfo(value)
+    except (ZoneInfoNotFoundError, ValueError) as exc:
+        raise PydanticCustomError("time_zone_unknown", "Unknown time zone: {zone}", {"zone": value}) from exc
+    return value
+
+
+class EventRepeat(RequestModel):
+    """Repeat the new event every ``every_weeks`` weeks through ``until``.
+
+    ``until`` is a day on the calendar of ``time_zone`` — the zone the
+    teacher is scheduling in, which the client knows and the server does
+    not — and is inclusive. Without a zone the teacher's profile zone is
+    used, then UTC.
+    """
+
+    every_weeks: int = Field(1, ge=1, le=4)
+    until: date
+    time_zone: str | None = Field(None, max_length=64)
+
+    _time_zone = field_validator("time_zone")(_known_time_zone)
+
+
 class CourseEventCreate(RequestModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: str | None = Field(None, max_length=5000)
@@ -60,6 +93,11 @@ class CourseEventCreate(RequestModel):
     meeting_url: str | None = None
     #: The recording, once there is one. Same rule as the meeting link.
     recording_url: str | None = None
+    #: Minutes. ``None`` for a moment rather than a span — a deadline.
+    #: A day is the ceiling: past it, it is not one event.
+    duration_minutes: int | None = Field(None, ge=1, le=1440)
+    #: Present to create a weekly series instead of one event.
+    repeat: EventRepeat | None = None
 
     _event_date_utc = field_validator("event_date")(_as_utc_instant)
     _meeting_url = field_validator("meeting_url", "recording_url")(_validated_meeting_url)
@@ -76,9 +114,21 @@ class CourseEventUpdate(RequestModel):
     meeting_url: str | None = None
     #: The recording, once there is one. Same rule as the meeting link.
     recording_url: str | None = None
+    #: ``None`` clears it, like the links.
+    #: A day is the ceiling: past it, it is not one event.
+    duration_minutes: int | None = Field(None, ge=1, le=1440)
+    #: The zone a "this and following" move is measured in, so that
+    #: 20:00 → 19:00 lands at 19:00 on every lesson's own day across a
+    #: clock change. Ignored for a single event.
+    time_zone: str | None = Field(None, max_length=64)
 
     _event_date_utc = field_validator("event_date")(_as_utc_instant)
     _meeting_url = field_validator("meeting_url", "recording_url")(_validated_meeting_url)
+    _time_zone = field_validator("time_zone")(_known_time_zone)
+
+
+#: Which occurrences of a series an edit or a delete reaches.
+SeriesScope = Literal["this", "following", "all"]
 
 
 class CourseEventResponse(BaseModel):
@@ -92,6 +142,12 @@ class CourseEventResponse(BaseModel):
     event_date: datetime
     meeting_url: str | None = None
     recording_url: str | None = None
+    duration_minutes: int | None = None
+    series_id: UUID | None = None
+    #: This lesson's place in its series, 1-based, and the series' length —
+    #: «2 из 4» beside the repeat mark, where eight lessons all read «Урок».
+    series_index: int | None = None
+    series_count: int | None = None
     created_by: UUID
     created_at: datetime
 
@@ -110,6 +166,26 @@ class CalendarEvent(BaseModel):
     #: Where to watch it afterwards. Like the meeting link, only a
     #: ``course_event`` can carry one.
     recording_url: str | None = None
+    #: Minutes, for a ``course_event`` that has a length.
+    duration_minutes: int | None = None
+    #: Shared by the occurrences of one weekly series.
+    series_id: str | None = None
+    #: This lesson's place in its series, 1-based, and the series' length.
+    series_index: int | None = None
+    series_count: int | None = None
+    #: Where a deadline leads. A module's due date opens its first
+    #: lesson; an assignment's opens the lesson that holds it. A date on
+    #: a calendar with no way to the work it names was a dead end.
+    chapter_id: str | None = None
+    assignment_id: str | None = None
     course_id: str
     course_title: str | None = None
-    source: Literal["module_deadline", "assignment_deadline", "course_event"]
+    source: Literal["module_deadline", "assignment_deadline", "course_event", "cohort_start", "cohort_end"]
+    #: A day, not a moment: a group's first and last day of study. The
+    #: clients write "all day" instead of a time, and the feed a date.
+    all_day: bool = False
+    #: The calendar day of an ``all_day`` item, fixed once on the server in
+    #: the zone it was chosen in. Every reader files it under this day: a
+    #: group that starts on the 5th in Kyiv starts on the 5th in Los
+    #: Angeles too, not on the 4th.
+    day: date | None = None

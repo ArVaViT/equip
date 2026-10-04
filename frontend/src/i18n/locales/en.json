@@ -182,7 +182,8 @@
       "openFull": "Full calendar",
       "empty": "Nothing scheduled today. Coming up:",
       "nothingAhead": "Nothing coming up.",
-      "ahead": "Coming up"
+      "ahead": "Coming up",
+      "over": "Over"
     },
     "readingProgress_one": "{{read}} of {{count}} lesson read",
     "readingProgress_other": "{{read}} of {{count}} lessons read",
@@ -551,7 +552,7 @@
     "loadError": "Couldn't load today's challenge",
     "notScheduled": {
       "title": "No question today",
-      "body": "Tomorrow’s challenge unlocks at {{time}} your time."
+      "body": "Tomorrow's question opens at midnight."
     },
     "notTranslated": {
       "title": "Not in your language yet",
@@ -919,7 +920,8 @@
       "quiz_option_repeated": "the same option is listed twice",
       "meeting_url_not_a_web_address": "must start with http:// or https:// — paste the whole address from the browser's address bar, for example https://zoom.us/j/1234567890",
       "meeting_url_credentials_in_url": "must not have an @ before the site address — a link like that opens a different site from the one it appears to name. Copy the meeting address again",
-      "meeting_url_too_long": "is too long — no more than 2048 characters"
+      "meeting_url_too_long": "is too long — no more than 2048 characters",
+      "time_zone_unknown": "unknown time zone — choose one in your profile"
     },
     "storage": {
       "tooLarge": "This file is {{sizeMb}} MB; the limit is {{maxMb}} MB.",
@@ -1696,7 +1698,9 @@
   "calendar": {
     "addOne": {
       "label": "Add to calendar",
-      "aria": "Add “{{title}}” to your calendar"
+      "aria": "Add “{{title}}” to your calendar",
+      "google": "Google Calendar",
+      "file": "Apple, Outlook (.ics)"
     },
     "subscribe": {
       "open": "Subscribe",
@@ -1704,11 +1708,12 @@
       "description": "Your courses’ sessions and deadlines appear in your calendar and stay up to date.",
       "replaces": "The link is personal. If you subscribed before, the old link stops working.",
       "create": "Create link",
-      "apple": "Apple and Outlook",
+      "apple": "Apple Calendar, Outlook",
       "google": "Google Calendar",
       "copy": "Copy link",
       "copied": "Copied",
       "private": "Don't forward the link: it shows your schedule.",
+      "delay": "Calendars pick up changes on their own, but not at once: Google checks every few hours. A moved class shows in Equip right away.",
       "failed": "Couldn't create the link. Please try again.",
       "copyFailed": "Couldn't copy the link."
     },
@@ -1737,7 +1742,46 @@
       "live_session": "Live session",
       "exam": "Exam",
       "other": "Other"
-    }
+    },
+    "tomorrow": "Tomorrow",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week",
+    "nextUp": "Next class",
+    "week": {
+      "free": "Free"
+    },
+    "views": {
+      "label": "Calendar view",
+      "agenda": "Schedule",
+      "week": "Week",
+      "month": "Month"
+    },
+    "agenda": {
+      "emptyTitle": "Nothing ahead",
+      "emptyDescription": "When your teacher schedules a class or a deadline, it will appear here.",
+      "past_one": "Past — {{count}} event",
+      "past_other": "Past — {{count}} events"
+    },
+    "card": {
+      "onNow": "On now",
+      "inMinutes_one": "In {{count}} minute",
+      "inMinutes_other": "In {{count}} minutes",
+      "addRecording": "Add recording",
+      "addRecordingTitle": "Recording of “{{title}}”",
+      "addRecordingSave": "Save",
+      "recordingAdded": "Recording added — students will be notified",
+      "openAssignment": "Open the assignment",
+      "openLesson": "Open the lesson"
+    },
+    "yesterday": "Yesterday",
+    "newEvent": {
+      "open": "New event",
+      "course": "Course"
+    },
+    "zone": "Times are in your zone: {{zone}}.",
+    "zoneChange": "Change",
+    "allDay": "All day",
+    "untitledOther": "Event"
   },
   "teacher": {
     "dashboardTitle": "My Courses",
@@ -1881,6 +1925,7 @@
       "events": {
         "title": "Course Events",
         "editEvent": "Edit Event",
+        "editNamed": "Edit: {{title}} · {{date}}",
         "createEvent": "Create Event",
         "titlePlaceholder": "Event title",
         "descriptionPlaceholder": "Description (optional)",
@@ -2055,7 +2100,8 @@
       "announcements": "Announcements",
       "materials": "Materials",
       "events": "Events",
-      "accessMode": "Access mode"
+      "accessMode": "Access mode",
+      "downloadPdf": "Download PDF"
     },
     "accessMode": {
       "title": "Course access mode",
@@ -2072,6 +2118,10 @@
       "title": "Unpublish this course?",
       "description": "It will leave the catalog, and students — including those already enrolled — will not be able to open its lessons until you publish it again. Their progress and grades are kept.",
       "confirm": "Unpublish"
+    },
+    "pdf": {
+      "preparing": "Preparing the course PDF…",
+      "failed": "Could not prepare the PDF. Please try again."
     }
   },
   "chapterEditor": {
@@ -2199,6 +2249,12 @@
       "heading": "Contents",
       "emptyModule": "This module has no lessons yet.",
       "empty": "No lessons yet — add them in the editor."
+    },
+    "recordings": {
+      "heading": "Class recordings",
+      "showAll_one": "All recordings — {{count}}",
+      "showAll_other": "All recordings — {{count}}",
+      "showLess": "Show less"
     }
   },
   "gradebook": {
@@ -3227,10 +3283,12 @@
     "recordingLabel": "Recording link",
     "recordingHint": "YouTube, Vimeo, Google Drive",
     "join": "Join",
+    "linkQuiet": "Class link",
+    "joinVia": "Join on {{provider}}",
     "joinAria": "Join the meeting for {{title}}",
     "linkLabel": "Meeting link",
     "linkPlaceholder": "https://zoom.us/j/…",
-    "linkHint": "Optional. Zoom, Google Meet — any link. Students will see a “Join” button."
+    "linkHint": "Optional. Zoom, Google Meet — any link. Students will see a button to join — “Join on Zoom” for a Zoom link."
   },
   "dmca": {
     "title": "Copyright complaints",
@@ -3269,5 +3327,29 @@
   "theme": {
     "switchToLight": "Light theme",
     "switchToDark": "Dark theme"
+  },
+  "eventSeries": {
+    "duration": "Length",
+    "durationNone": "Not set",
+    "repeat": "Repeat",
+    "repeatNone": "Does not repeat",
+    "repeatWeekly": "Every week",
+    "repeatBiweekly": "Every two weeks",
+    "count": "Number of classes",
+    "countRange": "From 2 to {{max}}",
+    "lastOn": "the last on {{date}}",
+    "partOfSeries": "Repeating class",
+    "position": "{{index}} of {{count}}",
+    "created_one": "{{count}} class created",
+    "created_other": "{{count}} classes created",
+    "scope": {
+      "saveTitle": "Edit a repeating class",
+      "deleteTitle": "Delete a repeating class",
+      "this": "This class only",
+      "following": "This and following",
+      "all": "All classes in the series",
+      "saveAction": "Save",
+      "deleteAction": "Delete"
+    }
   }
 }

@@ -1635,6 +1635,10 @@
       [
         "event_id",
         "path"
+      ],
+      [
+        "scope",
+        "query"
       ]
     ],
     "responses": [
@@ -1654,6 +1658,10 @@
       [
         "event_id",
         "path"
+      ],
+      [
+        "scope",
+        "query"
       ]
     ],
     "responses": [
@@ -2567,6 +2575,48 @@
   {
     "method": "POST",
     "path": "/api/v1/internal/daily-challenge-worker",
+    "params": [
+      [
+        "Authorization",
+        "header"
+      ],
+      [
+        "X-Worker-Secret",
+        "header"
+      ]
+    ],
+    "responses": [
+      "200",
+      "401",
+      "422",
+      "503"
+    ],
+    "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/internal/event-reminders",
+    "params": [
+      [
+        "Authorization",
+        "header"
+      ],
+      [
+        "X-Worker-Secret",
+        "header"
+      ]
+    ],
+    "responses": [
+      "200",
+      "401",
+      "422",
+      "503"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/internal/event-reminders",
     "params": [
       [
         "Authorization",
