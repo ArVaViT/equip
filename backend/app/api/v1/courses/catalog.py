@@ -12,6 +12,7 @@ from app.models.organization import Organization
 from app.models.user import User, UserRole
 from app.schemas.course import CourseResponse, CourseSummary, ModuleResponse
 from app.schemas.locale import LocaleCode, normalize_locale
+from app.services import guest_preview
 from app.services.course_service import (
     get_course,
     get_courses,
@@ -207,9 +208,14 @@ def get_course_detail(
     # A chapter held for its first release is the owner's and the
     # admin's to see — the same two the ``?source=1`` gate above trusts.
     # Everybody else is a reader, and a reader is not shown it.
-    return build_localized_course_response_with_tree(
+    localized = build_localized_course_response_with_tree(
         db, course, display_locale, hide_unreleased=not is_owner_or_admin(course, current_user)
     )
+    # A guest, or a signed-in reader not enrolled yet: both may read the
+    # first lesson before deciding.
+    if current_user is None or not guest_preview.reads_course_as_enrolled(db, course, current_user):
+        localized.preview_chapter_id = guest_preview.preview_chapter_id(db, course)
+    return localized
 
 
 class CourseReadingTime(BaseModel):

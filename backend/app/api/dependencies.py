@@ -429,6 +429,55 @@ def verify_chapter_access(db: Session, chapter_id: str, user: User) -> Chapter:
     return chapter
 
 
+def reads_chapter_as_enrolled(db: Session, chapter_id: str, user: User) -> bool:
+    """Whether ``user`` reads this lesson as one of the course's own:
+    enrolled, the owner, or platform staff. Anyone else signed in reads
+    what a guest reads (``verify_guest_chapter_access``)."""
+    from app.services.guest_preview import reads_course_as_enrolled
+
+    _chapter, _module, course = _resolve_chapter(db, chapter_id)
+    return reads_course_as_enrolled(db, course, user)
+
+
+def is_preview_chapter(db: Session, chapter_id: str) -> bool:
+    """The guest rule as a question instead of a gate."""
+    try:
+        verify_guest_chapter_access(db, chapter_id)
+    except HTTPException:
+        return False
+    return True
+
+
+def verify_guest_chapter_access(db: Session, chapter_id: str) -> Chapter:
+    """A lesson read by somebody who is not signed in, or not enrolled.
+
+    Only the course's preview lesson (``services/guest_preview``); every
+    other lesson answers 401, which the client turns into "sign in to
+    keep reading" — the course exists, it is the reader who is missing.
+    A chapter of a course a guest cannot see at all is a 404, as it is
+    for a signed-in stranger.
+    """
+    from app.services.guest_preview import preview_chapter_id
+    from app.services.staged_edits.visibility import chapter_is_held
+
+    chapter, _module, course = _resolve_chapter(db, chapter_id)
+    if course.status != CourseStatus.PUBLISHED or course.access_mode == "institute" or chapter_is_held(db, chapter.id):
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Chapter not found",
+            context={"resource_type": "chapter", "resource_id": chapter_id},
+        )
+    if preview_chapter_id(db, course) != str(chapter.id):
+        raise equip_error(
+            ErrorCode.AUTH_REQUIRED,
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            message="Sign in to read this lesson",
+            context={"resource_type": "chapter", "resource_id": chapter_id},
+        )
+    return chapter
+
+
 def refuse_if_chapter_locked(db: Session, chapter_id: str, user: User, course: Course | None = None) -> None:
     """The lock on the write paths too — submitting a quiz or an assignment,
     marking a lesson read.

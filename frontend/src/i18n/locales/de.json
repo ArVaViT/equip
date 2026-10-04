@@ -8,6 +8,36 @@
     "invalid": "Dieser Link funktioniert nicht. E-Mails schalten Sie im Profil unter „Einstellungen“ ab.",
     "toProfile": "Profil öffnen"
   },
+  "guest": {
+    "readFirst": "Erste Lektion lesen",
+    "readFirstFree": "Erste Lektion lesen — ohne Konto",
+    "openToAll": "Für alle offen",
+    "afterEnrolling": "Nach der Einschreibung",
+    "register": "Konto erstellen",
+    "signIn": "Anmelden",
+    "block": {
+      "quiz": "Hier ist ein Test — er öffnet sich nach der Einschreibung",
+      "assignment": "Hier ist eine Aufgabe — sie öffnet sich nach der Einschreibung",
+      "file": "Hier ist eine Datei — sie öffnet sich nach der Einschreibung"
+    },
+    "finish": {
+      "title": "Gefallen? Mit einem Konto weiterlesen",
+      "body": "Erstellen Sie ein kostenloses Konto, um sich einzuschreiben, weiterzulesen und Gelesenes zu markieren."
+    },
+    "wall": {
+      "title": "Diese Lektion ist für Eingeschriebene",
+      "body": "Die erste Lektion ist für alle offen. Um weiterzulesen, erstellen Sie ein kostenloses Konto und schreiben Sie sich ein."
+    },
+    "toCourse": "Kurs belegen",
+    "enrollFinish": {
+      "title": "Gefallen? Belegen Sie den Kurs",
+      "body": "Mit der Einschreibung öffnen sich die weiteren Lektionen, Tests und das Markieren als gelesen."
+    },
+    "enrollWall": {
+      "title": "Diese Lektion ist für Eingeschriebene",
+      "body": "Die erste Lektion ist für alle offen. Belegen Sie den Kurs, um weiterzulesen."
+    }
+  },
   "common": {
     "late": "Verspätet",
     "appName": "Equip",

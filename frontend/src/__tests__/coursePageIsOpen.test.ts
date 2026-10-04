@@ -30,8 +30,14 @@ describe("who may open a course page", () => {
     expect(elementFor("/courses/:id")).not.toContain("<Gate")
   })
 
-  it("the lessons still need an account", () => {
-    expect(elementFor("/courses/:courseId/chapters/:chapterId")).toContain('<Gate mode="private">')
-    expect(elementFor("/courses/:courseId/modules/:moduleId/chapters/:chapterId")).toContain('<Gate mode="private">')
+  it("a lesson is open, and decides itself what a guest may read", () => {
+    // The first lesson is a guest's (guest_preview); every other one shows
+    // an invitation, and the server answers 401 for it.
+    expect(elementFor("/courses/:courseId/chapters/:chapterId")).toContain('<Gate mode="open">')
+    expect(elementFor("/courses/:courseId/modules/:moduleId/chapters/:chapterId")).toContain('<Gate mode="open">')
+  })
+
+  it("a module page still needs an account", () => {
+    expect(elementFor("/courses/:courseId/modules/:moduleId")).toContain('<Gate mode="private">')
   })
 })

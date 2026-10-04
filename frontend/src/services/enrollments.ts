@@ -10,6 +10,11 @@ export const enrollmentsService = {
     )
     cacheInvalidate("courses:my")
     cacheInvalidate(`courses:enrollment-status:${courseId}`)
+    // The cached course was read before enrolling, so it names a preview
+    // lesson for a reader who is not enrolled — and the lesson page reads
+    // that as «ask to enrol». Left for its three minutes, it walled the next
+    // lesson off from someone who had just enrolled.
+    cacheInvalidate(`courses:detail:${courseId}`)
     cacheInvalidatePrefix("calendar:events:")
     cacheInvalidatePrefix("progress:my:")
     return response.data

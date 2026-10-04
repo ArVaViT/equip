@@ -91,6 +91,8 @@ export type MailKind = (typeof MAIL_KINDS)[number]
 
 export interface Course {
   id: string
+  /** The lesson a guest may read before signing up; set only on a guest's course page. */
+  preview_chapter_id?: string | null
   title: string
   description: string | null
   image_url: string | null
