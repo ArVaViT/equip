@@ -209,6 +209,29 @@ export interface GradingConfig {
   participation_weight: number
 }
 
+/** Mirrors `GradingScheme` in `backend/app/services/grading_scheme.py`. */
+export const GRADING_SCHEMES = ["pass_fail", "percent", "five_point", "letter"] as const
+export type GradingScheme = (typeof GRADING_SCHEMES)[number]
+
+/**
+ * How one course is graded, as `GET /grades/course/{id}/scheme` answers it.
+ *
+ * `bands` is `[floor, symbol]`, highest floor first, and empty for the two
+ * schemes that have none (`pass_fail`, `percent`). Decimals arrive as strings.
+ */
+export interface GradingSchemeResponse {
+  grading_scheme: string
+  pass_threshold: string
+  bands: [string, string][]
+}
+
+/** Scheme and pass line, written together or not at all (D8.1). */
+export interface GradingSchemeUpdate {
+  grading_scheme: GradingScheme
+  pass_threshold: number
+  reason?: string
+}
+
 export interface GradeBreakdown {
   quiz_avg: number
   quiz_weighted: number

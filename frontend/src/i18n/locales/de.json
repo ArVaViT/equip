@@ -954,6 +954,7 @@
     "courseCloned": "Kurs kopiert",
     "cloneFailed": "Kurs konnte nicht kopiert werden",
     "gradingWeightsSaved": "Gewichtung gespeichert",
+    "gradingSchemeSaved": "Notenskala gespeichert",
     "gradingConfigSaveFailed": "Bewertungseinstellungen konnten nicht gespeichert werden",
     "gradeSaved": "Note gespeichert",
     "gradeCleared": "Handnote entfernt — es gilt wieder die berechnete",
@@ -2243,6 +2244,21 @@
       "split": "Tests {{quiz}} % · Aufgaben {{assignment}} %",
       "saving": "Wird gespeichert …",
       "save": "Gewichtung speichern"
+    },
+    "scale": {
+      "title": "Notenskala",
+      "summary": "{{scheme}} · Bestehensgrenze {{threshold}} %",
+      "directorDecides": "Die Skala legt die Schulleitung fest.",
+      "change": "Ändern",
+      "loadFailed": "Die Notenskala konnte nicht geladen werden.",
+      "dialogTitle": "So wird dieser Kurs bewertet",
+      "scheme": "Skala",
+      "passThreshold": "Bestehensgrenze (%)",
+      "thresholdRange": "Die Bestehensgrenze ist eine Zahl von 0 bis 100.",
+      "fivePointMax": "Bei der Fünf-Punkte-Skala liegt die Bestehensgrenze bei höchstens 75, sonst ist die «3» unerreichbar.",
+      "handSetGrades_one": "{{count}} Note in diesem Kurs wurde von Hand nach der alten Skala gesetzt. Entfernen oder erfassen Sie sie zuerst neu, dann ändern Sie die Skala.",
+      "handSetGrades_other": "{{count}} Noten in diesem Kurs wurden von Hand nach der alten Skala gesetzt. Entfernen oder erfassen Sie sie zuerst neu, dann ändern Sie die Skala.",
+      "handSetGradesUnknown": "In diesem Kurs gibt es Noten, die von Hand nach der alten Skala gesetzt wurden. Entfernen oder erfassen Sie sie zuerst neu, dann ändern Sie die Skala."
     },
     "summary": {
       "title": "Noten der Studierenden",
