@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from app.schemas._media_url import validate_safe_media_url
 from app.schemas._request import RequestModel
@@ -180,6 +180,19 @@ class CourseUpdate(RequestModel):
     def _validate_image_url(cls, value: str | None) -> str | None:
         return validate_safe_media_url(value)
 
+    @field_validator("access_mode", "status", mode="before")
+    @classmethod
+    def _a_choice_is_not_cleared(cls, value: object, info: ValidationInfo) -> object:
+        # ``None`` here means "not sent", never "clear it": a course is always
+        # draft or published, public or institute, and both columns are NOT
+        # NULL. An explicit ``null`` passed the type (``X | None``), was
+        # written as the column's value and came back as the handler's bare
+        # 409 — and for ``access_mode`` it slipped past the director check,
+        # which looked for a value to guard (2026-10-03).
+        if value is None:
+            raise ValueError(f"{info.field_name} cannot be null; leave it out to keep the current value")
+        return value
+
     @model_validator(mode="after")
     def _window_opens_before_it_closes(self) -> "CourseUpdate":
         # A window that closes before it opens was saved as is, and nobody
@@ -275,6 +288,7 @@ class CourseSummary(_ReadTitle):
     #: missing school is better than a card with a borrowed one.
     organization_name: str | None = None
     organization_slug: str | None = None
+    organization_logo_url: str | None = None
     status: str = "draft"
     access_mode: Literal["public", "institute"] = "public"
     created_by: UUID | None = None
@@ -454,3 +468,18 @@ class ResyncProgressResponse(BaseModel):
 
     course_id: str
     enrollments_updated: int
+
+
+class OrganizationCourses(BaseModel):
+    """One organization's published courses, for a person who belongs to it.
+
+    The block ``GET /courses/my-organizations`` returns per membership:
+    which organization, in what role the caller is there, and its courses
+    — closed ones included, which the public catalogue never shows.
+    """
+
+    organization_id: UUID
+    organization_slug: str
+    organization_name: str
+    role: str
+    courses: list[CourseSummary] = []

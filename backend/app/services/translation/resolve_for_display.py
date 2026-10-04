@@ -133,9 +133,9 @@ def fetch_course_titles_by_id(
     return out
 
 
-def _organizations_of(db: Session, courses: list[Course]) -> dict[str, tuple[str, str]]:
-    """``{course_id: (public_name, slug)}`` for every course that has an
-    organization.
+def _organizations_of(db: Session, courses: list[Course]) -> dict[str, tuple[str, str, str | None]]:
+    """``{course_id: (public_name, slug, logo_url)}`` for every course that
+    has an organization.
 
     One query for the page. The catalogue names the organization behind
     every public course — next to the title, before enrolling — because
@@ -151,10 +151,10 @@ def _organizations_of(db: Session, courses: list[Course]) -> dict[str, tuple[str
     if not org_ids:
         return {}
     names = {
-        org_id: (public_name, slug)
-        for org_id, public_name, slug in db.query(Organization.id, Organization.public_name, Organization.slug).filter(
-            Organization.id.in_(org_ids)
-        )
+        org_id: (public_name, slug, logo_url)
+        for org_id, public_name, slug, logo_url in db.query(
+            Organization.id, Organization.public_name, Organization.slug, Organization.logo_url
+        ).filter(Organization.id.in_(org_ids))
     }
     return {
         c.id: names[c.organization_id] for c in courses if c.organization_id is not None and c.organization_id in names
@@ -221,7 +221,11 @@ def build_localized_course_summaries(
         organization = organizations.get(c.id)
         if organization is not None:
             summary = summary.model_copy(
-                update={"organization_name": organization[0], "organization_slug": organization[1]}
+                update={
+                    "organization_name": organization[0],
+                    "organization_slug": organization[1],
+                    "organization_logo_url": organization[2],
+                }
             )
         summary = summary.model_copy(
             update={

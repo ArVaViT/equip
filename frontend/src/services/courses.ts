@@ -92,9 +92,9 @@ const courseCrud = {
   },
 
   /** Who teaches the course — the «Автор» tab. Visible when the course page is. */
-  async getAuthor(id: string): Promise<{ name: string | null; avatar_url: string | null; school: string | null }> {
+  async getAuthor(id: string): Promise<CourseAuthor> {
     return cached(`courses:author:${id}`, CACHE_TTL.THREE_MINUTES, async () => {
-      const response = await api.get<{ name: string | null; avatar_url: string | null; school: string | null }>(
+      const response = await api.get<CourseAuthor>(
         `/courses/${id}/author`,
       )
       return response.data
@@ -362,6 +362,15 @@ const courseCrud = {
  * (e.g. `import { quizzesService } from "@/services/quizzes"`); routing
  * every one through this file would just add an import hop.
  */
+/** Who teaches the course, and the organization it belongs to. */
+export interface CourseAuthor {
+  name: string | null
+  avatar_url: string | null
+  school: string | null
+  organization_slug?: string | null
+  organization_logo_url?: string | null
+}
+
 export const coursesService = {
   ...courseCrud,
   ...adminUsersService,

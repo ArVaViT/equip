@@ -78,6 +78,71 @@ class OrganizationResponse(BaseModel):
     #: and who runs it are the two questions the admin panel asks first.
     member_count: int = 0
     director_emails: list[str] = []
+    #: Published, not binned. With the status and the directors, this is
+    #: what decides whether the organization is on the public showcase
+    #: (``GET /organizations``), and the panel says so instead of leaving
+    #: staff to work out why a verified school is not listed.
+    published_courses: int = 0
+
+
+class OrganizationPerson(BaseModel):
+    #: The profile id — a stable key for a list of people, two of whom may
+    #: share a name. Never the address.
+    id: UUID
+    full_name: str
+    avatar_url: str | None = None
+
+
+class OrganizationStats(BaseModel):
+    """Numbers that say something about the organization and nothing about
+    a person in it. ``None`` is "not shown", not zero: a member count below
+    ten next to a director's name is nearly a list of people, and a teacher
+    count below three is a name."""
+
+    courses: int
+    lessons: int
+    certificates: int
+    members: int | None = None
+    teachers: int | None = None
+
+
+class LockedCourse(BaseModel):
+    """A closed course as a stranger sees it: what it is, not what is in it.
+
+    The title and the blurb are what a published course already shows the
+    whole catalog about itself; the lessons, the modules and everything a
+    seat opens stay out. Until 2026-10-03 the blurb stayed out too, and a
+    locked card was a title a visitor could not act on.
+    """
+
+    id: str
+    title: str
+    #: The course's released description in the reader's language, as the
+    #: open cards carry it. ``None`` when the course has written none.
+    description: str | None = None
+    image_url: str | None = None
+
+
+class OrganizationCard(BaseModel):
+    """One organization on the "Organizations on Equip" showcase."""
+
+    slug: str
+    public_name: str
+    country: str | None = None
+    logo_url: str | None = None
+    description: str | None = None
+    courses: int
+
+
+class OrganizationProfileUpdate(RequestModel):
+    """What the organization's director writes about it."""
+
+    description: str | None = Field(None, max_length=280)
+    # The same shape the form checks before it sends: https, then a host
+    # with a dot in it, and no whitespace anywhere. ``^https://`` alone
+    # accepted "https://" as a website (2026-10-03).
+    website_url: str | None = Field(None, max_length=300, pattern=r"^https://\S+\.\S+$")
+    show_member_count: bool | None = None
 
 
 class OrganizationPublicResponse(BaseModel):
@@ -101,3 +166,25 @@ class OrganizationPublicResponse(BaseModel):
     active: bool
     verified: bool
     courses: list[CourseSummary] = []
+    #: The organization's own paragraph, in its own language (not translated).
+    description: str | None = None
+    logo_url: str | None = None
+    website_url: str | None = None
+    city: str | None = None
+    #: Who runs it, by name and face — never by address. A page with no
+    #: director to stand behind it is not on the showcase.
+    directors: list[OrganizationPerson] = []
+    stats: OrganizationStats
+    #: Courses for members only: shown as a title, a cover and a lock, so
+    #: a visitor sees what membership opens — and nothing of what is inside.
+    locked_courses: list[LockedCourse] = []
+    #: Whether the reader belongs here (their closed courses are open to them).
+    viewer_is_member: bool = False
+    #: Whether the reader may write this page (its director, or platform staff),
+    #: and the id they write it under.
+    viewer_can_edit: bool = False
+    id: UUID | None = None
+    #: The organization's own setting, for the reader who may change it.
+    show_member_count: bool | None = None
+    #: "On Equip since …".
+    since: datetime

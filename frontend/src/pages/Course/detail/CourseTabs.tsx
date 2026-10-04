@@ -1,6 +1,7 @@
 import { Lock } from "lucide-react"
 import { useId, useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
+import { Link } from "react-router-dom"
 
 import { ReadingMinutes } from "@/components/course/ReadingMinutes"
 import { Badge } from "@/components/ui/badge"
@@ -218,7 +219,18 @@ function Author({ courseId }: { courseId: string }) {
       )}
       <div className="min-w-0">
         <p className="font-serif text-lg font-semibold tracking-tight text-wrap-safe">{author.name}</p>
-        {author.school && <p className="text-sm text-ink-muted text-wrap-safe">{author.school}</p>}
+        {author.school &&
+          (author.organization_slug ? (
+            // The school is a page now: who it is, who runs it, what else it teaches.
+            <Link
+              to={`/o/${author.organization_slug}`}
+              className="text-sm text-ink-muted underline-offset-4 text-wrap-safe hover:text-ink hover:underline"
+            >
+              {author.school}
+            </Link>
+          ) : (
+            <p className="text-sm text-ink-muted text-wrap-safe">{author.school}</p>
+          ))}
       </div>
     </div>
   )

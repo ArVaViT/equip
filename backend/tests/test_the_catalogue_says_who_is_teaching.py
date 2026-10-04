@@ -147,7 +147,15 @@ class TestTheCoursePageNamesItsAuthor:
 
         assert resp.status_code == 200, resp.text
         body = resp.json()
-        assert body == {"name": "Their Teacher", "avatar_url": None, "school": "UCOAT"}
+        # The school's name, and where it leads — its page and its logo —
+        # and nothing about the person beyond a name and a face.
+        assert body == {
+            "name": "Their Teacher",
+            "avatar_url": None,
+            "school": "UCOAT",
+            "organization_slug": "ucoat",
+            "organization_logo_url": None,
+        }
         assert "teacher@ucoat.example" not in resp.text, "a stranger has no use for the author's email"
 
     def test_a_draft_has_no_author_page(self, stranger_client: TestClient, db: Session, their_teacher: User):

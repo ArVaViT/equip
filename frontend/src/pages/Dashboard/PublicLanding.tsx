@@ -9,6 +9,7 @@ import { HeroVideo } from "./landing/HeroVideo";
 import { ScrollReveal } from "./landing/ScrollReveal";
 import { StorySection } from "./landing/StorySection";
 import { CourseShowcase } from "./landing/CourseShowcase";
+import { OrganizationsBand } from "./landing/OrganizationsBand";
 import { Faq } from "./landing/Faq";
 import { RevealFooter } from "./landing/RevealFooter";
 import { ProductTour } from "./landing/ProductTour";
@@ -234,6 +235,9 @@ export function PublicLanding() {
           catalogue endpoint, so it cannot advertise a course that was
           unpublished last month. */}
       <CourseShowcase />
+
+      {/* ── 4½. Who teaches here — absent until there are two ─────── */}
+      <OrganizationsBand />
 
       {/* ── 5. The film ──────────────────────────────────────────── */}
       {/* Near the end, not first. Vadym: «его надо явно ближе к концу, чтоб

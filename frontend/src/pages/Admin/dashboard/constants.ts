@@ -12,8 +12,10 @@ export type AdminTab =
   | "audit"
   | "school"
   | "dmca"
+  | "organizations"
 export const ADMIN_TABS: readonly AdminTab[] = [
   "overview",
+  "organizations",
   "cohorts",
   "invitations",
   "translations",
@@ -47,6 +49,7 @@ export const ADMIN_TAB_TRIGGER_ID = {
   audit: "admin-tab-audit",
   school: "admin-tab-school",
   dmca: "admin-tab-dmca",
+  organizations: "admin-tab-organizations",
 } as const
 
 export const ADMIN_TAB_PANEL_ID = {
@@ -57,6 +60,7 @@ export const ADMIN_TAB_PANEL_ID = {
   audit: "admin-tabpanel-audit",
   school: "admin-tabpanel-school",
   dmca: "admin-tabpanel-dmca",
+  organizations: "admin-tabpanel-organizations",
 } as const
 
 export const ACTION_OPTIONS = [

@@ -13,6 +13,7 @@ import { Search, BookOpen } from "lucide-react"
 import { EmptyState, ErrorState } from "@/components/patterns"
 import { useUserTour } from "@/hooks/useUserTour"
 import { coursesCatalogSteps } from "@/lib/tourSteps"
+import { MyOrganizationsCourses } from "./MyOrganizationsCourses"
 
 /**
  * Public course catalog. Lifted out of the old HomePage when the
@@ -144,6 +145,8 @@ export default function CoursesPage() {
           </div>
         </div>
       </section>
+
+      {user && !query && <MyOrganizationsCourses userId={user.id} progress={progressByCourseId} />}
 
       {loading ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3">

@@ -34,6 +34,39 @@ export const ROLES = {
   STUDENT: 'student',
 } as const satisfies Record<string, UserRole>
 
+/**
+ * The role a person holds inside one organization — a row of
+ * ``organization_members``, not the platform-wide ``UserRole``. Platform
+ * ``admin`` is deliberately not one: it is a role over the platform.
+ * ``profiles.role`` (``User.role``) mirrors the highest active membership.
+ *
+ * Mirrors ``MembershipRole`` / ``MembershipStatus`` / ``MembershipSource``
+ * in ``backend/app/models/organization.py`` and the CHECK constraints on
+ * ``organization_members``. All four representations stay in lockstep.
+ */
+export type MembershipRole = 'director' | 'teacher' | 'student'
+export type MembershipStatus = 'active' | 'suspended'
+/** How the person got into the organization. */
+export type MembershipSource = 'invitation' | 'join_link' | 'appointment' | 'migration'
+
+export const MEMBERSHIP_ROLES = {
+  DIRECTOR: 'director',
+  TEACHER: 'teacher',
+  STUDENT: 'student',
+} as const satisfies Record<string, MembershipRole>
+
+export const MEMBERSHIP_STATUSES = {
+  ACTIVE: 'active',
+  SUSPENDED: 'suspended',
+} as const satisfies Record<string, MembershipStatus>
+
+export const MEMBERSHIP_SOURCES = {
+  INVITATION: 'invitation',
+  JOIN_LINK: 'join_link',
+  APPOINTMENT: 'appointment',
+  MIGRATION: 'migration',
+} as const satisfies Record<string, MembershipSource>
+
 export interface User {
   id: string
   email: string
@@ -106,6 +139,9 @@ export interface Course {
   // - 'public'    catalog enroll button works (subject to enrollment_start/end)
   // - 'institute' enroll button is shown disabled with the
   //              'Доступно только по приглашению' label
+  /** The organization the course belongs to, as catalog cards show it. */
+  organization_name?: string | null
+  organization_slug?: string | null
   access_mode: 'public' | 'institute'
   created_by: string
   created_at: string
@@ -532,6 +568,13 @@ export interface Invitation {
   // invitation written before the statement was asked for — a record of
   // nothing, which is the honest value; it is never backfilled.
   age_attested_at?: string | null
+  /** What accepting grants: an account only, a place in the school, or a
+   *  course seat. Older clients read every row as the school's. */
+  scope?: "platform" | "organization" | "course"
+  course_id?: string | null
+  /** Where it leads, by name — filled by the list route, for the list only. */
+  organization_name?: string | null
+  course_title?: string | null
 }
 
 /**

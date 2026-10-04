@@ -151,10 +151,14 @@ export function useAcceptInvite() {
     } catch (err) {
       const code = getErrorCode(err)
       setServerError(
+        // ``invitation.other_school`` is gone (2026-10-03): an invitation to a
+        // second organization adds a membership instead of moving the person.
         code === "invitation.email_mismatch"
           ? i18n.t("invite.errors.emailMismatch")
-          : code === "invitation.other_school"
-            ? i18n.t("invite.errors.otherSchool")
+          : code === "invitation.inviter_not_staff"
+            // The person who sent it has since left the organization's
+            // staff; the link is left as it is and a fresh one is the answer.
+            ? i18n.t("invite.errors.inviterNotStaff")
             : i18n.t("invite.errors.acceptFailed"),
       )
       setPhase("ready")

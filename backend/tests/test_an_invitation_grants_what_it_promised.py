@@ -7,9 +7,15 @@ catalogue. The invited student could not reach an institute course for
 the same reason. And a director who accepted a student invitation was
 demoted by it, because the write was unconditional.
 
-These tests pin the four writes that now land together, the two that
-must not happen, and the order in which refusals come — a person who
-meets a 404 must still hold their invitation afterwards.
+Since 2026-10-03 what acceptance grants is a *membership*: a row in
+``organization_members`` for the inviting organization, in the offered
+role, never lowered within that organization — and nothing about any other
+organization the person is in. ``profiles.role`` follows as the mirror of
+the highest membership.
+
+These tests pin the writes that land together, the ones that must not
+happen, and the order in which refusals come — a person who meets a 404
+must still hold their invitation afterwards.
 """
 
 from __future__ import annotations
@@ -19,6 +25,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_current_user, get_optional_user
@@ -27,10 +34,10 @@ from app.main import app
 from app.models.course import Course
 from app.models.enrollment import Enrollment
 from app.models.invitation import Invitation, InvitationScope, InvitationStatus
-from app.models.organization import Organization
+from app.models.organization import MembershipSource, Organization, OrganizationMember
 from app.models.user import User, UserRole
 from app.services.invitation_service import accept_invitation, create_or_resend_invitation
-from tests.conftest import ADMIN_ID, TEST_ORGANIZATION_ID
+from tests.conftest import ADMIN_ID, TEST_ORGANIZATION_ID, leave_every_organization
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -56,15 +63,16 @@ def _course(db: Session, course_id: str = "preaching-1", *, organization_id: uui
 
 
 def _invitee(db: Session, *, role: str = UserRole.STUDENT.value, organization_id: uuid.UUID | None = None) -> User:
-    """An account under the invited address, deliberately homeless.
+    """An account under the invited address: homeless, or a member of exactly
+    ``organization_id`` in ``role``.
 
-    conftest's ``before_flush`` listener fills ``organization_id`` on
-    every new row that has the column, which is right for the tests it
-    was written for and wrong for these: an invitee who is already in
-    the school would make "accepting grants membership" pass without the
-    code doing anything. So the column is cleared after the insert,
-    which is also the true shape of a person who just signed up —
-    ``handle_new_user`` never sets it.
+    conftest's ``before_flush`` listener files every new user under the
+    test organization, which is right for the tests it was written for and
+    wrong for these: an invitee who is already in the school would make
+    "accepting grants membership" pass without the code doing anything.
+    So the listener's work is undone, which is also the true shape of a
+    person who just signed up — ``handle_new_user`` sets nothing — and the
+    one membership the test wants is written by hand.
     """
     user = User(
         id=INVITEE_ID,
@@ -74,11 +82,32 @@ def _invitee(db: Session, *, role: str = UserRole.STUDENT.value, organization_id
     )
     db.add(user)
     db.commit()
-    db.query(User).filter(User.id == INVITEE_ID).update({User.organization_id: organization_id})
-    db.commit()
+    leave_every_organization(db, INVITEE_ID)
+    if organization_id is not None:
+        db.add(
+            OrganizationMember(
+                user_id=INVITEE_ID,
+                organization_id=organization_id,
+                # Platform staff hold no membership role; they sit somewhere as a teacher.
+                role=UserRole.TEACHER.value if role == UserRole.ADMIN.value else role,
+                joined_via=MembershipSource.MIGRATION.value,
+            )
+        )
+        db.query(User).filter(User.id == INVITEE_ID).update({User.organization_id: organization_id})
+        db.commit()
     db.refresh(user)
     assert user.organization_id == organization_id
     return user
+
+
+def _memberships(db: Session) -> dict[uuid.UUID, str]:
+    """``{organization_id: role}`` of the invitee's active memberships."""
+    return {
+        m.organization_id: m.role
+        for m in db.query(OrganizationMember).filter(
+            OrganizationMember.user_id == INVITEE_ID, OrganizationMember.status == "active"
+        )
+    }
 
 
 def _invitation(
@@ -88,6 +117,7 @@ def _invitation(
     course_id: str | None = None,
     role: str = UserRole.STUDENT.value,
     organization_id: uuid.UUID | None = None,
+    invited_by: uuid.UUID | None = ADMIN_ID,
 ) -> Invitation:
     invitation = Invitation(
         email=INVITEE_EMAIL,
@@ -95,7 +125,7 @@ def _invitation(
         scope=scope,
         course_id=course_id,
         token=uuid.uuid4().hex,
-        invited_by=ADMIN_ID,
+        invited_by=invited_by,
         organization_id=organization_id or TEST_ORGANIZATION_ID,
     )
     db.add(invitation)
@@ -120,8 +150,12 @@ class TestWhatAcceptingGrants:
 
         _accept(db, invitation)
 
-        user = db.query(User).filter(User.id == INVITEE_ID).one()
-        assert user.organization_id == TEST_ORGANIZATION_ID
+        assert _memberships(db) == {TEST_ORGANIZATION_ID: UserRole.STUDENT.value}
+        membership = db.query(OrganizationMember).filter(OrganizationMember.user_id == INVITEE_ID).one()
+        assert (membership.joined_via, membership.invited_by) == (MembershipSource.INVITATION.value, ADMIN_ID)
+        # The deprecated column is still written for the first organization,
+        # so a rollback to the previous backend finds the person in place.
+        assert db.query(User).filter(User.id == INVITEE_ID).one().organization_id == TEST_ORGANIZATION_ID
         assert invitation.status == InvitationStatus.ACCEPTED.value
 
     def test_a_course_invitation_seats_them_on_the_course(self, db: Session, admin: User) -> None:
@@ -134,7 +168,7 @@ class TestWhatAcceptingGrants:
         enrollment = db.query(Enrollment).filter(Enrollment.user_id == INVITEE_ID).one()
         assert enrollment.course_id == course.id
         assert enrollment.progress == 0
-        assert db.query(User).filter(User.id == INVITEE_ID).one().organization_id == TEST_ORGANIZATION_ID
+        assert _memberships(db) == {TEST_ORGANIZATION_ID: UserRole.STUDENT.value}
 
     def test_a_platform_invitation_grants_no_membership(self, db: Session, admin: User) -> None:
         # The scope that exists for "you should have an account here",
@@ -144,6 +178,7 @@ class TestWhatAcceptingGrants:
 
         _accept(db, invitation)
 
+        assert _memberships(db) == {}
         assert db.query(User).filter(User.id == INVITEE_ID).one().organization_id is None
 
     def test_the_role_moves_up(self, db: Session, admin: User) -> None:
@@ -152,12 +187,24 @@ class TestWhatAcceptingGrants:
 
         _accept(db, invitation)
 
+        assert _memberships(db) == {TEST_ORGANIZATION_ID: UserRole.TEACHER.value}
+        assert db.query(User).filter(User.id == INVITEE_ID).one().role == UserRole.TEACHER.value
+
+    def test_a_student_already_there_is_raised_to_teacher(self, db: Session, admin: User) -> None:
+        """A second invitation into the same organization raises the one
+        row; it does not add a second."""
+        _invitee(db, role=UserRole.STUDENT.value, organization_id=TEST_ORGANIZATION_ID)
+        invitation = _invitation(db, role=UserRole.TEACHER.value)
+
+        _accept(db, invitation)
+
+        assert _memberships(db) == {TEST_ORGANIZATION_ID: UserRole.TEACHER.value}
         assert db.query(User).filter(User.id == INVITEE_ID).one().role == UserRole.TEACHER.value
 
     def test_the_role_never_moves_down(self, db: Session, admin: User) -> None:
         # A director accepting a student invitation to one of their own
         # courses used to be demoted to student by it.
-        _invitee(db, role=UserRole.DIRECTOR.value)
+        _invitee(db, role=UserRole.DIRECTOR.value, organization_id=TEST_ORGANIZATION_ID)
         course = _course(db)
         invitation = _invitation(
             db,
@@ -170,33 +217,34 @@ class TestWhatAcceptingGrants:
 
         user = db.query(User).filter(User.id == INVITEE_ID).one()
         assert user.role == UserRole.DIRECTOR.value
+        assert _memberships(db) == {TEST_ORGANIZATION_ID: UserRole.DIRECTOR.value}
         # ...and the rest of the invitation still happened.
         assert db.query(Enrollment).filter(Enrollment.user_id == INVITEE_ID).count() == 1
 
     @pytest.mark.parametrize("role", [UserRole.DIRECTOR.value, UserRole.TEACHER.value])
-    def test_a_higher_role_elsewhere_refuses_and_writes_nothing(self, db: Session, admin: User, role: str) -> None:
-        """Accepting moves the person to the inviting school; the role never
-        moves down. For a director or teacher of school B offered a student
-        seat in school A both cannot hold: keeping the role carried it into A
-        (2026-10-03), dropping it would cost them B without a word. Refused,
-        and the invitation is still there.
+    def test_a_higher_role_elsewhere_gains_a_second_membership(self, db: Session, admin: User, role: str) -> None:
+        """A director or teacher of school B offered a student seat in school
+        A is now a student of A *and* still what they were in B. While an
+        account sat in one organization this had to be refused (2026-10-03,
+        ``invitation.other_school``): keeping the role carried it into A,
+        dropping it cost them B. Neither happens now — the roles live in the
+        rows, and ``profiles.role`` reads the highest.
         """
         db.add(Organization(id=OTHER_ORGANIZATION_ID, slug="other-school", public_name="Other School"))
         db.commit()
         _invitee(db, role=role, organization_id=OTHER_ORGANIZATION_ID)
         invitation = _invitation(db, role=UserRole.STUDENT.value)
 
-        with pytest.raises(Exception) as exc:
-            _accept(db, invitation)
-        assert getattr(exc.value, "status_code", None) == 409
+        _accept(db, invitation)
 
-        db.rollback()
+        assert _memberships(db) == {OTHER_ORGANIZATION_ID: role, TEST_ORGANIZATION_ID: UserRole.STUDENT.value}
         user = db.query(User).filter(User.id == INVITEE_ID).one()
-        assert (user.role, user.organization_id) == (role, OTHER_ORGANIZATION_ID)
-        still = db.query(Invitation).filter(Invitation.id == invitation.id).one()
-        assert still.status == InvitationStatus.PENDING.value
+        assert user.role == role, "the platform-wide role is the highest membership, not the latest"
+        # The deprecated column names the first organization and is not moved.
+        assert user.organization_id == OTHER_ORGANIZATION_ID
+        assert invitation.status == InvitationStatus.ACCEPTED.value
 
-    def test_a_student_of_another_school_moves_to_this_one(self, db: Session, admin: User) -> None:
+    def test_a_student_of_another_school_is_now_in_both(self, db: Session, admin: User) -> None:
         db.add(Organization(id=OTHER_ORGANIZATION_ID, slug="other-school", public_name="Other School"))
         db.commit()
         _invitee(db, organization_id=OTHER_ORGANIZATION_ID)
@@ -204,8 +252,11 @@ class TestWhatAcceptingGrants:
 
         _accept(db, invitation)
 
-        user = db.query(User).filter(User.id == INVITEE_ID).one()
-        assert (user.role, user.organization_id) == (UserRole.STUDENT.value, TEST_ORGANIZATION_ID)
+        assert _memberships(db) == {
+            OTHER_ORGANIZATION_ID: UserRole.STUDENT.value,
+            TEST_ORGANIZATION_ID: UserRole.STUDENT.value,
+        }
+        assert db.query(User).filter(User.id == INVITEE_ID).one().role == UserRole.STUDENT.value
 
     def test_a_director_of_this_school_keeps_directing(self, db: Session, admin: User) -> None:
         _invitee(db, role=UserRole.DIRECTOR.value, organization_id=TEST_ORGANIZATION_ID)
@@ -224,6 +275,11 @@ class TestWhatAcceptingGrants:
         _accept(db, invitation)
 
         assert db.query(User).filter(User.id == INVITEE_ID).one().role == UserRole.ADMIN.value
+        # Staff sit in organizations like anyone else; the platform role is not a membership.
+        assert _memberships(db) == {
+            OTHER_ORGANIZATION_ID: UserRole.TEACHER.value,
+            TEST_ORGANIZATION_ID: UserRole.STUDENT.value,
+        }
 
 
 class TestWhatAcceptingRefuses:
@@ -413,3 +469,104 @@ class TestThePreviewSaysWhereItLeads:
 
         assert body["scope"] == "organization"
         assert body["course_title"] is None
+
+
+def _staff(db: Session, role: str, *, membership_status: str = "active") -> User:
+    """A member of the test organization in ``role`` — the conftest listener
+    writes the membership from the column — whose membership the
+    organization may since have suspended."""
+    user = User(
+        id=uuid.uuid4(),
+        email=f"{role}-{uuid.uuid4().hex[:6]}@example.com",
+        full_name=role.title(),
+        role=role,
+        organization_id=TEST_ORGANIZATION_ID,
+    )
+    db.add(user)
+    db.commit()
+    if membership_status != "active":
+        db.query(OrganizationMember).filter(OrganizationMember.user_id == user.id).update(
+            {OrganizationMember.status: membership_status}
+        )
+        db.commit()
+    return user
+
+
+class TestTheInviterMustStillSpeakForTheOrganization:
+    """An outstanding link is only as good as the person who wrote it is
+    today. Until 2026-10-03 a suspended teacher's link still admitted
+    newcomers — the check guarded only the reopening of a suspended
+    membership, never the first one — and a teacher's link could carry a
+    teaching role it was never theirs to give."""
+
+    def test_a_suspended_teachers_link_admits_nobody(self, db: Session, admin: User) -> None:
+        _invitee(db)
+        gone = _staff(db, UserRole.TEACHER.value, membership_status="suspended")
+        invitation = _invitation(db, invited_by=gone.id)
+
+        with pytest.raises(HTTPException) as refused:
+            _accept(db, invitation)
+
+        assert refused.value.status_code == 403
+        assert refused.value.detail["code"] == "invitation.inviter_not_staff"
+        assert _memberships(db) == {}
+        # The row is left as it was: nothing spent, nothing granted.
+        db.refresh(invitation)
+        assert invitation.status == InvitationStatus.PENDING.value
+
+    def test_a_suspended_teachers_link_does_not_let_a_suspended_person_back_in(self, db: Session, admin: User) -> None:
+        _invitee(db, organization_id=TEST_ORGANIZATION_ID)
+        db.query(OrganizationMember).filter(OrganizationMember.user_id == INVITEE_ID).update(
+            {OrganizationMember.status: "suspended"}
+        )
+        db.commit()
+        gone = _staff(db, UserRole.TEACHER.value, membership_status="suspended")
+        invitation = _invitation(db, invited_by=gone.id)
+
+        with pytest.raises(HTTPException):
+            _accept(db, invitation)
+
+        assert _memberships(db) == {}
+
+    def test_a_teaching_role_needs_a_director_behind_it(self, db: Session, admin: User) -> None:
+        _invitee(db)
+        teacher = _staff(db, UserRole.TEACHER.value)
+        invitation = _invitation(db, role=UserRole.TEACHER.value, invited_by=teacher.id)
+
+        with pytest.raises(HTTPException) as refused:
+            _accept(db, invitation)
+
+        assert refused.value.detail["code"] == "invitation.inviter_not_staff"
+        assert _memberships(db) == {}
+
+    def test_an_active_teachers_student_seat_still_opens(self, db: Session, admin: User) -> None:
+        _invitee(db)
+        teacher = _staff(db, UserRole.TEACHER.value)
+        course = _course(db)
+        invitation = _invitation(db, scope=InvitationScope.COURSE.value, course_id=course.id, invited_by=teacher.id)
+
+        _accept(db, invitation)
+
+        assert _memberships(db) == {TEST_ORGANIZATION_ID: UserRole.STUDENT.value}
+
+    def test_a_directors_teaching_role_still_opens_and_reopens(self, db: Session, admin: User) -> None:
+        _invitee(db, organization_id=TEST_ORGANIZATION_ID)
+        db.query(OrganizationMember).filter(OrganizationMember.user_id == INVITEE_ID).update(
+            {OrganizationMember.status: "suspended"}
+        )
+        db.commit()
+        director = _staff(db, UserRole.DIRECTOR.value)
+        invitation = _invitation(db, role=UserRole.TEACHER.value, invited_by=director.id)
+
+        _accept(db, invitation)
+
+        assert _memberships(db) == {TEST_ORGANIZATION_ID: UserRole.TEACHER.value}
+
+    def test_an_inviter_whose_account_is_gone_speaks_for_nobody(self, db: Session, admin: User) -> None:
+        _invitee(db)
+        invitation = _invitation(db, invited_by=None)
+
+        with pytest.raises(HTTPException) as refused:
+            _accept(db, invitation)
+
+        assert refused.value.detail["code"] == "invitation.inviter_not_staff"

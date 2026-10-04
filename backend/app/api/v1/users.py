@@ -11,12 +11,14 @@ from app.api.dependencies import get_current_user, require_admin
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.enrollment import Enrollment
+from app.models.organization import Organization, OrganizationMember
 from app.models.user import User, UserRole
 from app.schemas.course import CourseDashboardSummary, EnrollmentSummaryResponse
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.schemas.user import PreferredLocaleUpdate, UserResponse
 from app.services.audit_service import log_action
 from app.services.course_service import get_user_courses, reading_progress_by_course
+from app.services.memberships import active_memberships, mirror_role
 from app.services.my_data_export import export_my_data
 from app.services.translation.resolve_for_display import (
     build_localized_course_dashboard_summaries,
@@ -232,16 +234,29 @@ def complete_my_onboarding(
     return current_user
 
 
+class AdminUserMembership(BaseModel):
+    """One organization a person is in, as the admin's user list shows it."""
+
+    organization_id: str
+    organization_slug: str
+    organization_name: str
+    role: str
+    status: str
+
+
 class AdminUserRow(BaseModel):
     id: str
     email: str
     full_name: str | None
+    #: The platform-wide role — ``admin``, or the mirror of the highest
+    #: membership role. *Where* the person holds it is ``memberships``.
     role: str
     avatar_url: str | None
     created_at: datetime | None
     # Non-null when the account is soft-deleted; the admin panel surfaces this
     # so a deactivated user can be told apart and restored.
     deactivated_at: datetime | None
+    memberships: list[AdminUserMembership] = []
 
 
 @router.get("/admin/users", response_model=list[AdminUserRow])
@@ -252,6 +267,26 @@ def list_all_users(
     db: Session = Depends(get_db),
 ) -> list[AdminUserRow]:
     users = db.query(User).order_by(User.created_at.desc()).offset(skip).limit(limit).all()
+    # One grouped query for the page's memberships rather than one per row.
+    memberships: dict[UUID, list[AdminUserMembership]] = {}
+    if users:
+        rows = (
+            db.query(OrganizationMember, Organization)
+            .join(Organization, Organization.id == OrganizationMember.organization_id)
+            .filter(OrganizationMember.user_id.in_([u.id for u in users]))
+            .order_by(Organization.public_name)
+            .all()
+        )
+        for membership, organization in rows:
+            memberships.setdefault(membership.user_id, []).append(
+                AdminUserMembership(
+                    organization_id=str(organization.id),
+                    organization_slug=organization.slug,
+                    organization_name=organization.public_name,
+                    role=membership.role,
+                    status=membership.status,
+                )
+            )
     return [
         AdminUserRow(
             id=str(u.id),
@@ -261,6 +296,7 @@ def list_all_users(
             avatar_url=u.avatar_url,
             created_at=u.created_at,
             deactivated_at=u.deactivated_at,
+            memberships=memberships.get(u.id, []),
         )
         for u in users
     ]
@@ -310,7 +346,18 @@ def bulk_update_user_roles(
     # Admins must not demote themselves; silently skip their own id.
     safe_uuids = [u for u in valid_uuids if u != admin.id]
 
-    updated = db.query(User).filter(User.id.in_(safe_uuids)).update({User.role: body.role}, synchronize_session="fetch")
+    # The same contract as the single route: in or out of ``admin``. A
+    # person whose memberships say otherwise is left alone and named in
+    # ``held_by_membership`` rather than failing the whole batch — the
+    # others asked for are not wrong because one of them was.
+    updated = 0
+    held: list[str] = []
+    for user in db.query(User).filter(User.id.in_(safe_uuids)).all():
+        outcome = _move_platform_role(db, user, body.role)
+        if outcome == "held":
+            held.append(str(user.id))
+        elif outcome == "changed":
+            updated += 1
     db.commit()
 
     log_action(
@@ -319,10 +366,46 @@ def bulk_update_user_roles(
         "bulk_role_update",
         "user",
         ",".join(str(u) for u in safe_uuids[:10]),
-        details={"new_role": body.role, "count": updated},
+        details={"new_role": body.role, "count": updated, "held_by_membership": len(held)},
     )
 
-    return {"updated": updated, "role": body.role}
+    return {"updated": updated, "role": body.role, "held_by_membership": held}
+
+
+def _move_platform_role(db: Session, user: User, requested: str) -> str:
+    """Move ``user`` in or out of ``admin``; anything else is the mirror's.
+
+    ``profiles.role`` below ``admin`` is a mirror of the person's highest
+    organization membership (``mirror_role``, and the trigger in Postgres).
+    Writing ``teacher`` or ``director`` here used to hold until the next
+    membership write anywhere, which put the old value back: the review's
+    probe demoted a director to student and watched a student invitation to
+    another school make them a director again. So:
+
+    * ``admin`` makes the person platform staff;
+    * any other value asked of an admin stops them being platform staff, and
+      the memberships say what is left — ``teacher`` for an admin who also
+      teaches somewhere, ``student`` for one who belongs nowhere;
+    * any other value asked of a non-admin is accepted only when it is what
+      the memberships already say (the mirror is re-run first, so a stale
+      profile is repaired by the ask). Otherwise ``"held"``: the role is held
+      by a membership and changes there.
+
+    Returns ``"changed"``, ``"unchanged"`` or ``"held"``. Flushes, does not
+    commit; nothing is written for ``"held"``.
+    """
+    before = user.role
+    if requested == UserRole.ADMIN.value:
+        user.role = UserRole.ADMIN.value
+    elif user.role == UserRole.ADMIN.value:
+        user.role = UserRole.STUDENT.value
+        mirror_role(db, user)
+    else:
+        mirror_role(db, user)
+        if user.role != requested:
+            return "held"
+    db.flush()
+    return "changed" if user.role != before else "unchanged"
 
 
 @router.put("/admin/users/{user_id}/role")
@@ -351,10 +434,34 @@ def update_user_role(
         )
     user = _get_user_or_404(db, uid)
     old_role = user.role
-    user.role = role
+    if _move_platform_role(db, user, role) == "held":
+        raise equip_error(
+            ErrorCode.USER_ROLE_HELD_BY_MEMBERSHIP,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            message=(
+                "This role is held by the person's organization memberships and changes there; "
+                "this route only makes somebody platform staff, or stops them being it"
+            ),
+            context={
+                "resource_type": "user",
+                "user_id": str(user.id),
+                "requested": role,
+                "role": user.role,
+                "memberships": [
+                    {"organization_id": str(m.organization_id), "role": m.role} for m in active_memberships(db, uid)
+                ],
+            },
+        )
     db.commit()
     db.refresh(user)
-    log_action(db, admin.id, "update", "user", user_id, details={"old_role": old_role, "new_role": role})
+    log_action(
+        db,
+        admin.id,
+        "update",
+        "user",
+        user_id,
+        details={"old_role": old_role, "new_role": user.role, "requested": role},
+    )
     return {"id": str(user.id), "email": user.email, "role": user.role}
 
 

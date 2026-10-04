@@ -77,6 +77,119 @@
       "removeConfirmAction": "Entfernen"
     }
   },
+  "organization": {
+    "eyebrow": "Organisation",
+    "verified": "Von Equip geprüft",
+    "edit": "Seite bearbeiten",
+    "notFound": "Diese Organisation gibt es nicht",
+    "loadError": "Die Seite der Organisation konnte nicht geladen werden",
+    "toCatalog": "Zu den Kursen",
+    "director_one": "Leitung",
+    "director_other": "Leitung",
+    "courses": "Kurse",
+    "noCourses": "Noch keine Kurse",
+    "byInvitation": "Auf Einladung",
+    "inactive": "Diese Organisation bietet keine Kurse mehr auf Equip an. Ausgestellte Zertifikate bleiben gültig.",
+    "since": "Auf Equip seit {{date}}",
+    "verifyCertificate": "Zertifikat prüfen",
+    "stats": {
+      "courses_one": "Kurs",
+      "courses_other": "Kurse",
+      "lessons_one": "Lektion",
+      "lessons_other": "Lektionen",
+      "certificates_one": "Zertifikat ausgestellt",
+      "certificates_other": "Zertifikate ausgestellt",
+      "members_one": "Mitglied",
+      "members_other": "Mitglieder",
+      "teachers_one": "Lehrkraft",
+      "teachers_other": "Lehrkräfte"
+    },
+    "form": {
+      "description": "Über die Organisation",
+      "descriptionPlaceholder": "Wer Sie sind, wen Sie unterrichten und was — in zwei, drei Sätzen.",
+      "website": "Website",
+      "websiteHint": "Optional. Eine Adresse, die mit https:// beginnt",
+      "websiteBroken": "Die Adresse muss mit https:// beginnen",
+      "showMembers": "Anzahl der Mitglieder zeigen",
+      "showMembersHint": "Die Zahl erscheint ab zehn Mitgliedern.",
+      "save": "Speichern",
+      "saving": "Wird gespeichert…",
+      "saved": "Die Seite der Organisation ist aktualisiert",
+      "failed": "Speichern fehlgeschlagen",
+      "websitePlaceholder": "https://"
+    },
+    "locked": {
+      "how": "So erhalten Sie Zugang",
+      "body": "Ein Kurs für Mitglieder von {{org}}. Den Zugang gibt die Leitung: {{director}}.",
+      "bodyNoDirector": "Ein Kurs für Mitglieder von {{org}}. Den Zugang gibt die Leitung der Organisation.",
+      "website": "Website der Organisation",
+      "signIn": "Anmelden, wenn Sie bereits Mitglied sind"
+    },
+    "verifiedHint": "Equip hat bestätigt, dass die Organisation existiert und von der genannten Leitung geführt wird",
+    "noCoursesYet": "Kurse erscheinen hier, sobald sie veröffentlicht sind.",
+    "createCourse": "Kurs erstellen →"
+  },
+  "adminOrgs": {
+    "loadError": "Organisationen konnten nicht geladen werden",
+    "empty": "Noch keine Organisationen",
+    "create": "Neue Organisation",
+    "created": "Organisation „{{name}}“ erstellt",
+    "createSave": "Erstellen",
+    "failed": "Speichern fehlgeschlagen",
+    "name": "Name",
+    "slug": "Seitenadresse",
+    "slugHint": "equipbible.com/o/{{slug}} — lateinische Buchstaben, Ziffern und Bindestriche; später nicht änderbar",
+    "country": "Land (Code, z. B. US)",
+    "members_one": "{{count}} Mitglied",
+    "members_other": "{{count}} Mitglieder",
+    "directors": "Leitung: {{list}}",
+    "noDirector": "Keine Leitung ernannt",
+    "status": "Status",
+    "statusSaved": "Status aktualisiert",
+    "statuses": {
+      "pending": "Antrag",
+      "approved": "Zugelassen",
+      "verified": "Geprüft",
+      "suspended": "Ausgesetzt"
+    },
+    "appointLabel": "Leitung hinzufügen — E-Mail eines registrierten Kontos",
+    "appointPlaceholder": "director@example.com",
+    "appoint": "Hinzufügen",
+    "directorAppointed": "Leitung hinzugefügt: {{email}}",
+    "statusHelp": "Antrag und Zugelassen — die Seite sehen nur Mitglieder und das Plattform-Team · Geprüft — für alle sichtbar · Ausgesetzt — die Seite bleibt ohne Kurse und verschwindet aus der Übersicht; im Katalog bleiben die Kurse, Zertifikate bleiben gültig",
+    "suspendConfirm": {
+      "title": "Organisation aussetzen?",
+      "body": "Die Seite von {{name}} bleibt ohne Kurse bestehen und verschwindet aus der Übersicht. Im Katalog bleiben ihre Kurse, ausgestellte Zertifikate bleiben gültig. Der Status lässt sich zurücksetzen.",
+      "confirm": "Aussetzen"
+    },
+    "listed": {
+      "yes": "In der Organisationsliste: ja",
+      "no": "In der Organisationsliste: nein — {{reasons}}",
+      "notVerified": "nicht geprüft",
+      "noDirector": "keine Leitung",
+      "noCourses": "keine veröffentlichten Kurse"
+    }
+  },
+  "organizations": {
+    "eyebrow": "Auf Equip",
+    "title": "Organisationen auf Equip",
+    "lead": "Bibelschulen, Gemeinden und Dienste, die hier unterrichten. Jede ist von Equip geprüft, hat eine Leitung und eigene Kurse.",
+    "empty": "Noch leer",
+    "joinTitle": "Ihre Organisation ist noch nicht auf Equip?",
+    "joinBody": "Organisationen kommen per Vereinbarung dazu: Schreiben Sie uns, wer Sie sind und wen Sie unterrichten — wir richten Ihre Seite, Ihre Kurse und einen Leitungsbereich ein.",
+    "landingTitle": "Hier unterrichten Organisationen",
+    "all": "Alle Organisationen"
+  },
+  "myOrganizations": {
+    "eyebrow": "Ihre Organisation · {{role}}",
+    "roles": {
+      "director": "Leitung",
+      "teacher": "Lehrkraft",
+      "student": "Mitglied"
+    },
+    "catalog": "Offener Katalog",
+    "title": "Meine Organisationen"
+  },
   "header": {
     "home": "Start",
     "courses": "Kurse",
@@ -99,7 +212,8 @@
     "legal": "Rechtliches",
     "soon": "Bald",
     "social": "Equip in sozialen Netzwerken — bald",
-    "apps": "Equip-Apps — bald"
+    "apps": "Equip-Apps — bald",
+    "organizations": "Organisationen"
   },
   "landing": {
     "hero": {
@@ -773,7 +887,9 @@
     "lessonsLabel_other": "{{count}} Lektionen",
     "inProgress": "Läuft",
     "completed": "Abgeschlossen",
-    "progressLabel": "{{percent}} % abgeschlossen"
+    "progressLabel": "{{percent}} % abgeschlossen",
+    "forMembers": "Für Mitglieder von {{org}}",
+    "forMembersNoOrg": "Für Mitglieder"
   },
   "pageTitle": {
     "notes": "Meine Notizen",
@@ -854,7 +970,6 @@
       "invitation_expired": "Diese Einladung ist abgelaufen.",
       "invitation_already_used": "Diese Einladung wurde bereits verwendet.",
       "invitation_email_mismatch": "Diese Einladung wurde an eine andere Adresse geschickt.",
-      "invitation_other_school": "Sie haben in einer anderen Schule auf Equip eine höhere Rolle. Wenn Sie diese Einladung annehmen, wechseln Sie hierher und verlieren diese Rolle – deshalb kann sie mit diesem Konto nicht angenommen werden. Bitten Sie die Person, die Sie eingeladen hat, sich bei uns zu melden.",
       "plan_limit_reached": "Sie haben bereits {{limit}} Kurse — mehr kann eine Lehrkraft nicht gleichzeitig führen. Löschen Sie einen, den Sie nicht mehr brauchen, oder wenden Sie sich an eine Administratorin oder einen Administrator.",
       "validation_failed": "Etwas an Ihrer Eingabe stimmt nicht.",
       "legal_consent_required": "Bitte akzeptieren Sie die aktuellen Nutzungsbedingungen und die Datenschutzerklärung, bevor Sie etwas ändern.",
@@ -2581,6 +2696,8 @@
       "bulkUpdating": "Wird aktualisiert …",
       "bulkApply": "Anwenden",
       "bulkClear": "Aufheben",
+      "bulkMakeAdmin": "Zu Plattform-Admins machen",
+      "bulkRevokeAdmin": "Plattform-Admin entziehen",
       "emptyNoMatch": "Niemand passt zur Suche",
       "emptyNoUsers": "Keine Konten gefunden",
       "showing": "{{shown}} von {{total}} Konten angezeigt",
@@ -2620,7 +2737,9 @@
         "roleUpdateFailed": "Rolle konnte nicht geändert werden",
         "deleteUserFailed": "Konto konnte nicht gelöscht werden",
         "cannotDeleteSelf": "Ihr eigenes Konto können Sie hier nicht löschen.",
-        "bulkUpdated": "{{count}} Konto/Konten auf {{role}} gesetzt",
+        "bulkUpdated": "{{count}} Konto/Konten aktualisiert",
+        "bulkHeldByMembership_one": "{{count}} Konto unverändert: seine Rolle vergibt eine Organisation",
+        "bulkHeldByMembership_other": "{{count}} Konten unverändert: ihre Rolle vergibt eine Organisation",
         "bulkUpdateFailed": "Sammeländerung fehlgeschlagen",
         "userDeactivated": "Konto deaktiviert",
         "userRestored": "Konto wiederhergestellt",
@@ -2631,7 +2750,8 @@
         "deleteUserDescription": "Damit werden Konto, Einschreibungen, Abgaben, Noten, Zertifikate und Benachrichtigungen endgültig entfernt. Erstellte Kurse bleiben erhalten, aber ohne Zuordnung. Das lässt sich nicht rückgängig machen.",
         "deleteUserAction": "Konto löschen",
         "bulkRoleTitle": "Rolle der ausgewählten Konten ändern?",
-        "bulkRoleDescription": "{{count}} Konto/Konten erhalten die Rolle „{{role}}“.",
+        "bulkMakeAdminDescription": "{{count}} Konto/Konten werden Plattform-Admins.",
+        "bulkRevokeAdminDescription": "{{count}} Konto/Konten verlieren die Plattform-Admin-Rechte; ihre Rolle ist dann die, die ihre Organisationen vergeben.",
         "bulkRoleAction": "Anwenden"
       },
       "usersLast7Days_one": "+{{count}} diese Woche",
@@ -2764,7 +2884,12 @@
         "title": "Einladung erneut senden?",
         "body": "Der bereits an {{email}} gesendete Link bleibt mit seiner ursprünglichen Frist gültig. Mit dem erneuten Senden bestätigen Sie zugleich, dass diese Person 13 Jahre oder älter ist.",
         "confirm": "Erneut senden"
-      }
+      },
+      "scope": {
+        "platform": "Nur Konto",
+        "course": "Kurs"
+      },
+      "thWhere": "Wohin"
     },
     "tabSchool": "Schule",
     "school": {
@@ -2856,6 +2981,12 @@
         "recorded": "Festgehalten.",
         "failed": "Die Entscheidung konnte nicht festgehalten werden."
       }
+    },
+    "tabOrganizations": "Organisationen",
+    "roleSelector": {
+      "makeAdmin": "Zum Plattform-Admin machen",
+      "revokeAdmin": "Plattform-Admin entziehen",
+      "heldByMembership": "Lehrkraft und Leitung sind Rollen in einer Organisation: Ernennungen und Einladungen vergeben sie."
     }
   },
   "roles": {
@@ -3043,8 +3174,8 @@
       "unusable": "Diese Einladung wurde bereits genutzt, zurückgezogen oder ist abgelaufen. Bitten Sie um eine neue.",
       "emailMismatch": "Diese Einladung ging an eine andere E-Mail-Adresse.",
       "emailMismatchDetail": "Diese Einladung ging an <strong>{{invited}}</strong>, angemeldet sind Sie aber als <strong>{{current}}</strong>.",
-      "otherSchool": "Sie haben in einer anderen Schule auf Equip eine höhere Rolle. Wenn Sie diese Einladung annehmen, wechseln Sie hierher und verlieren diese Rolle – deshalb kann sie mit diesem Konto nicht angenommen werden. Bitten Sie die Person, die Sie eingeladen hat, sich bei uns zu melden.",
       "acceptFailed": "Die Einladung konnte nicht angenommen werden. Bitte erneut versuchen.",
+      "inviterNotStaff": "Die Person, die diese Einladung geschickt hat, spricht nicht mehr für die Organisation. Bitten Sie deren Leitung um eine neue.",
       "accountExists": "Sie haben mit dieser Adresse bereits ein Equip-Konto. Melden Sie sich an und öffnen Sie den Einladungslink dann erneut."
     },
     "openCourse": "Kurs öffnen"

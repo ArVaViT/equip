@@ -211,16 +211,27 @@
   {
     "method": "GET",
     "path": "/api/v1/admin/org-settings",
-    "params": [],
+    "params": [
+      [
+        "X-Organization-Id",
+        "header"
+      ]
+    ],
     "responses": [
-      "200"
+      "200",
+      "422"
     ],
     "body": false
   },
   {
     "method": "PUT",
     "path": "/api/v1/admin/org-settings",
-    "params": [],
+    "params": [
+      [
+        "X-Organization-Id",
+        "header"
+      ]
+    ],
     "responses": [
       "200",
       "422"
@@ -874,6 +885,10 @@
         "header"
       ],
       [
+        "X-Organization-Id",
+        "header"
+      ],
+      [
         "limit",
         "query"
       ],
@@ -1046,6 +1061,10 @@
     "path": "/api/v1/cohorts",
     "params": [
       [
+        "X-Organization-Id",
+        "header"
+      ],
+      [
         "limit",
         "query"
       ],
@@ -1067,7 +1086,12 @@
   {
     "method": "POST",
     "path": "/api/v1/cohorts",
-    "params": [],
+    "params": [
+      [
+        "X-Organization-Id",
+        "header"
+      ]
+    ],
     "responses": [
       "201",
       "422"
@@ -1289,7 +1313,12 @@
   {
     "method": "POST",
     "path": "/api/v1/courses",
-    "params": [],
+    "params": [
+      [
+        "X-Organization-Id",
+        "header"
+      ]
+    ],
     "responses": [
       "201",
       "422"
@@ -1330,7 +1359,7 @@
   },
   {
     "method": "GET",
-    "path": "/api/v1/courses/my-organization",
+    "path": "/api/v1/courses/my-organizations",
     "params": [
       [
         "Accept-Language",
@@ -1338,14 +1367,6 @@
       ],
       [
         "limit",
-        "query"
-      ],
-      [
-        "search",
-        "query"
-      ],
-      [
-        "skip",
         "query"
       ]
     ],
@@ -1541,6 +1562,10 @@
     "method": "POST",
     "path": "/api/v1/courses/{course_id}/clone",
     "params": [
+      [
+        "X-Organization-Id",
+        "header"
+      ],
       [
         "course_id",
         "path"
@@ -2703,6 +2728,14 @@
     "path": "/api/v1/invitations",
     "params": [
       [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "X-Organization-Id",
+        "header"
+      ],
+      [
         "limit",
         "query"
       ],
@@ -2728,7 +2761,12 @@
   {
     "method": "POST",
     "path": "/api/v1/invitations",
-    "params": [],
+    "params": [
+      [
+        "X-Organization-Id",
+        "header"
+      ]
+    ],
     "responses": [
       "201",
       "422"
@@ -2971,6 +3009,40 @@
       "422"
     ],
     "body": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/v1/organizations",
+    "params": [
+      [
+        "limit",
+        "query"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/v1/organizations/{organization_id}/profile",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ],
+      [
+        "organization_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": true
   },
   {
     "method": "GET",

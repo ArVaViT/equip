@@ -3,7 +3,7 @@ from __future__ import annotations
 import secrets
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from fastapi import status
 
@@ -12,17 +12,19 @@ from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import increment, timing
 from app.models.course import Course
 from app.models.invitation import Invitation, InvitationScope, InvitationStatus
-from app.models.user import User, UserRole, higher_role
+from app.models.organization import STAFF_ROLES, MembershipSource
+from app.models.user import User
 from app.services.audit_service import log_action
 from app.services.course_service._enrollment import enroll_user_in_course
 from app.services.email.invitation import send_invitation_email
+from app.services.memberships import directs, grant_membership, teaches_in
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 from app.services.user_locale import preferred_locale_of
 
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from sqlalchemy.orm import Session
+    from sqlalchemy.orm import Query, Session
 
     from app.schemas.locale import LocaleCode
 
@@ -146,14 +148,22 @@ def course_title_for_invitation(db: Session, invitation: Invitation, *, display_
 def _subsumes_scope(outer_scope: str, outer_course: str | None, inner_scope: str, inner_course: str | None) -> bool:
     """Does a grant of ``outer`` already include everything ``inner`` gives?
 
-    Platform covers everything; a course covers its school; a school
-    covers itself, and covers nothing about a course. Two courses cover
-    each other only when they are the same course.
+    A course covers its school; a school covers itself, and covers
+    nothing about a course. Two courses cover each other only when they
+    are the same course.
+
+    The platform is not in this order at all. Since 2026-10-03 a platform
+    invitation grants an account and nothing else, so it contains no
+    school's offer and no school's offer contains it: it covers only
+    itself. Until then it read as the widest grant, and a platform
+    invitation to an address a director had already invited revoked the
+    director's row — or, asked the other way round, was handed to the
+    director as "the invitation already sent", with no membership behind
+    it (``_of_the_same_kind`` keeps the two apart before this is
+    even asked).
     """
-    if outer_scope == InvitationScope.PLATFORM.value:
-        return True
-    if inner_scope == InvitationScope.PLATFORM.value:
-        return False
+    if InvitationScope.PLATFORM.value in (outer_scope, inner_scope):
+        return outer_scope == inner_scope
     if inner_scope == InvitationScope.ORGANIZATION.value:
         # Both course and organization grants carry school membership.
         return True
@@ -163,6 +173,19 @@ def _subsumes_scope(outer_scope: str, outer_course: str | None, inner_scope: str
 def _subsumes(existing: Invitation, *, scope: str, course_id: str | None) -> bool:
     """Whether the invitation already sent covers what is being asked for."""
     return _subsumes_scope(existing.scope, existing.course_id, scope, course_id)
+
+
+def _of_the_same_kind(query: Query[Invitation], scope: str) -> Query[Invitation]:
+    """Only the rows a request for ``scope`` may stand in for or retire.
+
+    Two kinds, not three: platform rows, and a school's rows (organization
+    and course), which are nested among themselves and nowhere else. The
+    platform admin's invitation and the director's are filed under the same
+    organization, and the one must never be the other's "already sent".
+    """
+    if scope == InvitationScope.PLATFORM.value:
+        return query.filter(Invitation.scope == InvitationScope.PLATFORM.value)
+    return query.filter(Invitation.scope != InvitationScope.PLATFORM.value)
 
 
 def create_or_resend_invitation(
@@ -210,6 +233,14 @@ def create_or_resend_invitation(
     one person holds one link. Two invitations to two *different*
     courses stay two invitations: those are genuinely different offers,
     and each email names its course.
+
+    A platform invitation is outside that order (``_subsumes_scope``) and
+    outside the lookups here: a platform request sees only platform rows
+    and a school's request only the school's. The two are filed under the
+    same organization (``_where_a_platform_invitation_is_filed``), and
+    until 2026-10-03 a platform invitation written over a director's
+    pending one revoked it — and written before it, was returned to the
+    director as "already sent".
     """
     normalized_email = email.strip().lower()
     if scope == InvitationScope.COURSE.value:
@@ -224,19 +255,18 @@ def create_or_resend_invitation(
         )
 
     # Every live invitation this school already holds for this person in
-    # this role. The exact match is one of them; a course invitation
-    # standing in for a requested school one is another.
+    # this role, of the same kind as the one being asked for. The exact
+    # match is one of them; a course invitation standing in for a requested
+    # school one is another. A platform row is never one of them for a
+    # school's request, nor a school's row for a platform request.
+    pending_here = db.query(Invitation).filter(
+        Invitation.organization_id == organization_id,
+        Invitation.email == normalized_email,
+        Invitation.role == role,
+        Invitation.status == InvitationStatus.PENDING.value,
+    )
     live = [
-        candidate
-        for candidate in db.query(Invitation)
-        .filter(
-            Invitation.organization_id == organization_id,
-            Invitation.email == normalized_email,
-            Invitation.role == role,
-            Invitation.status == InvitationStatus.PENDING.value,
-        )
-        .all()
-        if not is_invitation_expired(candidate)
+        candidate for candidate in _of_the_same_kind(pending_here, scope).all() if not is_invitation_expired(candidate)
     ]
 
     standing = next((row for row in live if _subsumes(row, scope=scope, course_id=course_id)), None)
@@ -252,6 +282,11 @@ def create_or_resend_invitation(
         _mail_the_invitation(db, standing, invited_by=invited_by)
         return standing, False
 
+    # A platform row and a school row for the same address may both be
+    # pending: the unique index carries the scope since 20261003210000, and
+    # neither covers the other (``_subsumes_scope``). A row of the other kind
+    # is never revoked for being here — that was the defect.
+
     # Nothing outstanding covers what is being offered now, so whatever
     # the new one subsumes is retired rather than left to arrive as a
     # second, weaker link.
@@ -259,17 +294,10 @@ def create_or_resend_invitation(
         if _subsumes_scope(scope, course_id, row.scope, row.course_id):
             row.status = InvitationStatus.REVOKED.value
 
-    expired_exact = (
-        db.query(Invitation)
-        .filter(
-            Invitation.organization_id == organization_id,
-            Invitation.email == normalized_email,
-            Invitation.role == role,
-            Invitation.course_id == course_id if course_id is not None else Invitation.course_id.is_(None),
-            Invitation.status == InvitationStatus.PENDING.value,
-        )
-        .first()
-    )
+    expired_exact = pending_here.filter(
+        Invitation.scope == scope,
+        Invitation.course_id == course_id if course_id is not None else Invitation.course_id.is_(None),
+    ).first()
     if expired_exact is not None:
         expired_exact.status = InvitationStatus.REVOKED.value
 
@@ -318,6 +346,7 @@ def list_invitations(
     limit: int = 50,
     role: str | None = None,
     status_filter: str | None = None,
+    platform_rows: bool = True,
 ) -> list[Invitation]:
     """Pending and spent invitations, newest first.
 
@@ -326,10 +355,18 @@ def list_invitations(
     who has not joined yet, and that is the neighbouring organization's
     recruiting, not theirs. ``None`` means platform staff, who
     administer every organization by definition.
+
+    ``platform_rows=False`` leaves out platform invitations, which are
+    filed under an organization for bookkeeping only and are the platform
+    admin's recruiting, not the director's — the same address, invited to
+    nothing of the school's. Until 2026-10-03 a director saw them, and
+    could withdraw them.
     """
     query = db.query(Invitation)
     if organization_id is not None:
         query = query.filter(Invitation.organization_id == organization_id)
+    if not platform_rows:
+        query = query.filter(Invitation.scope != InvitationScope.PLATFORM.value)
     if role is not None:
         query = query.filter(Invitation.role == role)
     if status_filter is not None:
@@ -347,6 +384,16 @@ def get_invitation_by_token(db: Session, token: str) -> Invitation:
             context={"resource_type": "invitation"},
         )
     return invitation
+
+
+def get_invitation_by_id(db: Session, invitation_id: UUID | str) -> Invitation | None:
+    """The row, or ``None`` — for a malformed id too, which is "no such
+    invitation" rather than a 500 from the driver."""
+    try:
+        ident = uuid.UUID(str(invitation_id))
+    except ValueError:
+        return None
+    return db.query(Invitation).filter(Invitation.id == ident).first()
 
 
 def revoke_invitation(
@@ -482,31 +529,6 @@ def accept_invitation(
             context={"resource_type": "invitation"},
         )
 
-    # Accepting moves the person to the inviting school, and the role never
-    # moves down. Across schools those two cannot both hold for somebody who
-    # holds more where they are than they are offered here: keeping the role
-    # carried a director or teacher of school A into school B as B's director
-    # or teacher; taking the offered one would silently cost them school A
-    # (a stale course link was enough). Neither is the inviter's call, so the
-    # invitation is refused before anything is written (2026-10-03).
-    # Platform staff are not a school's to give or take.
-    person = db.query(User).filter(User.id == current_user_id).first()
-    if (
-        person is not None
-        and invitation.scope != InvitationScope.PLATFORM.value
-        and person.organization_id is not None
-        and person.organization_id != invitation.organization_id
-        and person.role != UserRole.ADMIN.value
-        and higher_role(person.role, invitation.role) != invitation.role
-    ):
-        increment("equip.invitations.refused_total", reason="other_school", scope=invitation.scope)
-        raise equip_error(
-            ErrorCode.INVITATION_OTHER_SCHOOL,
-            status_code=status.HTTP_409_CONFLICT,
-            message="This account holds a higher role in another school",
-            context={"resource_type": "invitation"},
-        )
-
     # Everything that can refuse comes before anything that changes.
     # The course is re-checked here even though creation checked it:
     # seven days is long enough for it to be deleted or moved, and a
@@ -516,6 +538,40 @@ def accept_invitation(
         if invitation.scope == InvitationScope.COURSE.value
         else None
     )
+
+    # The person who wrote the invitation must still speak for the
+    # organization it leads into: its staff today for a student seat, its
+    # director today (or platform staff) for a teaching role. An invitation
+    # is good for seven days and a teacher can be let go in less; their
+    # outstanding links must not keep letting people in — not back in
+    # through a suspended membership, and not in for the first time either.
+    # Until 2026-10-03 only the former was checked. The row is left pending:
+    # a director who wants the person in writes a fresh one.
+    #
+    # A deactivated account speaks for nobody. ``directs`` and ``teaches_in``
+    # read the membership, and deactivation leaves memberships as they were
+    # so that a restored account finds its seats again — which meant a
+    # director the platform had switched off still admitted teachers through
+    # the links they had written. The account is checked here, not in those
+    # two, because they answer "is this role held" for the account's own
+    # requests, and a deactivated account never gets as far as making one
+    # (``get_current_user``).
+    if invitation.scope != InvitationScope.PLATFORM.value:
+        inviter = (
+            db.query(User).filter(User.id == invitation.invited_by).first()
+            if invitation.invited_by is not None
+            else None
+        )
+        speaks_for_it = directs if invitation.role in STAFF_ROLES else teaches_in
+        still_an_account = inviter is not None and inviter.deactivated_at is None
+        if not (still_an_account and speaks_for_it(db, inviter, invitation.organization_id)):
+            increment("equip.invitations.refused_total", reason="inviter_not_staff", scope=invitation.scope)
+            raise equip_error(
+                ErrorCode.INVITATION_INVITER_NOT_STAFF,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="The person who sent this invitation no longer speaks for the organization",
+                context={"resource_type": "invitation"},
+            )
 
     # Single-use guard: only flips a row still 'pending'. A concurrent
     # accept (double click, retried request) loses the race here rather
@@ -554,14 +610,41 @@ def accept_invitation(
         )
 
     previous_role = user.role
-    previous_organization_id = user.organization_id
-    granted_role = higher_role(previous_role, invitation.role)
-
-    changes: dict[Any, Any] = {}
-    if granted_role != previous_role:
-        changes[User.role] = granted_role
-    if invitation.scope != InvitationScope.PLATFORM.value:
-        changes[User.organization_id] = invitation.organization_id
+    membership_created = False
+    if invitation.scope == InvitationScope.PLATFORM.value:
+        # An account and nothing else — no organization to be a member of,
+        # so nothing to hold a role in. Until 2026-10-03 this raised
+        # ``profiles.role`` to the offered one, which made a teacher of
+        # nowhere: every ``require_teacher`` surface open, and the mirror
+        # setting it back to student on the next membership write anywhere.
+        # A role lives in ``organization_members`` or it does not exist.
+        granted_role = previous_role
+    else:
+        # Membership in the inviting organization, in the offered role —
+        # a *second* membership for somebody who already belongs elsewhere,
+        # which until 2026-10-03 was a move (the column held one place) and
+        # so had to be refused for anyone who held more where they were.
+        # Within this organization the role never moves down
+        # (``grant_membership``): a director accepting a student seat on one
+        # of their own courses stays its director. ``profiles.role`` is the
+        # mirror of the highest membership and follows. Platform staff keep
+        # their role whatever they are offered: it is not a school's to give
+        # or take.
+        #
+        # A membership the organization *suspended* is reopened by this
+        # link: the person who wrote it was checked above to still speak
+        # for the organization, so the grant outranks the suspension
+        # (``grant_membership`` on ``reactivate``).
+        _membership, membership_created = grant_membership(
+            db,
+            user=user,
+            organization_id=invitation.organization_id,
+            role=invitation.role,
+            joined_via=MembershipSource.INVITATION.value,
+            invited_by=invitation.invited_by,
+            reactivate=True,
+        )
+        granted_role = user.role
     if course is not None and user.onboarding_completed_at is None:
         # First-run exists to turn an empty dashboard into a course to
         # open, and the invitation is about to do exactly that. Left
@@ -570,10 +653,7 @@ def accept_invitation(
         #
         # Only the picker is skipped. Legal consent is a separate gate,
         # checked before this flag is ever read, and untouched here.
-        changes[User.onboarding_completed_at] = datetime.now(UTC)
-
-    if changes:
-        db.query(User).filter(User.id == current_user_id).update(changes)
+        user.onboarding_completed_at = datetime.now(UTC)
 
     enrolled_course_id: str | None = None
     if course is not None:
@@ -591,7 +671,7 @@ def accept_invitation(
         # is the difference between "a new teacher" and "somebody who
         # was already one accepting a course invitation".
         role_changed=str(granted_role != previous_role).lower(),
-        joined_organization=str(previous_organization_id != invitation.organization_id).lower(),
+        joined_organization=str(membership_created).lower(),
     )
     # How long an invitation sits before it is used. The tail of this is
     # what tells us a seven-day life is too short or too long.
@@ -620,7 +700,10 @@ def accept_invitation(
             "organization_id": str(invitation.organization_id)
             if invitation.scope != InvitationScope.PLATFORM.value
             else None,
-            "previous_organization_id": str(previous_organization_id) if previous_organization_id else None,
+            # Whether this acceptance is how the person came to belong here,
+            # or they were already a member and the invitation added a seat
+            # or a role.
+            "membership_created": membership_created,
             "enrolled_course_id": enrolled_course_id,
         },
     )

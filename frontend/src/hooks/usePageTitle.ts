@@ -38,6 +38,7 @@ export function matchTitleKey(pathname: string): string | null {
     "/invite/accept": "invite.heading",
     "/teach/grading": "grading.title",
     "/daily-challenge/archive": "dailyChallenge.archive.title",
+    "/organizations": "organizations.title",
   }
   if (exact[pathname]) return exact[pathname]
 
@@ -53,6 +54,7 @@ export function matchTitleKey(pathname: string): string | null {
     return "pageTitle.editModule"
   }
   if (/^\/verify\/[^/]+$/.test(pathname)) return "verify.title"
+  if (/^\/o\/[^/]+$/.test(pathname)) return "organization.eyebrow"
   if (/^\/certificates\/[^/]+$/.test(pathname)) return "pageTitle.certificates"
   if (/^\/teacher\/courses\/[^/]+\/vedomost$/.test(pathname)) return "vedomost.title"
   if (/^\/teacher\/courses\/[^/]+\/gradebook$/.test(pathname)) return "pageTitle.gradebook"

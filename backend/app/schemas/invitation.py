@@ -64,6 +64,22 @@ class InvitationCreate(RequestModel):
             raise ValueError("course_id is only meaningful when scope is 'course'")
         return self
 
+    @model_validator(mode="after")
+    def _a_platform_invitation_offers_an_account(self) -> "InvitationCreate":
+        """A platform invitation is an account and nothing else.
+
+        A role is held inside an organization (``organization_members``) or
+        not at all; ``profiles.role`` mirrors the highest of them. Until
+        2026-10-03 a platform invitation carrying ``teacher`` wrote that
+        role straight onto the profile with no organization behind it — a
+        teacher of nowhere, which the mirror undid on the next membership
+        write. Refused here rather than silently downgraded, so the letter
+        never promises a role the acceptance will not grant.
+        """
+        if self.scope == "platform" and self.role != "student":
+            raise ValueError("a platform invitation offers an account, not a role: invite into an organization instead")
+        return self
+
 
 class InvitationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -86,6 +102,12 @@ class InvitationResponse(BaseModel):
     # expired at read time rather than requiring a cron to flip a stored
     # status. Only meaningful when status == "pending".
     is_expired: bool
+    #: Where the invitation leads, by name, for the list that shows many at
+    #: once: the organization it admits to, and for a course invitation the
+    #: course, in the reader's language. Filled by the list route; a single
+    #: row written or revoked carries neither, since the caller named them.
+    organization_name: str | None = None
+    course_title: str | None = None
 
 
 class InvitationPreview(BaseModel):

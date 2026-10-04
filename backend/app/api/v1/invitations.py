@@ -1,18 +1,22 @@
 from typing import cast
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Path, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
+    acting_organization,
     get_current_user,
-    organization_of,
+    get_live_course_or_404,
+    organization_scope,
+    requested_organization_id,
     require_director,
     require_teacher,
-    verify_course_owner,
 )
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
-from app.models.invitation import Invitation
+from app.models.invitation import Invitation, InvitationScope
+from app.models.organization import MembershipRole, Organization
 from app.models.user import User, UserRole
 from app.schemas.invitation import (
     InvitationAcceptRequest,
@@ -30,16 +34,21 @@ from app.services.invitation_service import (
     accept_invitation,
     course_title_for_invitation,
     create_or_resend_invitation,
+    get_invitation_by_id,
     get_invitation_by_token,
     is_invitation_expired,
     list_invitations,
     revoke_invitation,
 )
+from app.services.memberships import active_memberships, belongs_to, default_organization_id, directs, teaches_in
+from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
 router = APIRouter(prefix="/invitations", tags=["invitations"])
 
 
-def _to_response(invitation: Invitation) -> InvitationResponse:
+def _to_response(
+    invitation: Invitation, *, organization_name: str | None = None, course_title: str | None = None
+) -> InvitationResponse:
     is_expired = invitation.status == "pending" and is_invitation_expired(invitation)
     return InvitationResponse(
         id=invitation.id,
@@ -55,6 +64,8 @@ def _to_response(invitation: Invitation) -> InvitationResponse:
         expires_at=invitation.expires_at,
         is_expired=is_expired,
         age_attested_at=invitation.age_attested_at,
+        organization_name=organization_name,
+        course_title=course_title,
     )
 
 
@@ -62,6 +73,7 @@ def _to_response(invitation: Invitation) -> InvitationResponse:
 def create_invitation(
     body: InvitationCreate,
     teacher: User = Depends(require_teacher),
+    requested: UUID | None = Depends(requested_organization_id),
     db: Session = Depends(get_db),
 ) -> InvitationResponse:
     """Invite an address onto a course, into the school, or to the platform.
@@ -71,37 +83,78 @@ def create_invitation(
     * **A course invitation** may be written by the person who owns the
       course, which is what makes the invitation come from the teacher
       the student is about to study under rather than from an
-      administrator they have never met. The course must be theirs —
-      ``verify_course_owner`` — and the role must be ``student``: a
+      administrator they have never met, and by a director of the
+      course's organization. The organization is the course's own — not
+      whichever one the inviter is acting in — so a director of two
+      schools cannot invite onto A's course from B. For anyone who does
+      not direct that organization the role must be ``student``: a
       teacher who could mint teachers would be an escalation with extra
       steps.
-    * **Everything else** — inviting into the organization at large, or
-      to the platform, and any invitation carrying a teaching role —
-      stays with a director or a platform admin.
+    * **An organization invitation** — into the organization at large,
+      and any invitation carrying a teaching role — stays with a director
+      (of the organization the request acts in, ``acting_organization``)
+      or a platform admin.
+    * **A platform invitation** is an account and nothing else, and only
+      the platform offers one: admin only. A director invites into their
+      organization; there is no "the platform" for them to speak for.
 
     Idempotent on re-invite while a prior invitation for the same
     (organization, email, role, course) is still pending and unexpired;
     see ``create_or_resend_invitation`` for the dedupe/resend contract.
     """
-    is_director = teacher.role in (UserRole.DIRECTOR.value, UserRole.ADMIN.value)
-    if not is_director:
-        if body.scope != "course" or not body.course_id:
+    if body.scope == "course" and body.course_id:
+        course = get_live_course_or_404(db, body.course_id)
+        # A closed course of an organization the inviter is not in does not
+        # exist for them — the same 404 as the course page, before any 403
+        # could confirm it is there.
+        if course.access_mode == "institute" and not belongs_to(db, teacher, course.organization_id):
+            raise equip_error(
+                ErrorCode.RESOURCE_NOT_FOUND,
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Course not found",
+                context={"resource_type": "course", "resource_id": body.course_id},
+            )
+        organization_id = course.organization_id
+        is_director = directs(db, teacher, organization_id)
+        # Owning the course is not enough on its own: the invitation puts
+        # somebody *into the organization*, so the owner must still teach
+        # there. A teacher the organization suspended keeps their courses
+        # but not the door.
+        if not is_director and (
+            str(course.created_by) != str(teacher.id) or not teaches_in(db, teacher, organization_id)
+        ):
+            raise equip_error(
+                ErrorCode.AUTH_FORBIDDEN,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="You do not own this course",
+            )
+    elif body.scope == "platform":
+        if teacher.role != UserRole.ADMIN.value:
+            raise equip_error(
+                ErrorCode.AUTH_FORBIDDEN,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message="Only platform staff invite to the platform; invite into your organization instead",
+                context={"resource_type": "invitation", "field": "scope"},
+            )
+        organization_id = _where_a_platform_invitation_is_filed(db, teacher, requested)
+        is_director = True
+    else:
+        if teacher.role not in (UserRole.DIRECTOR.value, UserRole.ADMIN.value):
             raise equip_error(
                 ErrorCode.AUTH_FORBIDDEN,
                 status_code=status.HTTP_403_FORBIDDEN,
                 message="A teacher can only invite people onto their own course",
                 context={"resource_type": "invitation"},
             )
-        if body.role != UserRole.STUDENT.value:
-            raise equip_error(
-                ErrorCode.AUTH_FORBIDDEN,
-                status_code=status.HTTP_403_FORBIDDEN,
-                message="A teacher can invite students; a teaching role is granted by a director",
-                context={"resource_type": "invitation", "field": "role"},
-            )
-        # 404 when the course is not theirs, on the same rule the rest
-        # of this surface follows: whether it exists is not their answer.
-        verify_course_owner(db, body.course_id, teacher.id)
+        organization_id = acting_organization(db, teacher, requested, role=MembershipRole.DIRECTOR.value)
+        is_director = True
+    if not is_director and body.role != UserRole.STUDENT.value:
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="A teacher can invite students; a teaching role is granted by a director",
+            context={"resource_type": "invitation", "field": "role"},
+        )
 
     invitation, _is_new = create_or_resend_invitation(
         db,
@@ -110,9 +163,60 @@ def create_invitation(
         scope=body.scope,
         course_id=body.course_id,
         invited_by=teacher.id,
-        organization_id=organization_of(teacher),
+        organization_id=organization_id,
     )
     return _to_response(invitation)
+
+
+def _where_a_platform_invitation_is_filed(db: Session, admin: User, requested: UUID | None) -> UUID:
+    """The ``organization_id`` a platform invitation is written with.
+
+    Every invitation has carried a NOT NULL ``organization_id`` since
+    2026-09-12, when every invitation led somewhere. A platform invitation
+    leads nowhere — accepting it grants an account and no membership — so
+    for this one scope the column is bookkeeping: whose invitation list
+    the row appears in. Until 2026-10-03 it went through
+    ``acting_organization(..., role=director)``, which asked platform staff
+    to *direct* an organization: 403 for an admin who sits in none, 400 for
+    one who sits in two, for an invitation that has nothing to do with
+    either. No role is required of the admin here; the organization is
+    chosen, in order, as:
+
+    * the one named in ``X-Organization-Id``, which must exist;
+    * the admin's own default (``profiles.organization_id``, the one they
+      acted in before there were several);
+    * the one they sit in, highest role first, if they sit anywhere;
+    * the platform's first organization — the oldest row, the school the
+      platform grew out of — for an admin who sits nowhere. This is the
+      documented choice, and the organization is told nothing by it: a
+      platform invitation offers nothing of that organization's, its
+      director neither sees it nor can withdraw it (``list_invitations``,
+      ``revoke_invitation_route``), and it is kept out of the director's
+      own dedupe (``create_or_resend_invitation``). Until 2026-10-03 all
+      three held the other way, and the filing *was* a leak: the row sat
+      in the director's list, their revoke reached it, and their next
+      invitation to the same address resent it in their name.
+
+    Only a platform with no organization at all has nowhere to file it,
+    and says so.
+    """
+    if requested is not None:
+        return acting_organization(db, admin, requested)
+    default = default_organization_id(admin)
+    if default is not None:
+        return default
+    seats = active_memberships(db, admin.id)
+    if seats:
+        return seats[0].organization_id
+    first = db.query(Organization.id).order_by(Organization.created_at, Organization.id).first()
+    if first is None:
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message="A platform invitation is filed under an organization, and there is none yet",
+            context={"resource_type": "invitation", "field": "organization_id"},
+        )
+    return cast("UUID", first[0])
 
 
 @router.get("", response_model=list[InvitationResponse])
@@ -121,12 +225,18 @@ def list_invitations_route(
     limit: int = Query(50, ge=1, le=200),
     role: str | None = Query(None),
     invite_status: str | None = Query(None, alias="status"),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     director: User = Depends(require_director),
+    requested: UUID | None = Depends(requested_organization_id),
     db: Session = Depends(get_db),
 ) -> list[InvitationResponse]:
-    # A director sees their own organization's invitations; platform
-    # staff see all of them, the same split the cohort list uses.
-    scope = None if director.role == UserRole.ADMIN.value else organization_of(director)
+    # A director sees the invitations of the organization they are acting
+    # in; platform staff see all of them unless they named one — the same
+    # split the cohort list uses (``organization_scope``). Platform
+    # invitations are filed under an organization but are not its own:
+    # only platform staff see them.
+    is_platform_staff = director.role == UserRole.ADMIN.value
+    scope = organization_scope(db, director, requested)
     rows = list_invitations(
         db,
         organization_id=scope,
@@ -134,8 +244,31 @@ def list_invitations_route(
         limit=limit,
         role=role,
         status_filter=invite_status,
+        platform_rows=is_platform_staff,
     )
-    return [_to_response(r) for r in rows]
+    # Where each row leads, by name — one query for the organizations and
+    # one for the course titles, for the whole page. A course with no title
+    # in the reader's language is sent without one, like everywhere a
+    # reader is served text (``test_no_reader_gets_another_language``); the
+    # list then says «to a course» rather than printing another language.
+    names = {
+        o.id: o.public_name
+        for o in db.query(Organization).filter(Organization.id.in_({r.organization_id for r in rows})).all()
+    }
+    course_ids = sorted({r.course_id for r in rows if r.scope == InvitationScope.COURSE.value and r.course_id})
+    titles = (
+        fetch_course_titles_by_id(db, course_ids, display_locale=normalize_locale(accept_language))
+        if course_ids
+        else {}
+    )
+    return [
+        _to_response(
+            r,
+            organization_name=names.get(r.organization_id),
+            course_title=(titles.get(r.course_id) or None) if r.course_id else None,
+        )
+        for r in rows
+    ]
 
 
 @router.delete("/{invitation_id}", response_model=InvitationResponse)
@@ -151,13 +284,32 @@ def revoke_invitation_route(
     that is not `pending`, but nothing could set it — so an invitation sent
     to the wrong address stayed live for seven days, carrying a teacher
     role with it.
+
+    The invitation names its organization, and the caller must direct that
+    one (``directs``); a director of somewhere else is told the same thing
+    as somebody asking about an invitation that does not exist. So is a
+    director asking about a platform invitation filed under their own
+    organization: it is the platform admin's, and until 2026-10-03 the
+    director could withdraw it.
     """
-    scope = None if director.role == UserRole.ADMIN.value else organization_of(director)
+    existing = get_invitation_by_id(db, invitation_id)
+    is_the_platforms = existing is not None and existing.scope == InvitationScope.PLATFORM.value
+    if (
+        existing is None
+        or (is_the_platforms and director.role != UserRole.ADMIN.value)
+        or not directs(db, director, existing.organization_id)
+    ):
+        raise equip_error(
+            ErrorCode.INVITATION_NOT_FOUND,
+            status_code=status.HTTP_404_NOT_FOUND,
+            message="Invitation not found",
+            context={"resource_type": "invitation", "resource_id": str(invitation_id)},
+        )
     invitation = revoke_invitation(
         db,
         invitation_id=invitation_id,
         actor=director,
-        organization_id=scope,
+        organization_id=existing.organization_id,
     )
     return _to_response(invitation)
 

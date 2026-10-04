@@ -86,6 +86,11 @@ export default function Footer({ className = "mt-6" }: { className?: string }) {
         className="mx-auto flex flex-wrap items-baseline justify-center gap-x-2.5 gap-y-2 px-4 pb-6 pt-4 text-[0.6875rem] text-ink-muted lg:flex-nowrap xl:gap-x-4 xl:px-6"
       >
         <span className="whitespace-nowrap">© {year}</span>
+        {/* The one link here that is not a legal page: the showcase of who
+            teaches on Equip had no way in from the public page (2026-10-03). */}
+        <Link to="/organizations" className={linkClass}>
+          {t("footer.organizations")}
+        </Link>
         <Link to="/privacy" className={linkClass}>
           {t("legal.privacy")}
         </Link>

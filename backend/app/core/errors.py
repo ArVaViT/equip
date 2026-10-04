@@ -189,10 +189,27 @@ class ErrorCode(enum.StrEnum):
     """The authenticated caller's email does not match the email the
     invitation was issued to."""
 
-    INVITATION_OTHER_SCHOOL = "invitation.other_school"
-    """The caller belongs to another organization with a higher role than the
-    one offered. Accepting would either carry that role into this school or
-    silently take it away, so it is refused and nothing is written."""
+    INVITATION_INVITER_NOT_STAFF = "invitation.inviter_not_staff"
+    """The person who wrote the invitation no longer speaks for the
+    organization it leads into -- suspended, demoted, or gone -- so the
+    link admits nobody. Still ``status='pending'`` in the DB: the row is
+    left as it is, and a director who wants the person in writes a fresh
+    invitation."""
+
+    # ── Organizations ───────────────────────────────────────────────────
+    ORGANIZATION_AMBIGUOUS = "organization.ambiguous"
+    """The caller acts in more than one organization and the request did not
+    say which. Sent with ``context.organizations`` (id, slug, public_name,
+    role) so the client can ask; the answer travels in ``X-Organization-Id``."""
+
+    USER_ROLE_HELD_BY_MEMBERSHIP = "user.role_held_by_membership"
+    """The admin route was asked to make somebody a teacher, director or
+    student, and that is not the route's to give: ``profiles.role`` below
+    ``admin`` mirrors the person's organization memberships, and a value
+    written here would be overwritten by the next membership write. The
+    route moves people in and out of ``admin`` only; a role inside an
+    organization is changed on the membership. ``context.role`` is what the
+    memberships say, ``context.memberships`` lists them."""
 
     # ── Plan limits ─────────────────────────────────────────────────────
     PLAN_LIMIT_REACHED = "plan.limit_reached"

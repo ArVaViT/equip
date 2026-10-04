@@ -11,8 +11,10 @@ from app.core.errors import ErrorCode, equip_error
 from app.core.security import decode_access_token
 from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.enrollment import Enrollment
+from app.models.organization import MembershipRole, Organization
 from app.models.user import User, UserRole, can_teach
 from app.services.chapter_gate import chapter_is_open_to
+from app.services.memberships import default_organization_id, directs, membership_of, organizations_where
 
 security = HTTPBearer()
 optional_security = HTTPBearer(auto_error=False)
@@ -130,23 +132,143 @@ def require_admin(
     return current_user
 
 
-def organization_of(user: User) -> UUID:
-    """The organization this person acts inside, or a 403.
+def requested_organization_id(
+    x_organization_id: UUID | None = Header(default=None, alias="X-Organization-Id"),
+) -> UUID | None:
+    """The organization the client says it is acting in, if it said.
 
-    Platform staff have no organization of their own, and most of what
-    this platform does happens inside one: a course, a cohort, an
-    invitation all belong somewhere. Staff who need to act on a specific
-    organization say which one; there is no "the" organization to fall
-    back on, and inventing one is how a row ends up filed under whichever
-    organization came back first.
+    Only parsed here; ``acting_organization`` decides whether the caller
+    may act there. Today's clients send nothing — a person with one
+    organization never has to — and the header exists for the first
+    person who directs or teaches in two.
     """
-    if user.organization_id is None:
+    return x_organization_id
+
+
+def acting_organization(
+    db: Session,
+    user: User,
+    requested: UUID | None,
+    *,
+    role: str = MembershipRole.TEACHER.value,
+) -> UUID:
+    """The organization this request acts inside, for lists and creation.
+
+    Until 2026-10-03 this was ``organization_of``: the one column on the
+    account, or a 403. A person is now a member of several organizations
+    (``organization_members``), so "which one" is a question with an
+    answer the request has to give — or that can be inferred when there is
+    only one answer to give:
+
+    * ``X-Organization-Id`` names it. The caller must hold at least ``role``
+      there: not a member at all answers 404 (the id of an organization
+      they are not in is not theirs to have confirmed), a member below the
+      role answers 403.
+    * No header, exactly one membership at or above ``role``: that one.
+      This is every client that exists today.
+    * No header, none: 403, the same sentence as before — the action
+      happens inside an organization and this account is in none that
+      qualifies.
+    * No header, several: the one ``profiles.organization_id`` names, if it
+      is among them (``default_organization_id`` — the first organization
+      the person joined, which is where the previous release put
+      everything; the column goes in phase 4, when every client sends the
+      header). It is only ever picked from the candidates already checked
+      against ``role``, so it opens nothing the person could not name
+      themselves. Otherwise 400 ``organization.ambiguous`` listing them,
+      so the client can ask and resend.
+
+    Platform staff administer every organization, so a header from them is
+    taken as given (404 only if no such organization exists), and without a
+    header their own memberships, in whatever role, are the candidates — an
+    admin who sits in one organization as its teacher is acting there.
+
+    This is for the routes where the organization is not already known from
+    an object. Where it is — a cohort, a certificate, a course — the object
+    decides and the caller is checked against *its* organization
+    (``directs``, ``teaches_in``, ``belongs_to``); no header is consulted,
+    and a mismatch is a 404.
+    """
+    is_admin = user.role == UserRole.ADMIN.value
+    if requested is not None:
+        if is_admin:
+            if db.query(Organization.id).filter(Organization.id == requested).first() is None:
+                raise _organization_not_found(requested)
+            return requested
+        membership = membership_of(db, user.id, requested)
+        if membership is None:
+            raise _organization_not_found(requested)
+        if not any(m.organization_id == requested for m in organizations_where(db, user, at_least=role)):
+            raise equip_error(
+                ErrorCode.AUTH_FORBIDDEN,
+                status_code=status.HTTP_403_FORBIDDEN,
+                message=f"Only a {role} of this organization can perform this action",
+                context={"resource_type": "organization", "resource_id": str(requested), "role": membership.role},
+            )
+        return requested
+
+    candidates = organizations_where(db, user, at_least=role)
+    if len(candidates) == 1:
+        return candidates[0].organization_id
+    default = default_organization_id(user)
+    if default is not None and any(m.organization_id == default for m in candidates):
+        return default
+    if not candidates:
         raise equip_error(
             ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
             message="This action happens inside an organization, and this account is not in one",
         )
-    return user.organization_id
+    organizations = {
+        o.id: o
+        for o in db.query(Organization).filter(Organization.id.in_([m.organization_id for m in candidates])).all()
+    }
+    raise equip_error(
+        ErrorCode.ORGANIZATION_AMBIGUOUS,
+        status_code=status.HTTP_400_BAD_REQUEST,
+        message="This account acts in several organizations; say which one in X-Organization-Id",
+        context={
+            "organizations": [
+                {
+                    "id": str(m.organization_id),
+                    "slug": organizations[m.organization_id].slug if m.organization_id in organizations else None,
+                    "public_name": (
+                        organizations[m.organization_id].public_name if m.organization_id in organizations else None
+                    ),
+                    "role": m.role,
+                }
+                for m in candidates
+            ]
+        },
+    )
+
+
+def organization_scope(
+    db: Session,
+    user: User,
+    requested: UUID | None,
+    *,
+    role: str = MembershipRole.DIRECTOR.value,
+) -> UUID | None:
+    """``acting_organization`` for a list: ``None`` means every organization.
+
+    Only platform staff get ``None``, and only when they did not ask for a
+    particular one — that is what the role is for, and the split every
+    list (cohorts, invitations, the certificate queue) already made by
+    hand. Everyone else is scoped exactly as ``acting_organization`` says.
+    """
+    if requested is None and user.role == UserRole.ADMIN.value:
+        return None
+    return acting_organization(db, user, requested, role=role)
+
+
+def _organization_not_found(organization_id: UUID) -> HTTPException:
+    return equip_error(
+        ErrorCode.RESOURCE_NOT_FOUND,
+        status_code=status.HTTP_404_NOT_FOUND,
+        message="Organization not found",
+        context={"resource_type": "organization", "resource_id": str(organization_id)},
+    )
 
 
 def require_director(
@@ -164,10 +286,12 @@ def require_director(
     Platform staff pass because they administer every organization by
     definition — not because the two roles are the same thing.
 
-    What this does NOT yet check is that the object belongs to the
-    caller's organization: there are no organizations to belong to. That
-    check arrives with the ``organization_id`` columns, and this is the
-    function it will arrive in.
+    What this checks is the platform-wide role, which since 2026-10-03 is a
+    mirror: ``director`` here means "directs at least one organization".
+    *Which* one is not this gate's question. A route that has the object
+    asks ``directs(db, user, obj.organization_id)`` and answers 404 to a
+    director of somewhere else; a route that has no object yet (a list,
+    a creation) asks ``acting_organization``.
     """
     if current_user.role not in (UserRole.DIRECTOR.value, UserRole.ADMIN.value):
         raise equip_error(
@@ -333,17 +457,18 @@ def verify_course_in_own_school(db: Session, course_id: str, user: User) -> Cour
     role, so nobody noticed (2026-10-03).
 
     Who passes: the course's own author (a director who also teaches it),
-    platform staff, and a director of the organization the course belongs to.
-    A director of another school gets a 404 rather than a 403 — like a cohort
-    or a certificate next door, the answer must not confirm what is there. A
-    teacher who did not write the course keeps the 403 the teaching routes
-    give; this widens nothing for them.
+    platform staff, and a director of the organization the course belongs to
+    — by membership (``directs``), since a person may direct one organization
+    and teach in another. A director of another school gets a 404 rather
+    than a 403 — like a cohort or a certificate next door, the answer must
+    not confirm what is there. A teacher who did not write the course keeps
+    the 403 the teaching routes give; this widens nothing for them.
     """
     course = get_live_course_or_404(db, course_id)
     if str(course.created_by) == str(user.id) or user.role == UserRole.ADMIN.value:
         return course
     if user.role == UserRole.DIRECTOR.value:
-        if course.organization_id == organization_of(user):
+        if directs(db, user, course.organization_id):
             return course
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,

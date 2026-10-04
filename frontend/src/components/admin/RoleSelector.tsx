@@ -20,18 +20,11 @@ interface Props {
   ariaLabel?: string
 }
 
-// Deliberately not every role: this is the list an admin may *assign*
-// from this control, ordered by reach. `director` is missing on purpose
-// until organizations exist — a director of nothing is a role with no
-// meaning, and offering it would let someone set a state the product
-// cannot yet explain. It joins this list in the step that adds
-// `organization_id` (see the organizations plan, step 4).
-//
-// TypeScript cannot catch a role missing from an array the way it
-// catches one missing from a Record, so the omission is written down
-// rather than left to be discovered as a bug.
-const ROLE_ORDER: UserRole[] = ["student", "teacher", "admin"]
-
+// Since organizations hold roles (2026-10-03) the platform decides one
+// thing here: platform staff or not. Teacher and director are held in an
+// organization — appointed, invited, placed — and this badge shows the
+// highest of them, read from the memberships; the server answers 422
+// ``user.role_held_by_membership`` to any attempt to set them directly.
 /**
  * The role badge IS the role picker — no separate select alongside.
  *
@@ -78,26 +71,19 @@ export function RoleSelector({ role, disabled = false, onChange, ariaLabel }: Pr
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-[12rem]">
-        {ROLE_ORDER.map((value) => {
-          const selected = value === role
-          return (
-            <DropdownMenuItem
-              key={value}
-              onSelect={() => {
-                if (!selected) onChange(value)
-              }}
-              className={cn(
-                "justify-between",
-                selected && "font-medium text-ink",
-              )}
-            >
-              <span>{t(ROLE_I18N_KEY[value])}</span>
-              {selected && (
-                <Check className="h-3.5 w-3.5 text-brand" strokeWidth={1.75} aria-hidden />
-              )}
-            </DropdownMenuItem>
-          )
-        })}
+        {/* What the person is, from their organizations — not a choice. */}
+        <DropdownMenuItem disabled className="justify-between font-medium text-ink">
+          <span>{t(ROLE_I18N_KEY[role])}</span>
+          <Check className="h-3.5 w-3.5 text-brand" strokeWidth={1.75} aria-hidden />
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          // Not admin → admin; admin → back to what the memberships say
+          // (the server re-reads them; "student" is the request, not the answer).
+          onSelect={() => onChange(role === "admin" ? "student" : "admin")}
+        >
+          {role === "admin" ? t("admin.roleSelector.revokeAdmin") : t("admin.roleSelector.makeAdmin")}
+        </DropdownMenuItem>
+        <p className="max-w-[16rem] px-2 py-1.5 text-xs text-ink-muted">{t("admin.roleSelector.heldByMembership")}</p>
       </DropdownMenuContent>
     </DropdownMenu>
   )
