@@ -53,9 +53,10 @@ export default function AdminDashboard() {
 
   const rawTab = params.get("tab")
   // The translations tab is for the rare row a person has to read before
-  // it ships. With none waiting it is an empty screen, so it is not shown;
-  // `null` (still counting) keeps it, so a link straight to it does not
-  // bounce while the count loads.
+  // it ships. With none waiting it is an empty screen, so it is not shown.
+  // While the count loads it stays hidden too (no tab that appears and then
+  // vanishes), except for a link straight to it, which must not bounce; a
+  // count that failed keeps it, since the queue may hold a course back.
   const isAdmin = user?.role === "admin"
   const { data: waiting = null } = useAsyncData<number | null>(
     async () =>
@@ -63,11 +64,12 @@ export default function AdminDashboard() {
         ? adminTranslationsService
             .listNeedsReview({ limit: 1 })
             .then((page) => page.total)
-            .catch(() => null)
+            .catch(() => -1)
         : 0,
     [isAdmin],
   )
-  const tabs = tabsFor(user?.role).filter((name) => name !== "translations" || waiting !== 0)
+  const showTranslations = waiting === null ? rawTab === "translations" : waiting !== 0
+  const tabs = tabsFor(user?.role).filter((name) => name !== "translations" || showTranslations)
   // A tab this reader may not open (a director following an admin's
   // link) lands on their first tab rather than on a screen of 403s.
   const tab: AdminTab = tabs.includes(rawTab as AdminTab) ? (rawTab as AdminTab) : (tabs[0] ?? "cohorts")

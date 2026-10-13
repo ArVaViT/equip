@@ -284,11 +284,11 @@ function OrganizationRow({
           />
           {t("adminOrgs.documents")}
         </button>
-        {settingsOpen && (
-          <div id={`${ids}-settings`} className="mt-3">
-            <SchoolSettingsTab organizationId={org.id} embedded />
-          </div>
-        )}
+        <div id={`${ids}-settings`} hidden={!settingsOpen} className="mt-3">
+          {/* Mounted on first open only: each row would otherwise ask for its
+              settings as the list loads. */}
+          {settingsOpen && <SchoolSettingsTab organizationId={org.id} embedded />}
+        </div>
       </div>
     </li>
   )

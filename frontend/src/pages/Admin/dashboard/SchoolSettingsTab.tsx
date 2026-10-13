@@ -94,30 +94,34 @@ export function SchoolSettingsTab({ organizationId, embedded = false }: Props = 
   }
 
   if (loadError) {
-    return (
+    const error = (
+      <ErrorState
+        className="py-8"
+        description={loadError}
+        action={
+          <Button size="sm" variant="outline" onClick={() => setLoadAttempt((n) => n + 1)}>
+            {t("common.tryAgain")}
+          </Button>
+        }
+      />
+    )
+    return embedded ? error : (
       <Card>
-        <CardContent>
-          <ErrorState
-            className="py-8"
-            description={loadError}
-            action={
-              <Button size="sm" variant="outline" onClick={() => setLoadAttempt((n) => n + 1)}>
-                {t("common.tryAgain")}
-              </Button>
-            }
-          />
-        </CardContent>
+        <CardContent>{error}</CardContent>
       </Card>
     )
   }
 
   if (loading) {
-    return (
+    const spinner = (
+      <div className="flex items-center gap-2 py-8 text-sm text-ink-muted">
+        <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
+        {t("common.loading")}
+      </div>
+    )
+    return embedded ? spinner : (
       <Card>
-        <CardContent className="flex items-center gap-2 py-8 text-sm text-ink-muted">
-          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
-          {t("common.loading")}
-        </CardContent>
+        <CardContent>{spinner}</CardContent>
       </Card>
     )
   }

@@ -151,6 +151,9 @@ export function TodayCard() {
             id="today-card-heading"
             className="min-w-0 truncate font-serif text-sm font-semibold tracking-tight text-ink first-letter:uppercase"
           >
+            {/* Heard, not seen: the section is named by this heading, and
+                a date alone does not say which card it is. */}
+            <span className="sr-only">{t("header.calendar")}: </span>
             {dateLabel}
           </h2>
         </div>
