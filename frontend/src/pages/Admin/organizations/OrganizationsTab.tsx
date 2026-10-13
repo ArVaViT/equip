@@ -1,7 +1,7 @@
 import { useId, useState } from "react"
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { Building2, ExternalLink, Plus, UserPlus } from "lucide-react"
+import { Building2, ChevronDown, ExternalLink, Plus, UserPlus } from "lucide-react"
 
 import { useConfirm } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,8 @@ import { useAsyncData } from "@/hooks/useAsyncData"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
 import { organizationsService, type AdminOrganization, type OrganizationStatus } from "@/services/organizations"
+import { cn } from "@/lib/utils"
+import { SchoolSettingsTab } from "../dashboard/SchoolSettingsTab"
 
 const STATUSES: readonly OrganizationStatus[] = ["pending", "approved", "verified", "suspended"]
 
@@ -172,6 +174,7 @@ function OrganizationRow({
   const ids = useId()
   const [email, setEmail] = useState("")
   const [busy, setBusy] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const run = async (action: () => Promise<unknown>, success: string) => {
     setBusy(true)
@@ -263,6 +266,30 @@ function OrganizationRow({
           {t("adminOrgs.appoint")}
         </Button>
       </form>
+      {/* What the "School" tab used to hold for platform staff — the name and
+          city on this school's documents — opened from the school's own row,
+          so one thing is no longer two tabs. */}
+      <div className="mt-3 border-t border-edge pt-3">
+        <button
+          type="button"
+          aria-expanded={settingsOpen}
+          aria-controls={`${ids}-settings`}
+          onClick={() => setSettingsOpen((v) => !v)}
+          className="inline-flex items-center gap-1.5 rounded-md text-sm font-medium text-ink-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          <ChevronDown
+            className={cn("h-4 w-4 transition-transform", settingsOpen && "rotate-180")}
+            strokeWidth={1.75}
+            aria-hidden
+          />
+          {t("adminOrgs.documents")}
+        </button>
+        {settingsOpen && (
+          <div id={`${ids}-settings`} className="mt-3">
+            <SchoolSettingsTab organizationId={org.id} embedded />
+          </div>
+        )}
+      </div>
     </li>
   )
 }

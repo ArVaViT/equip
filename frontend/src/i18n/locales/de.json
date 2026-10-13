@@ -168,7 +168,8 @@
       "notVerified": "nicht geprüft",
       "noDirector": "keine Leitung",
       "noCourses": "keine veröffentlichten Kurse"
-    }
+    },
+    "documents": "Name auf Dokumenten"
   },
   "organizations": {
     "eyebrow": "Auf Equip",
@@ -2908,50 +2909,6 @@
         "retried": "Zurück an die Pipeline gegeben.",
         "acceptError": "Konnte nicht angenommen werden — bitte erneut versuchen.",
         "retryError": "Konnte nicht zurückgegeben werden — bitte erneut versuchen."
-      }
-    },
-    "tabDmca": "Urheberrecht",
-    "dmca": {
-      "title": "Urheberrechtsbeschwerden",
-      "description": "Jede eingegangene Mitteilung, was darüber entschieden wurde und wie oft es dieselbe Person war.",
-      "refresh": "Aktualisieren",
-      "loadError": "Die Beschwerden konnten nicht geladen werden.",
-      "empty": {
-        "title": "Keine Beschwerden",
-        "body": "Es ist nichts eingegangen. Kommt eine Mitteilung per E-Mail, halten Sie sie hier fest."
-      },
-      "status": {
-        "received": "Eingegangen",
-        "upheld": "Bestätigt",
-        "rejected": "Abgelehnt",
-        "withdrawn": "Zurückgezogen"
-      },
-      "strike": "Verstoß {{number}}",
-      "accountClosed": "Konto geschlossen",
-      "upheldCount_one": "{{count}} bestätigt",
-      "upheldCount_other": "{{count}} bestätigt",
-      "field": {
-        "complainant": "Von",
-        "uploader": "Hochgeladen von",
-        "unknownUploader": "nicht ermittelt",
-        "uploaderTold": "Hochladende Person benachrichtigt",
-        "notYet": "noch nicht",
-        "decision": "Entscheidung"
-      },
-      "action": {
-        "uphold": "Bestätigen und entfernen",
-        "reject": "Ablehnen"
-      },
-      "confirm": {
-        "upholdTitle": "Diese Beschwerde bestätigen?",
-        "rejectTitle": "Diese Beschwerde ablehnen?",
-        "body": "Dies wird einmal festgehalten und lässt sich danach nicht ändern. Ein Fehler wird durch einen neuen Eintrag berichtigt.",
-        "willCloseAccount": "Dies ist die dritte bestätigte Beschwerde über {{name}}; mit der Bestätigung wird dieses Konto geschlossen. Es wird einmal festgehalten und lässt sich danach nicht ändern.",
-        "confirm": "Festhalten"
-      },
-      "toast": {
-        "recorded": "Festgehalten.",
-        "failed": "Die Entscheidung konnte nicht festgehalten werden."
       }
     },
     "tabOrganizations": "Organisationen",

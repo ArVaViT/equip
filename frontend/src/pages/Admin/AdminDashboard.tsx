@@ -17,6 +17,8 @@ import { useAdminAudit } from "./dashboard/useAdminAudit"
 import { Section } from "@/components/layout/Section"
 import { lazyRoute } from "@/lib/lazyRoute"
 import { canDirect } from "@/lib/roles"
+import { useAsyncData } from "@/hooks/useAsyncData"
+import { adminTranslationsService } from "@/services/adminTranslations"
 
 // The audit log and cohorts tabs are rarely the entry point — most admins
 // land on Overview. Splitting them off keeps the initial AdminDashboard
@@ -38,9 +40,6 @@ const TranslationReviewTab = lazyRoute(() =>
 const OrganizationsTab = lazyRoute(() =>
   import("./organizations/OrganizationsTab").then((m) => ({ default: m.OrganizationsTab })),
 )
-const DmcaTab = lazyRoute(() =>
-  import("./dmca/DmcaTab").then((m) => ({ default: m.DmcaTab })),
-)
 
 /**
  * Admin dashboard orchestrator. Delegates every piece of state to
@@ -52,8 +51,23 @@ export default function AdminDashboard() {
   const { user } = useAuth()
   const [params, setParams] = useSearchParams()
 
-  const tabs = tabsFor(user?.role)
   const rawTab = params.get("tab")
+  // The translations tab is for the rare row a person has to read before
+  // it ships. With none waiting it is an empty screen, so it is not shown;
+  // `null` (still counting) keeps it, so a link straight to it does not
+  // bounce while the count loads.
+  const isAdmin = user?.role === "admin"
+  const { data: waiting = null } = useAsyncData<number | null>(
+    async () =>
+      isAdmin
+        ? adminTranslationsService
+            .listNeedsReview({ limit: 1 })
+            .then((page) => page.total)
+            .catch(() => null)
+        : 0,
+    [isAdmin],
+  )
+  const tabs = tabsFor(user?.role).filter((name) => name !== "translations" || waiting !== 0)
   // A tab this reader may not open (a director following an admin's
   // link) lands on their first tab rather than on a screen of 403s.
   const tab: AdminTab = tabs.includes(rawTab as AdminTab) ? (rawTab as AdminTab) : (tabs[0] ?? "cohorts")
@@ -69,8 +83,7 @@ export default function AdminDashboard() {
   // ``isAdmin`` gates BOTH hooks before they fire any requests --
   // without this guard a teacher landing on /admin?tab=audit would
   // trigger an admin-only audit-log query in the milliseconds before
-  // the <Navigate> below redirects them.
-  const isAdmin = user?.role === "admin"
+  // the <Navigate> below redirects them (``isAdmin`` is above).
   const isDirector = user?.role === "director"
   // A director's certificates sit on the cohorts tab; the hook then
   // fetches only them — the user list and the counts are staff-only.
@@ -268,16 +281,6 @@ export default function AdminDashboard() {
               their own endpoint, and a failed user list is no reason to hide
               the screen that puts a name on the documents. */}
           <SchoolSettingsTab />
-        </div>
-      )}
-
-      {tab === "dmca" && (
-        <div
-          role="tabpanel"
-          id={ADMIN_TAB_PANEL_ID.dmca}
-          aria-labelledby={ADMIN_TAB_TRIGGER_ID.dmca}
-        >
-          <DmcaTab />
         </div>
       )}
     </Section>
