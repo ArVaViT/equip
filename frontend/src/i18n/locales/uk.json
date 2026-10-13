@@ -282,22 +282,6 @@
     }
   },
   "dashboard": {
-    "atRisk": {
-      "write": "Написати: {{name}}",
-      "title": "Кому варто написати",
-      "quiet_one": "{{count}} день без активності",
-      "quiet_few": "{{count}} дні без активності",
-      "quiet_many": "{{count}} днів без активності",
-      "quiet_other": "{{count}} дня без активності",
-      "missed_one": "пропущено {{count}} термін",
-      "missed_few": "пропущено {{count}} терміни",
-      "missed_many": "пропущено {{count}} термінів",
-      "missed_other": "пропущено {{count}} терміну",
-      "more_one": "і ще {{count}}",
-      "more_few": "і ще {{count}}",
-      "more_many": "і ще {{count}}",
-      "more_other": "і ще {{count}}"
-    },
     "continue": {
       "position": "урок {{current}} з {{total}}",
       "cta": "Продовжити"
@@ -306,15 +290,12 @@
     "loadCoursesError": "Не вдалося завантажити ваші курси. Спробуйте оновити сторінку.",
     "course": "Курс",
     "browseAllCta": "Переглянути всі курси",
-    "recentlyViewed": "Нещодавно переглянуті",
     "votd": {
       "eyebrow": "Сьогодні",
       "title": "Вірш дня"
     },
     "today": {
-      "eyebrow": "Календар",
       "openFull": "Увесь календар",
-      "empty": "Сьогодні нічого не заплановано. Далі:",
       "nothingAhead": "Найближчих подій немає.",
       "ahead": "Найближчі події",
       "over": "Минуло"
@@ -322,18 +303,7 @@
     "readingProgress_one": "Прочитано {{read}} із {{count}} уроку",
     "readingProgress_few": "Прочитано {{read}} із {{count}} уроків",
     "readingProgress_many": "Прочитано {{read}} із {{count}} уроків",
-    "readingProgress_other": "Прочитано {{read}} із {{count}} уроку",
-    "teaching": {
-      "title": "Курси, які ви ведете",
-      "openAll": "Усі мої курси",
-      "empty": "У вас поки немає курсів. Перший створюється за хвилину — назва й опис, решта потім.",
-      "createFirst": "Створити перший курс",
-      "edit": "Відкрити в редакторі",
-      "more_one": "і ще {{count}} курс",
-      "more_few": "і ще {{count}} курси",
-      "more_many": "і ще {{count}} курсів",
-      "more_other": "і ще {{count}} курсу"
-    }
+    "readingProgress_other": "Прочитано {{read}} із {{count}} уроку"
   },
   "onboarding": {
     "student": {
@@ -350,7 +320,7 @@
       "primaryCta": "Створити перший курс"
     },
     "teacherAsStudent": {
-      "body": "Тут з’являться курси, на які ви записані як студент. Ті, що ви ведете, — у картці «Курси, які ви ведете» та в розділі «Викладання»."
+      "body": "Тут з’являться курси, на які ви записані як студент. Ті, що ви ведете, — у розділі «Викладання»."
     }
   },
   "completion": {

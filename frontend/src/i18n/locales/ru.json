@@ -2840,22 +2840,6 @@
     }
   },
   "dashboard": {
-    "atRisk": {
-      "write": "Написать: {{name}}",
-      "title": "Кому стоит написать",
-      "quiet_one": "{{count}} день без активности",
-      "quiet_few": "{{count}} дня без активности",
-      "quiet_many": "{{count}} дней без активности",
-      "quiet_other": "{{count}} дня без активности",
-      "missed_one": "пропущен {{count}} срок",
-      "missed_few": "пропущено {{count}} срока",
-      "missed_many": "пропущено {{count}} сроков",
-      "missed_other": "пропущено {{count}} срока",
-      "more_one": "и ещё {{count}}",
-      "more_few": "и ещё {{count}}",
-      "more_many": "и ещё {{count}}",
-      "more_other": "и ещё {{count}}"
-    },
     "continue": {
       "position": "урок {{current}} из {{total}}",
       "cta": "Продолжить"
@@ -2864,15 +2848,12 @@
     "loadCoursesError": "Не удалось загрузить ваши курсы. Попробуйте обновить страницу.",
     "course": "Курс",
     "browseAllCta": "Открыть каталог",
-    "recentlyViewed": "Недавно открытые",
     "votd": {
       "eyebrow": "Сегодня",
       "title": "Стих дня"
     },
     "today": {
-      "eyebrow": "Календарь",
       "openFull": "Весь календарь",
-      "empty": "Сегодня ничего не запланировано. Дальше:",
       "nothingAhead": "Ближайших событий нет.",
       "ahead": "Ближайшие события",
       "over": "Прошло"
@@ -2880,18 +2861,7 @@
     "readingProgress_one": "Прочитано {{read}} из {{count}} урока",
     "readingProgress_few": "Прочитано {{read}} из {{count}} уроков",
     "readingProgress_many": "Прочитано {{read}} из {{count}} уроков",
-    "readingProgress_other": "Прочитано {{read}} из {{count}} урока",
-    "teaching": {
-      "title": "Курсы, которые вы ведёте",
-      "openAll": "Все мои курсы",
-      "empty": "У вас пока нет курсов. Первый создаётся за минуту — название и описание, остальное потом.",
-      "createFirst": "Создать первый курс",
-      "edit": "Открыть в редакторе",
-      "more_one": "и ещё {{count}} курс",
-      "more_few": "и ещё {{count}} курса",
-      "more_many": "и ещё {{count}} курсов",
-      "more_other": "и ещё {{count}} курса"
-    }
+    "readingProgress_other": "Прочитано {{read}} из {{count}} урока"
   },
   "onboarding": {
     "student": {
@@ -2908,7 +2878,7 @@
       "primaryCta": "Создать первый курс"
     },
     "teacherAsStudent": {
-      "body": "Здесь появятся курсы, на которые вы записаны как студент. Те, что вы ведёте, — в карточке «Курсы, которые вы ведёте» и в разделе «Преподавание»."
+      "body": "Здесь появятся курсы, на которые вы записаны как студент. Те, что вы ведёте, — в разделе «Преподавание»."
     }
   },
   "completion": {

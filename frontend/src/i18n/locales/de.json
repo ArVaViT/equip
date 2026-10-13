@@ -268,16 +268,6 @@
     }
   },
   "dashboard": {
-    "atRisk": {
-      "write": "An {{name}} schreiben",
-      "title": "Wem Sie schreiben sollten",
-      "quiet_one": "{{count}} Tag ohne Aktivität",
-      "quiet_other": "{{count}} Tage ohne Aktivität",
-      "missed_one": "{{count}} Frist verpasst",
-      "missed_other": "{{count}} Fristen verpasst",
-      "more_one": "und {{count}} weitere",
-      "more_other": "und {{count}} weitere"
-    },
     "continue": {
       "position": "Lektion {{current}} von {{total}}",
       "cta": "Weiter"
@@ -286,30 +276,18 @@
     "loadCoursesError": "Ihre Kurse konnten nicht geladen werden. Bitte laden Sie die Seite neu.",
     "course": "Kurs",
     "browseAllCta": "Alle Kurse ansehen",
-    "recentlyViewed": "Zuletzt angesehen",
     "votd": {
       "eyebrow": "Heute",
       "title": "Vers des Tages"
     },
     "today": {
-      "eyebrow": "Kalender",
       "openFull": "Ganzer Kalender",
-      "empty": "Heute ist nichts geplant. Als Nächstes:",
       "nothingAhead": "Nichts Anstehendes.",
       "ahead": "Als Nächstes",
       "over": "Vorbei"
     },
     "readingProgress_one": "{{read}} von {{count}} Lektion gelesen",
-    "readingProgress_other": "{{read}} von {{count}} Lektionen gelesen",
-    "teaching": {
-      "title": "Kurse, die Sie unterrichten",
-      "openAll": "Alle meine Kurse",
-      "empty": "Sie haben noch keine Kurse. Der erste ist in einer Minute angelegt — Titel und Beschreibung, der Rest später.",
-      "createFirst": "Ersten Kurs erstellen",
-      "edit": "Im Editor öffnen",
-      "more_one": "und {{count}} weiterer Kurs",
-      "more_other": "und {{count}} weitere Kurse"
-    }
+    "readingProgress_other": "{{read}} von {{count}} Lektionen gelesen"
   },
   "onboarding": {
     "student": {
@@ -326,7 +304,7 @@
       "primaryCta": "Ersten Kurs erstellen"
     },
     "teacherAsStudent": {
-      "body": "Hier erscheinen Kurse, in die Sie als Studierende eingeschrieben sind. Die Kurse, die Sie unterrichten, finden Sie in der Karte „Kurse, die Sie unterrichten“ und unter „Lehre“."
+      "body": "Hier erscheinen Kurse, in die Sie als Studierende eingeschrieben sind. Die Kurse, die Sie unterrichten, finden Sie unter „Lehre“."
     }
   },
   "completion": {

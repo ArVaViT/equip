@@ -268,16 +268,6 @@
     }
   },
   "dashboard": {
-    "atRisk": {
-      "write": "Write to {{name}}",
-      "title": "Who to write to",
-      "quiet_one": "{{count}} day without activity",
-      "quiet_other": "{{count}} days without activity",
-      "missed_one": "{{count}} deadline missed",
-      "missed_other": "{{count}} deadlines missed",
-      "more_one": "and {{count}} more",
-      "more_other": "and {{count}} more"
-    },
     "continue": {
       "position": "lesson {{current}} of {{total}}",
       "cta": "Continue"
@@ -286,30 +276,18 @@
     "loadCoursesError": "Could not load your courses. Please try refreshing the page.",
     "course": "Course",
     "browseAllCta": "Browse all courses",
-    "recentlyViewed": "Recently viewed",
     "votd": {
       "eyebrow": "Today",
       "title": "Verse of the Day"
     },
     "today": {
-      "eyebrow": "Calendar",
       "openFull": "Full calendar",
-      "empty": "Nothing scheduled today. Coming up:",
       "nothingAhead": "Nothing coming up.",
       "ahead": "Coming up",
       "over": "Over"
     },
     "readingProgress_one": "{{read}} of {{count}} lesson read",
-    "readingProgress_other": "{{read}} of {{count}} lessons read",
-    "teaching": {
-      "title": "Courses you teach",
-      "openAll": "All my courses",
-      "empty": "You have no courses yet. The first one takes a minute — a title and a description, the rest later.",
-      "createFirst": "Create your first course",
-      "edit": "Open in the editor",
-      "more_one": "and {{count}} more course",
-      "more_other": "and {{count}} more courses"
-    }
+    "readingProgress_other": "{{read}} of {{count}} lessons read"
   },
   "onboarding": {
     "student": {
@@ -326,7 +304,7 @@
       "primaryCta": "Create your first course"
     },
     "teacherAsStudent": {
-      "body": "Courses you are enrolled in as a student will appear here. The ones you teach are in the “Courses you teach” card and under “Teaching”."
+      "body": "Courses you are enrolled in as a student will appear here. The ones you teach are under “Teaching”."
     }
   },
   "completion": {

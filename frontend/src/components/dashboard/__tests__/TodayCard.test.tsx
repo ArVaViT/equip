@@ -99,7 +99,9 @@ describe("TodayCard", () => {
     render(<TodayCard />, { wrapper: Wrapper })
 
     await waitFor(() => expect(screen.getByText("Essay due")).toBeInTheDocument())
-    expect(screen.getByText(/nothing scheduled today|сегодня ничего/i)).toBeInTheDocument()
+    // The list alone — the sentence above it only restated its dates.
+    expect(screen.queryByText(/nothing scheduled today|сегодня ничего/i)).not.toBeInTheDocument()
+    expect(screen.getByRole("list", { name: /coming up|ближайшие/i })).toBeInTheDocument()
     const titles = screen.getAllByRole("listitem").map((li) => li.textContent ?? "")
     expect(titles).toHaveLength(2)
     expect(titles[0]).toContain("Essay due")

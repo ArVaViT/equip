@@ -13,12 +13,9 @@ import { VerseOfTheDayCard } from "@/components/home/VerseOfTheDayCard"
 import { DailyChallengeCard } from "@/components/dashboard/DailyChallengeCard"
 import { TodayCard } from "@/components/dashboard/TodayCard"
 import { WelcomeCard } from "@/components/dashboard/WelcomeCard"
-import { RecentlyViewedRow } from "@/components/dashboard/RecentlyViewedRow"
 import { ContinueCard } from "@/components/dashboard/ContinueCard"
 import { WeeklyReviewTeaser } from "@/components/review/WeeklyReviewTeaser"
 import { CourseThumb } from "@/components/course/CourseThumb"
-import { TeacherCoursesCard } from "@/components/dashboard/TeacherCoursesCard"
-import { TeacherAtRiskCard } from "@/components/dashboard/TeacherAtRiskCard"
 import { useUserTour } from "@/hooks/useUserTour"
 import { studentDashboardSteps } from "@/lib/tourSteps"
 import { firstNameOf } from "@/lib/names"
@@ -164,7 +161,7 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
     const firstName = firstNameOf(user?.full_name)
     // A teacher with no enrollments is not a newcomer looking for a topic
     // that speaks to them — they are looking for the course they wrote.
-    // That lives in the card above this one; say so instead.
+    // That lives under "Teaching"; say so instead.
     const teaches = canTeach(user?.role)
     return shell(
       <WelcomeCard
@@ -336,20 +333,13 @@ export default function DashboardPage() {
           know where they are. */}
       <h1 className="sr-only">{t("header.home")}</h1>
       <div className="grid h-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-5">
-        {/* Left column: an optional "recently viewed" strip (renders
-            nothing when empty, so it costs no vertical space for new
-            users) above the scrollable My Courses panel. ``min-h-0``
-            lets My Courses keep its own internal scroll within the
-            single-viewport grid. */}
+        {/* Left column: "continue" and the weekly review (each renders
+            nothing when it has nothing to say) above the scrollable My
+            Courses panel. ``min-h-0`` lets My Courses keep its own
+            internal scroll within the single-viewport grid. */}
         <div className="flex min-h-0 flex-col gap-4 lg:gap-5">
-          {/* Teachers first see the courses they teach — the reason most
-              of them signed in. Renders nothing for students. */}
-          <TeacherCoursesCard />
-          {/* Who to write to this week — teachers only, nothing when nobody. */}
-          <TeacherAtRiskCard />
           <ContinueCard />
           <WeeklyReviewTeaser />
-          <RecentlyViewedRow />
           <div className="min-h-0 flex-1">
             <MyCoursesSection onTourStart={startTour} />
           </div>
