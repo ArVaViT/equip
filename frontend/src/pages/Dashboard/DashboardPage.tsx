@@ -24,7 +24,7 @@ const PublicLanding = lazyRoute(() => import("./PublicLanding"))
 import { cn } from "@/lib/utils"
 import { lazyRoute } from "@/lib/lazyRoute"
 import { enrollmentsVersion, subscribeEnrollments } from "@/lib/enrollmentsChanged"
-import { isNewcomer, visibleEnrollments } from "./myCourses"
+import { visibleEnrollments } from "./myCourses"
 import { useRailFit } from "./railFit"
 
 interface MyCoursesSectionProps {
@@ -88,10 +88,6 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
   }, [user?.id, retryCount, i18n.language, enrollmentsAt])
 
   const filtered = visibleEnrollments(enrollments)
-  const newcomer = isNewcomer({ enrollments, loading, failed: fetchError })
-  const headerLabel = newcomer
-    ? t("onboarding.student.eyebrow")
-    : t("dashboard.myCourses")
 
   const shell = (body: React.ReactNode, centered = false) => (
     <section
@@ -102,7 +98,9 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
         <div className="flex min-w-0 items-center gap-2.5">
           <BookOpen className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
           <h2 className="truncate font-serif text-sm font-semibold tracking-tight text-ink">
-            {headerLabel}
+            {/* «Мои курсы» even before the first enrolment: the welcome
+                inside says hello once, the card's name need not say it too. */}
+            {t("dashboard.myCourses")}
           </h2>
         </div>
         <Link
@@ -165,7 +163,6 @@ function MyCoursesSection({ onTourStart }: MyCoursesSectionProps) {
     const teaches = canTeach(user?.role)
     return shell(
       <WelcomeCard
-        eyebrow={t("onboarding.student.eyebrow")}
         title={
           firstName
             ? t("onboarding.student.title", { name: firstName })

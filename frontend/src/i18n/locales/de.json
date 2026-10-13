@@ -292,7 +292,6 @@
   },
   "onboarding": {
     "student": {
-      "eyebrow": "Willkommen",
       "title": "Willkommen bei Equip, {{name}}",
       "titleNoName": "Willkommen bei Equip",
       "body": "Ein ruhiger Ort, um die Bibel im eigenen Tempo zu studieren. Jeder Kurs hier ist von einem echten Dozenten geschrieben — wählen Sie ein Thema, das Sie anzieht, und fangen Sie an.",

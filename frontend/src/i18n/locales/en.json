@@ -292,7 +292,6 @@
   },
   "onboarding": {
     "student": {
-      "eyebrow": "Welcome",
       "title": "Welcome to Equip, {{name}}",
       "titleNoName": "Welcome to Equip",
       "body": "A quiet place to learn the Bible at your own pace. Each course here is written by a real teacher — pick a subject that draws you and begin.",
