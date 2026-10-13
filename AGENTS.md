@@ -67,7 +67,7 @@ npm run lint        # eslint --max-warnings 0
 npx tsc --noEmit    # strict
 npm run i18n:check  # locale parity
 npm run test:run    # vitest
-npm run build       # locale boot script, tsc, vite build, bundle-size budget, sourcemaps
+npm run build       # locale boot script, tsc, vite build, sitemap, bundle-size budget, sourcemaps
 ```
 
 ## Commit conventions — including AI co-authorship

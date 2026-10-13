@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/build-locale-boot.mjs && tsc && vite build && node scripts/check-bundle-size.mjs && node scripts/upload-sourcemaps.mjs && node scripts/delete-sourcemaps.mjs",
+    "build": "node scripts/build-locale-boot.mjs && tsc && vite build && node scripts/build-sitemap.mjs && node scripts/check-bundle-size.mjs && node scripts/upload-sourcemaps.mjs && node scripts/delete-sourcemaps.mjs",
     "locale-boot": "node scripts/build-locale-boot.mjs",
     "bundle:check": "node scripts/check-bundle-size.mjs",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 0",

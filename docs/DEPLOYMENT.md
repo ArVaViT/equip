@@ -49,7 +49,7 @@ the Vercel project pages -- not in this repo.
 - `eslint --max-warnings 0`
 - `npm run i18n:check` (locale parity across ru / en / de / uk)
 - `tsc --noEmit` (strict)
-- `npm run build` (locale boot script, `vite build`, bundle-size budget)
+- `npm run build` (locale boot script, `vite build`, sitemap, bundle-size budget)
 - `vitest run --coverage` (jsdom), coverage uploaded to Codecov
 
 CI is configured with `concurrency: cancel-in-progress` so re-pushes
