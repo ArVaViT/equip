@@ -1887,19 +1887,12 @@
     "backToCourses": "Zurück zu den Kursen"
   },
   "teacherDashboard": {
-    "stats": {
-      "totalCourses": "Kurse",
-      "published": "Veröffentlicht",
-      "pendingActions": "Braucht Aufmerksamkeit",
-      "pendingGrading": "Wartet auf Bewertung"
-    },
     "courseCard": {
       "statusPublishing": "Wird veröffentlicht",
       "statusPublished": "Veröffentlicht",
       "statusDraft": "Entwurf",
       "modules_one": "{{count}} Modul",
       "modules_other": "{{count}} Module",
-      "createdOn": "Erstellt {{date}}",
       "thumbnailAlt": "Vorschaubild: {{title}}",
       "actionAnalytics": "Auswertung",
       "actionGradebook": "Notenbuch",
@@ -1960,7 +1953,8 @@
       "title": "Diesen Kurs veröffentlichen?",
       "description": "Der Kurs erscheint im Katalog, sobald jede Sprache ihn hat. Bis dahin sehen Studierende ihn nicht — das ist so vorgesehen.",
       "confirm": "Veröffentlichen"
-    }
+    },
+    "toGrade": "Zu bewerten: {{count}}"
   },
   "teacherEditor": {
     "badges": {

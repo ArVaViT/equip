@@ -1887,19 +1887,12 @@
     "backToCourses": "Back to courses"
   },
   "teacherDashboard": {
-    "stats": {
-      "totalCourses": "Courses",
-      "published": "Published",
-      "pendingActions": "Needs attention",
-      "pendingGrading": "Waiting to be marked"
-    },
     "courseCard": {
       "statusPublishing": "Publishing",
       "statusPublished": "Published",
       "statusDraft": "Draft",
       "modules_one": "{{count}} module",
       "modules_other": "{{count}} modules",
-      "createdOn": "Created {{date}}",
       "thumbnailAlt": "{{title}} thumbnail",
       "actionAnalytics": "Analytics",
       "actionGradebook": "Gradebook",
@@ -1960,7 +1953,8 @@
       "title": "Publish this course?",
       "description": "The course appears in the catalog once every language has it. Until then students cannot see it — that is expected.",
       "confirm": "Publish"
-    }
+    },
+    "toGrade": "To mark: {{count}}"
   },
   "teacherEditor": {
     "badges": {

@@ -1963,12 +1963,6 @@
     "backToCourses": "До курсів"
   },
   "teacherDashboard": {
-    "stats": {
-      "totalCourses": "Курси",
-      "published": "Опубліковані",
-      "pendingActions": "Потребує уваги",
-      "pendingGrading": "Чекає на оцінювання"
-    },
     "courseCard": {
       "statusPublishing": "Публікується",
       "statusPublished": "Опубліковано",
@@ -1977,7 +1971,6 @@
       "modules_few": "{{count}} модулі",
       "modules_many": "{{count}} модулів",
       "modules_other": "{{count}} модуля",
-      "createdOn": "Створено {{date}}",
       "thumbnailAlt": "Мініатюра: {{title}}",
       "actionAnalytics": "Аналітика",
       "actionGradebook": "Журнал оцінок",
@@ -2044,7 +2037,8 @@
       "title": "Опублікувати курс?",
       "description": "Курс з’явиться в каталозі, коли буде готовий усіма мовами. До того студенти його не бачать — це нормально.",
       "confirm": "Опублікувати"
-    }
+    },
+    "toGrade": "Перевірити: {{count}}"
   },
   "teacherEditor": {
     "badges": {

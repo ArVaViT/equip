@@ -1561,12 +1561,6 @@
     "backToCourses": "К курсам"
   },
   "teacherDashboard": {
-    "stats": {
-      "totalCourses": "Курсы",
-      "published": "Опубликовано",
-      "pendingActions": "Требует внимания",
-      "pendingGrading": "Ждёт проверки"
-    },
     "courseCard": {
       "statusPublishing": "Публикуется",
       "statusPublished": "Опубликован",
@@ -1575,7 +1569,6 @@
       "modules_few": "{{count}} модуля",
       "modules_many": "{{count}} модулей",
       "modules_other": "{{count}} модуля",
-      "createdOn": "Создан {{date}}",
       "thumbnailAlt": "Обложка курса {{title}}",
       "actionAnalytics": "Аналитика",
       "actionGradebook": "Журнал оценок",
@@ -1642,7 +1635,8 @@
       "title": "Опубликовать курс?",
       "description": "Курс появится в каталоге, когда будет готов на всех языках. До этого студенты его не видят — это нормально.",
       "confirm": "Опубликовать"
-    }
+    },
+    "toGrade": "Проверить: {{count}}"
   },
   "teacherEditor": {
     "badges": {
