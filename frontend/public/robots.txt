@@ -21,6 +21,10 @@ Disallow: /notes
 Disallow: /auth
 # A personal link from the foot of a course mail; it asks before it acts.
 Disallow: /unsubscribe
+# Sign-in, sign-up and password-reset forms: nothing on them to find.
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
 Disallow: /invite
 
 Sitemap: https://equipbible.com/sitemap.xml

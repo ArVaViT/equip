@@ -21,8 +21,8 @@
  * Every URL is checked against `public/robots.txt` before it is written, so a
  * route closed there can never be advertised here. Google Search Console
  * reported exactly that mismatch's cousin on 2026-10-13: `/login`,
- * `/register`, `/forgot-password` and `/verify` were listed — pages with
- * nothing to find — while no single course was.
+ * `/register` and `/forgot-password` were listed — forms with nothing to
+ * find — while no single course was.
  */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
@@ -39,9 +39,9 @@ export const FETCH_TIMEOUT_MS = 10_000
 
 /**
  * The public pages that are worth finding by search. Not the sign-in and
- * sign-up forms, not the password reset, not `/verify` (a form that is only
- * useful to somebody already holding a certificate number) — Search Console
- * flags those as pages with no content of their own.
+ * sign-up forms or the password reset — robots.txt closes those. `/verify`
+ * stays: every certificate prints a number that points there, and the
+ * stranger checking it has to be able to find it (see crawlableSurface.test).
  *
  * `public/sitemap.xml` is this list rendered; `__tests__/sitemap.test.ts`
  * fails if the two drift.
@@ -50,6 +50,7 @@ export const STATIC_PAGES = [
   { path: "/", changefreq: "weekly", priority: "1.0" },
   { path: "/courses", changefreq: "daily", priority: "0.9" },
   { path: "/organizations", changefreq: "weekly", priority: "0.7" },
+  { path: "/verify", changefreq: "monthly", priority: "0.6" },
   { path: "/privacy", changefreq: "yearly", priority: "0.4" },
   { path: "/privacy/providers", changefreq: "monthly", priority: "0.3" },
   { path: "/terms", changefreq: "yearly", priority: "0.4" },

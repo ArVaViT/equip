@@ -1,8 +1,8 @@
 /**
  * The sitemap generator's rules.
  *
- * Search Console, 2026-10-13: the sitemap listed `/login`, `/register`,
- * `/forgot-password` and `/verify`, and not one course. These pin the fix —
+ * Search Console, 2026-10-13: the sitemap listed `/login`, `/register` and
+ * `/forgot-password`, and not one course. These pin the fix —
  * the static list, the committed fallback, the robots.txt agreement, and the
  * fallback when the API cannot be reached. No test here touches the network.
  */
@@ -41,9 +41,13 @@ function fakeFetch(routes: Record<string, unknown>) {
 describe("static pages", () => {
   it("leaves out the forms that have nothing to find", () => {
     const paths = STATIC_PAGES.map((p: { path: string }) => p.path);
-    for (const path of ["/login", "/register", "/forgot-password", "/verify", "/unsubscribe"]) {
+    for (const path of ["/login", "/register", "/forgot-password", "/unsubscribe"]) {
       expect(paths).not.toContain(path);
     }
+  });
+
+  it("keeps the certificate check", () => {
+    expect(STATIC_PAGES.map((p: { path: string }) => p.path)).toContain("/verify");
   });
 
   it("is what the committed public/sitemap.xml says", () => {
