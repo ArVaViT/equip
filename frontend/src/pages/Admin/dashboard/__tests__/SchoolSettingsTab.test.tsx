@@ -56,7 +56,21 @@ describe("SchoolSettingsTab", () => {
       school_name_ru: "Библейская школа «Слово»",
       school_name_en: "Word Bible School",
       city: "Lviv",
-    })
+    }, undefined)
+  })
+
+  it("reads and writes the school it was opened for, from that school's row", async () => {
+    const read = vi.spyOn(adminService, "getOrgSettings").mockResolvedValue(settings())
+    const update = vi.spyOn(adminService, "updateOrgSettings").mockResolvedValue(settings())
+    render(<SchoolSettingsTab organizationId="org-2" embedded />, { wrapper: Wrapper })
+    await screen.findByDisplayValue("Kyiv")
+    // Embedded: the row already names the school, so no card title of its own.
+    expect(screen.queryByRole("heading")).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole("button", { name: /Сохранить/i }))
+
+    expect(read).toHaveBeenCalledWith("org-2")
+    expect(update.mock.calls[0]?.[1]).toBe("org-2")
   })
 
   it("sends null rather than an empty name onto a document", async () => {

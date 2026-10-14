@@ -8,7 +8,6 @@ import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { ArrowRight, CalendarDays } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Eyebrow } from "@/components/patterns"
 import { JoinMeetingLink } from "@/components/calendar/JoinMeetingLink"
 import { eventDayKey, isJoinableNow, isOver } from "@/lib/eventTime"
 import { formatEventTimeRange } from "@/components/calendar/eventTimeFormat"
@@ -146,24 +145,26 @@ export function TodayCard() {
       <header className="flex items-center justify-between gap-3 border-b border-edge bg-gradient-accent-subtle px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex min-w-0 items-center gap-2.5">
           <CalendarDays className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-          <div className="min-w-0">
-            <Eyebrow>{t("dashboard.today.eyebrow")}</Eyebrow>
-            <h2
-              id="today-card-heading"
-              className="truncate font-serif text-sm font-semibold tracking-tight text-ink first-letter:uppercase"
-            >
-              {dateLabel}
-            </h2>
-          </div>
+          {/* The icon and the date say what this card is — the word
+              «Календарь» above the date only repeated it. */}
+          <h2
+            id="today-card-heading"
+            className="min-w-0 truncate font-serif text-sm font-semibold tracking-tight text-ink first-letter:uppercase"
+          >
+            {/* Heard, not seen: the section is named by this heading, and
+                a date alone does not say which card it is. */}
+            <span className="sr-only">{t("header.calendar")}: </span>
+            {dateLabel}
+          </h2>
         </div>
+        {/* An arrow at every width; the words stay the link's name. */}
         <Link
           to="/calendar"
-          className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand transition-opacity hover:opacity-80"
+          aria-label={t("dashboard.today.openFull")}
+          title={t("dashboard.today.openFull")}
+          className="-m-1.5 inline-flex shrink-0 items-center rounded-md p-1.5 text-brand transition-colors hover:bg-brand/10"
         >
-          {/* Words from `sm`, the arrow alone on a phone — the label cut
-              the date to «28 сентя…». The words stay the link's name. */}
-          <span className="max-sm:sr-only">{t("dashboard.today.openFull")}</span>
-          <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+          <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
         </Link>
       </header>
 
@@ -174,11 +175,10 @@ export function TodayCard() {
             <Skeleton className="h-3.5 w-3/4" />
           </div>
         ) : todayEvents.length === 0 ? (
+          // An empty day shows what comes next and nothing else: the dates
+          // in the list already say it is not today.
           <div className="space-y-2.5 text-xs">
-            <p className="text-ink-muted">
-              {aheadEvents.length > 0 ? t("dashboard.today.empty") : t("dashboard.today.nothingAhead")}
-            </p>
-            {aheadEvents.length > 0 && aheadList}
+            {aheadEvents.length > 0 ? aheadList : <p className="text-ink-muted">{t("dashboard.today.nothingAhead")}</p>}
           </div>
         ) : (
           <div className="space-y-2.5 text-xs">

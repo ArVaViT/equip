@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
-import { Building2, Users, GraduationCap, Mail, FileText, Languages, School, Scale } from "lucide-react"
+import { Building2, Users, GraduationCap, Mail, FileText, Languages, School } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ADMIN_TAB_PANEL_ID, ADMIN_TAB_TRIGGER_ID, type AdminTab } from "./constants"
 
@@ -19,7 +19,6 @@ const TAB_META: Record<AdminTab, { icon: typeof Users; labelKey: string }> = {
   translations: { icon: Languages, labelKey: "admin.tabTranslations" },
   audit: { icon: FileText, labelKey: "admin.tabAudit" },
   school: { icon: School, labelKey: "admin.tabSchool" },
-  dmca: { icon: Scale, labelKey: "admin.tabDmca" },
   organizations: { icon: Building2, labelKey: "admin.tabOrganizations" },
 }
 
@@ -34,7 +33,7 @@ const TAB_META: Record<AdminTab, { icon: typeof Users; labelKey: string }> = {
 export function AdminTabs({ active, onChange, tabs }: Props) {
   const { t } = useTranslation()
   return (
-    // Eight tabs do not fit a laptop's width: the row scrolls sideways
+    // Seven tabs do not fit a laptop's width: the row scrolls sideways
     // rather than wrapping a label onto two lines or running off the page.
     <div className="no-scrollbar mb-6 flex gap-1 overflow-x-auto border-b border-edge sm:mb-8" role="tablist">
       {tabs.map((name) => {

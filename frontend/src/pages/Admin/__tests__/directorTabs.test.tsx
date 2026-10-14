@@ -1,10 +1,11 @@
 import type { ReactNode } from "react"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import { I18nextProvider } from "react-i18next"
 import { MemoryRouter } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "@/i18n/config"
 import { coursesService } from "@/services/courses"
+import { adminTranslationsService } from "@/services/adminTranslations"
 import { tabsFor } from "../dashboard/constants"
 
 const auth = vi.hoisted(() => ({ role: "director" as string }))
@@ -71,5 +72,39 @@ describe("a director in /admin", () => {
       </Wrapper>,
     )
     expect(screen.queryByRole("tab")).not.toBeInTheDocument()
+  })
+})
+
+describe("platform staff in /admin", () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("ru")
+    auth.role = "admin"
+    vi.restoreAllMocks()
+    vi.spyOn(coursesService, "getAllUsers").mockResolvedValue([])
+    vi.spyOn(coursesService, "getAdminPendingCerts").mockResolvedValue([])
+  })
+
+  const page = (total: number) => ({ items: [], total, limit: 1, offset: 0 })
+
+  it("has no school tab and no copyright tab, and no translations tab while nothing waits", async () => {
+    vi.spyOn(adminTranslationsService, "listNeedsReview").mockResolvedValue(page(0))
+    render(
+      <Wrapper path="/admin">
+        <AdminDashboard />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(screen.queryByRole("tab", { name: /Переводы/ })).not.toBeInTheDocument())
+    const tabs = screen.getAllByRole("tab").map((t) => t.id)
+    expect(tabs).toEqual(["admin-tab-overview", "admin-tab-organizations", "admin-tab-cohorts", "admin-tab-invitations", "admin-tab-audit"])
+  })
+
+  it("shows the translations tab when a row waits for a person", async () => {
+    vi.spyOn(adminTranslationsService, "listNeedsReview").mockResolvedValue(page(2))
+    render(
+      <Wrapper path="/admin">
+        <AdminDashboard />
+      </Wrapper>,
+    )
+    expect(await screen.findByRole("tab", { name: /Переводы/ })).toBeInTheDocument()
   })
 })

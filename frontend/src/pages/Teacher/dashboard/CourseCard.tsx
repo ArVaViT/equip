@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { CourseCoverFallback } from "@/components/course/CourseCoverFallback"
 import { toProxyImage } from "@/lib/images"
-import { formatDate } from "@/i18n/format"
 import { countChapters, countModules } from "@/lib/courseStructure"
 import type { Course } from "@/types"
 
@@ -123,11 +122,6 @@ export function CourseCard({
               </Link>
             )}
           </div>
-          {course.description && (
-            <p className="mt-1 line-clamp-2 text-sm text-ink-muted">
-              {course.description}
-            </p>
-          )}
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
             <span className="flex items-center gap-1">
               <BookOpen className="h-4 w-4" strokeWidth={1.75} aria-hidden />
@@ -141,11 +135,6 @@ export function CourseCard({
                 {t("teacherDashboard.courseCard.modules", { count: moduleCount })}
               </span>
             )}
-            <span>
-              {t("teacherDashboard.courseCard.createdOn", {
-                date: formatDate(course.created_at),
-              })}
-            </span>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
