@@ -76,7 +76,7 @@ async function createAccount(page: Page, password: string) {
 
 test.describe("an invitation needs no second email", () => {
   test("a new address: account, sign-in and arrival in one step", async ({ page, request }) => {
-    const email = `e2e-invite-${randomUUID()}@equip-ci.invalid`;
+    const email = `e2e-invite-${randomUUID()}@example.com`;
     const link = await invite(request, email);
 
     await page.goto(link);
@@ -87,7 +87,7 @@ test.describe("an invitation needs no second email", () => {
   });
 
   test("an unconfirmed address: confirmed by the link, with the password typed now", async ({ page, request }) => {
-    const email = `e2e-invite-${randomUUID()}@equip-ci.invalid`;
+    const email = `e2e-invite-${randomUUID()}@example.com`;
     const firstPassword = randomBytes(18).toString("base64url");
     const created = await request.post(`${SUPABASE_URL}/auth/v1/admin/users`, {
       headers: adminHeaders(),
@@ -109,7 +109,7 @@ test.describe("an invitation needs no second email", () => {
     page,
     request,
   }) => {
-    const email = `e2e-invite-${randomUUID()}@equip-ci.invalid`;
+    const email = `e2e-invite-${randomUUID()}@example.com`;
     const password = randomBytes(18).toString("base64url");
     const created = await request.post(`${SUPABASE_URL}/auth/v1/admin/users`, {
       headers: adminHeaders(),
