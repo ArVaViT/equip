@@ -55,6 +55,15 @@
   if (!META[locale]) locale = DEFAULT;
 
   document.documentElement.lang = locale;
+
+  // A page written at build time for one course (scripts/prerender-pages.mjs)
+  // already names itself: its title and description are the course's, and
+  // the generic ones would overwrite exactly what a crawler running this
+  // script came to read. The app titles it in the reader's language once the
+  // course loads.
+  var root = document.documentElement;
+  if (root.hasAttribute && root.hasAttribute("data-prerendered")) return;
+
   document.title = META[locale].title;
 
   var description = document.querySelector('meta[name="description"]');

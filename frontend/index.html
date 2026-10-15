@@ -80,8 +80,10 @@
            2. WebSite — declares the search URL pattern so Google
               renders the sitelinks search box under our main result
               when the SERP shows a brand query like "equipbible".
-              The query maps to /courses?search={...} which the
-              catalog page already supports.
+              The query maps to /courses?q={...}: `q` is the key the
+              catalogue reads (useDebouncedSearchParam). It said
+              `search` until 2026-10-14, which opened the catalogue
+              with the query silently dropped.
            3. EducationalOrganization — extra signal for the
               "учебная платформа" classification. -->
     <script type="application/ld+json">
@@ -107,7 +109,7 @@
             "@type": "SearchAction",
             "target": {
               "@type": "EntryPoint",
-              "urlTemplate": "https://equipbible.com/courses?search={search_term_string}"
+              "urlTemplate": "https://equipbible.com/courses?q={search_term_string}"
             },
             "query-input": "required name=search_term_string"
           }
