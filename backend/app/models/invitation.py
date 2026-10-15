@@ -106,7 +106,15 @@ class Invitation(Base):
     #: server-held key (``invitation_service.invitation_token``), so a
     #: resend mails the same link again instead of killing the first one.
     #: ``unique=True`` creates the B-tree index lookups go through.
-    token_hash: Mapped[str] = mapped_column(unique=True)
+    #:
+    #: Nullable in the database until the rollout's second migration
+    #: (20261015230000): the previous backend wrote ``token`` and a trigger
+    #: filled this from it. The application always writes it.
+    token_hash: Mapped[str] = mapped_column(unique=True, nullable=True)
+    #: The plain token, as the previous backend stored it. Mapped only so the
+    #: models match the table during the rollout; this backend never reads or
+    #: writes it, and 20261015230000 drops it.
+    token: Mapped[str | None] = mapped_column(unique=True, default=None)
     status: Mapped[str] = mapped_column(default=InvitationStatus.PENDING.value)
     invited_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("profiles.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -223,6 +223,25 @@ $$;
 
 
 --
+-- Name: invitation_token_hash_from_token(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.invitation_token_hash_from_token() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO ''
+    AS $$
+BEGIN
+  -- Rollout only: the previous backend writes `token`; the new one writes
+  -- `token_hash` and leaves `token` NULL, which this leaves alone.
+  IF NEW.token IS NOT NULL THEN
+    NEW.token_hash := encode(sha256(convert_to(NEW.token, 'UTF8')), 'hex');
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: handle_new_user(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1085,6 +1104,7 @@ CREATE TABLE public.invitations (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     email text NOT NULL,
     role text NOT NULL,
+    token text,
     status text DEFAULT 'pending'::text NOT NULL,
     invited_by uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -1096,7 +1116,7 @@ CREATE TABLE public.invitations (
     fulfilled_at timestamp with time zone,
     age_attested_at timestamp with time zone,
     age_attested_by uuid,
-    token_hash text NOT NULL,
+    token_hash text,
     CONSTRAINT chk_invitations_age_attested_together CHECK (((age_attested_at IS NULL) = (age_attested_by IS NULL))),
     CONSTRAINT chk_invitations_course_matches_scope CHECK ((((scope = 'course'::text) AND (course_id IS NOT NULL)) OR ((scope <> 'course'::text) AND (course_id IS NULL)))),
     CONSTRAINT chk_invitations_fulfilled_at_matches_status CHECK (((status = 'fulfilled'::text) = (fulfilled_at IS NOT NULL))),
@@ -1851,11 +1871,11 @@ ALTER TABLE ONLY public.invitations
 
 
 --
--- Name: invitations invitations_token_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: invitations invitations_token_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.invitations
-    ADD CONSTRAINT invitations_token_hash_key UNIQUE (token_hash);
+    ADD CONSTRAINT invitations_token_key UNIQUE (token);
 
 
 --
@@ -2630,6 +2650,13 @@ CREATE INDEX ix_grade_sheets_organization_id ON public.grade_sheets USING btree 
 
 
 --
+-- Name: invitations_token_hash_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX invitations_token_hash_key ON public.invitations USING btree (token_hash);
+
+
+--
 -- Name: ix_invitations_email_role; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2963,6 +2990,13 @@ CREATE TRIGGER trg_enrollments_fulfil_invitations AFTER INSERT OR UPDATE OF user
 --
 
 CREATE TRIGGER trg_invitations_created_fulfil AFTER INSERT ON public.invitations FOR EACH ROW WHEN ((new.status = 'pending'::text)) EXECUTE FUNCTION public.fulfil_invitations_after_change();
+
+
+--
+-- Name: invitations trg_invitations_token_hash_from_token; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_invitations_token_hash_from_token BEFORE INSERT OR UPDATE OF token ON public.invitations FOR EACH ROW EXECUTE FUNCTION public.invitation_token_hash_from_token();
 
 
 --

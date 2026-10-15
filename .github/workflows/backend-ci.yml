@@ -385,6 +385,18 @@ jobs:
           psql -v ON_ERROR_STOP=1 -h localhost -p 5432 -U ci -d ci \
             -f supabase/ci/invitation_fulfilment_assertions.sql
 
+      # The token-hash rollout (20261015213140): while it is half done, the
+      # previous backend's inserts (plain token) and the new one's (hash only)
+      # must both land and both be findable by hash. A trigger does it, so
+      # only Postgres can say.
+      - name: Both backends can write an invitation during the token rollout
+        env:
+          PGPASSWORD: ci
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 -h localhost -p 5432 -U ci -d ci \
+            -f supabase/ci/invitation_token_rollout_assertions.sql
+
       # Same reason: the rule that a consent record outlives the account lives
       # in a BEFORE DELETE trigger (migration 20260917234500), and nothing in
       # the application is on the path that fires it — the backend's delete

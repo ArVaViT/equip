@@ -471,6 +471,38 @@ class TestTheToken:
         token = mailed[-1].split("#token=", 1)[1]
         assert invitation_service.get_invitation_by_token(db, token).id == old.id
 
+    def test_a_resend_after_the_server_key_rotated_mails_a_link_that_opens(
+        self, db: Session, admin: User, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Rotating ``JWT_SECRET_KEY`` changes every derived token. Links
+        already mailed keep opening by their stored hash; a resend derives the
+        token under the new key and stores its hash, so the new letter's link
+        opens too."""
+        mailed: list[str] = []
+        monkeypatch.setattr(
+            invitation_service, "send_invitation_email", lambda *_a, accept_url, **_k: mailed.append(accept_url)
+        )
+        first, _new = create_or_resend_invitation(
+            db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+        )
+        old_link = mailed[-1].split("#token=", 1)[1]
+        monkeypatch.setattr(invitation_service.settings, "JWT_SECRET_KEY", "a-rotated-secret")
+        assert invitation_service.get_invitation_by_token(db, old_link).id == first.id
+
+        create_or_resend_invitation(
+            db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+        )
+
+        new_link = mailed[-1].split("#token=", 1)[1]
+        assert new_link != old_link
+        assert invitation_service.get_invitation_by_token(db, new_link).id == first.id
+
+    def test_the_backend_never_writes_the_plain_token(self, db: Session, admin: User) -> None:
+        invitation, _new = create_or_resend_invitation(
+            db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+        )
+        assert invitation.token is None
+
     def test_no_response_to_staff_carries_the_token(self, admin_client: TestClient, db: Session) -> None:
         created = admin_client.post(PREFIX, json={"email": EMAIL, "role": "teacher", "age_attested": True})
         resent = admin_client.post(PREFIX, json={"email": EMAIL, "role": "teacher", "age_attested": True})
