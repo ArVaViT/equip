@@ -201,17 +201,15 @@ export function PublicLanding() {
               VERIFIABLE CERTIFICATE») went with it — «лишний кусок». Each
               of those is said again, in a sentence, further down the page. */}
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <Link to="/courses">
-              <Button size="lg">
+            <Button asChild size="lg">
+              <Link to="/courses">
                 {t("dashboard.browseAllCta")}
                 <ArrowRight className="ml-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button size="lg" variant="outline" className="bg-surface/70 backdrop-blur-sm">
-                {t("common.signIn")}
-              </Button>
-            </Link>
+              </Link>
+            </Button>
+            <Button asChild size="lg" variant="outline" className="bg-surface/70 backdrop-blur-sm">
+              <Link to="/login">{t("common.signIn")}</Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -312,12 +310,12 @@ export function PublicLanding() {
             {t("landing.finalCta.body")}
           </p>
           <div className="mt-10">
-            <Link to="/register">
-              <Button size="lg">
+            <Button asChild size="lg">
+              <Link to="/register">
                 {t("landing.finalCta.primary")}
                 <ArrowRight className="ml-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </ScrollReveal>
       </section>

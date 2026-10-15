@@ -56,3 +56,14 @@ void i18nReady
       </React.StrictMode>,
     )
   })
+
+// WebMCP (experimental): read-only catalogue tools for an AI agent in the
+// reader's browser. Feature-detected here so a browser without the API never
+// downloads the module. See lib/webmcp.ts.
+if ('modelContext' in document || 'modelContext' in navigator) {
+  void import('./lib/webmcp')
+    .then((m) => m.registerWebMcpTools())
+    .catch(() => {
+      /* experimental; never worth an error */
+    })
+}

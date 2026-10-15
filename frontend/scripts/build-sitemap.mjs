@@ -18,6 +18,10 @@
  * equipbible.com, and only production's catalogue is the one at those URLs.
  * `SITEMAP_API_URL` overrides it; `SITEMAP_SKIP_FETCH=1` skips the fetch.
  *
+ * The same catalogue response also feeds `prerender-pages.mjs`, which writes a
+ * `dist/courses/<id>/index.html` with each course's own head (and a canonical
+ * URL per static page); one request serves both.
+ *
  * Every URL is checked against `public/robots.txt` before it is written, so a
  * route closed there can never be advertised here. Google Search Console
  * reported exactly that mismatch's cousin on 2026-10-13: `/login`,
@@ -28,6 +32,8 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+
+import { writePrerenderedPages } from "./prerender-pages.mjs"
 
 const here = dirname(fileURLToPath(import.meta.url))
 const publicDir = resolve(here, "../public")
@@ -183,7 +189,13 @@ async function fetchJson(url, fetchImpl) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
   try {
-    const res = await fetchImpl(url, { headers: { Accept: "application/json" }, signal: controller.signal })
+    // English explicitly: the prerendered course pages state `inLanguage: en`
+    // for the text they embed, so the text has to be English rather than
+    // whatever the backend's default happens to be.
+    const res = await fetchImpl(url, {
+      headers: { Accept: "application/json", "Accept-Language": "en" },
+      signal: controller.signal,
+    })
     if (!res.ok) throw new Error(`${url} answered ${res.status}`)
     return await res.json()
   } finally {
@@ -198,8 +210,10 @@ async function fetchJson(url, fetchImpl) {
 export async function buildDynamicSitemap({ apiOrigin, robotsRules, fetchImpl = fetch, log = console.warn }) {
   const base = apiOrigin.replace(/\/+$/, "")
   let courses
+  let rawCourses
   try {
-    courses = courseEntries(await fetchJson(`${base}/api/v1/courses?limit=200`, fetchImpl))
+    rawCourses = await fetchJson(`${base}/api/v1/courses?limit=200`, fetchImpl)
+    courses = courseEntries(rawCourses)
   } catch (err) {
     log(`[sitemap] courses unavailable, keeping the static sitemap: ${err instanceof Error ? err.message : err}`)
     return null
@@ -210,11 +224,34 @@ export async function buildDynamicSitemap({ apiOrigin, robotsRules, fetchImpl = 
   } catch (err) {
     log(`[sitemap] organizations unavailable, listing courses only: ${err instanceof Error ? err.message : err}`)
   }
-  return { xml: renderSitemap([...STATIC_PAGES, ...courses, ...orgs], robotsRules), courses: courses.length, orgs: orgs.length }
+  // The course rows behind the entries, for the prerendered pages: the same
+  // filter, so a page is written exactly for the courses the sitemap lists.
+  const listed = new Set(courses.map((c) => c.path))
+  const publicCourses = rawCourses.filter(
+    (c) => typeof c?.id === "string" && listed.has(`/courses/${c.id.toLowerCase()}`) && isAllowed(`/courses/${c.id.toLowerCase()}`, robotsRules),
+  )
+  return {
+    xml: renderSitemap([...STATIC_PAGES, ...courses, ...orgs], robotsRules),
+    courses: courses.length,
+    orgs: orgs.length,
+    publicCourses,
+  }
 }
 
 export function readRobotsRules() {
   return parseRobots(readFileSync(resolve(publicDir, "robots.txt"), "utf8"))
+}
+
+/** Per-page copies of dist/index.html (see prerender-pages.mjs). Never throws. */
+function prerender(robotsRules, courses) {
+  try {
+    const template = readFileSync(resolve(distDir, "index.html"), "utf8")
+    const staticPaths = STATIC_PAGES.map((p) => p.path).filter((p) => isAllowed(p, robotsRules))
+    const { staticCount, courseCount } = writePrerenderedPages({ distDir, template, staticPaths, courses })
+    console.log(`[prerender] ${staticCount} static pages, ${courseCount} course pages.`)
+  } catch (err) {
+    console.warn(`[prerender] skipped, the SPA fallback serves every page: ${err instanceof Error ? err.message : err}`)
+  }
 }
 
 async function main() {
@@ -223,13 +260,15 @@ async function main() {
     console.warn("[sitemap] dist/ does not exist; run after `vite build`. Skipping.")
     return
   }
+  const robotsRules = readRobotsRules()
   if (process.env.SITEMAP_SKIP_FETCH === "1") {
     console.log("[sitemap] SITEMAP_SKIP_FETCH=1, keeping the static sitemap.")
+    prerender(robotsRules, [])
     return
   }
-  const robotsRules = readRobotsRules()
   const apiOrigin = process.env.SITEMAP_API_URL || DEFAULT_API_ORIGIN
   const result = await buildDynamicSitemap({ apiOrigin, robotsRules })
+  prerender(robotsRules, result ? result.publicCourses : [])
   if (!result) return
   writeFileSync(outFile, result.xml)
   console.log(
