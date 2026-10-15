@@ -21,7 +21,7 @@ export function DuplicateEmailView({ email, state }: Props) {
   return (
     <AuthLayout heading={t("authRegister.duplicate.heading")}>
       <div className="space-y-5 animate-fade-in">
-        <p className="text-sm text-ink-muted leading-relaxed break-words">
+        <p className="text-center text-sm text-ink-muted leading-relaxed break-words lg:text-left">
           <strong className="text-ink">{email}</strong>
         </p>
         <Link to="/login" state={{ email, from }} className="block">
