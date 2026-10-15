@@ -84,16 +84,14 @@ export function HeaderUserMenu({ user }: Props) {
         </>
       ) : (
         <>
-          <Link to="/login">
-            <Button variant="ghost" size="sm" className="h-8 px-2.5 text-xs font-medium leading-none">
-              {t("common.signIn")}
-            </Button>
-          </Link>
-          <Link to="/register">
-            <Button size="sm" className="h-8 px-3 text-xs font-medium leading-none">
-              {t("common.register")}
-            </Button>
-          </Link>
+          {/* The link is the control: a <button> inside an <a> is two tab
+              stops for one action and invalid markup an agent cannot read. */}
+          <Button asChild variant="ghost" size="sm" className="h-8 px-2.5 text-xs font-medium leading-none">
+            <Link to="/login">{t("common.signIn")}</Link>
+          </Button>
+          <Button asChild size="sm" className="h-8 px-3 text-xs font-medium leading-none">
+            <Link to="/register">{t("common.register")}</Link>
+          </Button>
         </>
       )}
     </div>

@@ -42,6 +42,7 @@ export function MaterialsModal({
                 className="shrink-0 h-7 text-xs"
                 disabled={downloadingPath === file.path}
                 onClick={() => onDownload(file.path)}
+                aria-label={t("teacherEditor.modals.materials.downloadAria", { name: file.name })}
               >
                 {downloadingPath === file.path ? (
                   <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
