@@ -24,7 +24,6 @@ describe("makeRegisterSchema", () => {
       full_name: "Vadym Arnaut",
       email: "someone@example.com",
       password: TOO_SHORT,
-      confirmPassword: TOO_SHORT,
     })
     expect(result.success).toBe(false)
   })
@@ -34,7 +33,6 @@ describe("makeRegisterSchema", () => {
       full_name: "Vadym Arnaut",
       email: "someone@example.com",
       password: LONG_ENOUGH,
-      confirmPassword: LONG_ENOUGH,
     })
     expect(result.success).toBe(true)
   })
@@ -44,7 +42,6 @@ describe("makeRegisterSchema", () => {
       full_name: "Vadym Arnaut",
       email: "someone@example.com",
       password: TOO_SHORT,
-      confirmPassword: TOO_SHORT,
     })
     expect(result.success).toBe(false)
     if (result.success) return
@@ -59,7 +56,6 @@ describe("makeAcceptInviteSchema", () => {
       makeAcceptInviteSchema().safeParse({
         full_name: "Dmytro Kostantynov",
         password: TOO_SHORT,
-        confirmPassword: TOO_SHORT,
       }).success,
     ).toBe(false)
   })
@@ -79,5 +75,18 @@ describe("makeLoginSchema", () => {
     expect(
       makeLoginSchema().safeParse({ email: "someone@example.com", password: "" }).success,
     ).toBe(false)
+  })
+})
+
+describe("every address field", () => {
+  it("drops the space autocomplete and pasting leave behind", () => {
+    const parsed = makeLoginSchema().safeParse({ email: "  sasha@web.de ", password: "x" })
+    expect(parsed.success && parsed.data.email).toBe("sasha@web.de")
+    const registered = makeRegisterSchema().safeParse({
+      full_name: "Sasha",
+      email: "sasha@web.de\t",
+      password: "a".repeat(PASSWORD_MIN_LENGTH),
+    })
+    expect(registered.success && registered.data.email).toBe("sasha@web.de")
   })
 })

@@ -1,58 +1,37 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { authService } from "@/services/auth"
 import { supabase } from "@/lib/supabase"
 import { completeAuthLanding, hasAuthArrival } from "@/lib/authLanding"
 import AuthLayout from "@/components/layout/AuthLayout"
-import { z } from "zod"
-import { PASSWORD_MIN_LENGTH } from "@/lib/passwordPolicy"
+import { makeNewPasswordSchema } from "@/lib/validations/auth"
+import { ExpiredLink } from "@/components/auth/ExpiredLink"
+import { useAuth } from "@/context/useAuth"
 import { PasswordFields } from "@/components/auth/PasswordFields"
 import { usePasswordAffordances } from "@/components/auth/usePasswordAffordances"
 import { Loader2, CheckCircle2 } from "lucide-react"
-import i18n from "@/i18n/config"
 import { authErrorMessage } from "@/lib/authError"
-
-/**
- * Build the schema fresh on each submit so error messages match the
- * currently-active UI language. The factory defers to i18next.t() so
- * switching languages between renders does the right thing.
- */
-function makeResetSchema() {
-  return z
-    .object({
-      password: z
-        .string()
-        .min(
-          PASSWORD_MIN_LENGTH,
-          i18n.t("auth.resetPassword.errors.passwordTooShort", { count: PASSWORD_MIN_LENGTH }),
-        ),
-      confirmPassword: z.string(),
-    })
-    .refine((data) => data.password === data.confirmPassword, {
-      message: i18n.t("auth.resetPassword.errors.passwordsDoNotMatch"),
-      path: ["confirmPassword"],
-    })
-}
 
 export default function ResetPassword() {
   const { t } = useTranslation()
-  const [form, setForm] = useState({ password: "", confirmPassword: "" })
+  const { resetPassword } = useAuth()
+  const [form, setForm] = useState({ password: "" })
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
   const [serverError, setServerError] = useState("")
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
-  const setBothPasswords = useCallback((value: string) => {
-    setForm({ password: value, confirmPassword: value })
+  const setPassword = useCallback((value: string) => {
+    setForm({ password: value })
     setErrors({})
   }, [])
-  const passwordAffordances = usePasswordAffordances(setBothPasswords)
+  const passwordAffordances = usePasswordAffordances(setPassword)
   const handlePasswordChange = useCallback(
-    (field: "password" | "confirmPassword", value: string) => {
+    (value: string) => {
       passwordAffordances.noteEdited()
-      setForm((prev) => ({ ...prev, [field]: value }))
-      setErrors((prev) => ({ ...prev, [field]: undefined }))
+      setForm({ password: value })
+      setErrors({})
     },
     [passwordAffordances],
   )
@@ -107,7 +86,7 @@ export default function ResetPassword() {
     e.preventDefault()
     setServerError("")
 
-    const result = makeResetSchema().safeParse(form)
+    const result = makeNewPasswordSchema().safeParse(form)
     if (!result.success) {
       const fieldErrors: typeof errors = {}
       for (const issue of result.error.issues) {
@@ -137,10 +116,7 @@ export default function ResetPassword() {
 
   if (success) {
     return (
-      <AuthLayout
-        heading={t("auth.resetPassword.successHeading")}
-        subheading={t("auth.resetPassword.successSubheading")}
-      >
+      <AuthLayout heading={t("auth.resetPassword.successHeading")}>
         <div className="flex flex-col items-center text-center gap-4 py-6 animate-fade-in">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
             <CheckCircle2 className="h-8 w-8 text-success-ink" strokeWidth={1.75} aria-hidden />
@@ -160,40 +136,21 @@ export default function ResetPassword() {
 
   if (linkState !== "ready") {
     return (
-      <AuthLayout
-        heading={t("auth.resetPassword.heading")}
-        subheading={t("auth.resetPassword.subheading")}
-      >
+      <AuthLayout heading={t("auth.resetPassword.heading")}>
         {linkState === "checking" ? (
           <div className="flex flex-col items-center gap-3 py-8">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand border-t-transparent" />
             <span className="text-sm text-ink-muted">{t("auth.callback.completing")}</span>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-4 py-8 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-              <span className="text-destructive-ink text-lg font-bold">!</span>
-            </div>
-            <p role="alert" className="text-sm font-medium text-destructive-ink">
-              {t("auth.errors.linkExpired")}
-            </p>
-            <Link
-              to="/forgot-password"
-              className="text-sm font-medium text-brand hover:text-brand-ink"
-            >
-              {t("auth.forgotPassword.submit")}
-            </Link>
-          </div>
+          <ExpiredLink send={resetPassword} />
         )}
       </AuthLayout>
     )
   }
 
   return (
-    <AuthLayout
-      heading={t("auth.resetPassword.heading")}
-      subheading={t("auth.resetPassword.subheading")}
-    >
+    <AuthLayout heading={t("auth.resetPassword.heading")}>
       <div className="space-y-6 animate-fade-in">
         {serverError && (
           <div role="alert" className="text-sm text-destructive-ink bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
@@ -204,12 +161,9 @@ export default function ResetPassword() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <PasswordFields
             idPrefix="reset"
-            passwordLabel={t("auth.resetPassword.newPassword")}
-            confirmLabel={t("auth.resetPassword.confirmNewPassword")}
+            label={t("auth.resetPassword.newPassword")}
             password={form.password}
-            confirmPassword={form.confirmPassword}
             passwordError={errors.password}
-            confirmError={errors.confirmPassword}
             showPassword={passwordAffordances.showPassword}
             passwordGenerated={passwordAffordances.passwordGenerated}
             onChange={handlePasswordChange}

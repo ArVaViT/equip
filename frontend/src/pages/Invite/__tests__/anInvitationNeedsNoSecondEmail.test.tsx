@@ -83,7 +83,6 @@ function fillForm(result: { current: ReturnType<typeof useAcceptInvite> }) {
   act(() => {
     result.current.handleChange("full_name", "Sasha Petrov")
     result.current.handleChange("password", "a long enough passphrase")
-    result.current.handleChange("confirmPassword", "a long enough passphrase")
   })
 }
 

@@ -135,3 +135,13 @@ export function peekReturnPath(now: number = Date.now()): string | null {
   }
   return returnPathFrom({ from: path })
 }
+
+/**
+ * An address another screen already knows — the invite page, a sign-up that
+ * found an account, a sign-up waiting on its mail — handed on in router
+ * state so nobody types it twice.
+ */
+export function emailFromState(state: unknown): string {
+  const email = state && typeof state === "object" ? (state as { email?: unknown }).email : undefined
+  return typeof email === "string" ? email : ""
+}

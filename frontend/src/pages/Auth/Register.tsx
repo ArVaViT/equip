@@ -15,45 +15,30 @@ export default function Register() {
   const location = useLocation()
   // A confirmation link and Google both come back through /auth/callback.
   useEffect(() => rememberReturnPath(location.state), [location.state])
-  const {
-    form,
-    errors,
-    serverError,
-    duplicateEmail,
-    success,
-    loading,
-    googleLoading,
-    showPassword,
-    passwordGenerated,
-    handleChange,
-    handleSubmit,
-    handleGoogleSignUp,
-    toggleShowPassword,
-    handleGeneratePassword,
-  } = useRegister()
+  const r = useRegister()
 
-  if (duplicateEmail) {
-    return <DuplicateEmailView email={form.email} />
+  if (r.duplicateEmail) {
+    return <DuplicateEmailView email={r.form.email} state={location.state} />
   }
 
-  if (success) {
-    return <SuccessView email={form.email} />
+  if (r.sent) {
+    return <SuccessView email={r.sent.email} repeated={r.sent.repeated} onChangeAddress={r.changeAddress} />
   }
 
   return (
     <RegisterForm
-      form={form}
-      errors={errors}
-      serverError={serverError}
-      loading={loading}
-      googleLoading={googleLoading}
-      showPassword={showPassword}
-      passwordGenerated={passwordGenerated}
-      onChange={handleChange}
-      onSubmit={handleSubmit}
-      onGoogleSignUp={handleGoogleSignUp}
-      onToggleShowPassword={toggleShowPassword}
-      onGeneratePassword={handleGeneratePassword}
+      form={r.form}
+      errors={r.errors}
+      serverError={r.serverError}
+      loading={r.loading}
+      googleLoading={r.googleLoading}
+      showPassword={r.showPassword}
+      passwordGenerated={r.passwordGenerated}
+      onChange={r.handleChange}
+      onSubmit={r.handleSubmit}
+      onGoogleSignUp={r.handleGoogleSignUp}
+      onToggleShowPassword={r.toggleShowPassword}
+      onGeneratePassword={r.handleGeneratePassword}
     />
   )
 }

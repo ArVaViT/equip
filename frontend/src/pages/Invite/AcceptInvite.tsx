@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import AuthLayout from "@/components/layout/AuthLayout"
 import { PasswordFields } from "@/components/auth/PasswordFields"
-import { GoogleIcon } from "@/pages/Auth/register/GoogleIcon"
+import { GoogleButton, OrDivider } from "@/components/auth/GoogleButton"
 import type { InvitationPreview } from "@/services/invitations"
 import { useAcceptInvite } from "./useAcceptInvite"
 
@@ -146,26 +146,7 @@ export default function AcceptInvite() {
   if (!preview) return null
 
   const googleButton = (
-    <Button
-      type="button"
-      variant="outline"
-      size="lg"
-      className="w-full font-medium rounded-md"
-      onClick={() => void handleGoogle()}
-      disabled={googleLoading || submitting}
-    >
-      {googleLoading ? (
-        <>
-          <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />
-          {t("auth.connecting")}
-        </>
-      ) : (
-        <>
-          <GoogleIcon className="h-4 w-4 mr-2.5" />
-          {t("auth.continueWithGoogle")}
-        </>
-      )}
-    </Button>
+    <GoogleButton loading={googleLoading} disabled={submitting} onClick={() => void handleGoogle()} />
   )
 
   const errorBox = serverError && (
@@ -207,11 +188,7 @@ export default function AcceptInvite() {
 
         {googleButton}
 
-        <div className="flex items-center gap-3 text-xs uppercase text-ink-muted">
-          <div className="h-px flex-1 bg-border" />
-          <span>{t("authRegister.orRegisterEmail")}</span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
+        <OrDivider label={t("authRegister.orRegisterEmail")} />
 
         <form
           onSubmit={(e) => {
@@ -248,12 +225,10 @@ export default function AcceptInvite() {
           <PasswordFields
             idPrefix="invite"
             password={form.password}
-            confirmPassword={form.confirmPassword}
             passwordError={errors.password}
-            confirmError={errors.confirmPassword}
             showPassword={passwordAffordances.showPassword}
             passwordGenerated={passwordAffordances.passwordGenerated}
-            onChange={handleChange}
+            onChange={(value) => handleChange("password", value)}
             onToggleShowPassword={passwordAffordances.toggleShowPassword}
             onGeneratePassword={passwordAffordances.generate}
           />

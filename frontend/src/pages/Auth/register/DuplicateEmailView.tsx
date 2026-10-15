@@ -1,58 +1,47 @@
 import { Link } from "react-router-dom"
-import { Mail } from "lucide-react"
-import { Trans, useTranslation } from "react-i18next"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import AuthLayout from "@/components/layout/AuthLayout"
-import { SUPPORT_EMAIL } from "@/lib/brand"
+import { useAuth } from "@/context/useAuth"
+
+interface Props {
+  email: string
+  /** Router state of the register page — where the visitor was going. */
+  state: unknown
+}
 
 /**
- * Terminal state shown when the register endpoint reports a duplicate
- * email. We can't tell whether it was a typo or a genuine prior
- * registration, so surface all three recovery paths (login, reset, support)
- * instead of forcing one.
+ * The address already has an account. One thing to do — sign in, with the
+ * address filled in — and the two ways round a forgotten password beside it.
  */
-export function DuplicateEmailView({ email }: { email: string }) {
+export function DuplicateEmailView({ email, state }: Props) {
   const { t } = useTranslation()
+  const { signInWithGoogle } = useAuth()
+  const from = state && typeof state === "object" ? (state as { from?: unknown }).from : undefined
   return (
-    <AuthLayout
-      heading={t("authRegister.duplicate.heading")}
-      subheading={t("authRegister.duplicate.subheading")}
-    >
-      <div className="space-y-6 animate-fade-in">
-        <div className="flex flex-col items-center text-center gap-4 py-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-md bg-warning/10">
-            <Mail className="h-8 w-8 text-warning-ink" strokeWidth={1.75} aria-hidden />
-          </div>
-          <div className="space-y-2">
-            <p className="text-sm text-ink-muted leading-relaxed">
-              <Trans
-                i18nKey="authRegister.duplicate.bodyExists"
-                values={{ email }}
-                components={{ strong: <strong className="text-ink" /> }}
-              />
-            </p>
-            <p className="text-sm text-ink-muted leading-relaxed">
-              {t("authRegister.duplicate.bodyHint")}
-            </p>
-          </div>
-        </div>
-        <div className="space-y-3">
-          <Link to="/login" className="block">
-            <Button size="lg" className="w-full">
-              {t("authRegister.duplicate.goToSignIn")}
-            </Button>
+    <AuthLayout heading={t("authRegister.duplicate.heading")}>
+      <div className="space-y-5 animate-fade-in">
+        <p className="text-center text-sm text-ink-muted leading-relaxed break-words lg:text-left">
+          <strong className="text-ink">{email}</strong>
+        </p>
+        <Link to="/login" state={{ email, from }} className="block">
+          <Button size="lg" className="w-full">
+            {t("auth.signIn")}
+          </Button>
+        </Link>
+        <p className="text-center text-sm text-ink-muted">
+          <button
+            type="button"
+            onClick={() => void signInWithGoogle().catch(() => undefined)}
+            className="text-brand transition-colors hover:text-brand-ink"
+          >
+            {t("authRegister.duplicate.withGoogle")}
+          </button>
+          {" · "}
+          <Link to="/forgot-password" state={{ email }} className="text-brand transition-colors hover:text-brand-ink">
+            {t("auth.forgotPasswordLink")}
           </Link>
-          <Link to="/forgot-password" className="block">
-            <Button variant="outline" size="lg" className="w-full">
-              {t("authRegister.duplicate.forgotPassword")}
-            </Button>
-          </Link>
-          <a href={`mailto:${SUPPORT_EMAIL}`} className="block">
-            <Button variant="ghost" size="lg" className="w-full text-ink-muted">
-              {t("authRegister.duplicate.contactSupport")}
-            </Button>
-          </a>
-        </div>
+        </p>
       </div>
     </AuthLayout>
   )

@@ -16,9 +16,18 @@ const t = (key: string, options?: Record<string, unknown>) => i18n.t(key, option
 /** The length message carries the number, so the reader is told the actual rule. */
 const tooShort = () => t("authRegister.errors.passwordTooShort", { count: PASSWORD_MIN_LENGTH })
 
+/**
+ * An address as people actually type and paste it: a trailing space from
+ * autocomplete or a copied line is not part of it, and GoTrue would refuse
+ * the whole address for it.
+ */
+const email = () => z.string().trim().email(t("authRegister.errors.emailInvalid"))
+
+const newPassword = () => z.string().min(PASSWORD_MIN_LENGTH, tooShort())
+
 export function makeLoginSchema() {
   return z.object({
-    email: z.string().email(t("authRegister.errors.emailInvalid")),
+    email: email(),
     // Deliberately only "not empty". Signing in does not create a password,
     // and holding an existing one to today's minimum would lock out every
     // account made before `password_min_length` was raised to 12 — a rule
@@ -27,36 +36,32 @@ export function makeLoginSchema() {
   })
 }
 
+/** Just an address — for the screens that send a link to one. */
+export function makeEmailSchema() {
+  return z.object({ email: email() })
+}
+
 export function makeRegisterSchema() {
   // Self-service signup is student-only — role isn't part of the form
   // since 2026-05-31. Teacher promotion is admin-only.
-  return z
-    .object({
-      full_name: z.string().min(2, t("authRegister.errors.fullNameTooShort")),
-      email: z.string().email(t("authRegister.errors.emailInvalid")),
-      password: z.string().min(PASSWORD_MIN_LENGTH, tooShort()),
-      confirmPassword: z.string(),
-    })
-    .refine((data) => data.password === data.confirmPassword, {
-      message: t("authRegister.errors.passwordsDoNotMatch"),
-      path: ["confirmPassword"],
-    })
+  return z.object({
+    full_name: z.string().trim().min(2, t("authRegister.errors.fullNameTooShort")),
+    email: email(),
+    password: newPassword(),
+  })
 }
 
-// Same shape as makeRegisterSchema minus `email` -- the accept-invite
-// page fixes the email to whatever the invite was issued to, so there's
-// no editable email field to validate.
+// The register form minus `email` -- the accept-invite page fixes the
+// address to the one the invitation was sent to.
 export function makeAcceptInviteSchema() {
-  return z
-    .object({
-      full_name: z.string().min(2, t("authRegister.errors.fullNameTooShort")),
-      password: z.string().min(PASSWORD_MIN_LENGTH, tooShort()),
-      confirmPassword: z.string(),
-    })
-    .refine((data) => data.password === data.confirmPassword, {
-      message: t("authRegister.errors.passwordsDoNotMatch"),
-      path: ["confirmPassword"],
-    })
+  return z.object({
+    full_name: z.string().trim().min(2, t("authRegister.errors.fullNameTooShort")),
+    password: newPassword(),
+  })
+}
+
+export function makeNewPasswordSchema() {
+  return z.object({ password: newPassword() })
 }
 
 // Static snapshots removed — every caller now invokes the factory

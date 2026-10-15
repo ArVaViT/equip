@@ -325,7 +325,7 @@
         "share": "We don't sell your data and there is no advertising or tracking. We do record every browser session, including a replay of what was on your screen, to find and fix breakage — and you are named in it while you're signed in. The policy says exactly what that captures.",
         "control": "You can see and change your data in your profile. To get a copy of everything, or to delete your account, write to us and we'll do it."
       },
-      "checkbox": "I have read and accept the Privacy Policy and the Terms of Use",
+      "checkbox": "I am 16 or older, or invited by a school, and I have read and accept the Privacy Policy and the Terms of Use",
       "next": "Accept and continue",
       "saveFailed": "Couldn't record your acceptance. Check your connection and try again.",
       "renewal": {
@@ -685,7 +685,6 @@
   },
   "auth": {
     "welcomeBack": "Welcome back",
-    "signInSubheading": "Sign in to continue your learning journey",
     "continueWithGoogle": "Continue with Google",
     "connecting": "Connecting...",
     "orContinueWithEmail": "or continue with email",
@@ -708,17 +707,18 @@
       "googleSignUpFailed": "Google sign-up failed.",
       "invalidCredentials": "Incorrect email or password.",
       "emailNotConfirmed": "Confirm your email address first — the link is in your inbox.",
-      "rateLimited": "Too many attempts. Wait a minute and try again.",
+      "rateLimited": "Too many attempts. Wait a few minutes and try again.",
       "weakPassword": "This password appears in known breaches. Choose another one, or use “Generate a strong one”.",
       "samePassword": "That is your current password. Choose a different one.",
       "linkExpired": "This link has expired. Request a new one.",
       "serverError": "Something went wrong on our side. Try again in a moment.",
-      "passwordRequired": "Enter your password"
+      "passwordRequired": "Enter your password",
+      "emailCooldown": "An email is already on its way. You can ask again in {{seconds}} s.",
+      "emailQuota": "We can't send email right now: the hourly email limit is used up. Try again later, or continue with Google."
     },
     "callback": {
       "completing": "Completing sign in...",
-      "timedOut": "Sign-in didn't complete. Please try again.",
-      "redirecting": "Redirecting to login..."
+      "timedOut": "Sign-in didn't complete. Please try again."
     },
     "notice": {
       "sessionExpired": "Your session has expired. Sign in again to continue.",
@@ -745,29 +745,21 @@
     },
     "resetPassword": {
       "heading": "Set new password",
-      "subheading": "Choose a strong password for your account",
       "newPassword": "New Password",
-      "confirmNewPassword": "Confirm New Password",
       "submit": "Update Password",
       "submitting": "Updating...",
       "successHeading": "Password updated",
-      "successSubheading": "You're all set",
       "successBody": "Your password has been updated.",
       "redirecting": "Redirecting to dashboard...",
       "errors": {
-        "passwordsDoNotMatch": "Passwords do not match",
-        "resetFailed": "Failed to reset password.",
-        "passwordTooShort_one": "Password must be at least {{count}} character",
-        "passwordTooShort_other": "Password must be at least {{count}} characters"
+        "resetFailed": "Failed to reset password."
       }
     },
     "passwordPolicy": {
       "ruleLength_one": "At least {{count}} character",
       "ruleLength_other": "At least {{count}} characters",
-      "ruleMatch": "Both passwords match",
       "ruleMet": "done",
       "ruleNotMet": "not yet",
-      "leakedNote": "The password must not appear in a known breach — we check that when you submit.",
       "generate": "Generate a strong one",
       "generated": "Password generated and shown. Save it in your password manager before continuing.",
       "show": "Show password",
@@ -778,7 +770,9 @@
     "signInLinkSent": "If we have that address, the email is on its way. Open it and press the button.",
     "signInLinkAgain": "Send it again",
     "signInLinkAgainIn": "Send it again in {{seconds}}s",
-    "signInLinkBackToPassword": "Use a password"
+    "signInLinkBackToPassword": "Use a password",
+    "googleInAppBrowser": "Google doesn't allow sign-in inside this app's browser — open the page in Chrome or Safari.",
+    "sendNewLink": "Send a new link"
   },
   "profile": {
     "myData": {
@@ -2913,43 +2907,32 @@
   },
   "authRegister": {
     "heading": "Create an account",
-    "subheading": "Start learning today",
     "orRegisterEmail": "or register with email",
     "fullName": "Full name",
     "fullNamePlaceholder": "John Doe",
-    "confirmPasswordShort": "Confirm",
     "alreadyHaveAccount": "Already have an account?",
     "creatingAccount": "Creating account...",
     "createAccount": "Create account",
     "errors": {
       "fullNameTooShort": "Name must be at least 2 characters",
       "emailInvalid": "Invalid email address",
-      "passwordsDoNotMatch": "Passwords do not match",
       "passwordTooShort_one": "Password must be at least {{count}} character",
       "passwordTooShort_other": "Password must be at least {{count}} characters"
     },
     "duplicate": {
-      "heading": "Account may exist",
-      "subheading": "This email might already be registered",
-      "bodyExists": "An account with <strong>{{email}}</strong> may already exist.",
-      "bodyHint": "Please try signing in instead, or use the \"Forgot password\" option if you can't remember your credentials.",
-      "goToSignIn": "Go to Sign In",
-      "forgotPassword": "Forgot Password?",
-      "contactSupport": "Contact Support"
+      "heading": "This address already has an account",
+      "withGoogle": "Continue with Google"
     },
     "success": {
       "headingDefault": "Check your email",
-      "subheadingDefault": "Almost there — just one more step",
-      "body": "We sent a confirmation link to <strong>{{email}}</strong>.",
-      "clickLinkToActivate": "Click the link in the email to activate your account.",
-      "backToSignIn": "Back to Sign In",
-      "checkSpam": "If nothing arrives within a minute, check your Spam folder. The link works for 24 hours.",
       "resend": "Send the email again",
       "resendIn": "Send again in {{seconds}}s",
       "resent": "Email sent again.",
-      "resendFailed": "Could not send the email. Please try again in a minute."
-    },
-    "ageFloor": "You can create an account for yourself from 16. Younger than that, a school administrator invites you."
+      "resendFailed": "Could not send the email. Please try again in a minute.",
+      "line": "We sent an email to <strong>{{email}}</strong>. Not in your inbox? Check Spam. Only the latest email works.",
+      "repeated": "This address was registered before. The password is the one from the first attempt; if you don't remember it, <reset>set a new one</reset> — that confirms the address too.",
+      "changeAddress": "Use a different address"
+    }
   },
   "validation": {
     "titleRequired": "Title is required",

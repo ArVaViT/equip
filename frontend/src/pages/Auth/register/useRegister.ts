@@ -9,23 +9,51 @@ export type FormState = {
   full_name: string
   email: string
   password: string
-  confirmPassword: string
 }
 
-const EMPTY_FORM: FormState = {
-  full_name: "",
-  email: "",
-  password: "",
-  confirmPassword: "",
+const EMPTY_FORM: FormState = { full_name: "", email: "", password: "" }
+
+/** The confirmation mail that went out, as the screen after the form shows it. */
+export interface SentMail {
+  email: string
+  /** An unconfirmed account already had this address; its first password stands. */
+  repeated: boolean
+}
+
+const SENT_KEY = "equip:signupSent"
+
+/**
+ * The "check your email" screen outlives a reload. It used to vanish into an
+ * empty form, and the person — waiting on a mail, refreshing the tab — had
+ * no resend button and no idea which address they had typed. Kept by the tab
+ * only: it names an address, and nobody else at this computer needs it.
+ */
+function readSent(): SentMail | null {
+  try {
+    const raw = sessionStorage.getItem(SENT_KEY)
+    if (!raw) return null
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== "object") return null
+    const { email, repeated } = parsed as Partial<SentMail>
+    return typeof email === "string" ? { email, repeated: repeated === true } : null
+  } catch {
+    return null
+  }
+}
+
+function writeSent(sent: SentMail | null): void {
+  try {
+    if (sent) sessionStorage.setItem(SENT_KEY, JSON.stringify(sent))
+    else sessionStorage.removeItem(SENT_KEY)
+  } catch {
+    /* storage blocked: the screen just does not survive a reload */
+  }
 }
 
 /**
- * Registration form state machine.
- *
- * Exposes the mutable form + per-field validation errors, the three
- * terminal states (server error, duplicate-email, success), and the two
- * async handlers (email/password submit and Google OAuth). The view just
- * renders whichever state is active; nothing else lives in the page.
+ * Registration form state machine: the form, its per-field errors, and the
+ * two places it can end — a mail sent (`sent`), or an address that already
+ * has an account (`duplicateEmail`).
  */
 export function useRegister() {
   const { register, signInWithGoogle } = useAuth()
@@ -33,22 +61,22 @@ export function useRegister() {
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
   const [serverError, setServerError] = useState("")
   const [duplicateEmail, setDuplicateEmail] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [sent, setSent] = useState<SentMail | null>(readSent)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
-  const setBothPasswords = useCallback((value: string) => {
-    setForm((prev) => ({ ...prev, password: value, confirmPassword: value }))
-    setErrors((prev) => ({ ...prev, password: undefined, confirmPassword: undefined }))
+  const setPassword = useCallback((value: string) => {
+    setForm((prev) => ({ ...prev, password: value }))
+    setErrors((prev) => ({ ...prev, password: undefined }))
   }, [])
   const { showPassword, passwordGenerated, toggleShowPassword, generate, noteEdited } =
-    usePasswordAffordances(setBothPasswords)
+    usePasswordAffordances(setPassword)
 
   const handleChange = useCallback(
     (field: keyof FormState, value: string) => {
       setForm((prev) => ({ ...prev, [field]: value }))
       setErrors((prev) => ({ ...prev, [field]: undefined }))
       // Typing over a generated password makes the "save it" note stale.
-      if (field === "password" || field === "confirmPassword") noteEdited()
+      if (field === "password") noteEdited()
     },
     [noteEdited],
   )
@@ -69,38 +97,39 @@ export function useRegister() {
 
     setLoading(true)
     try {
-      // Source the new user's ``preferred_locale`` from the language
-      // the registration form was rendered in — that's whatever
-      // i18next resolved (browser language for first-time visitors,
-      // localStorage for returning ones). The trigger whitelists this
-      // value against the same supported set as the DB CHECK, so a
-      // surprise locale gracefully falls back to the column default.
-      const preferredLocale = isSupportedLocale(i18n.resolvedLanguage)
-        ? i18n.resolvedLanguage
-        : DEFAULT_LOCALE
-      await register(
+      // The language the form was rendered in becomes the profile's; the
+      // trigger whitelists it against the same set as the DB CHECK.
+      const preferredLocale = isSupportedLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE
+      const { repeated } = await register(
         result.data.email,
         result.data.password,
         result.data.full_name,
         preferredLocale,
       )
-      setSuccess(true)
+      const mail = { email: result.data.email, repeated }
+      writeSent(mail)
+      setSent(mail)
     } catch (err) {
       if (isDuplicateEmail(err)) {
-        // Its own panel, not a red sentence — the reader almost certainly
-        // has an account and wants the sign-in link, not an error.
+        // Its own screen, not a red sentence — the reader almost certainly
+        // has an account and wants to sign in, not an error.
+        setForm((prev) => ({ ...prev, email: result.data.email }))
         setDuplicateEmail(true)
       } else {
-        // The server's `message` is always there, so the fallback after the
-        // old `||` never ran: a German creating an account was told
-        // "Password should be at least 6 characters" in English on a German
-        // form. Translated now; the raw text goes to the dev console.
+        // Translated; the server's English goes to the dev console only.
         setServerError(authErrorMessage(err, "auth.errors.registrationFailed"))
       }
     } finally {
       setLoading(false)
     }
   }, [form, register])
+
+  /** Back to the form, to correct the address the mail went to. */
+  const changeAddress = useCallback(() => {
+    setForm((prev) => ({ ...prev, email: sent?.email ?? prev.email, password: "" }))
+    writeSent(null)
+    setSent(null)
+  }, [sent])
 
   const handleGoogleSignUp = useCallback(async () => {
     setGoogleLoading(true)
@@ -118,7 +147,7 @@ export function useRegister() {
     errors,
     serverError,
     duplicateEmail,
-    success,
+    sent,
     loading,
     googleLoading,
     showPassword,
@@ -128,5 +157,6 @@ export function useRegister() {
     handleChange,
     handleSubmit,
     handleGoogleSignUp,
+    changeAddress,
   }
 }

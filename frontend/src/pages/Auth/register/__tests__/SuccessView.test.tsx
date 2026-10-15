@@ -32,11 +32,11 @@ vi.mock("@/context/useTheme", () => ({
   useTheme: () => ({ theme: "light", toggleTheme: vi.fn() }),
 }));
 
-function renderView() {
+function renderView(repeated = false, onChangeAddress = vi.fn()) {
   return render(
     <I18nextProvider i18n={i18n}>
       <MemoryRouter>
-        <SuccessView email="someone@example.com" />
+        <SuccessView email="someone@example.com" repeated={repeated} onChangeAddress={onChangeAddress} />
       </MemoryRouter>
     </I18nextProvider>,
   );
@@ -53,9 +53,30 @@ describe("SuccessView", () => {
     vi.useRealTimers();
   });
 
-  it("names the spam folder, where the email most often is", () => {
+  it("says it in one line: where, the spam folder, and that only the latest works", () => {
     renderView();
-    expect(screen.getByText(i18n.t("authRegister.success.checkSpam"))).toBeInTheDocument();
+    const line = screen.getByText(/someone@example\.com/).closest("p");
+    expect(line?.textContent).toContain("Spam");
+    expect(line?.textContent).toMatch(/latest/i);
+  });
+
+  it("tells a repeated sign-up which password works, and how to reset it", () => {
+    renderView(true);
+    expect(screen.getByText(/first attempt/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /set a new one/ })).toHaveAttribute("href", "/forgot-password");
+  });
+
+  it("says nothing about earlier attempts to a first sign-up", () => {
+    renderView(false);
+    expect(screen.queryByText(/first attempt/)).toBeNull();
+  });
+
+  it("offers to fix a mistyped address", async () => {
+    const onChangeAddress = vi.fn();
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderView(false, onChangeAddress);
+    await user.click(screen.getByRole("button", { name: i18n.t("authRegister.success.changeAddress") }));
+    expect(onChangeAddress).toHaveBeenCalledOnce();
   });
 
   it("does not offer a resend the server would refuse", () => {

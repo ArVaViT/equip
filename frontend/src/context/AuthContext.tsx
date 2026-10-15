@@ -225,7 +225,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fullName: string,
       preferredLocale: SupportedLocale,
     ) => {
-      const userId = await authService.register(email, password, fullName, preferredLocale)
+      const outcome = await authService.register(email, password, fullName, preferredLocale)
+      const { userId } = outcome
       // Name the session now, not at the first sign-in. An email signup
       // only signs in after the confirmation link — often on another
       // device, sometimes days later — so the session in which somebody
@@ -233,6 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // new user's address never found the day they registered. The id is
       // the one the profile will carry, so both sessions line up.
       if (userId) setDatadogUser({ id: userId, email, name: fullName, role: "student" })
+      return outcome
     },
     [],
   )

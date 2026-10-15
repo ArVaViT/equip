@@ -51,7 +51,6 @@ const KEY_BY_CODE: Record<string, string> = {
   invalid_credentials: "auth.errors.invalidCredentials",
   email_not_confirmed: "auth.errors.emailNotConfirmed",
   over_request_rate_limit: "auth.errors.rateLimited",
-  over_email_send_rate_limit: "auth.errors.rateLimited",
   weak_password: "auth.errors.weakPassword",
   same_password: "auth.errors.samePassword",
   otp_expired: "auth.errors.linkExpired",
@@ -90,6 +89,35 @@ export function isDuplicateEmail(err: unknown): boolean {
 }
 
 /**
+ * Seconds until this address may be mailed again, when that is the refusal.
+ *
+ * GoTrue answers `over_email_send_rate_limit` for two different limits. One
+ * is per address (`smtp_max_frequency`, a minute): «For security purposes,
+ * you can only request this after 42 seconds.» The other is the whole
+ * project's hourly allowance (`rate_limit_email_sent`, 30): «email rate limit
+ * exceeded». The first wants a short wait; the second is an hour away, and
+ * telling that person to «wait a minute» is a lie they act on. Only the
+ * message tells them apart.
+ */
+export function emailCooldownSeconds(err: unknown): number | null {
+  const e = asAuthError(err)
+  if (e.code !== "over_email_send_rate_limit") return null
+  const match = /after (\d+) second/.exec(e.message ?? "")
+  return match ? Number(match[1]) : null
+}
+
+/** Any refusal that waiting is the answer to. */
+export function isRateLimited(err: unknown): boolean {
+  const e = asAuthError(err)
+  return e.status === 429 || e.code === "over_request_rate_limit" || e.code === "over_email_send_rate_limit"
+}
+
+/** The account exists and its address has not been confirmed yet. */
+export function isEmailNotConfirmed(err: unknown): boolean {
+  return asAuthError(err).code === "email_not_confirmed"
+}
+
+/**
  * Translate an auth failure, falling back to `fallbackKey` when we have
  * nothing more specific. Never returns the server's English.
  *
@@ -102,6 +130,10 @@ export function authErrorMessage(err: unknown, fallbackKey: string): string {
   // It must not reach the screen — that is the whole defect.
   if (import.meta.env.DEV) {
     console.error("[auth]", e.code ?? e.status ?? "unknown", e.message ?? err)
+  }
+  if (e.code === "over_email_send_rate_limit") {
+    const seconds = emailCooldownSeconds(err)
+    return seconds === null ? i18n.t("auth.errors.emailQuota") : i18n.t("auth.errors.emailCooldown", { seconds })
   }
   const key = (e.code ? KEY_BY_CODE[e.code] : undefined) ?? keyByStatus(e.status) ?? fallbackKey
   return i18n.t(key)

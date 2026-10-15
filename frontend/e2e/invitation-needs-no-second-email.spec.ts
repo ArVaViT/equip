@@ -69,8 +69,6 @@ async function hasStoredSession(page: Page): Promise<boolean> {
 async function createAccount(page: Page, password: string) {
   await page.getByLabel("Full name").fill("Invited Person");
   await page.locator("#invite-password").fill(password);
-  const confirm = page.locator("#invite-confirmPassword");
-  if (await confirm.count()) await confirm.fill(password);
   await page.getByRole("button", { name: "Create account" }).click();
 }
 

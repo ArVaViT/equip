@@ -9,7 +9,7 @@
  * a way to not have to invent one.
  */
 import type { ReactNode } from "react";
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { render, screen, renderHook, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
@@ -18,10 +18,11 @@ import { MemoryRouter } from "react-router-dom";
 import i18n from "@/i18n/config";
 import { RegisterForm } from "@/pages/Auth/register/RegisterForm";
 import { useRegister } from "@/pages/Auth/register/useRegister";
-import { passwordMeetsLocalRules } from "@/lib/passwordPolicy";
+import { isLongEnough } from "@/lib/passwordPolicy";
 
+const register = vi.fn();
 vi.mock("@/context/useAuth", () => ({
-  useAuth: () => ({ register: vi.fn(), signInWithGoogle: vi.fn() }),
+  useAuth: () => ({ register, signInWithGoogle: vi.fn() }),
 }));
 
 // AuthLayout reads the theme for its own chrome; the password affordances
@@ -39,7 +40,7 @@ function Wrapper({ children }: { children: ReactNode }) {
 }
 
 const BASE_PROPS = {
-  form: { full_name: "", email: "", password: "", confirmPassword: "" },
+  form: { full_name: "", email: "", password: "" },
   errors: {},
   serverError: "",
   loading: false,
@@ -61,28 +62,32 @@ describe("RegisterForm — password affordances", () => {
       </Wrapper>,
     );
     const field = screen.getByLabelText(i18n.t("auth.password"));
-    expect(field.getAttribute("aria-describedby")).toContain("password-requirements");
+    expect(field.getAttribute("aria-describedby")).toContain("password-rule");
   });
 
-  it("keeps both fields masked until asked, then reveals both together", () => {
+  it("asks for the password once, masked until asked to show it", () => {
     const { rerender } = render(
       <Wrapper>
         <RegisterForm {...BASE_PROPS} />
       </Wrapper>,
     );
     expect(screen.getByLabelText(i18n.t("auth.password"))).toHaveAttribute("type", "password");
-
     rerender(
       <Wrapper>
         <RegisterForm {...BASE_PROPS} showPassword />
       </Wrapper>,
     );
-    // Both, not just the first: a revealed password beside a masked
-    // confirmation is a field you still cannot check by eye.
     expect(screen.getByLabelText(i18n.t("auth.password"))).toHaveAttribute("type", "text");
-    expect(
-      screen.getByLabelText(i18n.t("authRegister.confirmPasswordShort")),
-    ).toHaveAttribute("type", "text");
+    expect(screen.getAllByRole("textbox")).toHaveLength(3); // name, email, password
+  });
+
+  it("carries no age banner — the age is part of the consent, not the form", () => {
+    const { container } = render(
+      <Wrapper>
+        <RegisterForm {...BASE_PROPS} />
+      </Wrapper>,
+    );
+    expect(container.textContent).not.toMatch(/16/);
   });
 
   it("offers a way out of inventing a password", async () => {
@@ -100,19 +105,14 @@ describe("RegisterForm — password affordances", () => {
 });
 
 describe("useRegister — generated password", () => {
-  it("fills both fields with the same acceptable value and shows it", () => {
+  it("fills the field with an acceptable value and shows it", () => {
     const { result } = renderHook(() => useRegister());
 
     act(() => {
       result.current.handleGeneratePassword();
     });
 
-    const { password, confirmPassword } = result.current.form;
-    expect(password).not.toBe("");
-    // Filling only `password` would hand the person a "passwords do not
-    // match" error for a password they never typed.
-    expect(confirmPassword).toBe(password);
-    expect(passwordMeetsLocalRules(password, confirmPassword)).toBe(true);
+    expect(isLongEnough(result.current.form.password)).toBe(true);
     expect(result.current.showPassword).toBe(true);
     expect(result.current.passwordGenerated).toBe(true);
   });
@@ -129,5 +129,51 @@ describe("useRegister — generated password", () => {
       result.current.handleChange("password", "typed over it");
     });
     expect(result.current.passwordGenerated).toBe(false);
+  });
+});
+
+describe("useRegister — after the form", () => {
+  beforeEach(() => {
+    window.sessionStorage.clear();
+    register.mockReset();
+  });
+
+  async function submit(result: { current: ReturnType<typeof useRegister> }) {
+    act(() => {
+      result.current.handleChange("full_name", "Sasha Petrov");
+      result.current.handleChange("email", "  sasha@web.de ");
+      result.current.handleChange("password", "a long enough passphrase");
+    });
+    await act(() => result.current.handleSubmit());
+  }
+
+  it("sends the address trimmed, and the mail screen survives a reload", async () => {
+    register.mockResolvedValue({ userId: "u1", repeated: false });
+    const { result } = renderHook(() => useRegister());
+    await submit(result);
+
+    expect(register.mock.calls[0]?.[0]).toBe("sasha@web.de");
+    expect(result.current.sent).toEqual({ email: "sasha@web.de", repeated: false });
+    const reloaded = renderHook(() => useRegister());
+    expect(reloaded.result.current.sent).toEqual({ email: "sasha@web.de", repeated: false });
+  });
+
+  it("remembers that the address was registered before", async () => {
+    register.mockResolvedValue({ userId: "u1", repeated: true });
+    const { result } = renderHook(() => useRegister());
+    await submit(result);
+    expect(result.current.sent?.repeated).toBe(true);
+  });
+
+  it("goes back to the form with the address to correct", async () => {
+    register.mockResolvedValue({ userId: "u1", repeated: false });
+    const { result } = renderHook(() => useRegister());
+    await submit(result);
+
+    act(() => result.current.changeAddress());
+
+    expect(result.current.sent).toBeNull();
+    expect(result.current.form.email).toBe("sasha@web.de");
+    expect(window.sessionStorage.getItem("equip:signupSent")).toBeNull();
   });
 });

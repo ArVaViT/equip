@@ -1,6 +1,7 @@
 import type { SupportedLocale } from "@/i18n/config"
 import { createContext } from "react"
 import type { User } from "@/types"
+import type { SignUpOutcome } from "@/services/auth"
 
 export interface AuthContextValue {
   user: User | null
@@ -11,7 +12,7 @@ export interface AuthContextValue {
     password: string,
     fullName: string,
     preferredLocale: SupportedLocale,
-  ) => Promise<void>
+  ) => Promise<SignUpOutcome>
   signInWithGoogle: () => Promise<void>
   sendSignInLink: (email: string) => Promise<void>
   resetPassword: (email: string) => Promise<void>

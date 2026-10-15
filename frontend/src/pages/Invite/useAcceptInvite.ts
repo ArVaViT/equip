@@ -21,10 +21,9 @@ import i18n, { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 export type FormState = {
   full_name: string
   password: string
-  confirmPassword: string
 }
 
-const EMPTY_FORM: FormState = { full_name: "", password: "", confirmPassword: "" }
+const EMPTY_FORM: FormState = { full_name: "", password: "" }
 
 export type AcceptInvitePhase =
   | "loading"
@@ -195,15 +194,15 @@ export function useAcceptInvite() {
 
   const retryAccept = useCallback(() => void accept(), [accept])
 
-  const setBothPasswords = useCallback((value: string) => {
-    setForm((prev) => ({ ...prev, password: value, confirmPassword: value }))
-    setErrors((prev) => ({ ...prev, password: undefined, confirmPassword: undefined }))
+  const setPassword = useCallback((value: string) => {
+    setForm((prev) => ({ ...prev, password: value }))
+    setErrors((prev) => ({ ...prev, password: undefined }))
   }, [])
-  const passwordAffordances = usePasswordAffordances(setBothPasswords)
+  const passwordAffordances = usePasswordAffordances(setPassword)
 
   const handleChange = useCallback(
     (field: keyof FormState, value: string) => {
-      if (field === "password" || field === "confirmPassword") passwordAffordances.noteEdited()
+      if (field === "password") passwordAffordances.noteEdited()
       setForm((prev) => ({ ...prev, [field]: value }))
       setErrors((prev) => ({ ...prev, [field]: undefined }))
     },

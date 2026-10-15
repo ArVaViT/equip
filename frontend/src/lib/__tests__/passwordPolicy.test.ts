@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest"
-import {
-  PASSWORD_MIN_LENGTH,
-  checkPassword,
-  generatePassword,
-  passwordMeetsLocalRules,
-} from "@/lib/passwordPolicy"
+import { PASSWORD_MIN_LENGTH, generatePassword, isLongEnough } from "@/lib/passwordPolicy"
 
 describe("password policy", () => {
   it("keeps the minimum at the server's twelve", () => {
@@ -15,35 +10,16 @@ describe("password policy", () => {
     expect(PASSWORD_MIN_LENGTH).toBe(12)
   })
 
-  it("does not tick the length rule one character short", () => {
-    const short = "a".repeat(PASSWORD_MIN_LENGTH - 1)
-    const [length] = checkPassword(short, short)
-    expect(length?.met).toBe(false)
-  })
-
-  it("ticks the length rule exactly at the minimum", () => {
-    const exact = "a".repeat(PASSWORD_MIN_LENGTH)
-    const [length] = checkPassword(exact, exact)
-    expect(length?.met).toBe(true)
-  })
-
-  it("does not call two empty fields a match", () => {
-    const [, match] = checkPassword("", "")
-    expect(match?.met).toBe(false)
-    expect(passwordMeetsLocalRules("", "")).toBe(false)
-  })
-
-  it("only matches when the confirmation is identical", () => {
-    const value = "correct horse battery"
-    expect(checkPassword(value, value)[1]?.met).toBe(true)
-    expect(checkPassword(value, `${value} `)[1]?.met).toBe(false)
+  it("is not long enough one character short, and is exactly at the minimum", () => {
+    expect(isLongEnough("a".repeat(PASSWORD_MIN_LENGTH - 1))).toBe(false)
+    expect(isLongEnough("a".repeat(PASSWORD_MIN_LENGTH))).toBe(true)
   })
 })
 
 describe("generatePassword", () => {
   it("satisfies the rules it exists to satisfy", () => {
     const generated = generatePassword()
-    expect(passwordMeetsLocalRules(generated, generated)).toBe(true)
+    expect(isLongEnough(generated)).toBe(true)
   })
 
   it("omits the characters people mistype", () => {

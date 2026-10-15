@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { I18nextProvider } from "react-i18next"
 import { MemoryRouter } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -17,8 +18,14 @@ import Login from "../Login"
  * what had happened to them.
  */
 
+const login = vi.fn()
 vi.mock("@/context/useAuth", () => ({
-  useAuth: () => ({ login: vi.fn(), signInWithGoogle: vi.fn(), sendSignInLink: vi.fn() }),
+  useAuth: () => ({ login: (...a: unknown[]) => login(...a), signInWithGoogle: vi.fn(), sendSignInLink: vi.fn() }),
+}))
+
+const resendConfirmation = vi.fn()
+vi.mock("@/services/auth", () => ({
+  authService: { resendConfirmation: (email: string) => resendConfirmation(email) },
 }))
 
 vi.mock("@/context/useTheme", () => ({
@@ -80,3 +87,21 @@ describe("the sign-in form explains itself", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Sitzung ist abgelaufen")
   })
 })
+
+describe("an address that was never confirmed", () => {
+  it("offers the confirmation again right under the error", async () => {
+    await i18n.changeLanguage("en");
+    const user = userEvent.setup();
+    login.mockRejectedValueOnce(Object.assign(new Error("Email not confirmed"), { code: "email_not_confirmed", status: 400 }));
+    resendConfirmation.mockResolvedValue(undefined);
+    renderAt({ pathname: "/login", state: { email: "sasha@web.de" } });
+
+    await user.type(screen.getByLabelText(i18n.t("auth.password"), { selector: "input" }), "whatever-it-was");
+    await user.click(screen.getByRole("button", { name: i18n.t("auth.signIn") }));
+    const resend = await screen.findByRole("button", { name: i18n.t("authRegister.success.resend") });
+    await user.click(resend);
+
+    expect(resendConfirmation).toHaveBeenCalledWith("sasha@web.de");
+    expect(await screen.findByText(i18n.t("authRegister.success.resent"))).toBeInTheDocument();
+  });
+});

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 import { Trans, useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -7,11 +7,13 @@ import { Label } from "@/components/ui/label"
 import { useAuth } from "@/context/useAuth"
 import AuthLayout from "@/components/layout/AuthLayout"
 import { authErrorMessage } from "@/lib/authError"
+import { emailFromState } from "@/lib/authRedirect"
 import { ArrowLeft, Loader2, MailCheck } from "lucide-react"
 
 export default function ForgotPassword() {
   const { t } = useTranslation()
-  const [email, setEmail] = useState("")
+  const location = useLocation()
+  const [email, setEmail] = useState(() => emailFromState(location.state))
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
