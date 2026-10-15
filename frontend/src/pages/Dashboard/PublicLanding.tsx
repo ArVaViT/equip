@@ -58,25 +58,37 @@ import { TEXT_VEIL } from "./landing/textVeil";
 const LandingBackdrop = lazy(() => import("./landing/LandingBackdrop"));
 
 /**
- * Run `fn` once the page's own load is over and the main thread is idle —
- * or after `LOAD_CAP_MS` regardless, so a slow image elsewhere on the page
+ * Run `fn` a second after the page's own load, once the main thread is idle
+ * — or after `LOAD_CAP_MS` regardless, so a slow image elsewhere on the page
  * cannot keep the scene away for good. Returns a cancel function.
+ *
+ * Why the extra second: on a fast connection `load` fires before the largest
+ * paint has been reported, and Lighthouse's mobile model (PageSpeed
+ * Insights uses the same one) charges every request started before that
+ * paint to it, as if made on a slow phone. Started at `load`, `three` was in
+ * that window on some runs and not on others, and moved the landing's LCP by
+ * about 0.7 s between otherwise identical runs.
  */
-const LOAD_CAP_MS = 4000;
+const AFTER_LOAD_MS = 1000;
+const LOAD_CAP_MS = 5000;
 function afterPageLoad(fn: () => void): () => void {
   let done = false;
   let idle: number | undefined;
+  let wait: number | undefined;
   const run = () => {
     if (done) return;
     done = true;
     fn();
   };
-  const schedule = () => {
+  const whenIdle = () => {
     if (typeof window.requestIdleCallback === "function") {
       idle = window.requestIdleCallback(run, { timeout: 1000 });
     } else {
       run();
     }
+  };
+  const schedule = () => {
+    wait = window.setTimeout(whenIdle, AFTER_LOAD_MS);
   };
   const cap = window.setTimeout(run, LOAD_CAP_MS);
   if (document.readyState === "complete") schedule();
@@ -84,6 +96,7 @@ function afterPageLoad(fn: () => void): () => void {
   return () => {
     done = true;
     window.clearTimeout(cap);
+    if (wait !== undefined) window.clearTimeout(wait);
     window.removeEventListener("load", schedule);
     if (idle !== undefined) window.cancelIdleCallback?.(idle);
   };
