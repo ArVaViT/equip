@@ -115,7 +115,6 @@ export async function suppressOnboarding(
     "teacher-dashboard-v1",
     "gradebook-v1",
     "analytics-v1",
-    "student-progress-v1",
     "chapter-editor-v1",
     "module-editor-v1",
     "course-editor-v1",

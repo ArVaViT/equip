@@ -70,7 +70,13 @@ export function CourseCard({
     : t("teacherDashboard.courseCard.actionPublish")
 
   return (
-    <Card className="group transition-colors hover:border-brand/30">
+    // The whole card opens the course. A teacher on a phone tapped the
+    // cover, the badge and the space beside the name — "Preaching Course - I
+    // Published 4 lessons" in the session replay — and nothing answered; only
+    // the letters of the name were a link. The name stays the one link (its
+    // ::after stretches over the card), so a screen reader still hears one
+    // link per course, and the controls sit above it on their own layer.
+    <Card className="group lift relative transition-colors hover:border-brand/30">
       <div className="flex items-start gap-3 p-4 sm:gap-4 sm:p-5">
         {course.image_url ? (
           <img
@@ -93,7 +99,7 @@ export function CourseCard({
             <h3 className="line-clamp-2 min-w-0 basis-full break-words text-base font-semibold sm:basis-0 sm:flex-1 sm:line-clamp-1 sm:text-lg">
               <Link
                 to={`/teacher/courses/${course.id}`}
-                className="underline-offset-4 transition-colors hover:text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="underline-offset-4 transition-colors after:absolute after:inset-0 after:rounded-card hover:text-brand hover:underline focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-brand"
               >
                 {course.title}
               </Link>
@@ -111,7 +117,7 @@ export function CourseCard({
             {pendingGrading > 0 && (
               <Link
                 to={`/teacher/courses/${course.id}/gradebook`}
-                className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                className="relative z-10 shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
               >
                 {/* The number on the dashboard header answers "do I owe anyone
                     anything today"; this answers "where". Without the link the
@@ -135,9 +141,19 @@ export function CourseCard({
                 {t("teacherDashboard.courseCard.modules", { count: moduleCount })}
               </span>
             )}
+            {/* The students, one tap from the course on every width. On a phone
+                they were the fourth item of the "…" menu, and that menu was the
+                only way a teacher found them (RUM, 2026-09-20 and 2026-10-15). */}
+            <Link
+              to={`/teacher/courses/${course.id}/progress`}
+              className="relative z-10 -my-2 inline-flex min-h-11 items-center gap-1 rounded-md font-medium text-ink underline underline-offset-4 transition-colors hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:min-h-0"
+            >
+              <Users className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              {t("teacherDashboard.courseCard.students")}
+            </Link>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="relative z-10 flex shrink-0 items-center gap-1">
           {/* Desktop: inline quick actions. Mobile: single overflow menu. */}
           <Link to={`/teacher/courses/${course.id}/analytics`} className="hidden sm:inline-flex">
             <Button
@@ -160,18 +176,6 @@ export function CourseCard({
               <ClipboardList className="h-4 w-4" strokeWidth={1.75} aria-hidden />
               <span className="sr-only">
                 {t("teacherDashboard.courseCard.actionGradebook")}
-              </span>
-            </Button>
-          </Link>
-          <Link to={`/teacher/courses/${course.id}/progress`} className="hidden sm:inline-flex">
-            <Button
-              variant="ghost"
-              size="sm"
-              title={t("teacherDashboard.courseCard.actionStudentProgress")}
-            >
-              <Users className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-              <span className="sr-only">
-                {t("teacherDashboard.courseCard.actionStudentProgress")}
               </span>
             </Button>
           </Link>
@@ -240,12 +244,6 @@ export function CourseCard({
                 <Link to={`/teacher/courses/${course.id}/gradebook`}>
                   <ClipboardList className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                   {t("teacherDashboard.courseCard.actionGradebook")}
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild className="sm:hidden">
-                <Link to={`/teacher/courses/${course.id}/progress`}>
-                  <Users className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                  {t("teacherDashboard.courseCard.actionStudentProgress")}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator className="sm:hidden" />

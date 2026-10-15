@@ -17,7 +17,7 @@ import {
   Search,
   Users,
 } from "lucide-react"
-import { ErrorState } from "@/components/patterns"
+import { EmptyState, ErrorState } from "@/components/patterns"
 import {
   averageProgress,
   completionRate,
@@ -27,8 +27,6 @@ import {
   type SortColumn,
   type SortDirection,
 } from "./progress"
-import { useUserTour } from "@/hooks/useUserTour"
-import { studentProgressSteps } from "@/lib/tourSteps"
 
 /**
  * Teacher view of every enrolled student in a course. Owns the fetch,
@@ -38,6 +36,9 @@ import { studentProgressSteps } from "@/lib/tourSteps"
  * sort/search centralised — each row only knows about its own expansion
  * and mutation calls.
  */
+/** More students than this, and the board offers a search box. */
+const SEARCH_FROM = 3
+
 export default function StudentProgress() {
   const { courseId } = useParams<{ courseId: string }>()
   const { t } = useTranslation()
@@ -59,12 +60,6 @@ export default function StudentProgress() {
   const [expandedId, setExpandedId] = useState<string | null>(requestedStudent)
   const [sortBy, setSortBy] = useState<SortColumn>("name")
   const [sortDir, setSortDir] = useState<SortDirection>("asc")
-
-  useUserTour({
-    tourId: "student-progress-v1",
-    steps: studentProgressSteps(t),
-    ready: !loading && data !== null,
-  })
 
   const load = useCallback(
     async (signal?: { cancelled: boolean }) => {
@@ -230,37 +225,52 @@ export default function StudentProgress() {
         </div>
       </div>
 
-      <ProgressStats
-        totalStudents={data.students.length}
-        averageProgress={averageProgress(data.students)}
-        completionRate={completionRate(data.students)}
-      />
-
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" strokeWidth={1.75} aria-hidden="true" />
-        <Input
-          placeholder={t("studentProgress.searchPlaceholder")}
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value.slice(0, maxLength))}
-          maxLength={maxLength}
-          className="pl-10"
+      {/* Nobody enrolled: one sentence, not three zeros, an empty search box
+          and a table card with nothing in it. Those read as a page that failed
+          to load, and the table heading looked like something to tap. */}
+      {data.students.length === 0 ? (
+        <EmptyState
+          icon={<Users strokeWidth={1.75} aria-hidden />}
+          title={t("studentProgress.table.emptyNoStudents")}
         />
-      </div>
+      ) : (
+        <>
+          <ProgressStats
+            averageProgress={averageProgress(data.students)}
+            completionRate={completionRate(data.students)}
+          />
 
-      <div data-tour="progress-table">
-        <StudentTable
-          students={filtered}
-          retakeRequests={retakeRequests}
-          courseId={courseId ?? ""}
-          hasSearch={Boolean(search)}
-          expandedId={expandedId}
-          onExpandToggle={(id) => setExpandedId((prev) => (prev === id ? null : id))}
-          sortBy={sortBy}
-          sortDir={sortDir}
-          onToggleSort={toggleSort}
-          onChapterUpdate={handleStudentChapterUpdate}
-        />
-      </div>
+          {/* A search box over three names is one more thing to scroll past.
+              Same threshold as the course list on the teaching page; kept
+              while a search is active, or a filtered board could not be
+              cleared. */}
+          {(data.students.length > SEARCH_FROM || searchInput !== "") && (
+            <div className="relative mb-6">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-muted" strokeWidth={1.75} aria-hidden="true" />
+              <Input
+                placeholder={t("studentProgress.searchPlaceholder")}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value.slice(0, maxLength))}
+                maxLength={maxLength}
+                className="pl-10"
+              />
+            </div>
+          )}
+
+          <StudentTable
+            students={filtered}
+            retakeRequests={retakeRequests}
+            courseId={courseId ?? ""}
+            hasSearch={Boolean(search)}
+            expandedId={expandedId}
+            onExpandToggle={(id) => setExpandedId((prev) => (prev === id ? null : id))}
+            sortBy={sortBy}
+            sortDir={sortDir}
+            onToggleSort={toggleSort}
+            onChapterUpdate={handleStudentChapterUpdate}
+          />
+        </>
+      )}
     </div>
   )
 }

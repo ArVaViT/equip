@@ -62,13 +62,15 @@ export function StatCard({
   return (
     <Card>
       <CardContent className="pt-6">
-        <div className="flex items-center justify-between">
-          <div>
+        {/* The icon keeps its size when a long label wraps — beside
+            «Durchschnittlicher Fortschritt» in half a phone it shrank to a dot. */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
             <p className="text-sm text-ink-muted">{label}</p>
             <p className={cn("text-2xl font-bold tabular-nums mt-1", valueClassName)}>{value}</p>
             {hint && <p className="mt-0.5 text-xs text-ink-muted">{hint}</p>}
           </div>
-          <Icon className="h-6 w-6 text-ink-muted" strokeWidth={1.75} aria-hidden />
+          <Icon className="h-6 w-6 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
         </div>
       </CardContent>
     </Card>
