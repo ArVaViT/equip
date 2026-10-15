@@ -1682,7 +1682,6 @@
     "searchPlaceholder": "Пошук студентів за іменем або поштою...",
     "table": {
       "heading": "Студенти",
-      "description": "Натисніть рядок, щоб побачити докладний розклад",
       "name": "Ім’я",
       "email": "Пошта",
       "progress": "Поступ",
@@ -1967,7 +1966,6 @@
       "actionPublish": "Опублікувати",
       "actionUnpublish": "Зняти з публікації",
       "actionClone": "Скопіювати курс",
-      "actionEditCourse": "Редагувати курс",
       "actionDelete": "Видалити",
       "actionMore": "Інші дії",
       "pendingGrading_one": "{{count}} на оцінювання",

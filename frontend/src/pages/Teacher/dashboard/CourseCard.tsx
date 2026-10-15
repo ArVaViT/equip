@@ -10,7 +10,6 @@ import {
   Layers,
   Loader2,
   MoreHorizontal,
-  Pencil,
   Trash2,
   Users,
 } from "lucide-react"
@@ -194,19 +193,8 @@ export function CourseCard({
             )}
             <span className="sr-only">{togglePublishLabel}</span>
           </Button>
-          {/* On a phone too: editing is what this page is for, and it was
-              only inside the "…" menu there. One link, not a button in a link. */}
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            aria-label={t("teacherDashboard.courseCard.actionEditCourse")}
-            title={t("teacherDashboard.courseCard.actionEditCourse")}
-          >
-            <Link to={`/teacher/courses/${course.id}`}>
-              <Pencil className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            </Link>
-          </Button>
+          {/* No pencil: it opened the same editor the whole card opens, and on
+              a phone its 36px broke «Preaching Course - I» onto two lines. */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/patterns"
 import { toast } from "@/lib/toast"
+import { cn } from "@/lib/utils"
 import { coursesService } from "@/services/courses"
 import { gradesService } from "@/services/grades"
 import type { RetakeRequest, StudentProgressDetail } from "@/types"
@@ -65,6 +66,8 @@ interface Props {
     completed: boolean,
     completedBy: "teacher" | "self" | "excused" | null,
   ) => void
+  /** A row of the desktop table, or an item of the phone list. */
+  layout?: "table" | "list"
 }
 
 type ChapterEntry = {
@@ -88,6 +91,7 @@ export function StudentRow({
   assignmentAvg,
   courseId,
   onChapterUpdate,
+  layout = "table",
 }: Props) {
   const { t } = useTranslation()
   const official = officialGrade(student)
@@ -106,10 +110,13 @@ export function StudentRow({
   const [detailError, setDetailError] = useState(false)
 
   useEffect(() => {
-    if (!isExpanded || detail || detailLoading) return
+    if (!isExpanded || detail || detailError) return
+    // ``detailLoading`` is not a dependency. It was, and setting it below
+    // re-ran this effect, whose cleanup cancelled the request it had just
+    // sent: the breakdown said "Loading…" for ever. A teacher tapped his
+    // first student three times on 2026-10-15 and gave up.
     let cancelled = false
     setDetailLoading(true)
-    setDetailError(false)
     coursesService
       .getStudentProgressDetail(courseId, student.id)
       .then((d) => {
@@ -123,8 +130,10 @@ export function StudentRow({
       })
     return () => {
       cancelled = true
+      // Collapsed mid-load: the next expand starts a fresh request.
+      setDetailLoading(false)
     }
-  }, [isExpanded, detail, detailLoading, courseId, student.id])
+  }, [isExpanded, detail, detailError, courseId, student.id])
 
   const allChapters = useMemo(() => {
     const map = new Map<string, ChapterEntry>()
@@ -255,6 +264,220 @@ export function StudentRow({
     }
   }
 
+  const list = layout === "list"
+
+  const details = (
+    <div className={cn("space-y-5 bg-muted/30", list ? "border-t px-4 py-4" : "border-y px-6 py-5")}>
+      {retakeRequest && (
+        <div className="rounded-lg border border-warning/40 bg-warning/5 px-3 py-2.5 text-sm">
+          <p className="font-medium">{t("studentProgress.retake.title")}</p>
+          <p className="mt-0.5 text-ink-muted">
+            {/* What stopped them when they asked, so the teacher knows
+                which of the four powers below this calls for instead of
+                opening four screens to find out. */}
+            {namedBlockers(retakeRequest.blockers)
+              .map((code) => t(`studentProgress.retake.blocker.${code}`))
+              .join(" · ") || t("studentProgress.retake.noDetail")}
+          </p>
+        </div>
+      )}
+      <div className={list ? "grid grid-cols-2 gap-x-6 gap-y-4" : "flex flex-wrap gap-6"}>
+        {/* The columns a phone's row does not show, said here instead. */}
+        {list && (
+          <>
+            <SummaryStat label={t("studentProgress.table.email")} className="col-span-2">
+              <p className="break-all text-sm font-medium">{student.email}</p>
+            </SummaryStat>
+            <SummaryStat label={t("studentProgress.table.quizAvg")}>
+              <ScoreBadge value={quizAvg} />
+            </SummaryStat>
+            <SummaryStat label={t("studentProgress.table.assignAvg")}>
+              <ScoreBadge value={assignmentAvg} />
+            </SummaryStat>
+            <SummaryStat label={t("studentProgress.table.lastActive")}>
+              <p className="text-sm font-medium">{relativeTime(student.last_activity, t)}</p>
+            </SummaryStat>
+          </>
+        )}
+        <SummaryStat label={t("studentProgress.row.overallGrade")} className={list ? "col-span-2" : undefined}>
+          {/* The official grade, decided the same way the gradebook
+              decides it: a teacher's override wins, and an absent
+              number says why rather than printing a bare dash. */}
+          <p className="text-xl font-bold">
+            {official.text ?? t("studentProgress.row.overallGradeNa")}
+            {official.isManual && (
+              <span className="ml-2 align-middle text-xs font-medium text-info">
+                {t("studentProgress.grade.setByTeacher")}
+              </span>
+            )}
+          </p>
+          {official.finalText && (
+            <p className="text-xs text-ink-muted mt-0.5">
+              {t("gradebook.pair.finalShort", { grade: official.finalText })} ·{" "}
+              {t("gradebook.pair.explainer")}
+            </p>
+          )}
+          {official.noteKey && (
+            <p className="text-xs text-ink-muted mt-0.5">{t(official.noteKey)}</p>
+          )}
+        </SummaryStat>
+        <SummaryStat label={t("studentProgress.row.enrolled")}>
+          <p className="text-sm font-medium">{formatDate(student.enrolled_at)}</p>
+        </SummaryStat>
+        <SummaryStat label={t("studentProgress.row.chaptersCompleted")}>
+          <p className="text-sm font-medium">
+            {t("studentProgress.row.chaptersCompletedValue", {
+              done: student.chapters_completed,
+              total: student.total_chapters,
+            })}
+          </p>
+        </SummaryStat>
+        {/* On a phone the row above already shows it. */}
+        {!list && (
+          <SummaryStat label={t("studentProgress.row.progress")}>
+            <ProgressBar value={student.progress} />
+          </SummaryStat>
+        )}
+      </div>
+
+      <GradeHistory courseId={courseId} studentId={student.id} />
+
+      {detailLoading && (
+        <div className="flex items-center gap-2 py-4 text-sm text-ink-muted">
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
+          {t("studentProgress.row.loadingDetail")}
+        </div>
+      )}
+      {detailError && !detailLoading && (
+        <div className="flex items-center gap-3 py-4 text-sm text-ink-muted">
+          <span>{t("studentProgress.row.detailFailed")}</span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setDetail(null)
+              setDetailError(false)
+            }}
+          >
+            {t("studentProgress.row.retry")}
+          </Button>
+        </div>
+      )}
+      {detail && !detailLoading && allChapters.size > 0 && (
+        <div>
+          <h4 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
+            <BookOpen className="h-4 w-4" strokeWidth={1.75} />
+            {t("studentProgress.row.chapterBreakdown")}
+          </h4>
+          <div className="space-y-2">
+            {Array.from(allChapters.entries()).map(([id, entry]) => (
+              <ChapterBreakdownRow
+                key={id}
+                chapterId={id}
+                chapterInfo={entry.chapterInfo}
+                quiz={entry.quiz}
+                assignment={entry.assignment}
+                togglingChapterId={togglingChapter}
+                grantingQuizId={grantingQuiz}
+                excusingChapterId={excusingChapter}
+                onToggleComplete={handleToggleComplete}
+                onGrantExtraAttempt={handleGrantExtraAttempt}
+                onExcuse={(ch) => {
+                  setExcuseReason("")
+                  setExcuseTarget(ch)
+                }}
+                onUnexcuse={handleUnexcuse}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <Link to={`/teacher/courses/${courseId}/gradebook`}>
+          <Button size="sm" variant="outline">
+            <ClipboardList className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
+            {t("studentProgress.row.gradebookButton")}
+          </Button>
+        </Link>
+        <Link to={`/teacher/courses/${courseId}/analytics`}>
+          <Button size="sm" variant="ghost">
+            <FileText className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
+            {t("studentProgress.row.viewAnalytics")}
+          </Button>
+        </Link>
+      </div>
+    </div>
+  )
+
+  const excuseModal = (
+    <Modal
+      open={excuseTarget !== null}
+      onClose={() => setExcuseTarget(null)}
+      title={t("studentProgress.excuse.title", { chapter: excuseTarget?.title ?? "" })}
+    >
+      <div className="space-y-4">
+        {/* Said plainly, because the second half surprises people: the work
+            stops counting against the grade AND the chapter counts as done,
+            which is what keeps the certificate reachable. */}
+        <p className="text-sm text-ink-muted">{t("studentProgress.excuse.explainer")}</p>
+        <div className="space-y-1.5">
+          <Label htmlFor="excuse-reason">{t("studentProgress.excuse.reasonLabel")}</Label>
+          <Textarea
+            id="excuse-reason"
+            rows={3}
+            value={excuseReason}
+            onChange={(e) => setExcuseReason(e.target.value)}
+            placeholder={t("studentProgress.excuse.reasonPlaceholder")}
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={() => setExcuseTarget(null)}>
+            {t("common.cancel")}
+          </Button>
+          <Button onClick={submitExcuse} disabled={excusingChapter !== null}>
+            {excusingChapter !== null && (
+              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" strokeWidth={1.75} aria-hidden />
+            )}
+            {t("studentProgress.excuse.confirm")}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+
+  // A phone gets a list, not a table: the name on one line, the progress, a
+  // chevron; everything else in the details a tap opens. The eight-column
+  // table was 800px wide there — its headings cut off, the name broken onto
+  // two lines beside an address, the open row running off the screen.
+  if (list) {
+    return (
+      <li className="border-b last:border-0">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={isExpanded}
+          className="flex min-h-11 w-full items-center gap-3 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          <span className="min-w-0 flex-1 truncate font-medium">{student.full_name}</span>
+          {retakeRequest && (
+            // The student a teacher should open first; the details say why.
+            <HandHelping
+              className="h-4 w-4 shrink-0 text-warning-ink"
+              strokeWidth={1.75}
+              role="img"
+              aria-label={t("studentProgress.retake.asked")}
+            />
+          )}
+          <ProgressBar value={student.progress} className="w-28 shrink-0" />
+          <Chevron open={isExpanded} />
+        </button>
+        {isExpanded && details}
+        {excuseModal}
+      </li>
+    )
+  }
+
   return (
     <>
       <tr
@@ -262,11 +485,7 @@ export function StudentRow({
         onClick={onToggle}
       >
         <td className="py-3 pr-2">
-          {isExpanded ? (
-            <ChevronDown className="h-4 w-4 text-ink-muted" strokeWidth={1.75} />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-ink-muted" strokeWidth={1.75} />
-          )}
+          <Chevron open={isExpanded} />
         </td>
         <td className="py-3 font-medium">
           {student.full_name}
@@ -300,177 +519,34 @@ export function StudentRow({
       {isExpanded && (
         <tr>
           <td colSpan={8} className="p-0">
-            <div className="bg-muted/30 border-y px-6 py-5 space-y-5">
-              {retakeRequest && (
-                <div className="rounded-lg border border-warning/40 bg-warning/5 px-3 py-2.5 text-sm">
-                  <p className="font-medium">{t("studentProgress.retake.title")}</p>
-                  <p className="mt-0.5 text-ink-muted">
-                    {/* What stopped them when they asked, so the teacher knows
-                        which of the four powers below this calls for instead of
-                        opening four screens to find out. */}
-                    {namedBlockers(retakeRequest.blockers)
-                      .map((code) => t(`studentProgress.retake.blocker.${code}`))
-                      .join(" · ") || t("studentProgress.retake.noDetail")}
-                  </p>
-                </div>
-              )}
-              <div className="flex flex-wrap gap-6">
-                <SummaryStat label={t("studentProgress.row.overallGrade")}>
-                  {/* The official grade, decided the same way the gradebook
-                      decides it: a teacher's override wins, and an absent
-                      number says why rather than printing a bare dash. */}
-                  <p className="text-xl font-bold">
-                    {official.text ?? t("studentProgress.row.overallGradeNa")}
-                    {official.isManual && (
-                      <span className="ml-2 align-middle text-xs font-medium text-info">
-                        {t("studentProgress.grade.setByTeacher")}
-                      </span>
-                    )}
-                  </p>
-                  {official.finalText && (
-                    <p className="text-xs text-ink-muted mt-0.5">
-                      {t("gradebook.pair.finalShort", { grade: official.finalText })} ·{" "}
-                      {t("gradebook.pair.explainer")}
-                    </p>
-                  )}
-                  {official.noteKey && (
-                    <p className="text-xs text-ink-muted mt-0.5">{t(official.noteKey)}</p>
-                  )}
-                </SummaryStat>
-                <SummaryStat label={t("studentProgress.row.enrolled")}>
-                  <p className="text-sm font-medium">{formatDate(student.enrolled_at)}</p>
-                </SummaryStat>
-                <SummaryStat label={t("studentProgress.row.chaptersCompleted")}>
-                  <p className="text-sm font-medium">
-                    {t("studentProgress.row.chaptersCompletedValue", {
-                      done: student.chapters_completed,
-                      total: student.total_chapters,
-                    })}
-                  </p>
-                </SummaryStat>
-                <SummaryStat label={t("studentProgress.row.progress")}>
-                  <ProgressBar value={student.progress} />
-                </SummaryStat>
-              </div>
-
-              <GradeHistory courseId={courseId} studentId={student.id} />
-
-              {detailLoading && (
-                <div className="flex items-center gap-2 py-4 text-sm text-ink-muted">
-                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
-                  {t("studentProgress.row.loadingDetail")}
-                </div>
-              )}
-              {detailError && !detailLoading && (
-                <div className="flex items-center gap-3 py-4 text-sm text-ink-muted">
-                  <span>{t("studentProgress.row.detailFailed")}</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setDetail(null)
-                      setDetailError(false)
-                    }}
-                  >
-                    {t("studentProgress.row.retry")}
-                  </Button>
-                </div>
-              )}
-              {detail && !detailLoading && allChapters.size > 0 && (
-                <div>
-                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
-                    <BookOpen className="h-4 w-4" strokeWidth={1.75} />
-                    {t("studentProgress.row.chapterBreakdown")}
-                  </h4>
-                  <div className="space-y-2">
-                    {Array.from(allChapters.entries()).map(([id, entry]) => (
-                      <ChapterBreakdownRow
-                        key={id}
-                        chapterId={id}
-                        chapterInfo={entry.chapterInfo}
-                        quiz={entry.quiz}
-                        assignment={entry.assignment}
-                        togglingChapterId={togglingChapter}
-                        grantingQuizId={grantingQuiz}
-                        excusingChapterId={excusingChapter}
-                        onToggleComplete={handleToggleComplete}
-                        onGrantExtraAttempt={handleGrantExtraAttempt}
-                        onExcuse={(ch) => {
-                          setExcuseReason("")
-                          setExcuseTarget(ch)
-                        }}
-                        onUnexcuse={handleUnexcuse}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center gap-2 pt-1">
-                <Link to={`/teacher/courses/${courseId}/gradebook`}>
-                  <Button size="sm" variant="outline">
-                    <ClipboardList className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
-                    {t("studentProgress.row.gradebookButton")}
-                  </Button>
-                </Link>
-                <Link to={`/teacher/courses/${courseId}/analytics`}>
-                  <Button size="sm" variant="ghost">
-                    <FileText className="h-3.5 w-3.5 mr-1.5" strokeWidth={1.75} />
-                    {t("studentProgress.row.viewAnalytics")}
-                  </Button>
-                </Link>
-              </div>
-            </div>
+            {details}
           </td>
         </tr>
       )}
-
-      <Modal
-        open={excuseTarget !== null}
-        onClose={() => setExcuseTarget(null)}
-        title={t("studentProgress.excuse.title", { chapter: excuseTarget?.title ?? "" })}
-      >
-        <div className="space-y-4">
-          {/* Said plainly, because the second half surprises people: the work
-              stops counting against the grade AND the chapter counts as done,
-              which is what keeps the certificate reachable. */}
-          <p className="text-sm text-ink-muted">{t("studentProgress.excuse.explainer")}</p>
-          <div className="space-y-1.5">
-            <Label htmlFor="excuse-reason">{t("studentProgress.excuse.reasonLabel")}</Label>
-            <Textarea
-              id="excuse-reason"
-              rows={3}
-              value={excuseReason}
-              onChange={(e) => setExcuseReason(e.target.value)}
-              placeholder={t("studentProgress.excuse.reasonPlaceholder")}
-            />
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setExcuseTarget(null)}>
-              {t("common.cancel")}
-            </Button>
-            <Button onClick={submitExcuse} disabled={excusingChapter !== null}>
-              {excusingChapter !== null && (
-                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" strokeWidth={1.75} aria-hidden />
-              )}
-              {t("studentProgress.excuse.confirm")}
-            </Button>
-          </div>
-        </div>
-      </Modal>
+      {excuseModal}
     </>
+  )
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return open ? (
+    <ChevronDown className="h-4 w-4 text-ink-muted" strokeWidth={1.75} aria-hidden />
+  ) : (
+    <ChevronRight className="h-4 w-4 text-ink-muted" strokeWidth={1.75} aria-hidden />
   )
 }
 
 function SummaryStat({
   label,
+  className,
   children,
 }: {
   label: string
+  className?: string
   children: React.ReactNode
 }) {
   return (
-    <div>
+    <div className={cn("min-w-0", className)}>
       <p className="text-xs text-ink-muted mb-1">{label}</p>
       {children}
     </div>

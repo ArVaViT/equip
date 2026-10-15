@@ -1622,7 +1622,6 @@
     "searchPlaceholder": "Search students by name or email...",
     "table": {
       "heading": "Students",
-      "description": "Click a row to view detailed breakdown",
       "name": "Name",
       "email": "Email",
       "progress": "Progress",
@@ -1889,7 +1888,6 @@
       "actionPublish": "Publish",
       "actionUnpublish": "Unpublish",
       "actionClone": "Clone course",
-      "actionEditCourse": "Edit course",
       "actionDelete": "Delete",
       "actionMore": "More actions",
       "pendingGrading_one": "{{count}} to grade",

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import { I18nextProvider } from "react-i18next"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "@/i18n/config"
 import type { StudentProgressEntry, StudentProgressResponse } from "@/types"
 import StudentProgress from "../StudentProgress"
@@ -86,8 +86,11 @@ describe("StudentProgress — a course nobody has enrolled in yet", () => {
     renderPage()
 
     expect(await screen.findByText("Anna Petrenko")).toBeInTheDocument()
-    expect(screen.getByRole("table")).toBeInTheDocument()
+    // jsdom has no matchMedia, so this is the phone's list.
+    expect(screen.getByRole("list", { name: i18n.t("studentProgress.table.heading") })).toBeInTheDocument()
     expect(screen.queryByText(i18n.t("studentProgress.table.emptyNoStudents"))).not.toBeInTheDocument()
+    // No "click a row to see details" line: the chevron on each row says it.
+    expect(screen.queryByText(/click a row/i)).not.toBeInTheDocument()
   })
 })
 
@@ -114,5 +117,30 @@ describe("StudentProgress — a small class on a phone", () => {
 
     expect(await screen.findByText("Student 4")).toBeInTheDocument()
     expect(screen.getByPlaceholderText(i18n.t("studentProgress.searchPlaceholder"))).toBeInTheDocument()
+  })
+})
+
+describe("StudentProgress — on a wide screen", () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("en")
+    getStudentProgress.mockReset()
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query === "(min-width: 768px)",
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it("keeps the table, every column, and its sorting", async () => {
+    getStudentProgress.mockResolvedValue(board([student()]))
+    renderPage()
+
+    expect(await screen.findByRole("table")).toBeInTheDocument()
+    expect(screen.getByRole("columnheader", { name: i18n.t("studentProgress.table.email") })).toBeInTheDocument()
+    expect(screen.getByText("anna@example.com")).toBeInTheDocument()
   })
 })

@@ -1291,7 +1291,6 @@
     "searchPlaceholder": "Поиск студентов по имени или почте…",
     "table": {
       "heading": "Студенты",
-      "description": "Нажмите на строку, чтобы увидеть детали",
       "name": "Имя",
       "email": "Почта",
       "progress": "Прогресс",
@@ -1576,7 +1575,6 @@
       "actionPublish": "Опубликовать",
       "actionUnpublish": "Снять с публикации",
       "actionClone": "Скопировать курс",
-      "actionEditCourse": "Редактировать курс",
       "actionDelete": "Удалить",
       "actionMore": "Ещё действия",
       "pendingGrading_one": "{{count}} работа на проверку",

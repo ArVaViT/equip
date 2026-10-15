@@ -1622,7 +1622,6 @@
     "searchPlaceholder": "Studierende nach Name oder E-Mail suchen …",
     "table": {
       "heading": "Studierende",
-      "description": "Klicken Sie eine Zeile an, um die Aufschlüsselung zu sehen",
       "name": "Name",
       "email": "E-Mail",
       "progress": "Fortschritt",
@@ -1889,7 +1888,6 @@
       "actionPublish": "Veröffentlichen",
       "actionUnpublish": "Veröffentlichung zurücknehmen",
       "actionClone": "Kurs kopieren",
-      "actionEditCourse": "Kurs bearbeiten",
       "actionDelete": "Löschen",
       "actionMore": "Weitere Aktionen",
       "pendingGrading_one": "{{count}} zu bewerten",
