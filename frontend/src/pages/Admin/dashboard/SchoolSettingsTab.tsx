@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Loader2, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -24,8 +24,19 @@ import type { OrgSettings } from "@/types"
  * API takes it, validated and audited; a considered UI for it comes with the
  * transcript, where the consequences are visible on the same page.
  */
-export function SchoolSettingsTab() {
+interface Props {
+  /** The school to edit — platform staff open it from that school's row on
+   *  the organizations tab. Without it, the caller's own school. */
+  organizationId?: string
+  /** Inside that row: the fields alone, without a card and a title the row
+   *  already gives. */
+  embedded?: boolean
+}
+
+export function SchoolSettingsTab({ organizationId, embedded = false }: Props = {}) {
   const { t } = useTranslation()
+  // Several rows can be open at once on the organizations tab.
+  const uid = useId()
   const [settings, setSettings] = useState<OrgSettings | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -40,7 +51,7 @@ export function SchoolSettingsTab() {
     // form showed — and saved — while the second request was in flight.
     setLoading(true)
     adminService
-      .getOrgSettings()
+      .getOrgSettings(organizationId)
       .then((s) => {
         if (cancelled) return
         setSettings(s)
@@ -62,7 +73,7 @@ export function SchoolSettingsTab() {
     return () => {
       cancelled = true
     }
-  }, [t, loadAttempt])
+  }, [t, loadAttempt, organizationId])
 
   const save = async () => {
     setSaving(true)
@@ -72,7 +83,7 @@ export function SchoolSettingsTab() {
         school_name_ru: form.school_name_ru.trim() || null,
         school_name_en: form.school_name_en.trim() || null,
         city: form.city.trim() || null,
-      })
+      }, organizationId)
       setSettings(updated)
       toast({ title: t("admin.school.saved"), variant: "success" })
     } catch (err) {
@@ -83,55 +94,54 @@ export function SchoolSettingsTab() {
   }
 
   if (loadError) {
-    return (
+    const error = (
+      <ErrorState
+        className="py-8"
+        description={loadError}
+        action={
+          <Button size="sm" variant="outline" onClick={() => setLoadAttempt((n) => n + 1)}>
+            {t("common.tryAgain")}
+          </Button>
+        }
+      />
+    )
+    return embedded ? error : (
       <Card>
-        <CardContent>
-          <ErrorState
-            className="py-8"
-            description={loadError}
-            action={
-              <Button size="sm" variant="outline" onClick={() => setLoadAttempt((n) => n + 1)}>
-                {t("common.tryAgain")}
-              </Button>
-            }
-          />
-        </CardContent>
+        <CardContent>{error}</CardContent>
       </Card>
     )
   }
 
   if (loading) {
-    return (
+    const spinner = (
+      <div className="flex items-center gap-2 py-8 text-sm text-ink-muted">
+        <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
+        {t("common.loading")}
+      </div>
+    )
+    return embedded ? spinner : (
       <Card>
-        <CardContent className="flex items-center gap-2 py-8 text-sm text-ink-muted">
-          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
-          {t("common.loading")}
-        </CardContent>
+        <CardContent>{spinner}</CardContent>
       </Card>
     )
   }
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="font-serif text-lg">{t("admin.school.title")}</CardTitle>
-        <p className="text-sm text-ink-muted">{t("admin.school.description")}</p>
-      </CardHeader>
-      <CardContent className="space-y-4">
+  const fields = (
+    <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <Label htmlFor="school-name-ru">{t("admin.school.nameRu")}</Label>
+            <Label htmlFor={`${uid}-school-name-ru`}>{t("admin.school.nameRu")}</Label>
             <Input
-              id="school-name-ru"
+              id={`${uid}-school-name-ru`}
               value={form.school_name_ru}
               maxLength={200}
               onChange={(e) => setForm((f) => ({ ...f, school_name_ru: e.target.value }))}
             />
           </div>
           <div>
-            <Label htmlFor="school-name-en">{t("admin.school.nameEn")}</Label>
+            <Label htmlFor={`${uid}-school-name-en`}>{t("admin.school.nameEn")}</Label>
             <Input
-              id="school-name-en"
+              id={`${uid}-school-name-en`}
               value={form.school_name_en}
               maxLength={200}
               onChange={(e) => setForm((f) => ({ ...f, school_name_en: e.target.value }))}
@@ -143,9 +153,9 @@ export function SchoolSettingsTab() {
           </div>
         </div>
         <div className="sm:max-w-xs">
-          <Label htmlFor="school-city">{t("admin.school.city")}</Label>
+          <Label htmlFor={`${uid}-school-city`}>{t("admin.school.city")}</Label>
           <Input
-            id="school-city"
+            id={`${uid}-school-city`}
             value={form.city}
             maxLength={120}
             onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
@@ -173,7 +183,18 @@ export function SchoolSettingsTab() {
           )}
           {t("common.save")}
         </Button>
-      </CardContent>
+    </div>
+  )
+
+  if (embedded) return fields
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="font-serif text-lg">{t("admin.school.title")}</CardTitle>
+        <p className="text-sm text-ink-muted">{t("admin.school.description")}</p>
+      </CardHeader>
+      <CardContent>{fields}</CardContent>
     </Card>
   )
 }

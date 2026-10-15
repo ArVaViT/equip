@@ -11,8 +11,11 @@ export type AdminTab =
   | "translations"
   | "audit"
   | "school"
-  | "dmca"
   | "organizations"
+/** Platform staff have no "school" tab: each school's settings open from its
+ *  row on the organizations tab, so two tabs no longer describe one thing.
+ *  "translations" is shown only while something waits for a person — see
+ *  ``AdminDashboard``. */
 export const ADMIN_TABS: readonly AdminTab[] = [
   "overview",
   "organizations",
@@ -20,14 +23,12 @@ export const ADMIN_TABS: readonly AdminTab[] = [
   "invitations",
   "translations",
   "audit",
-  "school",
-  "dmca",
 ]
 
 /** A director runs one school: its cohorts, invitations and settings,
  *  plus the final sign-off on its certificates (shown on the cohorts
- *  tab). The rest — users, translations, the platform's audit log,
- *  DMCA — is platform staff's and answers a director 403. */
+ *  tab). The rest — users, translations, the platform's audit log —
+ *  is platform staff's and answers a director 403. */
 export const DIRECTOR_TABS: readonly AdminTab[] = ["cohorts", "invitations", "school"]
 
 export function tabsFor(role: UserRole | null | undefined): readonly AdminTab[] {
@@ -48,7 +49,6 @@ export const ADMIN_TAB_TRIGGER_ID = {
   translations: "admin-tab-translations",
   audit: "admin-tab-audit",
   school: "admin-tab-school",
-  dmca: "admin-tab-dmca",
   organizations: "admin-tab-organizations",
 } as const
 
@@ -59,7 +59,6 @@ export const ADMIN_TAB_PANEL_ID = {
   translations: "admin-tabpanel-translations",
   audit: "admin-tabpanel-audit",
   school: "admin-tabpanel-school",
-  dmca: "admin-tabpanel-dmca",
   organizations: "admin-tabpanel-organizations",
 } as const
 

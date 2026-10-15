@@ -168,7 +168,8 @@
       "notVerified": "not verified",
       "noDirector": "no director",
       "noCourses": "no published courses"
-    }
+    },
+    "documents": "Name on documents"
   },
   "organizations": {
     "eyebrow": "On Equip",
@@ -268,16 +269,6 @@
     }
   },
   "dashboard": {
-    "atRisk": {
-      "write": "Write to {{name}}",
-      "title": "Who to write to",
-      "quiet_one": "{{count}} day without activity",
-      "quiet_other": "{{count}} days without activity",
-      "missed_one": "{{count}} deadline missed",
-      "missed_other": "{{count}} deadlines missed",
-      "more_one": "and {{count}} more",
-      "more_other": "and {{count}} more"
-    },
     "continue": {
       "position": "lesson {{current}} of {{total}}",
       "cta": "Continue"
@@ -286,34 +277,21 @@
     "loadCoursesError": "Could not load your courses. Please try refreshing the page.",
     "course": "Course",
     "browseAllCta": "Browse all courses",
-    "recentlyViewed": "Recently viewed",
     "votd": {
       "eyebrow": "Today",
       "title": "Verse of the Day"
     },
     "today": {
-      "eyebrow": "Calendar",
       "openFull": "Full calendar",
-      "empty": "Nothing scheduled today. Coming up:",
       "nothingAhead": "Nothing coming up.",
       "ahead": "Coming up",
       "over": "Over"
     },
     "readingProgress_one": "{{read}} of {{count}} lesson read",
-    "readingProgress_other": "{{read}} of {{count}} lessons read",
-    "teaching": {
-      "title": "Courses you teach",
-      "openAll": "All my courses",
-      "empty": "You have no courses yet. The first one takes a minute — a title and a description, the rest later.",
-      "createFirst": "Create your first course",
-      "edit": "Open in the editor",
-      "more_one": "and {{count}} more course",
-      "more_other": "and {{count}} more courses"
-    }
+    "readingProgress_other": "{{read}} of {{count}} lessons read"
   },
   "onboarding": {
     "student": {
-      "eyebrow": "Welcome",
       "title": "Welcome to Equip, {{name}}",
       "titleNoName": "Welcome to Equip",
       "body": "A quiet place to learn the Bible at your own pace. Each course here is written by a real teacher — pick a subject that draws you and begin.",
@@ -326,7 +304,7 @@
       "primaryCta": "Create your first course"
     },
     "teacherAsStudent": {
-      "body": "Courses you are enrolled in as a student will appear here. The ones you teach are in the “Courses you teach” card and under “Teaching”."
+      "body": "Courses you are enrolled in as a student will appear here. The ones you teach are under “Teaching”."
     }
   },
   "completion": {
@@ -1909,19 +1887,12 @@
     "backToCourses": "Back to courses"
   },
   "teacherDashboard": {
-    "stats": {
-      "totalCourses": "Courses",
-      "published": "Published",
-      "pendingActions": "Needs attention",
-      "pendingGrading": "Waiting to be marked"
-    },
     "courseCard": {
       "statusPublishing": "Publishing",
       "statusPublished": "Published",
       "statusDraft": "Draft",
       "modules_one": "{{count}} module",
       "modules_other": "{{count}} modules",
-      "createdOn": "Created {{date}}",
       "thumbnailAlt": "{{title}} thumbnail",
       "actionAnalytics": "Analytics",
       "actionGradebook": "Gradebook",
@@ -1982,7 +1953,8 @@
       "title": "Publish this course?",
       "description": "The course appears in the catalog once every language has it. Until then students cannot see it — that is expected.",
       "confirm": "Publish"
-    }
+    },
+    "toGrade": "To mark: {{count}}"
   },
   "teacherEditor": {
     "badges": {
@@ -2936,50 +2908,6 @@
         "retried": "Sent back to the pipeline.",
         "acceptError": "Couldn't accept it — please try again.",
         "retryError": "Couldn't send it back — please try again."
-      }
-    },
-    "tabDmca": "Copyright",
-    "dmca": {
-      "title": "Copyright complaints",
-      "description": "Every notice that arrived, what was decided, and how many times it has been the same person.",
-      "refresh": "Refresh",
-      "loadError": "Could not load the complaints.",
-      "empty": {
-        "title": "No complaints",
-        "body": "Nothing has been received. When a notice arrives by email, write it down here."
-      },
-      "status": {
-        "received": "Received",
-        "upheld": "Upheld",
-        "rejected": "Rejected",
-        "withdrawn": "Withdrawn"
-      },
-      "strike": "Strike {{number}}",
-      "accountClosed": "Account closed",
-      "upheldCount_one": "{{count}} upheld",
-      "upheldCount_other": "{{count}} upheld",
-      "field": {
-        "complainant": "From",
-        "uploader": "Uploaded by",
-        "unknownUploader": "Not identified",
-        "uploaderTold": "Uploader told",
-        "notYet": "not yet",
-        "decision": "Decision"
-      },
-      "action": {
-        "uphold": "Uphold and take down",
-        "reject": "Reject"
-      },
-      "confirm": {
-        "upholdTitle": "Uphold this complaint?",
-        "rejectTitle": "Reject this complaint?",
-        "body": "This is recorded once and cannot be changed afterwards. A mistake is corrected by a new entry.",
-        "willCloseAccount": "This is the third upheld complaint about {{name}}, so upholding it closes that account. This is recorded once and cannot be changed afterwards.",
-        "confirm": "Record it"
-      },
-      "toast": {
-        "recorded": "Recorded.",
-        "failed": "Could not record the decision."
       }
     },
     "tabOrganizations": "Organizations",

@@ -6,10 +6,10 @@ import i18n from "@/i18n/config"
 import { AdminTabs } from "../AdminTabs"
 import type { AdminTab } from "../constants"
 
-const ALL: readonly AdminTab[] = ["overview", "organizations", "cohorts", "invitations", "translations", "audit", "school", "dmca"]
+const ALL: readonly AdminTab[] = ["overview", "organizations", "cohorts", "invitations", "translations", "audit", "school"]
 
 /**
- * Eight tabs are wider than a laptop: the row scrolls instead of wrapping,
+ * Seven tabs are wider than a laptop: the row scrolls instead of wrapping,
  * and a tab opened by link is brought into view rather than left past the
  * scrolled edge.
  */
@@ -24,7 +24,7 @@ describe("AdminTabs", () => {
     Element.prototype.scrollIntoView = scroll
     render(
       <I18nextProvider i18n={i18n}>
-        <AdminTabs active="dmca" onChange={() => {}} tabs={ALL} />
+        <AdminTabs active="school" onChange={() => {}} tabs={ALL} />
       </I18nextProvider>,
     )
     expect(scroll).toHaveBeenCalledTimes(1)

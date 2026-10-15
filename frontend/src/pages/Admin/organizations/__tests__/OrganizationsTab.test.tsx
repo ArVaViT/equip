@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ConfirmProvider } from "@/components/ui/alert-dialog"
 import i18n from "@/i18n/config"
 import { organizationsService, type AdminOrganization } from "@/services/organizations"
+import { adminService } from "@/services/admin"
 import { OrganizationsTab } from "../OrganizationsTab"
 
 const org = (over: Partial<AdminOrganization> = {}): AdminOrganization => ({
@@ -98,5 +99,25 @@ describe("the organizations tab", () => {
     expect(screen.queryByRole("alertdialog")).toBeNull()
     expect(screen.getByLabelText("Добавить директора — почта зарегистрированного аккаунта")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Добавить" })).toBeInTheDocument()
+  })
+
+  it("opens each school's name on its documents from its own row, and asks only for that school", async () => {
+    vi.spyOn(organizationsService, "adminList").mockResolvedValue([org(), org({ id: "o2", slug: "b", public_name: "B" })])
+    const read = vi.spyOn(adminService, "getOrgSettings").mockResolvedValue({
+      school_name_ru: "Школа Б", school_name_en: "School B", city: "Kyiv",
+      default_grading_scheme: "letter", default_pass_threshold: 70,
+    } as never)
+    render(<OrganizationsTab />, { wrapper: Wrapper })
+    const toggles = await screen.findAllByRole("button", { name: "Название на документах" })
+    // Nothing is fetched for a closed row.
+    expect(read).not.toHaveBeenCalled()
+    expect(toggles[1]).toHaveAttribute("aria-expanded", "false")
+
+    await userEvent.click(toggles[1]!)
+
+    expect(toggles[1]).toHaveAttribute("aria-expanded", "true")
+    expect(await screen.findByDisplayValue("Школа Б")).toBeInTheDocument()
+    expect(read).toHaveBeenCalledWith("o2")
+    expect(read).toHaveBeenCalledTimes(1)
   })
 })

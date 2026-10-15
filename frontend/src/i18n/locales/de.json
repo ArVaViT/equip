@@ -168,7 +168,8 @@
       "notVerified": "nicht geprüft",
       "noDirector": "keine Leitung",
       "noCourses": "keine veröffentlichten Kurse"
-    }
+    },
+    "documents": "Name auf Dokumenten"
   },
   "organizations": {
     "eyebrow": "Auf Equip",
@@ -268,16 +269,6 @@
     }
   },
   "dashboard": {
-    "atRisk": {
-      "write": "An {{name}} schreiben",
-      "title": "Wem Sie schreiben sollten",
-      "quiet_one": "{{count}} Tag ohne Aktivität",
-      "quiet_other": "{{count}} Tage ohne Aktivität",
-      "missed_one": "{{count}} Frist verpasst",
-      "missed_other": "{{count}} Fristen verpasst",
-      "more_one": "und {{count}} weitere",
-      "more_other": "und {{count}} weitere"
-    },
     "continue": {
       "position": "Lektion {{current}} von {{total}}",
       "cta": "Weiter"
@@ -286,34 +277,21 @@
     "loadCoursesError": "Ihre Kurse konnten nicht geladen werden. Bitte laden Sie die Seite neu.",
     "course": "Kurs",
     "browseAllCta": "Alle Kurse ansehen",
-    "recentlyViewed": "Zuletzt angesehen",
     "votd": {
       "eyebrow": "Heute",
       "title": "Vers des Tages"
     },
     "today": {
-      "eyebrow": "Kalender",
       "openFull": "Ganzer Kalender",
-      "empty": "Heute ist nichts geplant. Als Nächstes:",
       "nothingAhead": "Nichts Anstehendes.",
       "ahead": "Als Nächstes",
       "over": "Vorbei"
     },
     "readingProgress_one": "{{read}} von {{count}} Lektion gelesen",
-    "readingProgress_other": "{{read}} von {{count}} Lektionen gelesen",
-    "teaching": {
-      "title": "Kurse, die Sie unterrichten",
-      "openAll": "Alle meine Kurse",
-      "empty": "Sie haben noch keine Kurse. Der erste ist in einer Minute angelegt — Titel und Beschreibung, der Rest später.",
-      "createFirst": "Ersten Kurs erstellen",
-      "edit": "Im Editor öffnen",
-      "more_one": "und {{count}} weiterer Kurs",
-      "more_other": "und {{count}} weitere Kurse"
-    }
+    "readingProgress_other": "{{read}} von {{count}} Lektionen gelesen"
   },
   "onboarding": {
     "student": {
-      "eyebrow": "Willkommen",
       "title": "Willkommen bei Equip, {{name}}",
       "titleNoName": "Willkommen bei Equip",
       "body": "Ein ruhiger Ort, um die Bibel im eigenen Tempo zu studieren. Jeder Kurs hier ist von einem echten Dozenten geschrieben — wählen Sie ein Thema, das Sie anzieht, und fangen Sie an.",
@@ -326,7 +304,7 @@
       "primaryCta": "Ersten Kurs erstellen"
     },
     "teacherAsStudent": {
-      "body": "Hier erscheinen Kurse, in die Sie als Studierende eingeschrieben sind. Die Kurse, die Sie unterrichten, finden Sie in der Karte „Kurse, die Sie unterrichten“ und unter „Lehre“."
+      "body": "Hier erscheinen Kurse, in die Sie als Studierende eingeschrieben sind. Die Kurse, die Sie unterrichten, finden Sie unter „Lehre“."
     }
   },
   "completion": {
@@ -1909,19 +1887,12 @@
     "backToCourses": "Zurück zu den Kursen"
   },
   "teacherDashboard": {
-    "stats": {
-      "totalCourses": "Kurse",
-      "published": "Veröffentlicht",
-      "pendingActions": "Braucht Aufmerksamkeit",
-      "pendingGrading": "Wartet auf Bewertung"
-    },
     "courseCard": {
       "statusPublishing": "Wird veröffentlicht",
       "statusPublished": "Veröffentlicht",
       "statusDraft": "Entwurf",
       "modules_one": "{{count}} Modul",
       "modules_other": "{{count}} Module",
-      "createdOn": "Erstellt {{date}}",
       "thumbnailAlt": "Vorschaubild: {{title}}",
       "actionAnalytics": "Auswertung",
       "actionGradebook": "Notenbuch",
@@ -1982,7 +1953,8 @@
       "title": "Diesen Kurs veröffentlichen?",
       "description": "Der Kurs erscheint im Katalog, sobald jede Sprache ihn hat. Bis dahin sehen Studierende ihn nicht — das ist so vorgesehen.",
       "confirm": "Veröffentlichen"
-    }
+    },
+    "toGrade": "Zu bewerten: {{count}}"
   },
   "teacherEditor": {
     "badges": {
@@ -2936,50 +2908,6 @@
         "retried": "Zurück an die Pipeline gegeben.",
         "acceptError": "Konnte nicht angenommen werden — bitte erneut versuchen.",
         "retryError": "Konnte nicht zurückgegeben werden — bitte erneut versuchen."
-      }
-    },
-    "tabDmca": "Urheberrecht",
-    "dmca": {
-      "title": "Urheberrechtsbeschwerden",
-      "description": "Jede eingegangene Mitteilung, was darüber entschieden wurde und wie oft es dieselbe Person war.",
-      "refresh": "Aktualisieren",
-      "loadError": "Die Beschwerden konnten nicht geladen werden.",
-      "empty": {
-        "title": "Keine Beschwerden",
-        "body": "Es ist nichts eingegangen. Kommt eine Mitteilung per E-Mail, halten Sie sie hier fest."
-      },
-      "status": {
-        "received": "Eingegangen",
-        "upheld": "Bestätigt",
-        "rejected": "Abgelehnt",
-        "withdrawn": "Zurückgezogen"
-      },
-      "strike": "Verstoß {{number}}",
-      "accountClosed": "Konto geschlossen",
-      "upheldCount_one": "{{count}} bestätigt",
-      "upheldCount_other": "{{count}} bestätigt",
-      "field": {
-        "complainant": "Von",
-        "uploader": "Hochgeladen von",
-        "unknownUploader": "nicht ermittelt",
-        "uploaderTold": "Hochladende Person benachrichtigt",
-        "notYet": "noch nicht",
-        "decision": "Entscheidung"
-      },
-      "action": {
-        "uphold": "Bestätigen und entfernen",
-        "reject": "Ablehnen"
-      },
-      "confirm": {
-        "upholdTitle": "Diese Beschwerde bestätigen?",
-        "rejectTitle": "Diese Beschwerde ablehnen?",
-        "body": "Dies wird einmal festgehalten und lässt sich danach nicht ändern. Ein Fehler wird durch einen neuen Eintrag berichtigt.",
-        "willCloseAccount": "Dies ist die dritte bestätigte Beschwerde über {{name}}; mit der Bestätigung wird dieses Konto geschlossen. Es wird einmal festgehalten und lässt sich danach nicht ändern.",
-        "confirm": "Festhalten"
-      },
-      "toast": {
-        "recorded": "Festgehalten.",
-        "failed": "Die Entscheidung konnte nicht festgehalten werden."
       }
     },
     "tabOrganizations": "Organisationen",

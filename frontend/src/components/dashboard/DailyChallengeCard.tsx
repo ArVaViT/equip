@@ -257,13 +257,15 @@ export function DailyChallengeCard() {
               }
             />
           )}
+          {/* An arrow at every width, as on the calendar card; the word
+              stays the link's name. */}
           <Link
             to="/daily-challenge/archive"
-            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand transition-opacity hover:opacity-80"
+            aria-label={t("dailyChallenge.openArchive")}
+            title={t("dailyChallenge.openArchive")}
+            className="-m-1.5 inline-flex shrink-0 items-center rounded-md p-1.5 text-brand transition-colors hover:bg-brand/10"
           >
-            {/* The arrow alone on a phone; the word stays the link's name. */}
-            <span className="max-sm:sr-only">{t("dailyChallenge.openArchive")}</span>
-            <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           </Link>
         </div>
       </header>
