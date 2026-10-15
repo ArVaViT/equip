@@ -1,5 +1,4 @@
 import i18n, { activeIntlTag } from "@/i18n/config";
-import { formatDateLong } from "@/i18n/format";
 import { getDisplayTimeZone } from "@/i18n/timeZone";
 
 export function isSameDay(a: Date, b: Date): boolean {
@@ -30,21 +29,6 @@ export function formatTime(dateStr: string): string {
     // The reader's zone (profile, else browser), as every time in the app.
     timeZone: getDisplayTimeZone(),
   });
-}
-
-export function formatShortDate(dateStr: string): string {
-  // Editorial short form ("May 14" / "14 мая") for the calendar agenda —
-  // chronological grouping makes year/locale-canonical ISO redundant
-  // here, and natural-language reads better against the day labels.
-  return formatDateLong(dateStr, {
-    year: undefined,
-    month: "short",
-    day: "numeric",
-  });
-}
-
-export function isOverdue(dateStr: string): boolean {
-  return new Date(dateStr) < new Date();
 }
 
 /**
