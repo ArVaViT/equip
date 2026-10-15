@@ -1,5 +1,4 @@
-import { datadogRum, type RumEvent } from "@datadog/browser-rum"
-import { reactPlugin } from "@datadog/browser-rum-react"
+import type { RumEvent } from "@datadog/browser-rum"
 
 /**
  * CSP-Report-Only violations RUM forwards to Datadog as ``@type:error``
@@ -214,96 +213,75 @@ export function beforeSendRum(event: RumEvent): boolean {
   return true
 }
 
-// Datadog RUM is opt-in: if the applicationId / clientToken aren't set we
-// skip init entirely so local builds don't ship events to a dashboard nobody
-// reads. In production (Vercel) both vars are populated from Vercel env vars.
+/**
+ * The SDK, once it is loaded and started; null when RUM is off for this load.
+ *
+ * Loaded with a dynamic import, not a static one, since 2026-10-15. The SDK
+ * is ~45 kB gzipped — about 40% of what the entry chunk weighed — and as a
+ * static import it sat in front of the first paint on every page, for every
+ * visitor, including the automated ones it then declines to start for. On a
+ * phone that was a direct share of the landing page's LCP.
+ *
+ * The cost is the window before the chunk arrives. Datadog's own async
+ * (CDN) setup has the same window, and covers it the same way: the view's
+ * timings come from buffered performance entries, so the first view's FCP
+ * and LCP are still recorded; route changes are queued by the React plugin
+ * (`onRumInit`) and replayed at init; and errors thrown before init are kept
+ * by `bufferEarlyErrors` below and handed over once it runs.
+ *
+ * Whether RUM is configured (the `VITE_DATADOG_*` ids) is decided inside the
+ * lazy chunk, not here. Checked here, the bundler folds the check away on a
+ * build without the ids — CI, a local build — and drops the chunk with it,
+ * so the bundle-size sentinel would see different chunks in CI than on
+ * Vercel. Without the ids the chunk is fetched and starts nothing; that
+ * happens only off production.
+ */
+type DatadogRum = typeof import("@datadog/browser-rum")["datadogRum"]
+let rumReady: Promise<DatadogRum | null> | null = null
 
 /**
- * Extract the backend origin from VITE_API_URL so we can mark fetch/XHR
- * calls to our own API as "first-party" — this is what links RUM sessions
- * to backend APM traces once we turn APM on. If the URL is malformed or
- * unset we fall back to an empty array (no tracing headers added).
+ * Uncaught errors from before the SDK is up. Bounded — a boot that throws in
+ * a loop must not grow this without limit — and dropped the moment RUM takes
+ * over, which installs its own listeners.
  */
-function buildAllowedTracingUrls(): (string | RegExp)[] {
-  const apiUrl = import.meta.env.VITE_API_URL
-  if (!apiUrl) return []
-  try {
-    const origin = new URL(apiUrl).origin
-    return [origin]
-  } catch {
-    return []
+const EARLY_ERROR_LIMIT = 20
+function bufferEarlyErrors(): () => unknown[] {
+  const early: unknown[] = []
+  const onError = (event: ErrorEvent) => {
+    if (early.length < EARLY_ERROR_LIMIT) early.push(event.error ?? event.message)
+  }
+  const onRejection = (event: PromiseRejectionEvent) => {
+    if (early.length < EARLY_ERROR_LIMIT) early.push(event.reason)
+  }
+  window.addEventListener("error", onError)
+  window.addEventListener("unhandledrejection", onRejection)
+  return () => {
+    window.removeEventListener("error", onError)
+    window.removeEventListener("unhandledrejection", onRejection)
+    return early
   }
 }
 
 export function initDatadogRum() {
-  const applicationId = import.meta.env.VITE_DATADOG_APPLICATION_ID
-  const clientToken = import.meta.env.VITE_DATADOG_CLIENT_TOKEN
-  if (!applicationId || !clientToken) return
   // Not started at all, rather than started and filtered: an automated
   // run should cost nothing and leave nothing (see `isAutomatedVisitor`).
+  // Since the SDK became a lazy chunk, "nothing" includes the download.
   if (isAutomatedVisitor(navigator)) return
 
-  const env = import.meta.env.VITE_DATADOG_ENV ?? import.meta.env.MODE
-  const site = import.meta.env.VITE_DATADOG_SITE ?? "us5.datadoghq.com"
-  const service = import.meta.env.VITE_DATADOG_SERVICE ?? "equip-frontend"
-  const version = import.meta.env.VITE_APP_VERSION ?? "0.0.0"
-
-  datadogRum.init({
-    applicationId,
-    clientToken,
-    site,
-    proxy: intakeProxyUrl,
-    service,
-    env,
-    version,
-
-    // 100% of sessions — at our scale (tens of users) sampling just wastes
-    // visibility, and the LCP/error monitors need full coverage. RUM session
-    // events are cheap; keep them all.
-    sessionSampleRate: 100,
-    // Session Replay at 100% for the pilot. The recorder serializes DOM
-    // mutations from first paint and can compete for the main thread during
-    // the LCP window (that's why it was cut to 20% during the perf audit),
-    // but with real pilot users now onboarding, seeing every session is worth
-    // far more than the LCP artifact or the (negligible-at-this-scale) replay
-    // cost. Revisit if session volume grows enough that replay cost or the
-    // main-thread overhead actually bites.
-    sessionReplaySampleRate: 100,
-
-    // Privacy: mask every text input by default — quiz answers, student
-    // names, password fields, chat-style pages all contain PII that must
-    // not end up in replay recordings. Non-input text (buttons, headings,
-    // course content) is still visible.
-    defaultPrivacyLevel: "mask-user-input",
-
-    // Full auto-instrumentation: page loads, resource timings (XHR/fetch/
-    // images/CSS/JS), click/scroll/input actions, long tasks (>50ms JS
-    // blocking the main thread), frustration signals (rage clicks, dead
-    // clicks, error clicks).
-    trackResources: true,
-    trackUserInteractions: true,
-    trackLongTasks: true,
-
-    // Connects RUM sessions to backend APM traces. When the backend adds
-    // the Datadog tracer, requests to our API will carry the trace headers
-    // and a "View API Calls" tab will show end-to-end waterfalls.
-    allowedTracingUrls: buildAllowedTracingUrls(),
-    traceSampleRate: 100,
-
-    // React Router v6 integration — uses the drop-in <Routes> from
-    // @datadog/browser-rum-react/react-router-v6 to create one RUM view
-    // per route *template* (e.g. "/courses/:id") instead of per-URL so
-    // "/courses/abc-uuid" and "/courses/def-uuid" aggregate into the
-    // same view in dashboards.
-    plugins: [reactPlugin({ router: true })],
-
-    // Drop known-benign CSP-Report-Only violation events client-side
-    // (see ``isBenignCspViolation`` for the signatures + rationale), and
-    // strip credentials out of the URLs on everything else (see
-    // ``scrubRumEvent``). Returning ``false`` prevents the event from
-    // being sent to Datadog.
-    beforeSend: beforeSendRum,
-  })
+  const takeEarlyErrors = bufferEarlyErrors()
+  rumReady = import("./datadogRum")
+    .then(({ startRum }) => {
+      const rum = startRum()
+      const early = takeEarlyErrors()
+      if (rum) for (const error of early) rum.addError(error, { early: true })
+      return rum
+    })
+    .catch(() => {
+      // A blocked or failed chunk: no monitoring for this load, and no
+      // reason to take the page down over it.
+      takeEarlyErrors()
+      return null
+    })
 }
 
 /**
@@ -319,16 +297,24 @@ export function setDatadogUser(user: {
   name?: string | null
   role?: string | null
 }) {
-  if (!import.meta.env.VITE_DATADOG_APPLICATION_ID) return
-  datadogRum.setUser({
-    id: user.id,
-    ...(user.email ? { email: user.email } : {}),
-    ...(user.name ? { name: user.name } : {}),
-    ...(user.role ? { role: user.role } : {}),
-  })
+  void rumReady?.then((rum) =>
+    rum?.setUser({
+      id: user.id,
+      ...(user.email ? { email: user.email } : {}),
+      ...(user.name ? { name: user.name } : {}),
+      ...(user.role ? { role: user.role } : {}),
+    }),
+  )
 }
 
 export function clearDatadogUser() {
-  if (!import.meta.env.VITE_DATADOG_APPLICATION_ID) return
-  datadogRum.clearUser()
+  void rumReady?.then((rum) => rum?.clearUser())
+}
+
+/**
+ * Report an error RUM would not see by itself (one React caught). Waits for
+ * the SDK when it is still loading; a no-op when RUM is off for this load.
+ */
+export function reportDatadogError(error: unknown, context?: object) {
+  void rumReady?.then((rum) => rum?.addError(error, context))
 }

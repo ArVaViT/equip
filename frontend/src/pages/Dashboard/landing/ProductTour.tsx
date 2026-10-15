@@ -2,7 +2,8 @@ import { useEffect, useRef } from "react";
 import { useReducedMotion } from "motion/react";
 
 import { SceneBand } from "./SceneBand"
-import { frameClass, usePhoneCut, type Cut } from "./phoneCut";
+import { frameClass, usePhoneCut } from "./phoneCut";
+import { TOUR } from "./tourCuts";
 import { ScrollScale } from "./ScrollScale";
 
 /**
@@ -33,26 +34,6 @@ import { ScrollScale } from "./ScrollScale";
  * product does; a reader who has asked for less movement should not have to
  * choose between a seizure risk and the information.
  */
-const TOUR: { wide: Cut; phone: Cut } = {
-  wide: {
-    mp4: "/video/tour.mp4",
-    webm: "/video/tour.webm",
-    poster: "/video/tour-poster.jpg",
-    width: 1920,
-    height: 1080,
-  },
-  // Cut for the phone, 2026-09-27. Its poster is the closing wordmark
-  // rather than a lesson screen: the film's phone poster is already the
-  // lesson, and the rule above holds on a phone too — two different frames.
-  phone: {
-    mp4: "/video/tour-vertical.mp4",
-    webm: "/video/tour-vertical.webm",
-    poster: "/video/tour-poster-vertical.jpg",
-    width: 1080,
-    height: 1920,
-  },
-};
-
 export function ProductTour() {
   const phone = usePhoneCut();
   const cut = phone ? TOUR.phone : TOUR.wide;

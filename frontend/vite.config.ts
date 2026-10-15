@@ -26,9 +26,37 @@ function webMcpOriginTrial(): Plugin {
   }
 }
 
+// A preconnect to the API origin, written into index.html at build time.
+// The API is a different origin (api.equipbible.com) and nothing in the HTML
+// names it, so its DNS, TCP and TLS handshakes used to start only when the
+// first page asked for data — after the bundle, the locale catalog and the
+// first render. On a phone that is three round trips added to the course
+// page's largest paint, which is text the API returns. `crossorigin`: the
+// requests are CORS without cookies, which use the anonymous connection pool.
+// Same-origin or unset (a local build against a proxy): nothing to warm.
+function apiPreconnect(): Plugin {
+  let origin = ''
+  return {
+    name: 'equip-api-preconnect',
+    configResolved(config) {
+      const raw = (config.env.VITE_API_URL ?? process.env.VITE_API_URL ?? '').trim()
+      try {
+        const url = new URL(raw)
+        origin = url.protocol === 'https:' ? url.origin : ''
+      } catch {
+        origin = ''
+      }
+    },
+    transformIndexHtml() {
+      if (!origin) return []
+      return [{ tag: 'link', attrs: { rel: 'preconnect', href: origin, crossorigin: true }, injectTo: 'head' }]
+    },
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), webMcpOriginTrial()],
+  plugins: [react(), webMcpOriginTrial(), apiPreconnect()],
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
   },

@@ -5,6 +5,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { initDatadogRum } from './lib/datadog'
 import { captureAuthLanding } from './lib/authLanding'
 import { installPreloadErrorRecovery } from './lib/staleChunkRecovery'
+import { warmRoute } from './lib/warmRoute'
 // Configures i18next; catalogs are per-locale lazy chunks. We await
 // `i18nReady` below so the very first render already has the active
 // locale's translations — no key flicker on cold start.
@@ -24,9 +25,10 @@ import './index.css'
 // Replay record never contains it. See `lib/authLanding.ts`.
 captureAuthLanding()
 
-// Initialize monitoring before React mounts so early boot errors
-// (bad env vars, missing #root, etc.) get captured. No-op when the
-// VITE_DATADOG_* env vars are unset (local dev without credentials).
+// Start loading monitoring before React mounts. The SDK is a lazy chunk and
+// does not hold up the first paint; errors thrown before it arrives (bad env
+// vars, missing #root, etc.) are buffered and reported once it starts. No-op
+// when the VITE_DATADOG_* env vars are unset (local dev without credentials).
 initDatadogRum()
 
 // Net under ErrorBoundary for stale-chunk failures from dynamic imports
@@ -34,6 +36,12 @@ initDatadogRum()
 // see the doc comment on installPreloadErrorRecovery). Registered once,
 // before anything has a chance to import() a chunk.
 installPreloadErrorRecovery()
+
+// Fetch the first page's chunks (and, on the landing, its LCP image) now,
+// in parallel with the locale catalog, rather than after the first render
+// asks for them. See `lib/warmRoute.ts`. After the stale-chunk net above,
+// which covers these imports as it covers the router's.
+warmRoute(window.location.pathname)
 
 const rootEl = document.getElementById('root')
 if (!rootEl) {

@@ -1,5 +1,5 @@
 import { Component, type ReactNode } from "react"
-import { datadogRum } from "@datadog/browser-rum"
+import { reportDatadogError } from "@/lib/datadog"
 import i18n from "@/i18n/config"
 import { reloadOnceFor } from "@/lib/staleChunkRecovery"
 
@@ -26,10 +26,10 @@ export default class ErrorBoundary extends Component<Props, State> {
   override componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("ErrorBoundary caught:", error, info.componentStack)
     // Forward to Datadog RUM with the React component stack attached as
-    // context. datadogRum.init() is a no-op when VITE_DATADOG_* env vars
-    // aren't set, and addError silently drops the call if init never ran,
-    // so this is safe unconditionally.
-    datadogRum.addError(error, {
+    // context. A no-op when RUM is off for this load (no VITE_DATADOG_* env
+    // vars, or an automated visitor); waits for the SDK chunk when it is
+    // still loading, so a crash during boot is not lost.
+    reportDatadogError(error, {
       componentStack: info.componentStack,
     })
 
