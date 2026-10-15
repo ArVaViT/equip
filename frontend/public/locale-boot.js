@@ -67,7 +67,9 @@
     var tag = document.currentScript;
     var catalogs = tag && tag.getAttribute("data-catalogs");
     var href = catalogs && JSON.parse(catalogs)[locale];
-    if (href) {
+    // Only a bundled catalog path: the attribute is written by the build,
+    // but a URL taken from the DOM is not handed to the network unchecked.
+    if (typeof href === "string" && /^\/assets\/[A-Za-z0-9_-]+\.json$/.test(href)) {
       var link = document.createElement("link");
       link.rel = "preload";
       link.setAttribute("as", "fetch");
