@@ -136,6 +136,20 @@ class TestNoAccountYet:
         assert db.query(Enrollment).filter_by(user_id=account.id, course_id=COURSE_ID).count() == 1
         assert db.query(OrganizationMember).filter_by(user_id=account.id).count() == 1
 
+    def test_a_platform_invitation_the_new_profile_fulfils_is_still_accepted(
+        self, anon: TestClient, db: Session, gotrue: FakeGoTrue
+    ) -> None:
+        """Creating the profile closes a platform invitation in the database
+        while this request still holds it as pending. Found by the e2e run
+        against a real GoTrue: the person got a 409 «lost race»."""
+        invitation, token = _invitation(db, scope=InvitationScope.PLATFORM.value)
+
+        response = _register(anon, token)
+
+        assert response.status_code == 201, response.text
+        db.refresh(invitation)
+        assert invitation.status == InvitationStatus.FULFILLED.value
+
     def test_the_address_comes_only_from_the_invitation(self, anon: TestClient, db: Session) -> None:
         _invitation_row, token = _invitation(db)
 
@@ -477,6 +491,29 @@ class TestTheToken:
         before = invitation_token(ident)
         monkeypatch.setattr(invitation_service.settings, "JWT_SECRET_KEY", "another-key")
         assert invitation_token(ident) != before
+
+
+def test_the_preview_is_not_held_at_the_consent_gate(
+    db: Session, admin: User, nobody_has_signed_anything: None
+) -> None:
+    """Signed in to accept, and not yet through the consent screen: the
+    browser sends its token with the preview, which travels as a POST."""
+    person = User(id=uuid.uuid4(), email=EMAIL, full_name="New", role=UserRole.STUDENT.value)
+    db.add(person)
+    db.commit()
+    _row, token = _invitation(db)
+
+    def _override_db():
+        yield db
+
+    app.dependency_overrides[get_db] = _override_db
+    from app.api import consent_gate
+
+    app.dependency_overrides[consent_gate.consent_subject] = lambda: person
+    with TestClient(app, raise_server_exceptions=False) as tc:
+        response = tc.post(f"{PREFIX}/preview", json={"token": token})
+
+    assert response.status_code == 200, response.text
 
 
 def test_accepting_after_google_is_not_held_at_the_consent_gate(

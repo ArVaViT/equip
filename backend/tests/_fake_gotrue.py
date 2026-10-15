@@ -17,7 +17,9 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import httpx
+from sqlalchemy import func, insert, update
 
+from app.models.invitation import Invitation
 from app.models.user import User
 
 if TYPE_CHECKING:
@@ -50,7 +52,9 @@ class FakeGoTrue:
         """An account that exists before the test starts, with its profile."""
         account = FakeAccount(id=uuid.uuid4(), email=email, password=password, confirmed=confirmed)
         self.accounts[account.id] = account
-        return self._write_profile(db, account, full_name="Earlier Attempt", locale="en")
+        self._write_profile(db, account, full_name="Earlier Attempt", locale="en")
+        db.commit()
+        return db.query(User).filter(User.id == account.id).one()
 
     def by_email(self, email: str) -> FakeAccount | None:
         return next((a for a in self.accounts.values() if a.email == email), None)
@@ -130,15 +134,19 @@ class FakeGoTrue:
         }
 
     @staticmethod
-    def _write_profile(db: Session, account: FakeAccount, *, full_name: str, locale: str | None) -> User:
-        """What ``handle_new_user`` writes: a student in no organization."""
-        from tests.conftest import NOBODY_BELONGS_ANYWHERE
+    def _write_profile(db: Session, account: FakeAccount, *, full_name: str, locale: str | None) -> None:
+        """What the database does when Supabase Auth writes an account.
 
-        before = db.info.get(NOBODY_BELONGS_ANYWHERE, False)
-        db.info[NOBODY_BELONGS_ANYWHERE] = True
-        try:
-            has_locale = locale in ("ru", "en", "de", "uk")
-            profile = User(
+        ``handle_new_user`` makes a student profile in no organization, and
+        ``trg_profiles_created_fulfil_invitations`` closes every pending
+        platform invitation to that address as *fulfilled*. Written with
+        Core statements and no ORM commit, the way another transaction's
+        writes look to the session under test: rows it already loaded are not
+        refreshed behind its back.
+        """
+        has_locale = locale in ("ru", "en", "de", "uk")
+        db.execute(
+            insert(User.__table__).values(
                 id=account.id,
                 email=account.email,
                 full_name=full_name,
@@ -146,8 +154,13 @@ class FakeGoTrue:
                 preferred_locale=locale if has_locale else "en",
                 locale_source="chosen" if has_locale else "default",
             )
-            db.add(profile)
-            db.commit()
-        finally:
-            db.info[NOBODY_BELONGS_ANYWHERE] = before
-        return profile
+        )
+        db.execute(
+            update(Invitation.__table__)
+            .where(
+                func.lower(Invitation.__table__.c.email) == account.email.lower(),
+                Invitation.__table__.c.status == "pending",
+                Invitation.__table__.c.scope == "platform",
+            )
+            .values(status="fulfilled", fulfilled_at=datetime.now(UTC))
+        )

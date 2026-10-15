@@ -894,6 +894,12 @@ def register_by_invitation(
         )
         db.commit()
 
+    # The account was written by Supabase Auth, in its own transaction, and
+    # the database answered it: ``handle_new_user`` made the profile, and a
+    # platform invitation is *fulfilled* the moment its person has one. The
+    # row this session loaded still says ``pending``; read it again, or the
+    # single-use guard below sees a race nobody ran.
+    db.expire_all()
     increment("equip.invitations.registered_total", scope=invitation.scope, existing=str(account is not None).lower())
     return accept_invitation(db, token=token, current_user_id=user_id, current_user_email=invitation.email)
 

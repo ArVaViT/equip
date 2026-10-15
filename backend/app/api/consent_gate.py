@@ -118,8 +118,11 @@ MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 #:     it, and the promise has no "after you have accepted the documents"
 #:     clause. The route is authorised by its signed token, not by a session,
 #:     and can only turn one kind of mail off.
-#: ``/api/v1/invitations/accept`` and ``/api/v1/invitations/register``
-#:     Arriving by invitation. Registering from the link is anonymous and
+#: ``/api/v1/invitations/preview``, ``/accept`` and ``/register``
+#:     Arriving by invitation. The preview is a read that travels as a POST
+#:     only to keep the token out of request logs; gated, it answered 403 to
+#:     a person who had just signed in to accept, and the page could not
+#:     even say what the invitation was. Registering from the link is anonymous and
 #:     accepts as it creates the account, before anybody could have been
 #:     shown a document; accepting after signing in with Google or a
 #:     password is the same arrival for somebody who already had a way in.
@@ -135,6 +138,7 @@ EXEMPT_PREFIXES: tuple[str, ...] = (
     "/api/v1/internal/",
     "/api/v1/users/me/preferences",
     "/api/v1/email/unsubscribe",
+    "/api/v1/invitations/preview",
     "/api/v1/invitations/accept",
     "/api/v1/invitations/register",
 )
