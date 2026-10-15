@@ -11,6 +11,7 @@ import {
   subscribeGrandTour,
 } from "@/lib/tourState"
 import { perPageTourSeenKey } from "@/lib/storageKeys"
+import { getTeacherAgreementOwed, subscribeTeacherAgreement } from "@/components/legal/useTeacherAgreement"
 
 interface UseUserTourOpts {
   /** Stable identifier for this surface's tour. Combined with the
@@ -152,6 +153,17 @@ export function useUserTour({
     getFirstRunActive,
     () => false,
   )
+  // The teacher agreement is the other screen that covers every page, and it
+  // needs the same courtesy. A tour started under it puts ``driver-active`` on
+  // <body>, which takes pointer events away from everything but the tour's
+  // own popover — hidden beneath the agreement. A new teacher tapped its
+  // checkbox six times and every tap landed on <body> (RUM, 2026-09-19).
+  const agreementOwed = useSyncExternalStore(
+    subscribeTeacherAgreement,
+    getTeacherAgreementOwed,
+    () => false,
+  )
+  const gateUp = firstRunActive || agreementOwed
 
   const buildDriver = useCallback((): Promise<Driver> => {
     return createEditorialTour({
@@ -208,7 +220,7 @@ export function useUserTour({
     // First-run flow (Privacy + Setup) blocks every per-page tour
     // unconditionally — the user is configuring their account, no
     // spotlights underneath the modal.
-    if (firstRunActive) return
+    if (gateUp) return
     // Grand tour wins races with its covered surfaces. If it's
     // pending (scheduled) or actively running, the per-page tour for
     // a covered surface stands down. Once the grand tour finishes,
@@ -235,12 +247,12 @@ export function useUserTour({
         timerRef.current = null
       }
     }
-    // ``alreadySeen``, ``grandTourActive``, ``firstRunActive`` IN
+    // ``alreadySeen``, ``grandTourActive``, ``gateUp`` IN
     // deps so a mid-mount state change (e.g. grand tour or first-run
     // fires after this hook has already run its first effect pass)
     // re-runs the early-return chain and cancels any pending timer
     // via the cleanup.
-  }, [autoStart, autoStartDelayMs, userId, userRole, ready, steps.length, alreadySeen, grandTourActive, isCovered, firstRunActive, skipRoles, start])
+  }, [autoStart, autoStartDelayMs, userId, userRole, ready, steps.length, alreadySeen, grandTourActive, isCovered, gateUp, skipRoles, start])
 
   // Defense in depth: if the grand tour or first-run flow activates
   // while this hook's tour is already on screen, tear it down to
@@ -248,7 +260,7 @@ export function useUserTour({
   // driverRef null-check.
   useEffect(() => {
     const shouldTearDown =
-      (grandTourActive && isCovered) || firstRunActive
+      (grandTourActive && isCovered) || gateUp
     if (shouldTearDown) {
       // Invalidate any in-flight async build too — a driver resolving
       // after the takeover must not drive over the grand tour / modal.
@@ -258,7 +270,7 @@ export function useUserTour({
         driverRef.current = null
       }
     }
-  }, [grandTourActive, isCovered, firstRunActive])
+  }, [grandTourActive, isCovered, gateUp])
 
   useEffect(() => {
     const seqRef = startSeqRef

@@ -1,23 +1,23 @@
 import { useTranslation } from "react-i18next"
-import { Award, TrendingUp, Users } from "lucide-react"
+import { Award, TrendingUp } from "lucide-react"
 import { StatCard } from "@/components/patterns"
 
 interface Props {
-  totalStudents: number
   averageProgress: number
   completionRate: number
 }
 
-export function ProgressStats({ totalStudents, averageProgress, completionRate }: Props) {
+/**
+ * Two numbers, side by side on every width. There was a third — the number of
+ * students — which the table heading right below already says, and on a phone
+ * the three stacked tiles filled the first screen: a teacher looking for their
+ * students scrolled past a page of summary before meeting a name.
+ */
+export function ProgressStats({ averageProgress, completionRate }: Props) {
   const { t } = useTranslation()
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-      <StatCard
-        label={t("studentProgress.stats.totalStudents")}
-        value={totalStudents}
-        icon={Users}
-      />
+    <div className="mb-6 grid grid-cols-2 gap-3 sm:mb-8 sm:gap-4">
       <StatCard
         label={t("studentProgress.stats.averageProgress")}
         value={`${averageProgress}%`}

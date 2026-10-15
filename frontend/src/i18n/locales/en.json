@@ -565,16 +565,6 @@
         "title": "Watch how it lands",
         "body": "Numbers update in real time as students enrol, finish lessons, and submit work. No refresh needed."
       }
-    },
-    "studentProgress": {
-      "table": {
-        "title": "Per-student progress",
-        "body": "Every enrolled student with their progress percentage and last activity. Click a student to drill into their detailed view."
-      },
-      "finale": {
-        "title": "Coaching view",
-        "body": "Spot students who haven't logged in lately, or those stuck on a lesson. A nudge from you often makes the difference."
-      }
     }
   },
   "courses": {
@@ -1632,7 +1622,6 @@
     "searchPlaceholder": "Search students by name or email...",
     "table": {
       "heading": "Students",
-      "description": "Click a row to view detailed breakdown",
       "name": "Name",
       "email": "Email",
       "progress": "Progress",
@@ -1681,7 +1670,6 @@
       "returnWork": "Return the work"
     },
     "stats": {
-      "totalStudents": "Total Students",
       "averageProgress": "Average Progress",
       "completionRate": "Completion Rate"
     },
@@ -1889,6 +1877,7 @@
   "teacherDashboard": {
     "courseCard": {
       "statusPublishing": "Publishing",
+      "students": "Students",
       "statusPublished": "Published",
       "statusDraft": "Draft",
       "modules_one": "{{count}} module",
@@ -1896,11 +1885,9 @@
       "thumbnailAlt": "{{title}} thumbnail",
       "actionAnalytics": "Analytics",
       "actionGradebook": "Gradebook",
-      "actionStudentProgress": "Student Progress",
       "actionPublish": "Publish",
       "actionUnpublish": "Unpublish",
       "actionClone": "Clone course",
-      "actionEditCourse": "Edit course",
       "actionDelete": "Delete",
       "actionMore": "More actions",
       "pendingGrading_one": "{{count}} to grade",
@@ -3282,6 +3269,7 @@
         "marks": "Mark honestly and on the work. A certificate carries your judgement and somebody will show it to somebody else."
       },
       "checkbox": "I have read and accept the Teacher & Contributor Agreement",
+      "tickFirst": "Tick the box above to accept the agreement.",
       "next": "Accept and continue",
       "saveFailed": "Couldn't record your acceptance. Check your connection and try again."
     },

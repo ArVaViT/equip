@@ -14,7 +14,14 @@ which the reports and the PDF use, can slot a loose lesson between two
 modules; picking by it named a lesson the reader's screen calls the
 last, and showed the visible first one a wall.) The answer is a reading
 lesson the course is willing to show anyone — published, public,
-released, not locked. Anything else and there is no preview.
+released, not locked, and with something in it. Anything else and there
+is no preview.
+
+"Something in it" (2026-10-15): a course whose first lesson had no blocks
+yet still offered "Read the first lesson — no account needed", and the
+guest who took the offer got "No content has been added to this lesson
+yet." Not a later lesson instead: the wall on every other lesson tells the
+reader the *first* one is open, and the course page numbers them.
 
 "Anyone" includes a signed-in reader who is not enrolled: signing up
 must not take away the lesson they were reading a minute ago.
@@ -24,6 +31,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from app.models.chapter_block import ChapterBlock
 from app.models.course import Chapter, Course, CourseStatus, Module
 from app.services.staged_edits.visibility import chapter_awaits_first_release
 
@@ -59,6 +67,8 @@ def preview_chapter_id(db: Session, course: Course) -> str | None:
     # A test or an assignment is something to hand in; there is nothing a
     # guest can do with one but be told to sign up — so no preview at all.
     if first.chapter_type != "reading" or first.is_locked:
+        return None
+    if db.query(ChapterBlock.id).filter(ChapterBlock.chapter_id == first.id).first() is None:
         return None
     return str(first.id)
 

@@ -54,8 +54,10 @@ export function ChapterBreakdownRow({
   const busy = excusingChapterId === chapterInfo?.id
 
   return (
-    <div className="flex items-center gap-4 bg-surface rounded-lg px-4 py-3 border text-sm">
-      <div className="flex-1 min-w-0">
+    // Wraps on a phone: the lesson's name takes the first line and the marks
+    // and buttons the next, instead of pushing the row past the screen.
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 bg-surface rounded-lg px-4 py-3 border text-sm md:flex-nowrap">
+      <div className="min-w-0 basis-full md:basis-0 md:flex-1">
         <div className="flex items-center gap-2">
           <p className="font-medium truncate">{title}</p>
         </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { installPreloadErrorRecovery, reloadOnceFor } from '../staleChunkRecovery'
+import { installPreloadErrorRecovery, reloadOnceFor, resetReloadState } from '../staleChunkRecovery'
 
 /** Mirrors how Vite's own preload helper builds the event: a plain,
  *  cancelable `Event` with the underlying error stashed on `.payload`
@@ -18,6 +18,7 @@ describe('reloadOnceFor', () => {
 
   beforeEach(() => {
     sessionStorage.clear()
+    resetReloadState()
     vi.stubGlobal('location', { reload })
     reload.mockClear()
   })
@@ -63,6 +64,7 @@ describe('installPreloadErrorRecovery', () => {
 
   beforeEach(() => {
     sessionStorage.clear()
+    resetReloadState()
     vi.stubGlobal('location', { reload })
     reload.mockClear()
     uninstall = installPreloadErrorRecovery()

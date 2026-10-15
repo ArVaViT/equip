@@ -565,16 +565,6 @@
         "title": "Sehen Sie, wie es ankommt",
         "body": "Die Zahlen aktualisieren sich laufend, während Studierende sich einschreiben, Lektionen abschließen und Arbeiten einreichen. Kein Neuladen nötig."
       }
-    },
-    "studentProgress": {
-      "table": {
-        "title": "Fortschritt je Person",
-        "body": "Alle eingeschriebenen Studierenden mit Fortschritt in Prozent und letzter Aktivität. Ein Klick öffnet die ausführliche Ansicht."
-      },
-      "finale": {
-        "title": "Blick zum Begleiten",
-        "body": "Erkennen Sie, wer sich länger nicht angemeldet hat oder an einer Lektion hängt. Ein Anstoß von Ihnen macht oft den Unterschied."
-      }
     }
   },
   "courses": {
@@ -1632,7 +1622,6 @@
     "searchPlaceholder": "Studierende nach Name oder E-Mail suchen …",
     "table": {
       "heading": "Studierende",
-      "description": "Klicken Sie eine Zeile an, um die Aufschlüsselung zu sehen",
       "name": "Name",
       "email": "E-Mail",
       "progress": "Fortschritt",
@@ -1681,7 +1670,6 @@
       "returnWork": "Arbeit zurückgeben"
     },
     "stats": {
-      "totalStudents": "Studierende gesamt",
       "averageProgress": "Durchschnittlicher Fortschritt",
       "completionRate": "Abschlussquote"
     },
@@ -1889,6 +1877,7 @@
   "teacherDashboard": {
     "courseCard": {
       "statusPublishing": "Wird veröffentlicht",
+      "students": "Studierende",
       "statusPublished": "Veröffentlicht",
       "statusDraft": "Entwurf",
       "modules_one": "{{count}} Modul",
@@ -1896,11 +1885,9 @@
       "thumbnailAlt": "Vorschaubild: {{title}}",
       "actionAnalytics": "Auswertung",
       "actionGradebook": "Notenbuch",
-      "actionStudentProgress": "Fortschritt der Studierenden",
       "actionPublish": "Veröffentlichen",
       "actionUnpublish": "Veröffentlichung zurücknehmen",
       "actionClone": "Kurs kopieren",
-      "actionEditCourse": "Kurs bearbeiten",
       "actionDelete": "Löschen",
       "actionMore": "Weitere Aktionen",
       "pendingGrading_one": "{{count}} zu bewerten",
@@ -3282,6 +3269,7 @@
         "marks": "Bewerten Sie ehrlich und an der Arbeit. Ein Zertifikat trägt Ihr Urteil, und jemand wird es jemand anderem zeigen."
       },
       "checkbox": "Ich habe die Lehrenden- und Beitragendenvereinbarung gelesen und akzeptiere sie",
+      "tickFirst": "Setzen Sie oben das Häkchen, um die Vereinbarung anzunehmen.",
       "next": "Annehmen und fortfahren",
       "saveFailed": "Ihre Zustimmung konnte nicht gespeichert werden. Prüfen Sie die Verbindung und versuchen Sie es erneut."
     },

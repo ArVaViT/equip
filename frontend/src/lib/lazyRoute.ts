@@ -1,5 +1,6 @@
 import { lazy } from "react"
 import type { ComponentType } from "react"
+import { reloadUnderway, startReload } from "@/lib/staleChunkRecovery"
 
 /**
  * `React.lazy` that survives a deploy landing under an open tab.
@@ -78,18 +79,32 @@ export function lazyRoute<T extends ComponentType<any>>(
   return lazy(() =>
     load()
       .then((mod) => {
+        // The page is already reloading: whatever this load produced belongs
+        // to the build being left behind. When the chunk failed and the
+        // `vite:preloadError` listener took it, Vite hands back `undefined`
+        // rather than a module (see `reloadUnderway`).
+        if (reloadUnderway()) return untilTheReload<T>()
         // A load that worked means the tab is on the current build again.
         writeFlag(false)
         return mod
       })
       .catch((error: unknown) => {
+        // The same, for a loader that maps the module it awaited
+        // (`.then((m) => ({ default: m.FirstRunFlow }))`): reading a property
+        // of the missing module throws before the line above can see it.
+        if (reloadUnderway()) return untilTheReload<T>()
         if (!isStaleChunkError(error) || readFlag()) throw error
         writeFlag(true)
-        window.location.reload()
-        // Never settles: the page is going away. Resolving with a placeholder
-        // would flash it first, and rejecting would race the reload to the
-        // ErrorBoundary.
-        return new Promise<{ default: T }>(() => {})
+        startReload()
+        return untilTheReload<T>()
       }),
   )
+}
+
+/**
+ * Never settles: the page is going away. Resolving with a placeholder would
+ * flash it first, and rejecting would race the reload to the ErrorBoundary.
+ */
+function untilTheReload<T>(): Promise<{ default: T }> {
+  return new Promise<{ default: T }>(() => {})
 }

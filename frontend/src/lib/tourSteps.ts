@@ -410,23 +410,3 @@ export function analyticsSteps(t: TFunction): TourStep[] {
     },
   ]
 }
-
-export function studentProgressSteps(t: TFunction): TourStep[] {
-  return [
-    {
-      element: '[data-tour="progress-table"]',
-      popover: {
-        title: t("tour.studentProgress.table.title"),
-        description: t("tour.studentProgress.table.body"),
-        side: "top",
-        align: "center",
-      },
-    },
-    {
-      popover: {
-        title: t("tour.studentProgress.finale.title"),
-        description: t("tour.studentProgress.finale.body"),
-      },
-    },
-  ]
-}

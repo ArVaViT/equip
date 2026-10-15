@@ -119,16 +119,58 @@ describe("CourseCard — how much of the course is written", () => {
     expect(screen.getByText("2 модуля")).toBeInTheDocument()
   })
 
-  it("opens the course from its name, and offers the pencil on every width", async () => {
+  it("opens the course from its name, and from nowhere else twice", async () => {
     renderCard()
     const course = makeCourse()
     const name = await screen.findByRole("link", { name: course.title })
     expect(name).toHaveAttribute("href", `/teacher/courses/${course.id}`)
-    // One link for the pencil — not a button nested in a link — and not
-    // hidden below `sm`.
-    const edit = screen.getAllByRole("link").filter((a) => a.getAttribute("href") === `/teacher/courses/${course.id}`)
-    expect(edit.length).toBeGreaterThanOrEqual(2)
-    expect(edit.every((a) => !a.className.includes("hidden"))).toBe(true)
-    expect(edit.every((a) => a.querySelector("button") === null)).toBe(true)
+    // The pencil went the same way the card goes; on a phone its width broke
+    // the course name onto two lines. One link to the editor per card.
+    const toEditor = screen.getAllByRole("link").filter((a) => a.getAttribute("href") === `/teacher/courses/${course.id}`)
+    expect(toEditor).toHaveLength(1)
+  })
+})
+
+describe("CourseCard — a teacher looking for their students", () => {
+  // Session replays, 2026-09-20 and 2026-10-15: a teacher on a phone tapped
+  // the cover, the "Published" badge and the space beside the name, and
+  // nothing answered; the students were the fourth item of the "…" menu.
+  it("opens the course from anywhere on the card, through the one link it has", async () => {
+    await i18n.changeLanguage("ru")
+    const course = makeCourse()
+    renderCard(0, course)
+
+    const name = screen.getByRole("link", { name: course.title })
+    // The name's ::after covers the card; the card is its positioning box.
+    expect(name.className).toMatch(/(?<![\w-])after:absolute(?![\w-])/)
+    expect(name.className).toMatch(/(?<![\w-])after:inset-0(?![\w-])/)
+    expect(name.closest(".relative")).not.toBeNull()
+  })
+
+  it("keeps every other control tappable above the card's link", async () => {
+    await i18n.changeLanguage("ru")
+    const course = makeCourse()
+    renderCard(2, course)
+
+    const others = screen
+      .getAllByRole("link")
+      .filter((a) => a.getAttribute("href") !== `/teacher/courses/${course.id}`)
+    expect(others.length).toBeGreaterThan(0)
+    for (const link of others) {
+      expect(link.closest(".z-10"), `${link.getAttribute("href")} sits under the card link`).not.toBeNull()
+    }
+    expect(screen.getByRole("button", { name: "Ещё действия" }).closest(".z-10")).not.toBeNull()
+  })
+
+  it("puts the students one tap away on every width, by name", async () => {
+    await i18n.changeLanguage("ru")
+    const course = makeCourse()
+    renderCard(0, course)
+
+    const students = screen.getByRole("link", { name: "Студенты" })
+    expect(students).toHaveAttribute("href", `/teacher/courses/${course.id}/progress`)
+    // Not hidden on a phone, and a finger-sized target there.
+    expect(students.className).not.toMatch(/(?<![\w:-])hidden(?![\w-])/)
+    expect(students.className).toMatch(/(?<![\w:-])min-h-11(?![\w-])/)
   })
 })

@@ -2,13 +2,13 @@ import { useTranslation } from "react-i18next"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
 import { Users } from "lucide-react"
 import { EmptyState as DesignEmptyState } from "@/components/patterns/EmptyState"
 import { StudentRow } from "./StudentRow"
+import { useMediaQuery } from "@/hooks/useMediaQuery"
 import type { RetakeRequest } from "@/types"
 import {
   type SortColumn,
@@ -48,6 +48,9 @@ export function StudentTable({
   onChapterUpdate,
 }: Props) {
   const { t } = useTranslation()
+  // Tailwind's `md`. Below it the eight columns do not fit, and the board is
+  // a list (see StudentRow); sorting there stays by name.
+  const wide = useMediaQuery("(min-width: 768px)")
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -58,11 +61,27 @@ export function StudentTable({
             ({students.length})
           </span>
         </CardTitle>
-        <CardDescription>{t("studentProgress.table.description")}</CardDescription>
       </CardHeader>
       <CardContent>
         {students.length === 0 ? (
           <EmptyState hasSearch={hasSearch} />
+        ) : !wide ? (
+          <ul aria-label={t("studentProgress.table.heading")}>
+            {students.map((student) => (
+              <StudentRow
+                key={student.id}
+                layout="list"
+                student={student}
+                retakeRequest={retakeRequests?.[student.id]}
+                isExpanded={expandedId === student.id}
+                onToggle={() => onExpandToggle(student.id)}
+                quizAvg={student.quiz_avg}
+                assignmentAvg={student.assignment_avg}
+                courseId={courseId}
+                onChapterUpdate={onChapterUpdate}
+              />
+            ))}
+          </ul>
         ) : (
           // Focusable and named: on a phone the table scrolls sideways, and a
           // keyboard user can only scroll what they can reach.

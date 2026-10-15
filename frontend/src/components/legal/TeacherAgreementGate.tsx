@@ -9,6 +9,7 @@ import { useAuth } from "@/context/useAuth"
 import { getFirstRunActive, subscribeFirstRun } from "@/lib/tourState"
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import { toast } from "@/lib/toast"
+import { cn } from "@/lib/utils"
 import { useTeacherAgreement } from "./useTeacherAgreement"
 
 /** Same definition the first-run flow uses. Kept local rather than exported
@@ -28,8 +29,10 @@ const FOCUSABLE_SELECTOR =
  *
  * Blocking, with three things that keep it from being a trap:
  *
- * - **the checkbox starts empty** and Continue stays disabled until it is
- *   ticked. Nothing is pre-agreed on somebody's behalf;
+ * - **the checkbox starts empty** and nothing is accepted until it is
+ *   ticked. Nothing is pre-agreed on somebody's behalf. Pressing the button
+ *   without the tick points at the box instead of doing nothing: a disabled
+ *   button on a phone reads as a broken one;
  * - **the full text is one click away**, opening in a new tab, and is public —
  *   readable before the checkbox, by anybody, signed in or not;
  * - **signing out is visible on the screen**. A window somebody cannot leave
@@ -48,7 +51,11 @@ export function TeacherAgreementGate() {
   const { owed, onAccepted } = useTeacherAgreement(user?.id)
   const [checked, setChecked] = useState(false)
   const [saving, setSaving] = useState(false)
+  // Set when the button is pressed before the box is ticked; cleared by the tick.
+  const [needsTick, setNeedsTick] = useState(false)
   const checkboxId = useId()
+  const hintId = useId()
+  const checkboxRef = useRef<HTMLButtonElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
 
   // Same reasoning as the first-run gate: this component mounts on every
@@ -106,6 +113,11 @@ export function TeacherAgreementGate() {
   if (!open || !owed) return null
 
   const confirm = async () => {
+    if (!checked) {
+      setNeedsTick(true)
+      checkboxRef.current?.focus()
+      return
+    }
     setSaving(true)
     try {
       await legalService.accept(owed.slug, owed.version, locale)
@@ -159,17 +171,34 @@ export function TeacherAgreementGate() {
           </li>
         </ul>
 
-        <div className="mt-2 flex w-full items-start gap-3 rounded-md bg-surface p-3 text-left">
+        {/* The whole row is the tap target, not the 16px box: on a phone the
+            box and the words beside it are one thing to press. */}
+        <label
+          htmlFor={checkboxId}
+          className={cn(
+            "mt-2 flex min-h-11 w-full cursor-pointer items-start gap-3 rounded-md bg-surface p-3 text-left ring-offset-2 ring-offset-surface transition-shadow",
+            needsTick && "ring-2 ring-destructive",
+          )}
+        >
           <Checkbox
+            ref={checkboxRef}
             id={checkboxId}
             checked={checked}
-            onCheckedChange={(v) => setChecked(v === true)}
+            onCheckedChange={(v) => {
+              setChecked(v === true)
+              if (v === true) setNeedsTick(false)
+            }}
+            aria-invalid={needsTick || undefined}
+            aria-describedby={needsTick ? hintId : undefined}
             className="mt-0.5"
           />
-          <label htmlFor={checkboxId} className="cursor-pointer text-sm leading-snug text-ink">
-            {t("legalGate.teacher.checkbox")}
-          </label>
-        </div>
+          <span className="text-sm leading-snug text-ink">{t("legalGate.teacher.checkbox")}</span>
+        </label>
+        {needsTick && (
+          <p id={hintId} role="alert" className="-mt-2 w-full text-left text-sm text-destructive-ink">
+            {t("legalGate.teacher.tickFirst")}
+          </p>
+        )}
 
         <p className="text-sm text-ink-muted">
           <Link to="/teacher-terms" target="_blank" className="text-brand underline underline-offset-4">
@@ -180,7 +209,7 @@ export function TeacherAgreementGate() {
         <Button
           type="button"
           onClick={confirm}
-          disabled={!checked || saving}
+          disabled={saving}
           size="lg"
           className="w-full sm:w-auto sm:min-w-[160px]"
         >
