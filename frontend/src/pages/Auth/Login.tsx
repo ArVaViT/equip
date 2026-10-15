@@ -12,7 +12,7 @@ import { authErrorMessage } from "@/lib/authError"
 import { GoogleIcon } from "./register/GoogleIcon"
 import { SignInLinkSent } from "./SignInLinkSent"
 import { takeSignOutReason, type SignOutReason } from "@/lib/signOutReason"
-import { rememberReturnPath, returnPathFrom } from "@/lib/authRedirect"
+import { peekReturnPath, rememberReturnPath, returnPathFrom } from "@/lib/authRedirect"
 
 /**
  * Why the sign-in form is on screen, when the person did not come here on
@@ -31,7 +31,9 @@ function noticeKeyFor(error: string | null, reason: SignOutReason | null, state:
   if (reason === "session_expired") return "auth.notice.sessionExpired"
   if (reason === "account_deactivated") return "auth.notice.accountDeactivated"
   if (error === "oauth_timeout") return "auth.callback.timedOut"
-  if (returnPathFrom(state)) return "auth.notice.signInToContinue"
+  // The same target the public gate will use after sign-in, so the notice
+  // promises exactly what happens.
+  if (returnPathFrom(state) ?? peekReturnPath()) return "auth.notice.signInToContinue"
   return null
 }
 

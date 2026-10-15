@@ -8,6 +8,36 @@
     "invalid": "This link does not work. Turn email off in your profile, under Settings.",
     "toProfile": "Open profile"
   },
+  "guest": {
+    "readFirst": "Read the first lesson",
+    "readFirstFree": "Read the first lesson — no account needed",
+    "openToAll": "Open to everyone",
+    "afterEnrolling": "After enrolling",
+    "register": "Create an account",
+    "signIn": "Sign in",
+    "block": {
+      "quiz": "There is a test here — it opens once you enroll",
+      "assignment": "There is an assignment here — it opens once you enroll",
+      "file": "There is a file here — it opens once you enroll"
+    },
+    "finish": {
+      "title": "Enjoyed it? Keep going with an account",
+      "body": "Create a free account to enroll, read on and mark lessons as read."
+    },
+    "wall": {
+      "title": "This lesson is for enrolled readers",
+      "body": "The first lesson is open to everyone. To read on, create a free account and enroll in the course."
+    },
+    "toCourse": "Enroll in the course",
+    "enrollFinish": {
+      "title": "Enjoyed it? Enroll in the course",
+      "body": "Enrolling opens the other lessons, the tests and marking lessons as read."
+    },
+    "enrollWall": {
+      "title": "This lesson is for enrolled readers",
+      "body": "The first lesson is open to everyone. Enroll in the course to read on."
+    }
+  },
   "common": {
     "late": "Late",
     "appName": "Equip",
@@ -47,6 +77,120 @@
       "removeConfirmAction": "Remove"
     }
   },
+  "organization": {
+    "eyebrow": "Organization",
+    "verified": "Verified by Equip",
+    "edit": "Edit the page",
+    "notFound": "No such organization",
+    "loadError": "Could not load the organization's page",
+    "toCatalog": "To courses",
+    "director_one": "Director",
+    "director_other": "Directors",
+    "courses": "Courses",
+    "noCourses": "No courses yet",
+    "byInvitation": "By invitation",
+    "inactive": "This organization no longer runs courses on Equip. Certificates it issued remain valid.",
+    "since": "On Equip since {{date}}",
+    "verifyCertificate": "Verify a certificate",
+    "stats": {
+      "courses_one": "course",
+      "courses_other": "courses",
+      "lessons_one": "lesson",
+      "lessons_other": "lessons",
+      "certificates_one": "certificate issued",
+      "certificates_other": "certificates issued",
+      "members_one": "member",
+      "members_other": "members",
+      "teachers_one": "teacher",
+      "teachers_other": "teachers"
+    },
+    "form": {
+      "description": "About the organization",
+      "descriptionPlaceholder": "Who you are, whom you teach and what — in two or three sentences.",
+      "website": "Website",
+      "websiteHint": "Optional. An address starting with https://",
+      "websiteBroken": "The address must start with https://",
+      "showMembers": "Show the number of members",
+      "showMembersHint": "The number appears once there are at least ten members.",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "The organization's page is updated",
+      "failed": "Could not save",
+      "websitePlaceholder": "https://"
+    },
+    "locked": {
+      "how": "How to get access",
+      "body": "A course for members of {{org}}. Access is granted by the director, {{director}}.",
+      "bodyNoDirector": "A course for members of {{org}}. Access is granted by its director.",
+      "website": "Organization website",
+      "signIn": "Sign in if you are already a member"
+    },
+    "verifiedHint": "Equip has confirmed that the organization exists and is run by the director named here",
+    "noCoursesYet": "Courses will appear here once they are published.",
+    "createCourse": "Create a course →"
+  },
+  "adminOrgs": {
+    "loadError": "Could not load organizations",
+    "empty": "No organizations yet",
+    "create": "New organization",
+    "created": "Organization “{{name}}” created",
+    "createSave": "Create",
+    "failed": "Could not save",
+    "name": "Name",
+    "slug": "Page address",
+    "slugHint": "equipbible.com/o/{{slug}} — Latin letters, digits and hyphens; cannot be changed later",
+    "country": "Country (code, e.g. US)",
+    "members_one": "{{count}} member",
+    "members_other": "{{count}} members",
+    "directors": "Director: {{list}}",
+    "noDirector": "No director appointed",
+    "status": "Status",
+    "statusSaved": "Status updated",
+    "statuses": {
+      "pending": "Application",
+      "approved": "Admitted",
+      "verified": "Verified",
+      "suspended": "Suspended"
+    },
+    "appointLabel": "Add a director — email of a registered account",
+    "appointPlaceholder": "director@example.com",
+    "appoint": "Add",
+    "directorAppointed": "Director added: {{email}}",
+    "statusHelp": "Application and Admitted — the page is seen only by members and platform staff · Verified — visible to everyone · Suspended — the page stays without its courses and leaves the showcase; the courses stay in the catalogue, certificates remain valid",
+    "suspendConfirm": {
+      "title": "Suspend the organization?",
+      "body": "The page of {{name}} stays up without its courses and leaves the showcase. Its courses stay in the catalogue, and the certificates it issued remain valid. The status can be changed back.",
+      "confirm": "Suspend"
+    },
+    "listed": {
+      "yes": "On the organizations list: yes",
+      "no": "On the organizations list: no — {{reasons}}",
+      "notVerified": "not verified",
+      "noDirector": "no director",
+      "noCourses": "no published courses"
+    },
+    "documents": "Name on documents"
+  },
+  "organizations": {
+    "eyebrow": "On Equip",
+    "title": "Organizations on Equip",
+    "lead": "Bible schools, churches and ministries teaching here. Each one is verified by Equip, has a director and its own courses.",
+    "empty": "Nothing here yet",
+    "joinTitle": "Is your organization not on Equip yet?",
+    "joinBody": "Organizations join by agreement: write to us who you are and whom you teach, and we will open your page, your courses and a director's workspace.",
+    "landingTitle": "Organizations teach here",
+    "all": "All organizations"
+  },
+  "myOrganizations": {
+    "eyebrow": "Your organization · {{role}}",
+    "roles": {
+      "director": "director",
+      "teacher": "teacher",
+      "student": "member"
+    },
+    "catalog": "Open catalogue",
+    "title": "My organizations"
+  },
   "header": {
     "home": "Home",
     "courses": "Courses",
@@ -69,7 +213,8 @@
     "legal": "Legal",
     "soon": "Soon",
     "social": "Equip on social media — coming soon",
-    "apps": "Equip apps — coming soon"
+    "apps": "Equip apps — coming soon",
+    "organizations": "Organizations"
   },
   "landing": {
     "hero": {
@@ -124,16 +269,6 @@
     }
   },
   "dashboard": {
-    "atRisk": {
-      "write": "Write to {{name}}",
-      "title": "Who to write to",
-      "quiet_one": "{{count}} day without activity",
-      "quiet_other": "{{count}} days without activity",
-      "missed_one": "{{count}} deadline missed",
-      "missed_other": "{{count}} deadlines missed",
-      "more_one": "and {{count}} more",
-      "more_other": "and {{count}} more"
-    },
     "continue": {
       "position": "lesson {{current}} of {{total}}",
       "cta": "Continue"
@@ -142,33 +277,21 @@
     "loadCoursesError": "Could not load your courses. Please try refreshing the page.",
     "course": "Course",
     "browseAllCta": "Browse all courses",
-    "recentlyViewed": "Recently viewed",
     "votd": {
       "eyebrow": "Today",
       "title": "Verse of the Day"
     },
     "today": {
-      "eyebrow": "Calendar",
       "openFull": "Full calendar",
-      "empty": "Nothing scheduled today. Coming up:",
       "nothingAhead": "Nothing coming up.",
-      "ahead": "Coming up"
+      "ahead": "Coming up",
+      "over": "Over"
     },
     "readingProgress_one": "{{read}} of {{count}} lesson read",
-    "readingProgress_other": "{{read}} of {{count}} lessons read",
-    "teaching": {
-      "title": "Courses you teach",
-      "openAll": "All my courses",
-      "empty": "You have no courses yet. The first one takes a minute — a title and a description, the rest later.",
-      "createFirst": "Create your first course",
-      "edit": "Open in the editor",
-      "more_one": "and {{count}} more course",
-      "more_other": "and {{count}} more courses"
-    }
+    "readingProgress_other": "{{read}} of {{count}} lessons read"
   },
   "onboarding": {
     "student": {
-      "eyebrow": "Welcome",
       "title": "Welcome to Equip, {{name}}",
       "titleNoName": "Welcome to Equip",
       "body": "A quiet place to learn the Bible at your own pace. Each course here is written by a real teacher — pick a subject that draws you and begin.",
@@ -181,7 +304,7 @@
       "primaryCta": "Create your first course"
     },
     "teacherAsStudent": {
-      "body": "Courses you are enrolled in as a student will appear here. The ones you teach are in the “Courses you teach” card and under “Teaching”."
+      "body": "Courses you are enrolled in as a student will appear here. The ones you teach are under “Teaching”."
     }
   },
   "completion": {
@@ -521,7 +644,7 @@
     "loadError": "Couldn't load today's challenge",
     "notScheduled": {
       "title": "No question today",
-      "body": "Tomorrow’s challenge unlocks at {{time}} your time."
+      "body": "Tomorrow's question opens at midnight."
     },
     "notTranslated": {
       "title": "Not in your language yet",
@@ -742,7 +865,9 @@
     "lessonsLabel_other": "{{count}} lessons",
     "inProgress": "In progress",
     "completed": "Completed",
-    "progressLabel": "{{percent}}% complete"
+    "progressLabel": "{{percent}}% complete",
+    "forMembers": "For members of {{org}}",
+    "forMembersNoOrg": "For members"
   },
   "pageTitle": {
     "notes": "My notes",
@@ -823,7 +948,6 @@
       "invitation_expired": "This invitation has expired.",
       "invitation_already_used": "This invitation has already been used.",
       "invitation_email_mismatch": "This invitation was sent to a different address.",
-      "invitation_other_school": "You already have a higher role in another school on Equip. Accepting would move you here and change it, so this invitation can't be used with this account. Ask whoever invited you to talk to us.",
       "plan_limit_reached": "You already have {{limit}} courses, which is as many as one teacher can keep at once. Delete one you no longer need, or ask an administrator.",
       "validation_failed": "Something you entered isn't right.",
       "legal_consent_required": "Please accept the current Terms of Use and Privacy Policy before making changes.",
@@ -889,7 +1013,8 @@
       "quiz_option_repeated": "the same option is listed twice",
       "meeting_url_not_a_web_address": "must start with http:// or https:// — paste the whole address from the browser's address bar, for example https://zoom.us/j/1234567890",
       "meeting_url_credentials_in_url": "must not have an @ before the site address — a link like that opens a different site from the one it appears to name. Copy the meeting address again",
-      "meeting_url_too_long": "is too long — no more than 2048 characters"
+      "meeting_url_too_long": "is too long — no more than 2048 characters",
+      "time_zone_unknown": "unknown time zone — choose one in your profile"
     },
     "storage": {
       "tooLarge": "This file is {{sizeMb}} MB; the limit is {{maxMb}} MB.",
@@ -924,6 +1049,7 @@
     "courseCloned": "Course copied",
     "cloneFailed": "Failed to clone course",
     "gradingWeightsSaved": "Grading weights saved",
+    "gradingSchemeSaved": "Grading scale saved",
     "gradingConfigSaveFailed": "Failed to save grading config",
     "gradeSaved": "Grade saved",
     "gradeCleared": "Hand-set grade removed — the calculated one applies again",
@@ -1665,7 +1791,9 @@
   "calendar": {
     "addOne": {
       "label": "Add to calendar",
-      "aria": "Add “{{title}}” to your calendar"
+      "aria": "Add “{{title}}” to your calendar",
+      "google": "Google Calendar",
+      "file": "Apple, Outlook (.ics)"
     },
     "subscribe": {
       "open": "Subscribe",
@@ -1673,11 +1801,12 @@
       "description": "Your courses’ sessions and deadlines appear in your calendar and stay up to date.",
       "replaces": "The link is personal. If you subscribed before, the old link stops working.",
       "create": "Create link",
-      "apple": "Apple and Outlook",
+      "apple": "Apple Calendar, Outlook",
       "google": "Google Calendar",
       "copy": "Copy link",
       "copied": "Copied",
       "private": "Don't forward the link: it shows your schedule.",
+      "delay": "Calendars pick up changes on their own, but not at once: Google checks every few hours. A moved class shows in Equip right away.",
       "failed": "Couldn't create the link. Please try again.",
       "copyFailed": "Couldn't copy the link."
     },
@@ -1706,7 +1835,46 @@
       "live_session": "Live session",
       "exam": "Exam",
       "other": "Other"
-    }
+    },
+    "tomorrow": "Tomorrow",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week",
+    "nextUp": "Next class",
+    "week": {
+      "free": "Free"
+    },
+    "views": {
+      "label": "Calendar view",
+      "agenda": "Schedule",
+      "week": "Week",
+      "month": "Month"
+    },
+    "agenda": {
+      "emptyTitle": "Nothing ahead",
+      "emptyDescription": "When your teacher schedules a class or a deadline, it will appear here.",
+      "past_one": "Past — {{count}} event",
+      "past_other": "Past — {{count}} events"
+    },
+    "card": {
+      "onNow": "On now",
+      "inMinutes_one": "In {{count}} minute",
+      "inMinutes_other": "In {{count}} minutes",
+      "addRecording": "Add recording",
+      "addRecordingTitle": "Recording of “{{title}}”",
+      "addRecordingSave": "Save",
+      "recordingAdded": "Recording added — students will be notified",
+      "openAssignment": "Open the assignment",
+      "openLesson": "Open the lesson"
+    },
+    "yesterday": "Yesterday",
+    "newEvent": {
+      "open": "New event",
+      "course": "Course"
+    },
+    "zone": "Times are in your zone: {{zone}}.",
+    "zoneChange": "Change",
+    "allDay": "All day",
+    "untitledOther": "Event"
   },
   "teacher": {
     "dashboardTitle": "My Courses",
@@ -1719,19 +1887,12 @@
     "backToCourses": "Back to courses"
   },
   "teacherDashboard": {
-    "stats": {
-      "totalCourses": "Courses",
-      "published": "Published",
-      "pendingActions": "Needs attention",
-      "pendingGrading": "Waiting to be marked"
-    },
     "courseCard": {
       "statusPublishing": "Publishing",
       "statusPublished": "Published",
       "statusDraft": "Draft",
       "modules_one": "{{count}} module",
       "modules_other": "{{count}} modules",
-      "createdOn": "Created {{date}}",
       "thumbnailAlt": "{{title}} thumbnail",
       "actionAnalytics": "Analytics",
       "actionGradebook": "Gradebook",
@@ -1792,7 +1953,8 @@
       "title": "Publish this course?",
       "description": "The course appears in the catalog once every language has it. Until then students cannot see it — that is expected.",
       "confirm": "Publish"
-    }
+    },
+    "toGrade": "To mark: {{count}}"
   },
   "teacherEditor": {
     "badges": {
@@ -1850,6 +2012,7 @@
       "events": {
         "title": "Course Events",
         "editEvent": "Edit Event",
+        "editNamed": "Edit: {{title}} · {{date}}",
         "createEvent": "Create Event",
         "titlePlaceholder": "Event title",
         "descriptionPlaceholder": "Description (optional)",
@@ -2024,7 +2187,8 @@
       "announcements": "Announcements",
       "materials": "Materials",
       "events": "Events",
-      "accessMode": "Access mode"
+      "accessMode": "Access mode",
+      "downloadPdf": "Download PDF"
     },
     "accessMode": {
       "title": "Course access mode",
@@ -2041,6 +2205,10 @@
       "title": "Unpublish this course?",
       "description": "It will leave the catalog, and students — including those already enrolled — will not be able to open its lessons until you publish it again. Their progress and grades are kept.",
       "confirm": "Unpublish"
+    },
+    "pdf": {
+      "preparing": "Preparing the course PDF…",
+      "failed": "Could not prepare the PDF. Please try again."
     }
   },
   "chapterEditor": {
@@ -2168,6 +2336,12 @@
       "heading": "Contents",
       "emptyModule": "This module has no lessons yet.",
       "empty": "No lessons yet — add them in the editor."
+    },
+    "recordings": {
+      "heading": "Class recordings",
+      "showAll_one": "All recordings — {{count}}",
+      "showAll_other": "All recordings — {{count}}",
+      "showLess": "Show less"
     }
   },
   "gradebook": {
@@ -2213,6 +2387,21 @@
       "split": "Quizzes {{quiz}}% · Assignments {{assignment}}%",
       "saving": "Saving...",
       "save": "Save Weights"
+    },
+    "scale": {
+      "title": "Grading scale",
+      "summary": "{{scheme}} · pass mark {{threshold}}%",
+      "directorDecides": "The school's director decides the scale.",
+      "change": "Change",
+      "loadFailed": "Could not load the grading scale.",
+      "dialogTitle": "How this course is graded",
+      "scheme": "Scale",
+      "passThreshold": "Pass mark (%)",
+      "thresholdRange": "The pass mark is a number from 0 to 100.",
+      "fivePointMax": "On the five-point scale the pass mark is 75 or lower, otherwise a «3» is unreachable.",
+      "handSetGrades_one": "{{count}} grade in this course was set by hand under the old scale. Clear or re-enter it first, then change the scale.",
+      "handSetGrades_other": "{{count}} grades in this course were set by hand under the old scale. Clear or re-enter them first, then change the scale.",
+      "handSetGradesUnknown": "This course has grades set by hand under the old scale. Clear or re-enter them first, then change the scale."
     },
     "summary": {
       "title": "Student Grades",
@@ -2479,6 +2668,8 @@
       "bulkUpdating": "Updating...",
       "bulkApply": "Apply",
       "bulkClear": "Clear",
+      "bulkMakeAdmin": "Make platform admins",
+      "bulkRevokeAdmin": "Revoke platform admin",
       "emptyNoMatch": "No users match your search",
       "emptyNoUsers": "No users found",
       "showing": "Showing {{shown}} of {{total}} users",
@@ -2518,7 +2709,9 @@
         "roleUpdateFailed": "Failed to update role",
         "deleteUserFailed": "Failed to delete user",
         "cannotDeleteSelf": "You can't delete your own account from here.",
-        "bulkUpdated": "Updated {{count}} user(s) to {{role}}",
+        "bulkUpdated": "Updated {{count}} user(s)",
+        "bulkHeldByMembership_one": "{{count}} user left as is: their role is held in an organization",
+        "bulkHeldByMembership_other": "{{count}} users left as is: their role is held in an organization",
         "bulkUpdateFailed": "Bulk update failed",
         "userDeactivated": "User deactivated",
         "userRestored": "User restored",
@@ -2529,7 +2722,8 @@
         "deleteUserDescription": "This permanently removes their account, enrollments, submissions, grades, certificates, and notifications. Courses they created will be kept but disassociated. This cannot be undone.",
         "deleteUserAction": "Delete account",
         "bulkRoleTitle": "Change role for selected users?",
-        "bulkRoleDescription": "{{count}} user(s) will be set to role \"{{role}}\".",
+        "bulkMakeAdminDescription": "{{count}} user(s) will become platform admins.",
+        "bulkRevokeAdminDescription": "{{count}} user(s) will stop being platform admins; their role becomes what their organizations say.",
         "bulkRoleAction": "Apply"
       },
       "usersLast7Days_one": "+{{count}} this week",
@@ -2662,7 +2856,12 @@
         "title": "Send this invitation again?",
         "body": "The link already sent to {{email}} stays valid on its original clock. Sending again also records you as confirming this person is 13 or older.",
         "confirm": "Send again"
-      }
+      },
+      "scope": {
+        "platform": "Account only",
+        "course": "Course"
+      },
+      "thWhere": "Where"
     },
     "tabSchool": "School",
     "school": {
@@ -2711,49 +2910,11 @@
         "retryError": "Couldn't send it back — please try again."
       }
     },
-    "tabDmca": "Copyright",
-    "dmca": {
-      "title": "Copyright complaints",
-      "description": "Every notice that arrived, what was decided, and how many times it has been the same person.",
-      "refresh": "Refresh",
-      "loadError": "Could not load the complaints.",
-      "empty": {
-        "title": "No complaints",
-        "body": "Nothing has been received. When a notice arrives by email, write it down here."
-      },
-      "status": {
-        "received": "Received",
-        "upheld": "Upheld",
-        "rejected": "Rejected",
-        "withdrawn": "Withdrawn"
-      },
-      "strike": "Strike {{number}}",
-      "accountClosed": "Account closed",
-      "upheldCount_one": "{{count}} upheld",
-      "upheldCount_other": "{{count}} upheld",
-      "field": {
-        "complainant": "From",
-        "uploader": "Uploaded by",
-        "unknownUploader": "Not identified",
-        "uploaderTold": "Uploader told",
-        "notYet": "not yet",
-        "decision": "Decision"
-      },
-      "action": {
-        "uphold": "Uphold and take down",
-        "reject": "Reject"
-      },
-      "confirm": {
-        "upholdTitle": "Uphold this complaint?",
-        "rejectTitle": "Reject this complaint?",
-        "body": "This is recorded once and cannot be changed afterwards. A mistake is corrected by a new entry.",
-        "willCloseAccount": "This is the third upheld complaint about {{name}}, so upholding it closes that account. This is recorded once and cannot be changed afterwards.",
-        "confirm": "Record it"
-      },
-      "toast": {
-        "recorded": "Recorded.",
-        "failed": "Could not record the decision."
-      }
+    "tabOrganizations": "Organizations",
+    "roleSelector": {
+      "makeAdmin": "Make platform admin",
+      "revokeAdmin": "Revoke platform admin",
+      "heldByMembership": "Teacher and director are roles in an organization: appointments and invitations give them."
     }
   },
   "roles": {
@@ -2941,8 +3102,8 @@
       "unusable": "This invitation has already been used, was revoked, or has expired. Ask the admin who invited you for a new one.",
       "emailMismatch": "This invitation was sent to a different email address.",
       "emailMismatchDetail": "This invitation was sent to <strong>{{invited}}</strong>, but you're signed in as <strong>{{current}}</strong>.",
-      "otherSchool": "You already have a higher role in another school on Equip. Accepting would move you here and change it, so this invitation can't be used with this account. Ask whoever invited you to talk to us.",
       "acceptFailed": "Couldn't accept this invitation. Please try again.",
+      "inviterNotStaff": "The person who sent this invitation no longer speaks for the organization. Ask its director for a new one.",
       "accountExists": "You already have an Equip account with this email. Log in, then reopen this invite link to accept it."
     },
     "openCourse": "Open the course"
@@ -3181,10 +3342,12 @@
     "recordingLabel": "Recording link",
     "recordingHint": "YouTube, Vimeo, Google Drive",
     "join": "Join",
+    "linkQuiet": "Class link",
+    "joinVia": "Join on {{provider}}",
     "joinAria": "Join the meeting for {{title}}",
     "linkLabel": "Meeting link",
     "linkPlaceholder": "https://zoom.us/j/…",
-    "linkHint": "Optional. Zoom, Google Meet — any link. Students will see a “Join” button."
+    "linkHint": "Optional. Zoom, Google Meet — any link. Students will see a button to join — “Join on Zoom” for a Zoom link."
   },
   "dmca": {
     "title": "Copyright complaints",
@@ -3223,5 +3386,29 @@
   "theme": {
     "switchToLight": "Light theme",
     "switchToDark": "Dark theme"
+  },
+  "eventSeries": {
+    "duration": "Length",
+    "durationNone": "Not set",
+    "repeat": "Repeat",
+    "repeatNone": "Does not repeat",
+    "repeatWeekly": "Every week",
+    "repeatBiweekly": "Every two weeks",
+    "count": "Number of classes",
+    "countRange": "From 2 to {{max}}",
+    "lastOn": "the last on {{date}}",
+    "partOfSeries": "Repeating class",
+    "position": "{{index}} of {{count}}",
+    "created_one": "{{count}} class created",
+    "created_other": "{{count}} classes created",
+    "scope": {
+      "saveTitle": "Edit a repeating class",
+      "deleteTitle": "Delete a repeating class",
+      "this": "This class only",
+      "following": "This and following",
+      "all": "All classes in the series",
+      "saveAction": "Save",
+      "deleteAction": "Delete"
+    }
   }
 }

@@ -26,7 +26,8 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import require_admin
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
-from app.models.organization import Organization
+from app.models.course import Course, CourseStatus
+from app.models.organization import MembershipRole, MembershipSource, MembershipStatus, Organization, OrganizationMember
 from app.models.user import User, UserRole
 from app.schemas.organization import (
     DirectorAppointment,
@@ -35,6 +36,7 @@ from app.schemas.organization import (
     OrganizationUpdate,
 )
 from app.services.audit_service import log_action
+from app.services.memberships import grant_membership
 
 router = APIRouter(prefix="/admin/organizations", tags=["admin-organizations"])
 
@@ -52,34 +54,52 @@ def _get_or_404(db: Session, organization_id: uuid.UUID) -> Organization:
 
 
 def _serialize_many(db: Session, organizations: list[Organization]) -> list[OrganizationResponse]:
-    """Two grouped queries for the whole page rather than two per row."""
+    """Three grouped queries for the whole page rather than three per row."""
     if not organizations:
         return []
     ids = [o.id for o in organizations]
 
-    # ``organization_id`` is nullable on ``profiles`` — platform staff
-    # belong nowhere — so the rows come back as ``UUID | None`` and the
-    # None bucket is dropped rather than counted under some organization.
+    # Counted from memberships: active rows of live accounts. A person in
+    # two organizations is counted in both — that is what belonging to
+    # both means.
     counts: dict[uuid.UUID, int] = {
         org_id: count
-        for org_id, count in db.query(User.organization_id, func.count(User.id))
-        .filter(User.organization_id.in_(ids), User.deactivated_at.is_(None))
-        .group_by(User.organization_id)
+        for org_id, count in db.query(OrganizationMember.organization_id, func.count(OrganizationMember.user_id))
+        .join(User, User.id == OrganizationMember.user_id)
+        .filter(
+            OrganizationMember.organization_id.in_(ids),
+            OrganizationMember.status == MembershipStatus.ACTIVE.value,
+            User.deactivated_at.is_(None),
+        )
+        .group_by(OrganizationMember.organization_id)
         .all()
-        if org_id is not None
     }
     directors: dict[uuid.UUID, list[str]] = {}
     for org_id, email in (
-        db.query(User.organization_id, User.email)
+        db.query(OrganizationMember.organization_id, User.email)
+        .join(User, User.id == OrganizationMember.user_id)
         .filter(
-            User.organization_id.in_(ids),
-            User.role == UserRole.DIRECTOR.value,
+            OrganizationMember.organization_id.in_(ids),
+            OrganizationMember.role == MembershipRole.DIRECTOR.value,
+            OrganizationMember.status == MembershipStatus.ACTIVE.value,
             User.deactivated_at.is_(None),
         )
         .order_by(User.email)
         .all()
     ):
         directors.setdefault(org_id, []).append(email)
+    # The same count the showcase filters on (``organizations.list_organizations``).
+    published: dict[uuid.UUID, int] = {
+        org_id: count
+        for org_id, count in db.query(Course.organization_id, func.count(Course.id))
+        .filter(
+            Course.organization_id.in_(ids),
+            Course.status == CourseStatus.PUBLISHED,
+            Course.deleted_at.is_(None),
+        )
+        .group_by(Course.organization_id)
+        .all()
+    }
 
     return [
         OrganizationResponse.model_validate(
@@ -95,6 +115,7 @@ def _serialize_many(db: Session, organizations: list[Organization]) -> list[Orga
                 "created_at": o.created_at,
                 "member_count": counts.get(o.id, 0),
                 "director_emails": directors.get(o.id, []),
+                "published_courses": published.get(o.id, 0),
             }
         )
         for o in organizations
@@ -231,18 +252,19 @@ def appoint_director(
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> OrganizationResponse:
-    """Make an existing account the director of this organization.
+    """Make an existing account a director of this organization.
 
-    Two things happen together and must not drift apart: the person gets
-    the ``director`` role, and they are moved into this organization.
-    A director of nowhere administers nothing, and a director filed under
-    the wrong organization holds the keys to somebody else's cohorts.
+    One write: a membership row with the ``director`` role, created or
+    raised to it (``grant_membership``). ``profiles.role`` follows as the
+    mirror of the highest membership. Nothing else about the person
+    changes — until 2026-10-03 this *moved* them, because an account sat
+    in exactly one organization, and the director of UCOAT had to stop
+    directing to be able to teach. A teacher of school A appointed to
+    direct school B now teaches in A and directs B.
 
-    Moving somebody who already belongs elsewhere is allowed and audited
-    — one organization per account is the rule, so a move is the only
-    way it can happen. What is refused is promoting platform staff:
-    the roles are deliberately separate, and quietly demoting an admin
-    into a director is not something an appointment should do.
+    What is refused is appointing platform staff: the roles are
+    deliberately separate, and quietly demoting an admin into a director
+    is not something an appointment should do.
     """
     organization = _get_or_404(db, organization_id)
     person = db.query(User).filter(func.lower(User.email) == data.email.strip().lower()).first()
@@ -264,10 +286,20 @@ def appoint_director(
             context={"resource_type": "user", "email": person.email, "role": person.role},
         )
 
-    previous_organization = person.organization_id
     previous_role = person.role
-    person.role = UserRole.DIRECTOR.value
-    person.organization_id = organization.id
+    previous_membership = (
+        db.query(OrganizationMember.role)
+        .filter(OrganizationMember.user_id == person.id, OrganizationMember.organization_id == organization.id)
+        .scalar()
+    )
+    _membership, created = grant_membership(
+        db,
+        user=person,
+        organization_id=organization.id,
+        role=MembershipRole.DIRECTOR.value,
+        joined_via=MembershipSource.APPOINTMENT.value,
+        invited_by=admin.id,
+    )
 
     log_action(
         db,
@@ -278,7 +310,11 @@ def appoint_director(
         details={
             "email": person.email,
             "previous_role": previous_role,
-            "previous_organization_id": str(previous_organization) if previous_organization else None,
+            # What the person was in *this* organization before: nothing,
+            # or a lower role raised here. Other memberships are untouched
+            # and so not recorded.
+            "previous_membership_role": previous_membership,
+            "membership_created": created,
         },
     )
     db.commit()

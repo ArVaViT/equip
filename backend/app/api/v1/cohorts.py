@@ -24,16 +24,18 @@ the top-level admin UI.
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, Query, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
+    acting_organization,
     get_live_course_or_404,
     get_optional_user,
     is_owner_or_admin,
-    organization_of,
+    organization_scope,
+    requested_organization_id,
     require_director,
 )
 from app.core.database import get_db
@@ -42,6 +44,7 @@ from app.models.cohort import Cohort, CohortCourse, CohortStatus
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.course import Course, CourseStatus
 from app.models.enrollment import Enrollment
+from app.models.organization import MembershipRole
 from app.models.user import User, UserRole
 from app.schemas.cohort import (
     CohortCourseAttach,
@@ -56,6 +59,7 @@ from app.services.audit_service import log_action
 from app.services.cohort_capacity import assert_cohort_has_capacity
 from app.services.content_versions import record_human_version
 from app.services.language_detection import detect_locale
+from app.services.memberships import belongs_to, directs, grant_student_memberships
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import Localizer
 
@@ -179,44 +183,73 @@ def _serialize(db: Session, cohort: Cohort) -> CohortResponse:
     return _serialize_many(db, [cohort])[0]
 
 
-def _visible_to(q, viewer: User):
-    """Narrow a cohort query to what this caller may see.
+def _scoped(db: Session, q, viewer: User, requested: UUID | None):
+    """Narrow a cohort *list* to the organization this request acts in.
 
-    A director sees their own organization and nothing else. Platform
-    staff see every organization — that is what the role is for, and it
-    is checked by role rather than by ``organization_id`` because an
-    admin may also *belong* somewhere: the role says what you may do,
-    the column says where you sit.
-
-    ``require_director`` said this check "arrives with the
-    ``organization_id`` columns". The columns arrived; this is where the
-    check landed, because the dependency never sees the object.
+    A director sees the organization they are acting in and nothing else;
+    a director of two says which in ``X-Organization-Id``. Platform staff
+    see every organization unless they named one — that is what the role
+    is for, and it is checked by role rather than by membership because an
+    admin may also *belong* somewhere: the role says what you may do, the
+    membership says where you sit (``organization_scope``).
     """
-    if viewer.role == UserRole.ADMIN.value:
+    scope = organization_scope(db, viewer, requested)
+    if scope is None:
         return q
-    return q.filter(Cohort.organization_id == organization_of(viewer))
+    return q.filter(Cohort.organization_id == scope)
 
 
-def _get_or_404(db: Session, cohort_id: UUID, viewer: User) -> Cohort:
+def _cohort_not_found(cohort_id: UUID) -> HTTPException:
+    return equip_error(
+        ErrorCode.RESOURCE_NOT_FOUND,
+        status_code=status.HTTP_404_NOT_FOUND,
+        message="Cohort not found",
+        context={"resource_type": "cohort", "resource_id": str(cohort_id)},
+    )
+
+
+def _get_or_404(db: Session, cohort_id: UUID, viewer: User, *, for_update: bool = False) -> Cohort:
     """The cohort, or 404 — including when it belongs to somebody else.
+
+    The object decides: the cohort names its organization, and the caller
+    must direct *that* one (``directs``), whatever organization the rest of
+    their request acts in. No header is consulted here.
 
     404 and not 403: 403 answers the question the request was asking,
     which is whether this cohort exists. A director probing ids should
     learn nothing about the organization next door.
     """
-    cohort = _visible_to(db.query(Cohort), viewer).filter(Cohort.id == cohort_id).first()
-    if not cohort:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Cohort not found",
-            context={"resource_type": "cohort", "resource_id": str(cohort_id)},
-        )
+    q = db.query(Cohort).filter(Cohort.id == cohort_id)
+    if for_update:
+        q = q.with_for_update()
+    cohort = q.first()
+    if not cohort or not directs(db, viewer, cohort.organization_id):
+        raise _cohort_not_found(cohort_id)
     return cohort
 
 
 def _course_or_404(db: Session, course_id: str) -> Course:
     return get_live_course_or_404(db, course_id)
+
+
+def _has_institute_course(db: Session, course_ids: list[str]) -> bool:
+    return db.query(Course.id).filter(Course.id.in_(course_ids), Course.access_mode == "institute").first() is not None
+
+
+def _place_in_organization(db: Session, cohort: Cohort, user_ids: set, *, placed_by: User) -> None:
+    """Students of a cohort that carries a closed course are members of its organization.
+
+    An ``institute`` course exists only for the organization's members
+    (``_course_a_reader_may_see``). A director who puts a student in a cohort
+    of one has decided the student belongs — and without this row the student
+    would hold an enrolment on a course that answers them 404. Membership is
+    the lowest role and says how it came about: ``appointment``, by this
+    director. Anybody who already has a row — a teacher, or somebody the
+    organization suspended — is left exactly as they are: a seat in a class
+    is not a change of standing (``grant_student_memberships``, which does
+    the whole cohort in two statements rather than three per student).
+    """
+    grant_student_memberships(db, user_ids=user_ids, organization_id=cohort.organization_id, placed_by=placed_by.id)
 
 
 # ----------------------------- admin CRUD -----------------------------
@@ -235,11 +268,12 @@ def list_cohorts(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     director: User = Depends(require_director),
+    requested: UUID | None = Depends(requested_organization_id),
     db: Session = Depends(get_db),
 ) -> list[CohortResponse]:
     """Admin-wide cohort list. Optional ``status`` filter
     (``upcoming|active|completed``)."""
-    q = _visible_to(db.query(Cohort), director)
+    q = _scoped(db, db.query(Cohort), director, requested)
     if status_filter:
         q = q.filter(Cohort.status == status_filter)
     cohorts = q.order_by(Cohort.start_date.desc()).offset(skip).limit(limit).all()
@@ -250,13 +284,14 @@ def list_cohorts(
 def create_cohort(
     data: CohortCreate,
     director: User = Depends(require_director),
+    requested: UUID | None = Depends(requested_organization_id),
     db: Session = Depends(get_db),
 ) -> CohortResponse:
     """Create an empty cohort. Courses and students attach via the
     separate junction endpoints — keeps each step independently
     auditable."""
     cohort = Cohort(
-        organization_id=organization_of(director),
+        organization_id=acting_organization(db, director, requested, role=MembershipRole.DIRECTOR.value),
         start_date=data.start_date,
         end_date=data.end_date,
         enrollment_start=data.enrollment_start,
@@ -451,11 +486,13 @@ def attach_course(
     # An institute course belongs to its organization. Attaching it to a
     # cohort of another one would enrol that cohort's students in it and
     # step round its invitations. 404, as the catalog answers, so a course
-    # id is not confirmed to a director who may not see it.
+    # id is not confirmed to a director who may not see it. The cohort's
+    # organization is the one that counts, not whichever the director is
+    # acting in: a director of two must not carry A's closed course into B.
     if (
         course.access_mode == "institute"
         and director.role != UserRole.ADMIN.value
-        and course.organization_id != organization_of(director)
+        and course.organization_id != cohort.organization_id
     ):
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
@@ -493,6 +530,8 @@ def attach_course(
     # IntegrityError below would swallow the failure silently, leaving
     # the student unattached to the freshly re-attached course.
     missing_user_ids = all_cohort_users - already_enrolled
+    if course.access_mode == "institute" and all_cohort_users:
+        _place_in_organization(db, cohort, all_cohort_users, placed_by=director)
     if missing_user_ids:
         rebound = (
             db.query(Enrollment)
@@ -693,20 +732,13 @@ def add_student(
     # add_student calls — without this, two admins seeing
     # ``current_count == max_students - 1`` can both succeed and overshoot.
     # SQLite (test path) treats ``with_for_update`` as a no-op.
-    # ``_visible_to`` as every other cohort route: without it a director of
+    # ``_get_or_404`` as every other cohort route: without it a director of
     # one organization could add anyone to another's cohort — and so to its
     # institute courses. It does not stop a director learning whether an
     # email is registered: the lookup below is platform-wide, so their own
     # cohort still answers 404 for an unknown address and 201 for a known
     # one. Closing that is a product decision (invite by email instead).
-    cohort = _visible_to(db.query(Cohort), director).filter(Cohort.id == cohort_id).with_for_update().first()
-    if not cohort:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Cohort not found",
-            context={"resource_type": "cohort", "resource_id": str(cohort_id)},
-        )
+    cohort = _get_or_404(db, cohort_id, director, for_update=True)
     _refuse_if_completed(cohort)
 
     if body.user_id:
@@ -745,6 +777,8 @@ def add_student(
 
     course_ids = _course_ids_for_cohort(db, cohort.id)
     missing_course_ids = [cid for cid in course_ids if cid not in already_enrolled_courses]
+    if course_ids and _has_institute_course(db, course_ids):
+        _place_in_organization(db, cohort, {user.id}, placed_by=director)
 
     # A student that was previously removed via ``remove_student`` has
     # surviving enrollment rows with ``cohort_id`` nulled. Re-adding must
@@ -871,14 +905,11 @@ def list_cohorts_for_course(
     # its organization, and to anyone else it does not exist. Without this
     # its cohort names were readable by id to anybody, signed in or not —
     # and the course page is open to visitors now (2026-09-30 review).
+    # "Belongs" is a membership (``belongs_to``), in any role.
     if (
         course.access_mode == "institute"
         and not is_owner_or_admin(course, current_user)
-        and not (
-            current_user is not None
-            and current_user.organization_id is not None
-            and current_user.organization_id == course.organization_id
-        )
+        and not belongs_to(db, current_user, course.organization_id)
     ):
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,

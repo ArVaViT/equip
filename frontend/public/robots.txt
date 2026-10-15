@@ -2,6 +2,12 @@
 # Crawl the public surface; do not crawl the API or authenticated
 # routes (they are gated server-side and return JSON, not HTML).
 
+# AI crawlers — search (OAI-SearchBot, PerplexityBot, Claude-SearchBot) and
+# training (GPTBot, ClaudeBot, Google-Extended, CCBot) alike — are not named
+# here on purpose: the `*` group below covers them. Equip's courses are free
+# and meant to be found, and an answer engine that has read them can point a
+# reader here. A summary for them is at /llms.txt.
+
 User-agent: *
 Allow: /
 # Public documents that happen to sit under a disallowed prefix. Robots.txt
@@ -21,6 +27,10 @@ Disallow: /notes
 Disallow: /auth
 # A personal link from the foot of a course mail; it asks before it acts.
 Disallow: /unsubscribe
+# Sign-in, sign-up and password-reset forms: nothing on them to find.
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
 Disallow: /invite
 
 Sitemap: https://equipbible.com/sitemap.xml

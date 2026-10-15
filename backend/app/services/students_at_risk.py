@@ -36,6 +36,7 @@ from app.models.chapter_progress import ChapterProgress
 from app.models.course import Chapter, Course, CourseStatus
 from app.models.enrollment import Enrollment
 from app.models.grade_exemption import GradeExemption
+from app.models.organization import STAFF_ROLES, MembershipStatus, OrganizationMember
 from app.models.quiz import Quiz, QuizAttempt
 from app.models.user import User, UserRole
 
@@ -83,6 +84,23 @@ def students_at_risk(db: Session, teacher_id: uuid.UUID, *, now: datetime | None
     if not course_ids:
         return []
 
+    # Who is a student *here*: everyone enrolled who is not the author, not
+    # platform staff, and not staff of the course's own organization. Until
+    # 2026-10-03 this read ``User.role == 'student'``; with that column a
+    # mirror of the highest membership held anywhere, a student of this
+    # course who teaches in some other organization vanished from the list
+    # — the teacher would have called everybody but them.
+    staff_of_the_course_s_organization = (
+        db.query(OrganizationMember.user_id)
+        .join(Course, Course.organization_id == OrganizationMember.organization_id)
+        .filter(
+            Course.id == Enrollment.course_id,
+            OrganizationMember.user_id == Enrollment.user_id,
+            OrganizationMember.status == MembershipStatus.ACTIVE.value,
+            OrganizationMember.role.in_(STAFF_ROLES),
+        )
+        .exists()
+    )
     roster = (
         db.query(
             Enrollment.user_id,
@@ -95,8 +113,10 @@ def students_at_risk(db: Session, teacher_id: uuid.UUID, *, now: datetime | None
         .join(User, User.id == Enrollment.user_id)
         .filter(
             Enrollment.course_id.in_(course_ids),
+            Enrollment.user_id != teacher_id,
             User.deactivated_at.is_(None),
-            User.role == UserRole.STUDENT.value,
+            User.role != UserRole.ADMIN.value,
+            ~staff_of_the_course_s_organization,
         )
         .all()
     )

@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 
@@ -8,9 +8,27 @@ const appVersion =
   process.env.VITE_APP_VERSION ||
   (process.env.VERCEL_GIT_COMMIT_SHA ? process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7) : 'dev')
 
+// WebMCP origin trial (lib/webmcp.ts). The token is the owner's to register
+// and lives in the environment, never in the repo; without it no tag is
+// written. An origin-trial token is meant to be public — it is bound to the
+// origin — but it expires, and a stale one in git would be dead markup.
+function webMcpOriginTrial(): Plugin {
+  let token = ''
+  return {
+    name: 'equip-webmcp-origin-trial',
+    configResolved(config) {
+      token = (config.env.VITE_WEBMCP_OT_TOKEN ?? process.env.VITE_WEBMCP_OT_TOKEN ?? '').trim()
+    },
+    transformIndexHtml() {
+      if (!/^[A-Za-z0-9+/=]+$/.test(token)) return []
+      return [{ tag: 'meta', attrs: { 'http-equiv': 'origin-trial', content: token }, injectTo: 'head' }]
+    },
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), webMcpOriginTrial()],
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
   },

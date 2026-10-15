@@ -214,16 +214,3 @@ export function formatDateTimeZoned(date: Date | string | number | null | undefi
   const locale = activeIntlTag(i18n.resolvedLanguage ?? i18n.language)
   return `${p.year}-${pad(p.month)}-${pad(p.day)} ${pad(p.hour)}:${pad(p.minute)} ${timeZoneLabel(locale, getDisplayTimeZone(), d)}`
 }
-
-/**
- * When the next Daily Challenge day begins, on the reader's clock — the day
- * turns at midnight UTC for everyone, which is 20:00 EDT in Indiana and 03:00
- * in Kyiv. ``"20:00 EDT"``; the zone named because the moment is not local.
- */
-export function formatNextUtcMidnight(now: Date = new Date()): string {
-  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
-  const locale = activeIntlTag(i18n.resolvedLanguage ?? i18n.language)
-  const tz = getDisplayTimeZone()
-  const time = next.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", timeZone: tz })
-  return `${time} ${timeZoneLabel(locale, tz, next)}`
-}

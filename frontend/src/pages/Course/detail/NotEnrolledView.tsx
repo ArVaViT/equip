@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge"
 import { toProxyImage } from "@/lib/images"
 import { countChapters, countModules, readCourseStructure } from "@/lib/courseStructure"
 import type { Course, Cohort } from "@/types"
-import { formatDate, isEnrollableCohort } from "./types"
+import { formatDate } from "./types"
+import { planEnrollment } from "./enrollPlan"
 import { CohortSelectModal } from "./CohortSelectModal"
 import { DraftOutline } from "./DraftOutline"
 import { orNotTranslated } from "@/lib/untranslated"
@@ -64,18 +65,14 @@ export function NotEnrolledView({
   const isOwnerPreview = isOwner && course.status !== "published"
 
   const activeCohort = cohorts.find((c) => c.status === "active")
-  const enrollableCohorts = cohorts.filter(isEnrollableCohort)
-  // Institute courses (ADR-010): students can't self-enroll. Directors
-  // add them via the admin cohort UI. Owners (teacher/admin viewing
-  // their own course) still get the normal flow so they can preview.
-  const isInstituteGate = course.access_mode === "institute" && !isOwner
-  // Without cohorts the course's own window decides, as on the server and on
-  // the catalog card — which said «Enrollment closed» while this button
-  // offered to enrol (2026-10-03).
+  // Whether and how this reader may enrol — one answer, shared with the
+  // lesson page's own button (see enrollPlan.ts).
+  const plan = planEnrollment(course, cohorts, isOwner)
+  const isInstituteGate = plan.kind === "invitation"
+  const canEnroll = plan.kind === "enroll" || plan.kind === "choose"
+  const enrollableCohorts = plan.kind === "choose" ? plan.cohorts : []
+  // For the sentence under a disabled button: why not, and until when.
   const courseWindow = enrollmentState(course.enrollment_start, course.enrollment_end)
-  const courseWindowOpen = courseWindow.state === null || courseWindow.state === "open"
-  const canEnroll =
-    !isInstituteGate && (enrollableCohorts.length > 0 || (cohorts.length === 0 && courseWindowOpen))
 
   // Course-at-a-glance counts, and the outline the owner previews.
   //
@@ -92,16 +89,12 @@ export function NotEnrolledView({
   )
 
   const handleEnrollClick = () => {
-    if (enrollableCohorts.length === 0) {
-      void onEnroll(undefined)
+    if (plan.kind === "enroll") {
+      void onEnroll(plan.cohortId)
       return
     }
-    if (enrollableCohorts.length === 1) {
-      const first = enrollableCohorts[0]
-      if (first) void onEnroll(first.id)
-      return
-    }
-    const first = enrollableCohorts[0]
+    if (plan.kind !== "choose") return
+    const first = plan.cohorts[0]
     if (first) setSelectedCohortId(first.id)
     setCohortSelectModal(true)
   }
@@ -281,18 +274,28 @@ export function NotEnrolledView({
           </div>
         ) : isSignedIn ? (
           <div>
-            <Button
-              onClick={handleEnrollClick}
-              disabled={enrolling || !canEnroll}
-              size="lg"
-            >
-              <Users className="mr-2 h-4 w-4" strokeWidth={1.75} aria-hidden />
-              {!canEnroll
-                ? t("courseDetail.enrollmentNotAvailable")
-                : enrolling
-                  ? t("courseDetail.enrolling")
-                  : t("courseDetail.enrollInCourse")}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={handleEnrollClick}
+                disabled={enrolling || !canEnroll}
+                size="lg"
+              >
+                <Users className="mr-2 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                {!canEnroll
+                  ? t("courseDetail.enrollmentNotAvailable")
+                  : enrolling
+                    ? t("courseDetail.enrolling")
+                    : t("courseDetail.enrollInCourse")}
+              </Button>
+              {/* Read before enrolling, as a guest can. */}
+              {course.preview_chapter_id && (
+                <Button asChild size="lg" variant="outline">
+                  <Link to={`/courses/${course.id}/chapters/${course.preview_chapter_id}`}>
+                    {t("guest.readFirst")}
+                  </Link>
+                </Button>
+              )}
+            </div>
             {!canEnroll && (
               <p className="text-sm text-ink-muted mt-2">
                 {cohorts.length > 0
@@ -305,21 +308,49 @@ export function NotEnrolledView({
               </p>
             )}
           </div>
-        ) : (
-          // Back to this course after signing in — a visitor who came by a
-          // pastor's link otherwise lands on the home screen (`Gate` reads
+        ) : course.preview_chapter_id ? (
+          // A guest on a course whose first lesson is open: reading it is the
+          // thing that costs nothing, so it leads. The page used to lead with
+          // «Войти для записи» and never said the lesson was free; the one
+          // fact that would have kept a visitor on the page was in the
+          // smaller button. Enrolling means an account first, so the second
+          // button starts one — and comes back here (`Gate` reads
           // `state.from`, see lib/authRedirect).
-          <Button asChild size="lg">
-            <Link to="/login" state={{ from: `${location.pathname}${location.search}` }}>
-              {t("courseDetail.signInToEnroll")}
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild size="lg">
+              <Link to={`/courses/${course.id}/chapters/${course.preview_chapter_id}`}>
+                {t("guest.readFirstFree")}
+              </Link>
+            </Button>
+            {/* Only where an account leads to a seat: a course by
+                invitation or with its window shut would greet the new
+                account with "not for you". */}
+            {canEnroll && (
+              <Button asChild size="lg" variant="outline">
+                <Link to="/register" state={{ from: `${location.pathname}${location.search}` }}>
+                  {t("courseDetail.enrollInCourse")}
+                </Link>
+              </Button>
+            )}
+          </div>
+        ) : (
+          // Nothing to read without an account: back to this course after
+          // signing in — a visitor who came by a pastor's link otherwise
+          // lands on the home screen.
+          <div className="flex flex-wrap gap-2">
+            <Button asChild size="lg">
+              <Link to="/login" state={{ from: `${location.pathname}${location.search}` }}>
+                {t("courseDetail.signInToEnroll")}
+              </Link>
+            </Button>
+          </div>
         )}
       </div>
 
       {!isOwnerPreview && <CourseTabs
           courseId={course.id}
           structure={structure}
+          previewChapterId={course.preview_chapter_id ?? null}
           about={aboutContent}
           hasAbout={Boolean(course.description || activeCohort || course.enrollment_start || course.enrollment_end)}
         />}

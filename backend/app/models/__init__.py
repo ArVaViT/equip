@@ -18,7 +18,13 @@ from app.models.legal_acceptance import LegalAcceptance
 from app.models.legal_notice_seen import LegalNoticeSeen
 from app.models.notification import Notification
 from app.models.org_settings import DEFAULT_GRADE_BANDS, OrgSettings
-from app.models.organization import Organization
+from app.models.organization import (
+    MembershipRole,
+    MembershipSource,
+    MembershipStatus,
+    Organization,
+    OrganizationMember,
+)
 from app.models.prerequisite import CoursePrerequisite
 from app.models.quiz import (
     Quiz,
@@ -71,10 +77,14 @@ __all__ = [
     "InvitationStatus",
     "LegalAcceptance",
     "LegalNoticeSeen",
+    "MembershipRole",
+    "MembershipSource",
+    "MembershipStatus",
     "Module",
     "Notification",
     "OrgSettings",
     "Organization",
+    "OrganizationMember",
     "Quiz",
     "QuizAnswer",
     "QuizAttempt",

@@ -154,7 +154,7 @@ test.describe("landmarks", () => {
    * This checks the one thing that is true on every page regardless: there
    * is exactly one main landmark, and it is the one the app navigates to.
    */
-  for (const path of ["/", "/login", "/register", "/courses", "/auth/reset-password"]) {
+  for (const path of ["/", "/login", "/register", "/courses", "/organizations", "/auth/reset-password"]) {
     test(`${path} has exactly one <main id="main-content">`, async ({ page }) => {
       await page.goto(path, { waitUntil: "domcontentloaded" });
       await settleAnimations(page);

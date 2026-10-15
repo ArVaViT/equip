@@ -16,6 +16,7 @@ import {
   CalendarDays,
   Eye,
   EyeOff,
+  FileDown,
   GraduationCap,
   Loader2,
   Lock,
@@ -25,6 +26,8 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/context/useAuth"
 import { ROLES } from "@/types"
+import { coursesService } from "@/services/courses"
+import { toast } from "@/lib/toast"
 import {
   ErrorState,
   InlineEdit,
@@ -83,6 +86,24 @@ export default function CourseEditor() {
   // don't create or manage cohorts. Their only cohort surface is the
   // gradebook filter for their course.
   const events = useEventsSection(courseId, confirm)
+
+  const downloadPdf = async () => {
+    if (!courseId) return
+    toast({ title: t("courseEditor.pdf.preparing"), duration: 4000 })
+    try {
+      const blob = await coursesService.exportCoursePdf(courseId)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${(data.course?.title ?? "course").replace(/[^\p{L}\p{M}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "course"}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch {
+      toast({ title: t("courseEditor.pdf.failed"), variant: "destructive" })
+    }
+  }
   const readiness = useCourseReadiness(courseId)
   const translation = useCourseTranslation(courseId)
   const descriptionAnchorRef = useRef<HTMLDivElement | null>(null)
@@ -309,6 +330,13 @@ export default function CourseEditor() {
                 >
                   <CalendarDays strokeWidth={1.75} /> {t("courseEditor.menu.events")}
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                {/* The server has rendered courses to PDF since spring; there
+                    was no way to ask for one. For the teacher: a printout for
+                    a class without screens, a copy to send to a pastor. */}
+                <DropdownMenuItem onSelect={() => void downloadPdf()}>
+                  <FileDown strokeWidth={1.75} /> {t("courseEditor.menu.downloadPdf")}
+                </DropdownMenuItem>
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
@@ -436,6 +464,9 @@ export default function CourseEditor() {
         onCancelEdit={events.resetForm}
         onEdit={events.startEdit}
         onDelete={events.remove}
+        pendingScope={events.pendingScope}
+        onChooseScope={events.chooseScope}
+        onCancelScope={events.cancelScope}
       />
 
       {isAdmin && (

@@ -1054,11 +1054,17 @@ class TestAddStudentByEmail:
 
 
 class TestSoloEnrollmentAccessMode:
-    """ADR-010 §1: ``access_mode='institute'`` blocks the solo-enroll
-    path (no cohort_id in the request body). Cohort-route enrollment
+    """ADR-010 §1 as amended 2026-10-03: ``access_mode='institute'`` opens the
+    solo-enroll path (no cohort_id in the request body) to the organization's
+    members and to nobody else — a stranger meets the same 404 the course
+    page gives, not a 403 that names the course. Cohort-route enrollment
     still works — that's the director's explicit invitation."""
 
-    def test_solo_enroll_on_institute_course_returns_403(self, student_client: TestClient, db: Session, student):
+    def test_solo_enroll_on_institute_course_is_404_for_a_stranger(
+        self, student_client: TestClient, db: Session, student
+    ):
+        from tests.conftest import leave_every_organization
+
         course = Course(
             id="institute-course",
             title="Greek 1",
@@ -1068,10 +1074,30 @@ class TestSoloEnrollmentAccessMode:
         )
         db.add(course)
         db.commit()
+        leave_every_organization(db, student.id)
 
         resp = student_client.post(f"{COURSES_PREFIX}/{course.id}/enroll", json={})
-        assert resp.status_code == 403
-        assert "invitation" in resp.json()["detail"]["message"].lower()
+        assert resp.status_code == 404
+        assert "access_mode" not in resp.text, "the old 403 named the course as institute"
+
+    def test_solo_enroll_on_institute_course_succeeds_for_a_member(
+        self, student_client: TestClient, db: Session, student
+    ):
+        from ._cv_helpers import make_course_with_text
+
+        # The seeded student is a member of the test organization, which is the course's.
+        course = make_course_with_text(
+            db,
+            course_id="institute-course",
+            title="Greek 1",
+            status="published",
+            access_mode="institute",
+            created_by=TEACHER_ID,
+        )
+        db.commit()
+
+        resp = student_client.post(f"{COURSES_PREFIX}/{course.id}/enroll", json={})
+        assert resp.status_code == 200, resp.text
 
     def test_solo_enroll_on_public_course_succeeds(self, student_client: TestClient, db: Session, student):
         from ._cv_helpers import make_course_with_text

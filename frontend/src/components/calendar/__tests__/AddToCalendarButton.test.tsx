@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { I18nextProvider } from "react-i18next"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -21,7 +22,7 @@ const evt = {
 describe("AddToCalendarButton", () => {
   afterEach(() => vi.restoreAllMocks())
 
-  it("hands the reader a calendar file named after the event, and stays inside its row", () => {
+  it("offers Google and a calendar file, and stays inside its row", async () => {
     const create = vi.fn(() => "blob:x")
     Object.assign(URL, { createObjectURL: create, revokeObjectURL: vi.fn() })
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {})
@@ -33,7 +34,11 @@ describe("AddToCalendarButton", () => {
         </div>
       </I18nextProvider>,
     )
-    fireEvent.click(screen.getByRole("button", { name: i18n.t("calendar.addOne.aria", { title: evt.title }) }))
+    await userEvent.click(screen.getByRole("button", { name: i18n.t("calendar.addOne.aria", { title: evt.title }) }))
+    const google = await screen.findByRole("menuitem", { name: i18n.t("calendar.addOne.google") })
+    expect(google).toHaveAttribute("href", expect.stringContaining("https://calendar.google.com/calendar/render?action=TEMPLATE"))
+    expect(google).toHaveAttribute("target", "_blank")
+    fireEvent.click(screen.getByRole("menuitem", { name: i18n.t("calendar.addOne.file") }))
     expect(create).toHaveBeenCalledOnce()
     const blob = (create.mock.calls[0] as unknown as [Blob])[0]
     expect(blob.type).toContain("text/calendar")

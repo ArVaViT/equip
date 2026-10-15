@@ -1,16 +1,23 @@
 """Course-level write endpoints: create / update / delete / clone / restore."""
 
 import logging
+from uuid import UUID
 
 from fastapi import Depends, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import assert_course_owner, is_owner_or_admin, organization_of, require_teacher
+from app.api.dependencies import (
+    acting_organization,
+    assert_course_owner,
+    is_owner_or_admin,
+    requested_organization_id,
+    require_teacher,
+)
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.sanitize import sanitize_plain_text
 from app.models.course import Course, CourseStatus
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.schemas.course import CourseCreate, CourseResponse, CourseUpdate, ResyncProgressResponse
 from app.services.audit_service import log_action
 from app.services.course_service import (
@@ -24,6 +31,7 @@ from app.services.course_service import (
     update_course,
 )
 from app.services.limits import assert_can_own_another_course
+from app.services.memberships import directs, teaches_in
 from app.services.staged_edits import promote_staged_entity_unconditionally
 from app.services.translation.completeness import course_translation_completeness
 from app.services.translation.pipeline_hooks import (
@@ -40,6 +48,7 @@ logger = logging.getLogger(__name__)
 def create_new_course(
     data: CourseCreate,
     teacher: User = Depends(require_teacher),
+    requested: UUID | None = Depends(requested_organization_id),
     db: Session = Depends(get_db),
 ) -> Course:
     # How many courses one teacher may hold is a plan decision, not a
@@ -56,11 +65,14 @@ def create_new_course(
     # works in EN gets RU translations for their RU students; vice versa
     # for an RU-authoring teacher). ``preferred_locale`` is itself
     # CHECK-constrained to the supported locale set.
+    # The course belongs to the organization the teacher is acting in: the
+    # one they teach in, or the one named in ``X-Organization-Id`` when
+    # they teach in several (``acting_organization``).
     course = create_course(
         db,
         data,
         teacher.id,
-        organization_id=organization_of(teacher),
+        organization_id=acting_organization(db, teacher, requested),
         source_locale=teacher.preferred_locale,
     )
     log_action(db, teacher.id, "create", "course", course.id)
@@ -82,16 +94,26 @@ def update_existing_course(
             message=f"Course '{course_id}' not found",
             context={"resource_type": "course", "resource_id": course_id},
         )
-    assert_course_owner(course, teacher)
     # ``access_mode`` (public vs institute) controls solo-enrollment
     # access per ADR-010. Letting any course owner flip it would let a
     # teacher promote their institute course to public, bypassing the
-    # invitation-only gate. Restrict the field to admins.
-    if data.access_mode is not None and teacher.role != UserRole.ADMIN.value:
+    # invitation-only gate. The field is the organization's to decide:
+    # its director (``directs``, by membership) or platform staff. Until
+    # 2026-10-03 only staff could, so a director could not close a course
+    # of their own school without the platform's help.
+    #
+    # Which also means the director may set it on a course one of their
+    # teachers owns — that field and nothing else: everything else on the
+    # course stays the owner's, as it was. Until 2026-10-03 the owner check
+    # ran first and a director closing a teacher's course met a 403.
+    only_access_mode = data.model_fields_set == {"access_mode"}
+    if not (only_access_mode and directs(db, teacher, course.organization_id)):
+        assert_course_owner(course, teacher)
+    if data.access_mode is not None and not directs(db, teacher, course.organization_id):
         raise equip_error(
             ErrorCode.AUTH_FORBIDDEN,
             status_code=status.HTTP_403_FORBIDDEN,
-            message="Only admins can change course access mode",
+            message="Only a director of this organization or an admin can change course access mode",
             context={"resource_type": "course", "course_id": course_id, "field": "access_mode"},
         )
     if data.title:
@@ -197,6 +219,7 @@ def remove_course(
 def clone_existing_course(
     course_id: str,
     teacher: User = Depends(require_teacher),
+    requested: UUID | None = Depends(requested_organization_id),
     db: Session = Depends(get_db),
 ) -> Course:
     course = get_course(db, course_id)
@@ -210,11 +233,13 @@ def clone_existing_course(
     # An «institute» course is its school's: to anyone else it is not there,
     # here as on the course page (``_course_a_reader_may_see``). Without this
     # a teacher of any school could copy another school's closed course,
-    # whole tree and every translation (2026-10-03).
+    # whole tree and every translation (2026-10-03). Copying is a staff
+    # act, so the membership that opens it is a teaching one (``teaches_in``):
+    # a student of the school reads the course, and does not take a copy.
     if (
         course.access_mode == "institute"
         and not is_owner_or_admin(course, teacher)
-        and teacher.organization_id != course.organization_id
+        and not teaches_in(db, teacher, course.organization_id)
     ):
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
@@ -235,10 +260,10 @@ def clone_existing_course(
     # A clone is the most expensive course a teacher can make: the whole
     # tree is copied, and every translated string with it. Gate it before
     # the copy, not after.
-    # The copy is the cloner's, so it lives in their school — not in the
-    # original's, and never in none: the column has no default, and the clone
-    # left it empty.
-    organization_id = organization_of(teacher)
+    # The copy is the cloner's, so it lives in the school they are acting
+    # in — not in the original's, and never in none: the column has no
+    # default, and the clone left it empty.
+    organization_id = acting_organization(db, teacher, requested)
     assert_can_own_another_course(db, teacher)
     new_course = clone_course(db, course_id, str(teacher.id), organization_id=organization_id)
     if not new_course:

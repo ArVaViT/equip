@@ -104,3 +104,43 @@ describe("InvitationsTab — revoking", () => {
     await waitFor(() => expect(revokeInvitation).toHaveBeenCalledWith("inv-1"));
   });
 });
+
+describe("InvitationsTab — a platform invitation", () => {
+  const ACCOUNT_ONLY = { ...PENDING, id: "inv-2", role: "student", scope: "platform", course_id: null };
+
+  beforeEach(() => {
+    listInvitations.mockReset().mockResolvedValue([ACCOUNT_ONLY]);
+    createInvitation.mockReset().mockResolvedValue(ACCOUNT_ONLY);
+  });
+
+  it("says it grants an account only", async () => {
+    render(
+      <Wrapper>
+        <InvitationsTab />
+      </Wrapper>,
+    );
+    await waitFor(() => expect(screen.getAllByText(ACCOUNT_ONLY.email).length).toBeGreaterThan(0));
+    expect(screen.getAllByText(i18n.t("admin.invitations.scope.platform")).length).toBeGreaterThan(0);
+  });
+
+  it("is resent as what it was, not as a place in the school", async () => {
+    // Without the scope the server takes the school's default, and the
+    // person offered an account would get a second link into the school.
+    const user = userEvent.setup();
+    render(
+      <Wrapper>
+        <InvitationsTab />
+      </Wrapper>,
+    );
+    await waitFor(() => expect(screen.getAllByText(ACCOUNT_ONLY.email).length).toBeGreaterThan(0));
+    await user.click(screen.getAllByRole("button", { name: i18n.t("admin.invitations.resend") })[0]!);
+    await user.click(screen.getByRole("button", { name: i18n.t("admin.invitations.resendConfirm.confirm") }));
+
+    await waitFor(() =>
+      expect(createInvitation).toHaveBeenCalledWith(ACCOUNT_ONLY.email, "student", true, {
+        scope: "platform",
+        courseId: null,
+      }),
+    );
+  });
+});

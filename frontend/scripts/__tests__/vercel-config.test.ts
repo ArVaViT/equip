@@ -86,8 +86,18 @@ describe("frontend/vercel.json", () => {
 
     // /video/ is served with a week of `immutable`: a missing file must 404,
     // not come back as index.html cached for a week (2026-10-03).
-    it.each(["/assets/index-ABC12345.js", "/assets/nope.css", "/video/intro.mp4", "/video/nope.mp4"])(
-      "does NOT rewrite a hashed asset request (%s) — that must 404, not fall back to index.html",
+    // Nor a /.well-known/ probe: agents and registries ask for files like
+    // /.well-known/ai-catalog.json and must get a 404, not the SPA's HTML
+    // passed off as an invalid manifest (Lighthouse agentic audit, 2026-10-14).
+    it.each([
+      "/assets/index-ABC12345.js",
+      "/assets/nope.css",
+      "/video/intro.mp4",
+      "/video/nope.mp4",
+      "/.well-known/ai-catalog.json",
+      "/.well-known/nope",
+    ])(
+      "does NOT rewrite %s — a missing asset or /.well-known/ file must 404, not fall back to index.html",
       (path) => {
         expect(regex.test(path)).toBe(false);
       },

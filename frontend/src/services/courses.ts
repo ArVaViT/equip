@@ -92,9 +92,9 @@ const courseCrud = {
   },
 
   /** Who teaches the course — the «Автор» tab. Visible when the course page is. */
-  async getAuthor(id: string): Promise<{ name: string | null; avatar_url: string | null; school: string | null }> {
+  async getAuthor(id: string): Promise<CourseAuthor> {
     return cached(`courses:author:${id}`, CACHE_TTL.THREE_MINUTES, async () => {
-      const response = await api.get<{ name: string | null; avatar_url: string | null; school: string | null }>(
+      const response = await api.get<CourseAuthor>(
         `/courses/${id}/author`,
       )
       return response.data
@@ -127,6 +127,13 @@ const courseCrud = {
       params: { source: 1 },
     })
     return response.data
+  },
+
+  /** The course as a printable PDF, in the reader's language (owner, admin
+   *  or enrolled reader). Built on demand on the server. */
+  async exportCoursePdf(courseId: string): Promise<Blob> {
+    const response = await api.get(`/courses/${courseId}/export.pdf`, { responseType: "blob" })
+    return response.data as Blob
   },
 
   async getTeacherCourses(): Promise<Course[]> {
@@ -355,6 +362,15 @@ const courseCrud = {
  * (e.g. `import { quizzesService } from "@/services/quizzes"`); routing
  * every one through this file would just add an import hop.
  */
+/** Who teaches the course, and the organization it belongs to. */
+export interface CourseAuthor {
+  name: string | null
+  avatar_url: string | null
+  school: string | null
+  organization_slug?: string | null
+  organization_logo_url?: string | null
+}
+
 export const coursesService = {
   ...courseCrud,
   ...adminUsersService,

@@ -15,6 +15,7 @@ things load-bearing:
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -73,12 +74,14 @@ def stranger_client(db: Session):
     app.dependency_overrides.clear()
 
 
-def _course(db: Session, owner: User, course_id: str, *, access_mode: str, status: str = "published"):
+def _course(
+    db: Session, owner: User, course_id: str, *, access_mode: str, status: str = "published", description: str = ""
+):
     course = make_course_with_text(
         db,
         course_id=course_id,
         title=f"Course {course_id}",
-        description="",
+        description=description,
         status=status,
         created_by=owner.id,
     )
@@ -163,3 +166,169 @@ class TestSuspension:
         assert body["active"] is False
         assert body["verified"] is False
         assert body["courses"] == []
+
+
+# ── the page an organization is sold by (phase 4, 2026-10-03) ──────────
+
+
+def _person(db: Session, name: str | None, role: str, *, email: str | None = None) -> User:
+    from app.services.memberships import grant_membership
+
+    user = User(
+        id=uuid.uuid4(),
+        email=email or f"{uuid.uuid4().hex[:8]}@ucoat.example",
+        full_name=name,
+        role=UserRole.STUDENT.value,
+    )
+    db.add(user)
+    db.flush()
+    grant_membership(db, user=user, organization_id=SCHOOL_ID, role=role, joined_via="appointment")
+    db.commit()
+    return user
+
+
+def _client_as(db: Session, user: User | None):
+    from app.api.dependencies import get_current_user, get_optional_user
+
+    def _db():
+        yield db
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_optional_user] = lambda: user
+    if user is not None:
+        app.dependency_overrides[get_current_user] = lambda: user
+    return TestClient(app, raise_server_exceptions=False)
+
+
+class TestTheOrganizationIntroducesItself:
+    def test_the_director_is_named_and_never_addressed(
+        self, stranger_client: TestClient, db: Session, school: Organization
+    ):
+        director = _person(db, "Дмитрий Константинов", "director", email="director@ucoat.example")
+        body = stranger_client.get("/api/v1/organizations/ucoat").json()
+        # The id is a key for the list, not an address.
+        assert body["directors"] == [{"id": str(director.id), "full_name": "Дмитрий Константинов", "avatar_url": None}]
+        assert "director@ucoat.example" not in str(body)
+
+    def test_a_deactivated_account_is_not_counted(self, stranger_client: TestClient, db: Session, school: Organization):
+        # Memberships outlive the account's deactivation; the numbers on the
+        # page are about people who can sign in. Until 2026-10-03 the
+        # director list left them out and the counts kept them.
+        _person(db, "Director", "director")
+        for i in range(10):
+            _person(db, f"S{i}", "student")
+        for i in range(3):
+            _person(db, f"T{i}", "teacher")
+        stats = stranger_client.get("/api/v1/organizations/ucoat").json()["stats"]
+        assert (stats["members"], stats["teachers"]) == (14, 4)
+
+        gone = [u for u in db.query(User).filter(User.full_name.in_(["S0", "T0"])).all()]
+        for user in gone:
+            user.deactivated_at = datetime.now(UTC)
+        db.commit()
+        stats = stranger_client.get("/api/v1/organizations/ucoat").json()["stats"]
+        assert (stats["members"], stats["teachers"]) == (12, 3)
+
+    def test_small_numbers_about_people_are_not_shown(
+        self, stranger_client: TestClient, db: Session, school: Organization
+    ):
+        for i in range(4):
+            _person(db, f"S{i}", "student")
+        _person(db, "T", "teacher")
+        stats = stranger_client.get("/api/v1/organizations/ucoat").json()["stats"]
+        assert stats["members"] is None, "4 people next to a director's name is nearly a list"
+        assert stats["teachers"] is None
+        for i in range(6):
+            _person(db, f"S{i + 4}", "student")
+        _person(db, "T2", "teacher")
+        _person(db, "T3", "teacher")
+        stats = stranger_client.get("/api/v1/organizations/ucoat").json()["stats"]
+        assert stats["members"] == 13
+        assert stats["teachers"] == 3
+
+    def test_a_closed_course_is_a_title_and_a_lock_to_a_stranger_and_a_course_to_a_member(
+        self, stranger_client: TestClient, db: Session, their_teacher: User
+    ):
+        _course(db, their_teacher, "ucoat-institute", access_mode="institute", description="Twelve evenings on Acts.")
+        body = stranger_client.get("/api/v1/organizations/ucoat").json()
+        assert body["courses"] == []
+        assert [c["id"] for c in body["locked_courses"]] == ["ucoat-institute"]
+        # The blurb is what the catalog already says about a published
+        # course; the lessons and everything a seat opens stay out.
+        assert set(body["locked_courses"][0]) == {"id", "title", "description", "image_url"}
+        assert body["locked_courses"][0]["description"] == "Twelve evenings on Acts."
+
+        member = _person(db, "Member", "student")
+        with _client_as(db, member) as c:
+            body = c.get("/api/v1/organizations/ucoat").json()
+        app.dependency_overrides.clear()
+        assert body["viewer_is_member"] is True
+        assert [x["id"] for x in body["courses"]] == ["ucoat-institute"]
+        assert body["locked_courses"] == []
+
+    def test_an_organization_not_yet_verified_is_its_own_people_s_to_see(
+        self, stranger_client: TestClient, db: Session, school: Organization
+    ):
+        school.status = "approved"
+        db.commit()
+        assert stranger_client.get("/api/v1/organizations/ucoat").status_code == 404
+        member = _person(db, "Member", "student")
+        with _client_as(db, member) as c:
+            assert c.get("/api/v1/organizations/ucoat").status_code == 200
+        app.dependency_overrides.clear()
+
+
+class TestTheDirectorWritesThePage:
+    def test_the_director_writes_the_paragraph_and_nobody_else_can(self, db: Session, school: Organization):
+        director = _person(db, "Director", "director")
+        teacher = _person(db, "Teacher", "teacher")
+        payload = {"description": "Библейская школа при церкви.", "website_url": "https://ucoat.example"}
+        with _client_as(db, teacher) as c:
+            assert c.patch(f"/api/v1/organizations/{SCHOOL_ID}/profile", json=payload).status_code == 404
+        with _client_as(db, director) as c:
+            r = c.patch(f"/api/v1/organizations/{SCHOOL_ID}/profile", json=payload)
+        app.dependency_overrides.clear()
+        assert r.status_code == 200, r.text
+        assert r.json()["description"] == "Библейская школа при церкви."
+        assert r.json()["website_url"] == "https://ucoat.example"
+
+    def test_a_website_must_be_https_and_a_paragraph_short(self, db: Session, school: Organization):
+        director = _person(db, "Director", "director")
+        with _client_as(db, director) as c:
+            # The form's rule, held by the API too: https, a host with a dot,
+            # no whitespace. "https://" alone used to pass (2026-10-03).
+            for broken in ("http://x", "https://", "https://ucoat", "https://uco at.example", "https://x.y z"):
+                resp = c.patch(f"/api/v1/organizations/{SCHOOL_ID}/profile", json={"website_url": broken})
+                assert resp.status_code == 422, (broken, resp.text)
+            assert (
+                c.patch(f"/api/v1/organizations/{SCHOOL_ID}/profile", json={"description": "x" * 281}).status_code
+                == 422
+            )
+        app.dependency_overrides.clear()
+
+
+class TestTheShowcase:
+    def test_lists_only_verified_organizations_with_a_director_and_a_course(
+        self, stranger_client: TestClient, db: Session, their_teacher: User
+    ):
+        listed = lambda: [c["slug"] for c in stranger_client.get("/api/v1/organizations").json()]  # noqa: E731
+        assert listed() == [], "no director, no course yet"
+        _person(db, "Director", "director")
+        assert listed() == [], "a director but no course"
+        _course(db, their_teacher, "ucoat-public", access_mode="public")
+        assert listed() == ["ucoat"]
+        school = db.get(Organization, SCHOOL_ID)
+        assert school is not None
+        school.status = "suspended"
+        db.commit()
+        assert listed() == []
+
+    def test_a_deactivated_director_runs_nothing(self, stranger_client: TestClient, db: Session, their_teacher: User):
+        # The page's own list of directors leaves a deactivated account
+        # out; the showcase used to count it as somebody running the place.
+        director = _person(db, "Director", "director")
+        _course(db, their_teacher, "ucoat-public", access_mode="public")
+        assert [c["slug"] for c in stranger_client.get("/api/v1/organizations").json()] == ["ucoat"]
+        director.deactivated_at = datetime.now(UTC)
+        db.commit()
+        assert stranger_client.get("/api/v1/organizations").json() == []

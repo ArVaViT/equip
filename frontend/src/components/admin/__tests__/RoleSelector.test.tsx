@@ -71,57 +71,27 @@ describe("RoleSelector", () => {
     ).toBeInTheDocument()
   })
 
-  it("opens the menu showing all three roles in canonical order", async () => {
-    const user = userEvent.setup()
-    await i18n.changeLanguage("en")
-    render(<RoleSelector role="student" onChange={vi.fn()} />, renderOpts)
-
-    await user.click(screen.getByRole("button"))
-
-    const items = await screen.findAllByRole("menuitem")
-    expect(items.map((i) => i.textContent?.trim())).toEqual([
-      "Student",
-      "Teacher",
-      "Admin",
-    ])
-  })
-
-  it("fires onChange when a different role is picked", async () => {
-    const user = userEvent.setup()
-    await i18n.changeLanguage("en")
-    const onChange = vi.fn()
-    render(<RoleSelector role="student" onChange={onChange} />, renderOpts)
-
-    await user.click(screen.getByRole("button"))
-    const teacherItem = await screen.findByRole("menuitem", { name: "Teacher" })
-    await user.click(teacherItem)
-
-    expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onChange).toHaveBeenCalledWith("teacher")
-  })
-
-  it("does NOT fire onChange when the current role is picked", async () => {
+  it("offers only the platform choice; teacher and director come from organizations", async () => {
     const user = userEvent.setup()
     await i18n.changeLanguage("en")
     const onChange = vi.fn()
     render(<RoleSelector role="teacher" onChange={onChange} />, renderOpts)
 
     await user.click(screen.getByRole("button"))
-    const teacherItem = await screen.findByRole("menuitem", { name: "Teacher" })
-    await user.click(teacherItem)
-
-    expect(onChange).not.toHaveBeenCalled()
+    const items = await screen.findAllByRole("menuitem")
+    expect(items.map((i) => i.textContent?.trim())).toEqual(["Teacher", "Make platform admin"])
+    await user.click(screen.getByRole("menuitem", { name: "Make platform admin" }))
+    expect(onChange).toHaveBeenCalledWith("admin")
   })
 
-  it("renders the localized label under RU as well as EN", async () => {
-    await i18n.changeLanguage("ru")
-    render(<RoleSelector role="teacher" onChange={vi.fn()} />, renderOpts)
-    // The RU label is "Преподаватель"; we don't pin the exact string
-    // (translation may evolve), just assert it's NOT the English one
-    // and is non-empty.
-    const buttons = screen.queryAllByRole("button")
-    const text = buttons[0]?.textContent ?? ""
-    expect(text).not.toMatch(/Teacher/i)
-    expect(text.trim().length).toBeGreaterThan(0)
+  it("takes the admin flag back and lets the memberships answer", async () => {
+    const user = userEvent.setup()
+    await i18n.changeLanguage("en")
+    const onChange = vi.fn()
+    render(<RoleSelector role="admin" onChange={onChange} />, renderOpts)
+
+    await user.click(screen.getByRole("button"))
+    await user.click(await screen.findByRole("menuitem", { name: "Revoke platform admin" }))
+    expect(onChange).toHaveBeenCalledWith("student")
   })
 })

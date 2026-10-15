@@ -80,10 +80,10 @@ class ArchiveAttemptOutcome:
     correct_option_id: uuid.UUID
 
 
-def _ensure_past(on_date: date) -> None:
+def _ensure_past(on_date: date, today: date | None = None) -> None:
     """Reject today or any future date. Live ``/today`` is the only
-    surface allowed to serve those."""
-    if on_date >= utc_today():
+    surface allowed to serve those. ``today`` is the reader's."""
+    if on_date >= (today or utc_today()):
         raise ArchiveDateNotAllowedError(
             f"archive endpoints only accept dates strictly before today; got {on_date.isoformat()}"
         )
@@ -95,6 +95,7 @@ def list_archive_entries(
     user_id: uuid.UUID,
     before: date | None = None,
     limit: int = 90,
+    today: date | None = None,
 ) -> tuple[list[ArchiveEntry], date | None]:
     """Return up to ``limit`` past scheduled dates ordered most-recent
     first, optionally paginating via ``before`` (exclusive cursor).
@@ -102,7 +103,7 @@ def list_archive_entries(
     ``before=None`` starts at ``utc_today() - 1``. The returned cursor
     is the date of the oldest entry minus one day, or ``None`` when
     the list ran out of rows (no more pages)."""
-    today = utc_today()
+    today = today or utc_today()
     upper_exclusive = before if before is not None else today
     # Cap defensively — a misbehaving client could ask for a huge limit.
     safe_limit = max(1, min(limit, 180))
@@ -185,6 +186,7 @@ def get_archive_question(
     *,
     user_id: uuid.UUID,
     on_date: date,
+    today: date | None = None,
 ) -> tuple[DailyChallengeSchedule, DailyChallengeQuestion, DailyChallengeAttempt | None]:
     """Fetch the past scheduled question for ``on_date`` and the
     user's most-recent attempt (live preferred, otherwise archive).
@@ -193,7 +195,7 @@ def get_archive_question(
     * ``ArchiveDateNotAllowedError`` for today / future dates.
     * ``ArchiveNotScheduledError`` for past dates with no schedule.
     """
-    _ensure_past(on_date)
+    _ensure_past(on_date, today)
 
     row = (
         db.query(DailyChallengeSchedule, DailyChallengeQuestion)
@@ -231,6 +233,7 @@ def submit_archive_attempt(
     user_id: uuid.UUID,
     on_date: date,
     selected_option_id: uuid.UUID,
+    today: date | None = None,
 ) -> ArchiveAttemptOutcome:
     """Persist an ``is_archive=True`` attempt for a past date.
 
@@ -239,7 +242,7 @@ def submit_archive_attempt(
     ``streak_after`` to be NULL for archive rows). Multiple replays
     per date are allowed — no partial-unique guard.
     """
-    _ensure_past(on_date)
+    _ensure_past(on_date, today)
 
     row = (
         db.query(DailyChallengeSchedule, DailyChallengeQuestion)

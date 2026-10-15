@@ -7,6 +7,7 @@ import { AuthProvider } from "./context/AuthContext"
 import { ThemeProvider } from "./context/ThemeContext"
 import { useAuth } from "./context/useAuth"
 import { usePageTitle } from "./hooks/usePageTitle"
+import { useCanonicalUrl } from "./hooks/useCanonicalUrl"
 import { useLocaleSync } from "./i18n/useLocaleSync"
 import { useTimeZoneSync } from "./i18n/useTimeZoneSync"
 import ErrorBoundary from "./components/ErrorBoundary"
@@ -22,7 +23,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { useGrandTour } from "@/hooks/useGrandTour"
 import { takePendingInviteToken } from "@/lib/pendingInvite"
 import { inviteAcceptPath } from "@/lib/inviteLink"
-import { returnPathFrom } from "@/lib/authRedirect"
+import { peekReturnPath, returnPathFrom, takeReturnPath } from "@/lib/authRedirect"
 import { canDirect, canTeach } from "@/lib/roles"
 import { DeniedRedirect } from "@/components/auth/DeniedRedirect"
 import { getTeacherAgreementOwed, subscribeTeacherAgreement } from "@/components/legal/useTeacherAgreement"
@@ -67,6 +68,8 @@ const DashboardPage = lazyRoute(() => {
   return import("./pages/Dashboard/DashboardPage")
 })
 const CoursesPage = lazyRoute(() => import("./pages/Courses/CoursesPage"))
+const OrganizationPage = lazyRoute(() => import("./pages/Organization/OrganizationPage"))
+const OrganizationsPage = lazyRoute(() => import("./pages/Organization/OrganizationsPage"))
 const VerifyCertificatePage = lazyRoute(() => import("./pages/Verify/VerifyCertificatePage"))
 const UnsubscribePage = lazyRoute(() => import("./pages/Unsubscribe/UnsubscribePage"))
 const LegalDocumentPage = lazyRoute(() => import("./pages/Legal/LegalDocumentPage"))
@@ -94,6 +97,20 @@ const MyNotesPage = lazyRoute(() => import("./pages/Notes/MyNotesPage"))
 const DailyChallengeArchivePage = lazyRoute(() => import("./pages/DailyChallengeArchive/DailyChallengeArchivePage"))
 const DailyChallengeReviewPage = lazyRoute(() => import("./pages/Admin/dailyChallenge/DailyChallengeReviewPage"))
 const DailyChallengeReviewDetailPage = lazyRoute(() => import("./pages/Admin/dailyChallenge/DailyChallengeReviewDetailPage"))
+
+/**
+ * Signed in on a public page (a password sign-in on /login): off to where
+ * the person was going — the router state first, else the path kept across
+ * a page load. Both stored copies are spent here either way, so the next
+ * person to sign in on this browser is not sent to someone else's lesson.
+ */
+function ReturnFromPublic({ state }: { state: unknown }) {
+  const target = returnPathFrom(state) ?? peekReturnPath() ?? "/"
+  useEffect(() => {
+    takeReturnPath()
+  }, [])
+  return <Navigate to={target} replace />
+}
 
 /**
  * a11y: after a client-side route change, move keyboard / screen-reader
@@ -125,7 +142,7 @@ function useRouteFocus() {
   }, [pathname])
 }
 
-type RouteMode = "private" | "public" | "teacher" | "admin"
+type RouteMode = "private" | "public" | "open" | "teacher" | "admin"
 
 function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -141,10 +158,13 @@ function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }
     getTeacherAgreementOwed,
   )
   if (loading) return <PageSpinner />
+  // Anyone, signed in or not: the page decides what a guest may do. A
+  // lesson is one — the course's first is open to a guest (guest_preview).
+  if (mode === "open") return <>{children}</>
   if (mode === "public") {
     // Back to the page a private gate refused, once there is someone to
     // let in; the dashboard otherwise. See `lib/authRedirect.ts`.
-    return user ? <Navigate to={returnPathFrom(location.state) ?? "/"} replace /> : <>{children}</>
+    return user ? <ReturnFromPublic state={location.state} /> : <>{children}</>
   }
   if (!user) {
     return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />
@@ -203,6 +223,7 @@ function AppRoutes() {
   const { t } = useTranslation()
   const isAuthPage = AUTH_PATHS.some((p) => location.pathname.startsWith(p))
   usePageTitle()
+  useCanonicalUrl()
   useLocaleSync()
   useTimeZoneSync()
   useRouteFocus()
@@ -286,6 +307,9 @@ function AppRoutes() {
               <Route path="/" element={<DashboardPage />} />
               <Route path="/dashboard" element={<Navigate to="/" replace />} />
               <Route path="/courses" element={<CoursesPage />} />
+              {/* An organization's own page: public, where certificates point. */}
+              <Route path="/o/:slug" element={<OrganizationPage />} />
+              <Route path="/organizations" element={<OrganizationsPage />} />
               {/* Public. A policy you can only read after accepting it is not
                   a policy, and the consent checkbox has been naming these two
                   documents since long before they existed. */}
@@ -329,8 +353,8 @@ function AppRoutes() {
                   may add or drop after the link was sent. The module-shaped
                   address below stays: bookmarks, e-mails and the readiness
                   checklist point at it, and it resolves to the same screen. */}
-              <Route path="/courses/:courseId/chapters/:chapterId" element={<Gate mode="private"><ChapterView /></Gate>} />
-              <Route path="/courses/:courseId/modules/:moduleId/chapters/:chapterId" element={<Gate mode="private"><ChapterView /></Gate>} />
+              <Route path="/courses/:courseId/chapters/:chapterId" element={<Gate mode="open"><ChapterView /></Gate>} />
+              <Route path="/courses/:courseId/modules/:moduleId/chapters/:chapterId" element={<Gate mode="open"><ChapterView /></Gate>} />
               <Route path="/teacher" element={<Gate mode="teacher"><TeacherDashboard /></Gate>} />
               <Route path="/teacher/courses/:courseId" element={<Gate mode="teacher"><CourseEditor /></Gate>} />
               <Route path="/teacher/courses/:courseId/modules/:moduleId/edit" element={<Gate mode="teacher"><ModuleEditor /></Gate>} />

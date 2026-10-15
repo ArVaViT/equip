@@ -31,10 +31,11 @@ from sqlalchemy.exc import IntegrityError
 from app.models.course import Course
 from app.models.enrollment import Enrollment
 from app.models.invitation import Invitation, InvitationScope, InvitationStatus
+from app.models.organization import OrganizationMember
 from app.models.user import User, UserRole
 from app.schemas.invitation import InvitationStatusLiteral
 from app.services.invitation_service import accept_invitation, revoke_invitation
-from tests.conftest import ADMIN_ID, TEST_ORGANIZATION_ID
+from tests.conftest import ADMIN_ID, TEST_ORGANIZATION_ID, leave_every_organization
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -50,10 +51,9 @@ def _invitee(db: Session) -> User:
     user = User(id=INVITEE_ID, email=INVITEE_EMAIL, full_name="Arrived", role=UserRole.STUDENT.value)
     db.add(user)
     db.commit()
-    # The conftest hook files every new row under the test organization;
+    # The conftest listener files every new user under the test organization;
     # this person joined a public course by themselves and belongs nowhere.
-    db.query(User).filter(User.id == INVITEE_ID).update({User.organization_id: None})
-    db.commit()
+    leave_every_organization(db, INVITEE_ID)
     return user
 
 
@@ -104,10 +104,10 @@ class TestTheInviteeCanStillUseTheLink:
         # Still "fulfilled": that is how the person actually arrived.
         assert result.status == InvitationStatus.FULFILLED.value
         assert result.accepted_at is None
-        person = db.query(User).filter(User.id == INVITEE_ID).one()
         # The membership the course invitation also offered, which
         # enrolling on a public course by themselves did not give them.
-        assert person.organization_id == TEST_ORGANIZATION_ID
+        membership = db.query(OrganizationMember).filter(OrganizationMember.user_id == INVITEE_ID).one()
+        assert (membership.organization_id, membership.role) == (TEST_ORGANIZATION_ID, UserRole.STUDENT.value)
         # And no second seat on the course.
         assert db.query(Enrollment).filter(Enrollment.user_id == INVITEE_ID).count() == 1
 
@@ -199,5 +199,7 @@ class TestOneValueInFourPlaces:
             "TRIGGER trg_profiles_created_fulfil_invitations",
             "TRIGGER trg_profiles_changed_fulfil_invitations",
             "TRIGGER trg_invitations_created_fulfil",
+            # 20261003203000: a membership written or raised is a door too.
+            "TRIGGER trg_organization_members_fulfil_invitations",
         ):
             assert name in schema, name

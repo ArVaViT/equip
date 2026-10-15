@@ -194,9 +194,12 @@ def test_list_blocks_chapter_not_found(client: TestClient, db: Session):
     assert resp.status_code == 404
 
 
-def test_list_blocks_anon_unauthorized(anon_client: TestClient):
+def test_list_blocks_anon_unknown_chapter_is_not_found(anon_client: TestClient):
+    # A guest may read a course's first lesson (test_a_guest_reads_the_first_lesson);
+    # a lesson that does not exist is 404 to them as to anyone, and the same
+    # 404 as an unpublished course's, so it confirms nothing.
     resp = anon_client.get("/api/v1/blocks/chapter/ch-1")
-    assert resp.status_code == 401
+    assert resp.status_code == 404
 
 
 # ── GET /api/v1/blocks/chapter/{chapter_id}?source=1 (editor escape hatch) ──

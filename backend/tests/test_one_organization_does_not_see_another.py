@@ -170,18 +170,21 @@ def test_the_organizations_own_list_holds_both_kinds(our_client: TestClient, db:
     ours_institute.access_mode = "institute"
     db.commit()
 
-    resp = our_client.get("/api/v1/courses/my-organization")
+    resp = our_client.get("/api/v1/courses/my-organizations")
 
     assert resp.status_code == 200
-    body = resp.text
-    assert ours_public.id in body
-    assert ours_institute.id in body
+    blocks = resp.json()
+    assert [b["organization_slug"] for b in blocks] == ["test-org"]
+    assert blocks[0]["role"] == UserRole.TEACHER.value
+    listed = {c["id"] for c in blocks[0]["courses"]}
+    assert listed == {ours_public.id, ours_institute.id}
 
 
 def test_the_organizations_own_list_stops_at_its_own(our_client: TestClient, db: Session, their_teacher: User):
     theirs = _their_course(db, their_teacher, access_mode="public", course_id="theirs-in-my-list")
 
-    resp = our_client.get("/api/v1/courses/my-organization")
+    resp = our_client.get("/api/v1/courses/my-organizations")
 
     assert resp.status_code == 200
     assert theirs.id not in resp.text
+    assert "other-organization" not in resp.text

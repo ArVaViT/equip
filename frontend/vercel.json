@@ -13,7 +13,7 @@
       "destination": "https://rrisqutxlkamwfhcashl.supabase.co/storage/v1/object/public/avatars/:path*"
     },
     {
-      "source": "/((?!assets/|video/).*)",
+      "source": "/((?!assets/|video/|\\.well-known/).*)",
       "destination": "/index.html"
     }
   ],

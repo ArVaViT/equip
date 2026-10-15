@@ -2,6 +2,26 @@ import api from "./api"
 import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type { CalendarEvent, CourseEvent } from "@/types"
 
+/** Which occurrences of a weekly series an edit or a delete reaches. */
+export type SeriesScope = "this" | "following" | "all"
+
+/** The body of a new event or an edit; mirrors ``CourseEventCreate`` /
+ *  ``CourseEventUpdate`` on the server. `null` clears a field on an edit. */
+export interface CourseEventPayload {
+  title?: string
+  description?: string
+  event_type?: string
+  event_date?: string
+  meeting_url?: string | null
+  recording_url?: string | null
+  duration_minutes?: number | null
+  /** New events only: repeat every `every_weeks` weeks through `until`
+   *  (a `YYYY-MM-DD` day in `time_zone`). */
+  repeat?: { every_weeks: number; until: string; time_zone: string }
+  /** Edits only: the zone a series move is measured in. */
+  time_zone?: string
+}
+
 export interface IcalFeed {
   feed_url: string
   expires_at: string
@@ -54,12 +74,7 @@ export const calendarService = {
 
   async createCourseEvent(
     courseId: string,
-    data: {
-      title: string
-      description?: string
-      event_type?: string
-      event_date: string
-    },
+    data: CourseEventPayload & { title: string; event_date: string },
   ): Promise<CourseEvent> {
     const response = await api.post<CourseEvent>(`/courses/${courseId}/events`, data)
     cacheInvalidate(`calendar:course-events:${courseId}`)
@@ -70,24 +85,24 @@ export const calendarService = {
   async updateCourseEvent(
     courseId: string,
     eventId: string,
-    data: {
-      title?: string
-      description?: string
-      event_type?: string
-      event_date?: string
-    },
+    data: CourseEventPayload,
+    scope: SeriesScope = "this",
   ): Promise<CourseEvent> {
     const response = await api.put<CourseEvent>(
       `/courses/${courseId}/events/${eventId}`,
       data,
+      scope === "this" ? undefined : { params: { scope } },
     )
     cacheInvalidate(`calendar:course-events:${courseId}`)
     cacheInvalidatePrefix("calendar:events:")
     return response.data
   },
 
-  async deleteCourseEvent(courseId: string, eventId: string): Promise<void> {
-    await api.delete(`/courses/${courseId}/events/${eventId}`)
+  async deleteCourseEvent(courseId: string, eventId: string, scope: SeriesScope = "this"): Promise<void> {
+    await api.delete(
+      `/courses/${courseId}/events/${eventId}`,
+      scope === "this" ? undefined : { params: { scope } },
+    )
     cacheInvalidate(`calendar:course-events:${courseId}`)
     cacheInvalidatePrefix("calendar:events:")
   },

@@ -27,6 +27,7 @@ from app.api.dependencies import get_current_user, get_optional_user
 from app.core.database import get_db
 from app.main import app
 from app.models.assignment import Assignment
+from app.models.course import Course
 from app.models.user import User, UserRole
 from tests._cv_helpers import make_course_with_text
 from tests.conftest import TEST_ORGANIZATION_ID
@@ -210,6 +211,49 @@ class TestTheDoorDidNotSwingTooFar:
         # And it is not in "my courses" either: ownership, not organization.
         mine = director_client.get("/api/v1/courses/my")
         assert course_id not in [row["id"] for row in mine.json()]
+
+    def test_the_access_mode_of_a_teachers_course_is_the_directors_to_set(
+        self, director_client: TestClient, db: Session, teacher: User
+    ) -> None:
+        # The field is the organization's (ADR-010): its director closes or
+        # opens any course of the school, including one a teacher owns.
+        # Until 2026-10-03 the owner check ran first and this was a 403.
+        course_id = _teachers_course(db, teacher)
+
+        resp = director_client.put(f"/api/v1/courses/{course_id}", json={"access_mode": "institute"})
+
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["access_mode"] == "institute"
+        # Only that field. The rest of the course is still the owner's, and
+        # a request that carries both is refused whole.
+        resp = director_client.put(f"/api/v1/courses/{course_id}", json={"access_mode": "public", "title": "Моё"})
+        assert resp.status_code == 403, resp.text
+        db.expire_all()
+        course = db.get(Course, course_id)
+        assert course is not None
+        assert (course.access_mode, course.title) == ("institute", "The Teacher's Course")
+
+    def test_the_owner_still_cannot_set_the_access_mode(self, client: TestClient, db: Session, teacher: User) -> None:
+        course_id = _teachers_course(db, teacher)
+        assert client.put(f"/api/v1/courses/{course_id}", json={"access_mode": "institute"}).status_code == 403
+
+    def test_the_access_mode_cannot_be_cleared(
+        self, director_client: TestClient, client: TestClient, db: Session, teacher: User
+    ) -> None:
+        """``null`` is not a mode. It used to reach the NOT NULL column and come
+        back as a bare 409 — from the director, and from the owner too, whose
+        request slipped past the director check because it carried no value
+        to guard (2026-10-03)."""
+        course_id = _teachers_course(db, teacher)
+
+        for who in (director_client, client):
+            resp = who.put(f"/api/v1/courses/{course_id}", json={"access_mode": None})
+            assert resp.status_code == 422, resp.text
+
+        db.expire_all()
+        course = db.get(Course, course_id)
+        assert course is not None
+        assert course.access_mode == "public"
 
     def test_a_director_is_still_not_platform_staff(self, director_client: TestClient) -> None:
         # Site-wide announcements and the audit log belong to Equip, not

@@ -18,22 +18,3 @@ import type { Enrollment } from "@/types"
 export function visibleEnrollments(enrollments: Enrollment[]): Enrollment[] {
   return enrollments
 }
-
-/**
- * `true` only for somebody who genuinely has nothing yet.
- *
- * Deliberately false while loading and after a failed load: the welcome
- * surface is a pitch to a newcomer, and showing it to a student whose request
- * timed out tells them their courses are gone.
- */
-export function isNewcomer({
-  enrollments,
-  loading,
-  failed,
-}: {
-  enrollments: Enrollment[]
-  loading: boolean
-  failed: boolean
-}): boolean {
-  return !loading && !failed && visibleEnrollments(enrollments).length === 0
-}

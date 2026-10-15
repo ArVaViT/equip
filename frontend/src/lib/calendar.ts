@@ -4,8 +4,9 @@
  * These were copy-pasted byte-for-byte across all three before extraction.
  *
  * NOTE: this is the date-INPUT grid (Mon-start, 6 rows, no event bucketing).
- * The dashboard's event calendar (`pages/Calendar/`) is a deliberately
- * different Sunday-start grid — do not converge them.
+ * The event calendar (`pages/Calendar/`) builds its own rows, but starts
+ * the week on Monday too (2026-10-03): it used to start on Sunday, beside
+ * pickers that start on Monday, for readers whose week starts on Monday.
  */
 
 const DAYS_IN_WEEK = 7
@@ -52,4 +53,14 @@ export function buildMonthMatrix(anchor: Date): Date[] {
     { length: 42 },
     (_, i) => new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + i),
   )
+}
+
+/** Monday of the week `d` falls in, at local midnight. */
+export function startOfWeekMon(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - weekdayMonStart(d))
+}
+
+/** `n` days after `d`, at local midnight — calendar days, not 24-hour steps. */
+export function addDays(d: Date, n: number): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
 }

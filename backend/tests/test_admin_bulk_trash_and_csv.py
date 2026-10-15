@@ -171,23 +171,39 @@ def _seed_course_direct(
 
 
 class TestBulkUpdateRoles:
-    def test_admin_can_bulk_promote_users(self, admin_client: TestClient, db: Session):
+    def test_admin_can_bulk_make_platform_staff(self, admin_client: TestClient, db: Session):
         other = _make_other_student(db)
         resp = admin_client.put(
             f"{USERS_PREFIX}/admin/users/bulk-role",
-            json={"user_ids": [str(STUDENT_ID), str(other.id)], "role": "teacher"},
+            json={"user_ids": [str(STUDENT_ID), str(other.id)], "role": "admin"},
         )
         # STUDENT_ID does not exist in db yet (student fixture not used) so only
         # one user updates. Exercise the route, then ensure the other student
         # was actually updated.
         assert resp.status_code == 200
         body = resp.json()
-        assert body["role"] == "teacher"
+        assert body["role"] == "admin"
         assert body["updated"] >= 1
         db.expire_all()
         refreshed = db.query(User).filter(User.id == other.id).first()
         assert refreshed is not None
-        assert refreshed.role == "teacher"
+        assert refreshed.role == "admin"
+
+    def test_a_role_inside_an_organization_is_not_the_bulk_route_s_to_give(self, admin_client: TestClient, db: Session):
+        """Since 2026-10-03 ``profiles.role`` below ``admin`` mirrors the
+        person's memberships; the route moves people in and out of platform
+        staff and names everyone whose role is held by a membership."""
+        other = _make_other_student(db)
+        resp = admin_client.put(
+            f"{USERS_PREFIX}/admin/users/bulk-role",
+            json={"user_ids": [str(other.id)], "role": "teacher"},
+        )
+        assert resp.status_code == 200
+        assert resp.json() == {"updated": 0, "role": "teacher", "held_by_membership": [str(other.id)]}
+        db.expire_all()
+        refreshed = db.query(User).filter(User.id == other.id).first()
+        assert refreshed is not None
+        assert refreshed.role == "student"
 
     def test_admin_cannot_demote_self(self, admin_client: TestClient, db: Session):
         """Passing the admin's own id must be filtered out before update."""
@@ -225,7 +241,7 @@ class TestBulkUpdateRoles:
             f"{USERS_PREFIX}/admin/users/bulk-role",
             json={
                 "user_ids": ["not-a-uuid", "also-invalid", str(other.id)],
-                "role": "teacher",
+                "role": "admin",
             },
         )
         assert resp.status_code == 200

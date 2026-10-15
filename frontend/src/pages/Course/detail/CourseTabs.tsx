@@ -1,7 +1,10 @@
+import { Lock } from "lucide-react"
 import { useId, useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
+import { Link } from "react-router-dom"
 
 import { ReadingMinutes } from "@/components/course/ReadingMinutes"
+import { Badge } from "@/components/ui/badge"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import { CHAPTER_TYPE_META, normalizeChapterType } from "@/lib/chapterTypes"
 import type { CourseStructure } from "@/lib/courseStructure"
@@ -20,6 +23,9 @@ const LABEL_KEYS: Record<Tab, string> = {
 interface Props {
   courseId: string
   structure: CourseStructure
+  /** The lesson this reader may open before enrolling, when there is one;
+   *  the programme marks it, and marks the rest as waiting for enrolment. */
+  previewChapterId?: string | null
   /** What the course is: its description, its group's dates. */
   about: ReactNode
   /** False when there is nothing to say: the tab is left out rather than
@@ -36,7 +42,7 @@ interface Props {
  * WAI-ARIA tabs, as the profile's: arrow keys move, only the open panel is in
  * the tab order.
  */
-export function CourseTabs({ courseId, structure, about, hasAbout }: Props) {
+export function CourseTabs({ courseId, structure, previewChapterId = null, about, hasAbout }: Props) {
   const { t } = useTranslation()
   const tabs = hasAbout ? TABS : TABS.filter((tab) => tab !== "about")
   const [active, setActive] = useState<Tab>(tabs[0] ?? "program")
@@ -91,7 +97,9 @@ export function CourseTabs({ courseId, structure, about, hasAbout }: Props) {
         className="pt-5 focus-visible:outline-none"
       >
         {active === "about" && about}
-        {active === "program" && <Program courseId={courseId} structure={structure} />}
+        {active === "program" && (
+          <Program courseId={courseId} structure={structure} previewChapterId={previewChapterId} />
+        )}
         {active === "author" && <Author courseId={courseId} />}
       </div>
     </section>
@@ -99,8 +107,21 @@ export function CourseTabs({ courseId, structure, about, hasAbout }: Props) {
 }
 
 /** Every lesson by name, in order, with its kind and its minutes. Not links:
- *  they open once the reader is enrolled. */
-function Program({ courseId, structure }: { courseId: string; structure: CourseStructure }) {
+ *  they open once the reader is enrolled.
+ *
+ *  When one lesson is open before that, the list says which: a chip on it,
+ *  and a lock on the rest — a glyph with a name, not a sentence per row, so
+ *  the programme still reads as a programme. Without a preview nothing is
+ *  marked: a lock on every row would be noise against nothing. */
+function Program({
+  courseId,
+  structure,
+  previewChapterId,
+}: {
+  courseId: string
+  structure: CourseStructure
+  previewChapterId: string | null
+}) {
   const { t, i18n } = useTranslation()
   const { data: minutes } = useAsyncData(
     async () => {
@@ -139,6 +160,19 @@ function Program({ courseId, structure }: { courseId: string; structure: CourseS
                     {orNotTranslated(t, chapter.title)}
                   </span>
                   {m > 0 && <ReadingMinutes minutes={m} className="shrink-0 gap-1 text-xs text-ink-muted" />}
+                  {previewChapterId !== null &&
+                    (chapter.id === previewChapterId ? (
+                      <Badge variant="successSubtle" className="shrink-0">
+                        {t("guest.openToAll")}
+                      </Badge>
+                    ) : (
+                      <Lock
+                        className="h-4 w-4 shrink-0 text-ink-muted"
+                        strokeWidth={1.75}
+                        role="img"
+                        aria-label={t("guest.afterEnrolling")}
+                      />
+                    ))}
                 </li>
               )
             })}
@@ -185,7 +219,18 @@ function Author({ courseId }: { courseId: string }) {
       )}
       <div className="min-w-0">
         <p className="font-serif text-lg font-semibold tracking-tight text-wrap-safe">{author.name}</p>
-        {author.school && <p className="text-sm text-ink-muted text-wrap-safe">{author.school}</p>}
+        {author.school &&
+          (author.organization_slug ? (
+            // The school is a page now: who it is, who runs it, what else it teaches.
+            <Link
+              to={`/o/${author.organization_slug}`}
+              className="text-sm text-ink-muted underline-offset-4 text-wrap-safe hover:text-ink hover:underline"
+            >
+              {author.school}
+            </Link>
+          ) : (
+            <p className="text-sm text-ink-muted text-wrap-safe">{author.school}</p>
+          ))}
       </div>
     </div>
   )

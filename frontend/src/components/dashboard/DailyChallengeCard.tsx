@@ -1,6 +1,6 @@
-import { formatNextUtcMidnight } from "@/i18n/format"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useContext, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { AuthContext } from "@/context/auth-context"
 import { Link } from "react-router-dom"
 import { ArrowRight, Flame, Sparkles } from "lucide-react"
 import { toast } from "sonner"
@@ -107,6 +107,9 @@ export function DailyChallengeCard() {
   const [submitting, setSubmitting] = useState(false)
   const [streakAfter, setStreakAfter] = useState<number | null>(null)
   const answeredToday = reveal !== null
+  // Read without useAuth's throw: the card is rendered alone in tests.
+  const zone = useContext(AuthContext)?.user?.time_zone ?? null
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -166,14 +169,16 @@ export function DailyChallengeCard() {
     return () => {
       cancelled = true
     }
-  }, [t])
+    // The zone too: it decides which day's question is "today", and it can
+    // be recorded for the first time while this card is loading.
+  }, [t, zone, reloadKey])
 
   const handleSelect = useCallback(
     async (optionId: string) => {
       if (reveal !== null || submitting || !data) return
       setSubmitting(true)
       try {
-        const res = await dailyChallengeService.submitAttempt(optionId)
+        const res = await dailyChallengeService.submitAttempt(optionId, data.challenge_date)
         setReveal(revealFromAttempt(res))
         setStreakAfter(res.streak_after)
         if (res.is_correct) {
@@ -185,6 +190,9 @@ export function DailyChallengeCard() {
         const code = getErrorCode(err)
         if (code === "daily_challenge.invalid_option") {
           toast.error(t("dailyChallenge.toast.invalidOption"))
+          // The day has moved on under the card: fetch the question that
+          // is today's now rather than leave a card no answer fits.
+          setReloadKey((k) => k + 1)
         } else {
           toast.error(t("dailyChallenge.toast.submitError"))
         }
@@ -249,13 +257,15 @@ export function DailyChallengeCard() {
               }
             />
           )}
+          {/* An arrow at every width, as on the calendar card; the word
+              stays the link's name. */}
           <Link
             to="/daily-challenge/archive"
-            className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-brand transition-opacity hover:opacity-80"
+            aria-label={t("dailyChallenge.openArchive")}
+            title={t("dailyChallenge.openArchive")}
+            className="-m-1.5 inline-flex shrink-0 items-center rounded-md p-1.5 text-brand transition-colors hover:bg-brand/10"
           >
-            {/* The arrow alone on a phone; the word stays the link's name. */}
-            <span className="max-sm:sr-only">{t("dailyChallenge.openArchive")}</span>
-            <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           </Link>
         </div>
       </header>
@@ -277,7 +287,7 @@ export function DailyChallengeCard() {
           <EmptyState
             className="py-2"
             title={t("dailyChallenge.notScheduled.title")}
-            description={t("dailyChallenge.notScheduled.body", { time: formatNextUtcMidnight() })}
+            description={t("dailyChallenge.notScheduled.body")}
           />
         ) : notTranslated ? (
           <EmptyState

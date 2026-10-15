@@ -22,6 +22,7 @@ from app.api.v1 import (
     grades,
     health,
     internal_daily_challenge_worker,
+    internal_event_reminders,
     internal_translation_worker,
     invitations,
     legal,
@@ -74,6 +75,7 @@ api_router.include_router(admin_organizations.router)
 api_router.include_router(admin_translations.router)
 api_router.include_router(internal_translation_worker.router)
 api_router.include_router(internal_daily_challenge_worker.router)
+api_router.include_router(internal_event_reminders.router)
 api_router.include_router(daily_challenge.router)
 api_router.include_router(daily_challenge_archive.router)
 api_router.include_router(admin_daily_challenge.router)

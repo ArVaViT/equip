@@ -17,7 +17,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from app.models.course import Course, Module
-from app.models.organization import Organization
+from app.models.organization import Organization, OrganizationMember
 from tests._cv_helpers import make_course_with_text
 from tests.conftest import ADMIN_ID
 
@@ -57,7 +57,11 @@ def test_another_schools_closed_course_cannot_be_copied(client: TestClient, db: 
 def test_the_copy_lands_in_the_cloners_school(client: TestClient, db: Session, admin: User, teacher: User) -> None:
     _other_school(db)
     course = _published(db, access_mode="public")
-    teacher.organization_id = OTHER_ORGANIZATION_ID
+    # The cloner teaches in the other school and nowhere else: membership,
+    # not the deprecated column, is where a course lands (2026-10-03).
+    db.query(OrganizationMember).filter(OrganizationMember.user_id == teacher.id).update(
+        {OrganizationMember.organization_id: OTHER_ORGANIZATION_ID}
+    )
     db.commit()
 
     resp = client.post(f"{PREFIX}/{course.id}/clone")

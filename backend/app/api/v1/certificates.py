@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import (
     get_current_user,
     get_live_course_or_404,
-    organization_of,
+    organization_scope,
+    requested_organization_id,
     require_director,
     require_teacher,
 )
@@ -16,7 +17,7 @@ from app.core.errors import ErrorCode, equip_error
 from app.models.certificate import Certificate, CertificateStatus
 from app.models.course import Course
 from app.models.enrollment import Enrollment
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.schemas.certificate import CertificateBlockerOut, CertificateResponse, CertificateVerifyResponse
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.services import certificate_service
@@ -379,6 +380,7 @@ def list_admin_pending_certificates(
     limit: int = Query(50, ge=1, le=200),
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
     director: User = Depends(require_director),
+    requested: UUID | None = Depends(requested_organization_id),
     db: Session = Depends(get_db),
 ) -> list[CertificateResponse]:
     """Admin: teacher-approved certificates awaiting director approval.
@@ -401,9 +403,12 @@ def list_admin_pending_certificates(
     # A director signs their own organization's diplomas. Platform staff
     # see every queue — the same split the cohort and invitation lists
     # use. The rows carry a student's name, email and course, so this is
-    # a privacy boundary before it is a permission one.
-    if director.role != UserRole.ADMIN.value:
-        q = q.filter(Certificate.organization_id == organization_of(director))
+    # a privacy boundary before it is a permission one. Which organization
+    # is the one the request acts in (``organization_scope``): a director
+    # of two names it in ``X-Organization-Id``.
+    scope = organization_scope(db, director, requested)
+    if scope is not None:
+        q = q.filter(Certificate.organization_id == scope)
     certs = q.order_by(Certificate.teacher_approved_at.asc()).offset(skip).limit(limit).all()
     response.headers["Vary"] = "Accept-Language"
     return _enrich_pending_certs(db, certs, display_locale=normalize_locale(accept_language))

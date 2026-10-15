@@ -357,6 +357,11 @@ VALUES (:'school_a', 'school-a', 'School A'), (:'school_b', 'school-b', 'School 
 INSERT INTO auth.users (id, email) VALUES (:'director_a', 'director-a@test.local');
 INSERT INTO public.profiles (id, email, role, organization_id)
 VALUES (:'director_a', 'director-a@test.local', 'director', :'school_a');
+-- Since 20261003203000 the policies read organization_members, not the
+-- column; the director holds the director membership of A that the
+-- phase-1 backfill gave everyone who sat somewhere.
+INSERT INTO public.organization_members (user_id, organization_id, role, joined_via)
+VALUES (:'director_a', :'school_a', 'director', 'migration');
 
 INSERT INTO public.cohorts (id, organization_id, start_date, end_date)
 VALUES
@@ -509,6 +514,275 @@ BEGIN
     RAISE EXCEPTION 'SECURITY HOLE: student-work policies grant by teacher role alone: %', offenders;
   END IF;
   RAISE NOTICE 'OK: no student-work policy grants by teacher role alone';
+END $$;
+
+
+-- ---------------------------------------------------------------------
+-- 16) Memberships (20261003165050): a person reads their own rows, the
+--     helpers answer by membership, and the mirror keeps profiles.role.
+--
+-- The three organization policies rest on these helpers since
+-- 20261003203000 (section 17 proves the policies); this section pins the
+-- contract underneath them, so a failure there says which of the two broke.
+-- ---------------------------------------------------------------------
+
+\set member_x '44444444-4444-4444-4444-444444444444'
+
+INSERT INTO auth.users (id, email) VALUES (:'member_x', 'member-x@test.local');
+INSERT INTO public.profiles (id, email, role) VALUES (:'member_x', 'member-x@test.local', 'student');
+
+-- Director A directs A (section 14); X studies in A and used to teach in B
+-- (suspended).
+INSERT INTO public.organization_members (user_id, organization_id, role, joined_via)
+VALUES
+  (:'member_x',   :'school_a', 'student',  'invitation');
+INSERT INTO public.organization_members (user_id, organization_id, role, status, joined_via)
+VALUES
+  (:'member_x',   :'school_b', 'teacher', 'suspended', 'invitation');
+
+-- The mirror ran as the owner: a student with a suspended teacher row is a
+-- student; the director reads director.
+DO $$
+DECLARE r text;
+BEGIN
+  SELECT role INTO r FROM public.profiles WHERE id = '44444444-4444-4444-4444-444444444444';
+  IF r <> 'student' THEN
+    RAISE EXCEPTION 'BROKEN: a suspended teacher membership mirrored into profiles.role (%)', r;
+  END IF;
+  UPDATE public.organization_members SET status = 'active'
+   WHERE user_id = '44444444-4444-4444-4444-444444444444' AND organization_id = 'bbbb2222-0000-0000-0000-000000000002';
+  SELECT role INTO r FROM public.profiles WHERE id = '44444444-4444-4444-4444-444444444444';
+  IF r <> 'teacher' THEN
+    RAISE EXCEPTION 'BROKEN: reactivating a teacher membership did not reach profiles.role (%)', r;
+  END IF;
+  UPDATE public.organization_members SET status = 'suspended'
+   WHERE user_id = '44444444-4444-4444-4444-444444444444' AND organization_id = 'bbbb2222-0000-0000-0000-000000000002';
+  SELECT role INTO r FROM public.profiles WHERE id = '44444444-4444-4444-4444-444444444444';
+  IF r <> 'student' THEN
+    RAISE EXCEPTION 'BROKEN: suspending the membership did not drop profiles.role back (%)', r;
+  END IF;
+  RAISE NOTICE 'OK: profiles.role mirrors the highest active membership';
+END $$;
+
+SET request.jwt.claim.sub = '44444444-4444-4444-4444-444444444444';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM public.organization_members;
+  IF n <> 2 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a member sees % membership rows, expected only their own 2', n;
+  END IF;
+  SELECT count(*) INTO n FROM public.organization_members WHERE user_id = '33333333-3333-3333-3333-333333333333';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: another person''s membership row is readable';
+  END IF;
+  RAISE NOTICE 'OK: organization_members is self-only';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO public.organization_members (user_id, organization_id, role, joined_via)
+  VALUES ('44444444-4444-4444-4444-444444444444', 'bbbb2222-0000-0000-0000-000000000002', 'director', 'appointment');
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can INSERT organization_members (self-appointment)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: organization_members INSERT denied (privilege)';
+  WHEN unique_violation THEN RAISE EXCEPTION 'SECURITY HOLE: the INSERT reached the table';
+END $$;
+
+DO $$
+BEGIN
+  UPDATE public.organization_members SET role = 'director'
+   WHERE user_id = '44444444-4444-4444-4444-444444444444';
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated can UPDATE organization_members (self-promotion)';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: organization_members UPDATE denied (privilege)';
+END $$;
+
+-- The helpers, as member X: a member of A in any role, staff of nowhere
+-- (the B row is suspended), director of nowhere, and NULL is never a yes.
+DO $$
+BEGIN
+  IF NOT public.is_member_of('aaaa1111-0000-0000-0000-000000000001') THEN
+    RAISE EXCEPTION 'BROKEN: is_member_of denies an active member';
+  END IF;
+  IF public.is_member_of('bbbb2222-0000-0000-0000-000000000002') THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a suspended membership still counts as membership';
+  END IF;
+  IF public.is_staff_of('aaaa1111-0000-0000-0000-000000000001') THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a student is staff';
+  END IF;
+  IF public.is_director_of('aaaa1111-0000-0000-0000-000000000001') THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a student is a director';
+  END IF;
+  IF public.is_member_of(NULL) IS DISTINCT FROM false OR public.is_staff_of(NULL) IS DISTINCT FROM false
+     OR public.is_director_of(NULL) IS DISTINCT FROM false THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a NULL organization satisfies a membership helper';
+  END IF;
+  IF (SELECT count(*) FROM public.member_organization_ids()) <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: member_organization_ids() should list exactly school A';
+  END IF;
+  RAISE NOTICE 'OK: membership helpers answer by active membership and refuse NULL';
+END $$;
+
+-- And as director A: staff and director of A, neither of B.
+RESET ROLE;
+SET request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+SET ROLE authenticated;
+
+DO $$
+BEGIN
+  IF NOT (public.is_staff_of('aaaa1111-0000-0000-0000-000000000001')
+          AND public.is_director_of('aaaa1111-0000-0000-0000-000000000001')) THEN
+    RAISE EXCEPTION 'BROKEN: a director is not staff and director of their own organization';
+  END IF;
+  IF public.is_member_of('bbbb2222-0000-0000-0000-000000000002')
+     OR public.is_director_of('bbbb2222-0000-0000-0000-000000000002') THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a director of A is something in B';
+  END IF;
+  RAISE NOTICE 'OK: a director directs their own organization only';
+END $$;
+
+RESET ROLE;
+
+
+-- ---------------------------------------------------------------------
+-- 17) A role held elsewhere opens nothing here (20261003203000).
+--
+-- Until that migration the three organization policies read
+-- profiles.organization_id and the global profiles.role. Once the role
+-- became a mirror of the *highest* membership anywhere, a student of A who
+-- teaches in B read `teacher` while the column still said A — and A's
+-- certificates opened to them. A membership suspended in A kept A open for
+-- the same reason: the column did not move. The policies now ask the
+-- membership rows, so the shapes that leaked are the ones asserted here.
+--
+-- S: student of A, teacher of B. The column deliberately says A, as it
+-- does for anybody who joined A first.
+-- ---------------------------------------------------------------------
+
+\set member_s '55555555-5555-5555-5555-555555555555'
+
+INSERT INTO auth.users (id, email) VALUES (:'member_s', 'member-s@test.local');
+INSERT INTO public.profiles (id, email, role, organization_id)
+VALUES (:'member_s', 'member-s@test.local', 'student', :'school_a');
+INSERT INTO public.organization_members (user_id, organization_id, role, joined_via)
+VALUES
+  (:'member_s', :'school_a', 'student', 'invitation'),
+  (:'member_s', :'school_b', 'teacher', 'invitation');
+-- S's own certificate in A, next to the director's from section 14.
+INSERT INTO public.certificates (id, organization_id, user_id, course_id, status)
+VALUES ('dddd0003-0000-0000-0000-000000000003', :'school_a', :'member_s', 'course-a-institute', 'pending');
+
+-- Precondition: the mirror did what makes this dangerous — S reads teacher.
+DO $$
+DECLARE r text;
+BEGIN
+  SELECT role INTO r FROM public.profiles WHERE id = '55555555-5555-5555-5555-555555555555';
+  IF r <> 'teacher' THEN
+    RAISE EXCEPTION 'HARNESS BROKEN: expected S to mirror teacher, got %', r;
+  END IF;
+END $$;
+
+SET request.jwt.claim.sub = '55555555-5555-5555-5555-555555555555';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  -- certificates: own, yes; another student's in A, no — S is A's student;
+  -- B's, yes — S is B's staff.
+  SELECT count(*) INTO n FROM public.certificates WHERE id = 'dddd0003-0000-0000-0000-000000000003';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: a person cannot read their own certificate';
+  END IF;
+  SELECT count(*) INTO n FROM public.certificates WHERE id = 'dddd0001-0000-0000-0000-000000000001';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a teacher of B reads a certificate of A, where they are a student';
+  END IF;
+  SELECT count(*) INTO n FROM public.certificates WHERE id = 'dddd0002-0000-0000-0000-000000000002';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: staff of B cannot read a certificate of B';
+  END IF;
+  RAISE NOTICE 'OK: certificates open to the staff of *their* organization, not to a role held elsewhere';
+END $$;
+
+DO $$
+DECLARE n int;
+BEGIN
+  -- courses: a member of both reads both closed courses, and the catalogue.
+  SELECT count(*) INTO n FROM public.courses WHERE id IN ('course-a-institute', 'course-b-institute', 'course-b-public');
+  IF n <> 3 THEN
+    RAISE EXCEPTION 'BROKEN: a member of A and B reads % of their 3 courses', n;
+  END IF;
+  -- cohorts: B's as its staff, not A's as its student.
+  SELECT count(*) INTO n FROM public.cohorts WHERE id = 'cccc0002-0000-0000-0000-000000000002';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: staff of B cannot read a cohort of B';
+  END IF;
+  SELECT count(*) INTO n FROM public.cohorts WHERE id = 'cccc0001-0000-0000-0000-000000000001';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a student of A reads a cohort of A (role held in B)';
+  END IF;
+  RAISE NOTICE 'OK: cohorts open to the staff of their organization only';
+END $$;
+
+-- Suspended in A. The column still says A; the policies must not care.
+RESET ROLE;
+UPDATE public.organization_members SET status = 'suspended'
+ WHERE user_id = '55555555-5555-5555-5555-555555555555' AND organization_id = 'aaaa1111-0000-0000-0000-000000000001';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM public.courses WHERE id = 'course-a-institute';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a membership suspended in A still reads A''s closed course';
+  END IF;
+  SELECT count(*) INTO n FROM public.certificates WHERE id = 'dddd0001-0000-0000-0000-000000000001';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a membership suspended in A still reads A''s certificates';
+  END IF;
+  SELECT count(*) INTO n FROM public.cohorts WHERE id = 'cccc0001-0000-0000-0000-000000000001';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a membership suspended in A still reads A''s cohorts';
+  END IF;
+  -- Their own certificate is theirs whatever the organization decides.
+  SELECT count(*) INTO n FROM public.certificates WHERE id = 'dddd0003-0000-0000-0000-000000000003';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: a suspended member lost sight of their own certificate';
+  END IF;
+  -- And B, where nothing changed, still reads.
+  SELECT count(*) INTO n FROM public.courses WHERE id = 'course-b-institute';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: suspension in A closed B';
+  END IF;
+  RAISE NOTICE 'OK: a suspended membership opens nothing, and only there';
+END $$;
+
+RESET ROLE;
+
+-- Structural guard: the column has no reader left in a policy, and the
+-- helper that read it is gone. A policy written by habit against the
+-- deprecated column would answer the wrong organization with a real uuid.
+DO $$
+DECLARE offenders text;
+BEGIN
+  SELECT string_agg(tablename || '.' || policyname, ', ') INTO offenders
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND (coalesce(qual, '') LIKE '%current_organization_id%' OR coalesce(with_check, '') LIKE '%current_organization_id%'
+         OR coalesce(qual, '') LIKE '%profiles.organization_id%');
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'SECURITY HOLE: policies still read the deprecated column: %', offenders;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+             WHERE n.nspname = 'public' AND p.proname = 'current_organization_id') THEN
+    RAISE EXCEPTION 'SECURITY HOLE: current_organization_id() still exists (20261003203000 dropped it)';
+  END IF;
+  RAISE NOTICE 'OK: no policy reads profiles.organization_id';
 END $$;
 
 SELECT 'RLS policy assertions passed' AS result;

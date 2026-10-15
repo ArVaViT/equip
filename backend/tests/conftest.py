@@ -27,7 +27,7 @@ from app.legal import LEGAL_DOCUMENTS
 from app.main import app
 from app.models.course import Chapter, Module
 from app.models.legal_acceptance import LegalAcceptance
-from app.models.organization import Organization
+from app.models.organization import MembershipRole, MembershipSource, Organization, OrganizationMember
 from app.models.user import User, UserRole
 
 # ---------------------------------------------------------------------------
@@ -82,6 +82,37 @@ def _reset_tables():
     Base.metadata.drop_all(bind=test_engine)
 
 
+#: ``session.info`` key: set to make new users belong nowhere (no membership,
+#: no ``organization_id``) instead of being filed under the test organization.
+NOBODY_BELONGS_ANYWHERE = "nobody_belongs_anywhere"
+
+
+@pytest.fixture()
+def nobody_belongs_anywhere(db: Session) -> None:
+    """Make this test's session create users who are in no organization.
+
+    For the tests of joining itself — an invitation accepted, a director
+    appointed, a student placed in a cohort: a person who is already a
+    member would make "this grants membership" pass without the code doing
+    anything. Users the test wants in an organization get an explicit
+    ``OrganizationMember`` row (or ``organization_id=``, which the listener
+    below still turns into one).
+    """
+    db.info[NOBODY_BELONGS_ANYWHERE] = True
+
+
+def leave_every_organization(db: Session, user_id: uuid.UUID) -> None:
+    """Undo the listener for one already-flushed user: no membership, no column.
+
+    The true shape of a person who just signed up — ``handle_new_user``
+    sets neither — for tests that created the user before they could ask
+    for ``nobody_belongs_anywhere``.
+    """
+    db.query(OrganizationMember).filter(OrganizationMember.user_id == user_id).delete()
+    db.query(User).filter(User.id == user_id).update({User.organization_id: None})
+    db.commit()
+
+
 @event.listens_for(Session, "before_flush")
 def _belong_to_the_test_organization(session, _flush_context, _instances):
     """Give every new row the test organization, unless it has one.
@@ -96,10 +127,38 @@ def _belong_to_the_test_organization(session, _flush_context, _instances):
     production the column has no default, so a code path that forgets it
     fails loudly instead of quietly filing a course under whichever
     organization happened to be first.
+
+    For a user the column is a deprecated mirror (2026-10-03): membership
+    is a row in ``organization_members``, and that is what the application
+    reads. So a new user who names an organization — explicitly, or
+    through the default above — also gets the membership the production
+    backfill would have given them: their role there, a platform admin as
+    a teacher (an admin administers every organization and *sits* in one
+    as its teacher, never as its director by default). A test that adds
+    its own ``OrganizationMember`` for the same pair in the same flush
+    wins; ``nobody_belongs_anywhere`` switches all of this off for users.
     """
-    for obj in session.new:
+    nobody = session.info.get(NOBODY_BELONGS_ANYWHERE, False)
+    explicit = {
+        (obj.user_id, obj.organization_id)
+        for obj in session.new
+        if isinstance(obj, OrganizationMember) and obj.user_id is not None and obj.organization_id is not None
+    }
+    for obj in list(session.new):
+        if isinstance(obj, User) and nobody:
+            continue
         if hasattr(obj, "organization_id") and getattr(obj, "organization_id", None) is None:
             obj.organization_id = TEST_ORGANIZATION_ID
+        if isinstance(obj, User) and (obj.id, obj.organization_id) not in explicit:
+            role = obj.role or UserRole.STUDENT.value
+            session.add(
+                OrganizationMember(
+                    user_id=obj.id,
+                    organization_id=obj.organization_id,
+                    role=MembershipRole.TEACHER.value if role == UserRole.ADMIN.value else role,
+                    joined_via=MembershipSource.MIGRATION.value,
+                )
+            )
 
 
 #: ``session.info`` key: set to switch the acceptance autopopulator below off.

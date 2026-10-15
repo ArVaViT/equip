@@ -35,11 +35,16 @@ export const invitationsService = {
     email: string,
     role: InvitationRole,
     ageAttested: boolean,
+    /** What the invitation grants. Omitted: the school's — the server's
+     *  default. A resend passes the row's own, or a platform invitation
+     *  would come back as a school one. */
+    target?: { scope: NonNullable<Invitation["scope"]>; courseId?: string | null },
   ): Promise<Invitation> {
     const response = await api.post<Invitation>("/invitations", {
       email,
       role,
       age_attested: ageAttested,
+      ...(target ? { scope: target.scope, course_id: target.courseId ?? null } : {}),
     })
     return response.data
   },

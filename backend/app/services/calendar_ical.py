@@ -47,9 +47,47 @@ _PRODID = "-//Equip//Calendar//EN"
 _TAKES_TIME = frozenset({"live_session", "exam"})
 
 
-def _duration(event_type: str) -> str:
-    """A deadline is a moment; a session or an exam takes a block of the day."""
+def _when(event: CalendarEvent, time_zone: str | None) -> list[str]:
+    """DTSTART and its length. An all-day item (a group's first day) is a
+    date, so a calendar shows it as a day, not as an event at 00:00 or
+    03:00 — the day the server fixed for everyone, and only without one a
+    date in the subscriber's zone."""
+    if event.all_day:
+        if event.day:
+            return [f"DTSTART;VALUE=DATE:{event.day.strftime('%Y%m%d')}", "DURATION:P1D"]
+        from app.services.event_series import zone_or_utc
+
+        when = event.event_date if event.event_date.tzinfo else event.event_date.replace(tzinfo=UTC)
+        day = when.astimezone(zone_or_utc(time_zone)).strftime("%Y%m%d")
+        return [f"DTSTART;VALUE=DATE:{day}", "DURATION:P1D"]
+    return [
+        f"DTSTART:{_format_dt(event.event_date)}",
+        f"DURATION:{_duration(event.event_type, event.duration_minutes)}",
+    ]
+
+
+def _duration(event_type: str, minutes: int | None = None) -> str:
+    """The event's own length when the teacher gave one. Without it, a
+    deadline is a moment and a session or an exam takes an hour — the
+    guess every event got before lengths were stored."""
+    if minutes:
+        return f"PT{minutes}M"
     return "PT1H" if event_type in _TAKES_TIME else "PT0S"
+
+
+# A class worth joining is worth a nudge before it starts. In a
+# subscribed feed Apple Calendar and Outlook honour the alarm; Google
+# drops alarms from subscriptions and applies the reader's own default,
+# which is the reader's call anyway. Deadlines get none: they sit at the
+# end of a day of work, and an alarm at 23:29 helps nobody.
+_ALARM_BEFORE = "-PT30M"
+
+_ALARM_TEXT = {
+    "ru": "Через 30 минут",
+    "uk": "За 30 хвилин",  # noqa: RUF001 — Ukrainian, not look-alike Latin
+    "en": "In 30 minutes",
+    "de": "In 30 Minuten",
+}
 
 
 _DOMAIN = "equipbible.com"
@@ -96,7 +134,7 @@ _CALNAME = {"ru": "Календарь Equip", "uk": "Календар Equip", "e
 _RECORDING = {"ru": "Запись занятия", "uk": "Запис заняття", "en": "Recording", "de": "Aufzeichnung"}
 
 
-def render_calendar(events: list[CalendarEvent], *, locale: str = "en") -> str:
+def render_calendar(events: list[CalendarEvent], *, locale: str = "en", time_zone: str | None = None) -> str:
     """Serialize ``events`` to an RFC 5545 VCALENDAR.
 
     Named «Календарь Equip» in the subscriber's language — short, as a
@@ -132,8 +170,7 @@ def render_calendar(events: list[CalendarEvent], *, locale: str = "en") -> str:
                 "BEGIN:VEVENT",
                 _fold(f"UID:{uid}"),
                 f"DTSTAMP:{now_stamp}",
-                f"DTSTART:{_format_dt(event.event_date)}",
-                f"DURATION:{_duration(event.event_type)}",
+                *_when(event, time_zone),
                 _fold(f"SUMMARY:{_escape(summary)}"),
             ]
         )
@@ -170,6 +207,16 @@ def render_calendar(events: list[CalendarEvent], *, locale: str = "en") -> str:
             lines.append(_fold(f"LOCATION:{_escape(event.meeting_url)}"))
             lines.append(_fold(f"URL:{event.meeting_url}"))
         lines.append(f"CATEGORIES:{_escape(event.event_type)}")
+        if event.event_type in _TAKES_TIME:
+            lines.extend(
+                [
+                    "BEGIN:VALARM",
+                    "ACTION:DISPLAY",
+                    _fold(f"DESCRIPTION:{_escape(_ALARM_TEXT.get(locale, _ALARM_TEXT['en']))}: {_escape(summary)}"),
+                    f"TRIGGER:{_ALARM_BEFORE}",
+                    "END:VALARM",
+                ]
+            )
         lines.append("END:VEVENT")
 
     lines.append("END:VCALENDAR")

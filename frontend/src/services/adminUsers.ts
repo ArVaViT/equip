@@ -12,15 +12,21 @@ export const adminUsersService = {
     return response.data
   },
 
-  async updateUserRole(userId: string, role: string): Promise<void> {
-    await api.put(`/users/admin/users/${userId}/role`, null, { params: { role } })
+  /** Returns the role the person ends up with: taking the admin flag away
+   *  leaves whatever their organization memberships say, not what was sent. */
+  async updateUserRole(userId: string, role: string): Promise<string> {
+    const response = await api.put<{ role: string }>(`/users/admin/users/${userId}/role`, null, { params: { role } })
+    return response.data.role
   },
 
+  /** ``held_by_membership`` names the people the server left alone: their
+   *  role is held by an organization membership and is not this route's
+   *  to change. They are not counted in ``updated``. */
   async bulkUpdateUserRoles(
     userIds: string[],
     role: string,
-  ): Promise<{ updated: number; role: string }> {
-    const response = await api.put<{ updated: number; role: string }>(
+  ): Promise<{ updated: number; role: string; held_by_membership: string[] }> {
+    const response = await api.put<{ updated: number; role: string; held_by_membership: string[] }>(
       "/users/admin/users/bulk-role",
       { user_ids: userIds, role },
     )

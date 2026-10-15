@@ -50,6 +50,7 @@ from app.services.daily_challenge import (
     submit_archive_attempt,
 )
 from app.services.daily_challenge.attempt import _correct_option_for
+from app.services.daily_challenge.schedule import reader_today
 
 router = APIRouter(prefix="/daily-challenge/archive", tags=["daily-challenge"])
 
@@ -79,6 +80,7 @@ def list_archive(
         user_id=current_user.id,
         before=before,
         limit=limit,
+        today=reader_today(current_user.time_zone),
     )
     return DailyChallengeArchiveListResponse(
         entries=[
@@ -118,7 +120,9 @@ def get_archive(
 ) -> DailyChallengeArchiveQuestionResponse:
     response.headers["Vary"] = "Accept-Language"
     try:
-        schedule, question, attempt = get_archive_question(db, user_id=current_user.id, on_date=challenge_date)
+        schedule, question, attempt = get_archive_question(
+            db, user_id=current_user.id, on_date=challenge_date, today=reader_today(current_user.time_zone)
+        )
     except ArchiveDateNotAllowedError:
         raise equip_error(
             ErrorCode.DAILY_CHALLENGE_ARCHIVE_DATE_NOT_ALLOWED,
@@ -198,6 +202,7 @@ def submit_archive(
             user_id=current_user.id,
             on_date=challenge_date,
             selected_option_id=data.selected_option_id,
+            today=reader_today(current_user.time_zone),
         )
     except ArchiveDateNotAllowedError:
         raise equip_error(

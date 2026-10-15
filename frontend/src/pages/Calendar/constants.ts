@@ -5,6 +5,9 @@ type EventColorPalette = {
   bg: string;
   text: string;
   border: string;
+  /** The left bar of a chip in the week view — spelled out whole so
+   *  Tailwind sees the class. */
+  bar: string;
 };
 
 export const EVENT_COLORS: Record<string, EventColorPalette> = {
@@ -13,24 +16,28 @@ export const EVENT_COLORS: Record<string, EventColorPalette> = {
     bg: "bg-destructive/10",
     text: "text-destructive-ink",
     border: "border-destructive/30",
+    bar: "border-l-destructive",
   },
   live_session: {
     dot: "bg-info",
     bg: "bg-info/10",
     text: "text-info-ink",
     border: "border-info/30",
+    bar: "border-l-info",
   },
   exam: {
     dot: "bg-warning",
     bg: "bg-warning/10",
     text: "text-warning-ink",
     border: "border-warning/30",
+    bar: "border-l-warning",
   },
   other: {
     dot: "bg-ink-muted/50",
     bg: "bg-muted",
     text: "text-ink-muted",
     border: "border-edge",
+    bar: "border-l-edge-strong",
   },
 };
 
@@ -39,6 +46,7 @@ const FALLBACK_EVENT_COLOR: EventColorPalette = {
   bg: "bg-muted",
   text: "text-ink-muted",
   border: "border-edge",
+  bar: "border-l-edge-strong",
 };
 
 export function getEventColor(type: string): EventColorPalette {

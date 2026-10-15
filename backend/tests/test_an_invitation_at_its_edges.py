@@ -26,14 +26,14 @@ from fastapi import HTTPException
 from app.models.course import Course
 from app.models.enrollment import Enrollment
 from app.models.invitation import Invitation, InvitationScope, InvitationStatus
-from app.models.organization import Organization
+from app.models.organization import MembershipSource, Organization, OrganizationMember
 from app.models.user import User, UserRole
 from app.services.invitation_service import (
     accept_invitation,
     create_or_resend_invitation,
     revoke_invitation,
 )
-from tests.conftest import ADMIN_ID, TEST_ORGANIZATION_ID
+from tests.conftest import ADMIN_ID, TEST_ORGANIZATION_ID, leave_every_organization
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -61,8 +61,7 @@ def _invitee(db: Session, *, role: str = UserRole.STUDENT.value, email: str = IN
     user = User(id=INVITEE_ID, email=email, full_name="Edge Case", role=role)
     db.add(user)
     db.commit()
-    db.query(User).filter(User.id == INVITEE_ID).update({User.organization_id: None})
-    db.commit()
+    leave_every_organization(db, INVITEE_ID)
     db.refresh(user)
     return user
 
@@ -177,7 +176,18 @@ class TestTheAddressIsNotAStranger:
         assert accepted.status == InvitationStatus.ACCEPTED.value
 
     def test_a_teacher_accepting_a_student_invitation_keeps_teaching(self, db: Session, admin: User) -> None:
+        # A teacher *of the inviting organization*: the role lives in the
+        # membership, and a student seat offered there never lowers it.
         _invitee(db, role=UserRole.TEACHER.value)
+        db.add(
+            OrganizationMember(
+                user_id=INVITEE_ID,
+                organization_id=TEST_ORGANIZATION_ID,
+                role=UserRole.TEACHER.value,
+                joined_via=MembershipSource.MIGRATION.value,
+            )
+        )
+        db.commit()
         _course(db)
         invitation = _invitation(db, role=UserRole.STUDENT.value)
 

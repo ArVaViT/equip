@@ -162,3 +162,39 @@ def test_an_event_whose_title_is_still_waiting_says_what_kind_it_is(db: Session,
     assert [e.title for e in feed if e.id == str(waiting.id)] == ["Живое занятие"]
     rows = localize_course_event_rows(db, [waiting], display_locale="de", source_locale="ru")
     assert rows[0].title == "Live-Termin"
+
+
+def test_a_title_waits_for_every_language_even_in_the_teachers_own(db: Session, student: User, teacher: User) -> None:
+    """A title appears only once every language has it — for the reader of
+    the language it was written in too. Showing the teacher's words to one
+    class early was tried and reverted (2026-10-03): until then the card
+    names the kind, the same in every language."""
+    from app.services.staged_edits import stage_human_edit
+    from app.services.translation.resolve_for_display import localize_course_event_rows
+
+    course = _russian_course_with_dates(db, student, teacher)
+    held = CourseEvent(
+        id=uuid.uuid4(),
+        course_id=course.id,
+        event_type="live_session",
+        event_date=datetime.now(UTC) + timedelta(days=1),
+        created_by=teacher.id,
+    )
+    db.add(held)
+    db.flush()
+    stage_human_edit(
+        db,
+        entity_type="course_event",
+        entity_id=str(held.id),
+        course_id=course.id,
+        field="title",
+        locale="ru",
+        text="Разбор проповеди",
+        authored_by=teacher.id,
+    )
+    db.commit()
+
+    feed = build_calendar_events(db=db, user=student, course_id=None, limit=100, display_locale="ru")
+    assert [e.title for e in feed if e.id == str(held.id)] == ["Живое занятие"]
+    rows = localize_course_event_rows(db, [held], display_locale="ru", source_locale="ru")
+    assert rows[0].title == "Живое занятие"

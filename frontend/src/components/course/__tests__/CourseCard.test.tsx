@@ -101,6 +101,26 @@ describe("CourseCard", () => {
     expect(container.querySelector("img")).toBeNull()
   })
 
+  it("marks a closed course «by invitation» to an outsider, and «for members of …» to a member", async () => {
+    // To a member «По приглашению» read as "not for you" on a course they
+    // could open (2026-10-03).
+    await i18n.changeLanguage("ru")
+    const closed = makeCourse({ access_mode: "institute", organization_name: "UCOAT" })
+    renderCard(closed)
+    expect(screen.getByText("По приглашению")).toBeInTheDocument()
+
+    render(<CourseCard course={closed} viewerIsMember />, { wrapper: TestWrapper })
+    expect(screen.getByText("Для участников UCOAT")).toBeInTheDocument()
+    await i18n.changeLanguage("en")
+  })
+
+  it("says «for members» without a name when the card has no organization to name", async () => {
+    await i18n.changeLanguage("ru")
+    render(<CourseCard course={makeCourse({ access_mode: "institute" })} viewerIsMember />, { wrapper: TestWrapper })
+    expect(screen.getByText("Для участников")).toBeInTheDocument()
+    await i18n.changeLanguage("en")
+  })
+
   it("links to the course detail page", () => {
     renderCard(makeCourse({ id: "genesis-intro" }))
     const link = screen.getByRole("link")

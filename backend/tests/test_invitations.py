@@ -19,7 +19,8 @@ from app.core.database import get_db
 from app.main import app
 from app.models.invitation import Invitation
 from app.models.user import User, UserRole
-from tests.conftest import ADMIN_ID
+from tests._cv_helpers import make_course_with_text
+from tests.conftest import ADMIN_ID, TEST_ORGANIZATION_ID
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -178,6 +179,49 @@ def test_list_invitations_admin_ok(admin_client: TestClient):
     assert resp.status_code == 200, resp.text
     emails = {row["email"] for row in resp.json()}
     assert {"a@example.com", "b@example.com"} <= emails
+
+
+def test_the_list_names_where_each_invitation_leads(
+    admin_client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+):
+    # A list of many rows has to say what each one grants by name: the
+    # organization, or for a course invitation the course itself. One
+    # address can hold an "account only" and a school invitation at once.
+    course = make_course_with_text(db, title="Acts in Twelve Evenings", status="published", source_locale="en")
+    course.organization_id = TEST_ORGANIZATION_ID
+    db.commit()
+    db.add(
+        Invitation(
+            email="seat@example.com",
+            role="student",
+            scope="course",
+            course_id=course.id,
+            token=uuid.uuid4().hex,
+            invited_by=ADMIN_ID,
+        )
+    )
+    db.add(
+        Invitation(
+            email="account@example.com", role="student", scope="platform", token=uuid.uuid4().hex, invited_by=ADMIN_ID
+        )
+    )
+    db.commit()
+    admin_client.post(INVITATIONS_PREFIX, json={"email": "member@example.com", "role": "student", "age_attested": True})
+
+    rows = {row["email"]: row for row in admin_client.get(INVITATIONS_PREFIX, headers={"Accept-Language": "en"}).json()}
+    assert rows["member@example.com"]["organization_name"] == "Test Organization"
+    assert rows["member@example.com"]["course_title"] is None
+    assert rows["seat@example.com"]["course_title"] == "Acts in Twelve Evenings"
+    assert rows["account@example.com"]["organization_name"] == "Test Organization"
+    assert rows["account@example.com"]["course_title"] is None
+
+    # No German title: no title, as on every surface that serves a reader —
+    # never the author's language in its place. The list says «to a course».
+    # (With the platform translating; off, the reader gets the source text
+    # everywhere, see ``fetch_cv_entity_texts_with_fallback``.)
+    monkeypatch.setattr("app.services.content_versions.read.is_translation_enabled", lambda: True)
+    rows = {row["email"]: row for row in admin_client.get(INVITATIONS_PREFIX, headers={"Accept-Language": "de"}).json()}
+    assert rows["seat@example.com"]["course_title"] is None
 
 
 def test_list_invitations_filters_by_role_and_status(admin_client: TestClient):

@@ -19,6 +19,7 @@ Two rules are load-bearing enough to be tested rather than commented:
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
@@ -27,8 +28,10 @@ from fastapi.testclient import TestClient
 from app.api.dependencies import get_current_user, get_optional_user
 from app.core.database import get_db
 from app.main import app
-from app.models.organization import Organization
+from app.models.organization import Organization, OrganizationMember
 from app.models.user import User, UserRole
+from tests._cv_helpers import make_course_with_text
+from tests.conftest import TEST_ORGANIZATION_ID
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -90,6 +93,23 @@ class TestAdmission:
         assert created["member_count"] == 0
         assert created["director_emails"] == []
         assert db.query(Organization).filter(Organization.slug == "second-school").first() is not None
+
+    def test_the_row_counts_the_courses_the_showcase_would_count(self, staff_client: TestClient, db: Session):
+        # Published and not binned — the same filter as ``GET /organizations``,
+        # so the panel can say why a verified school is not on the showcase.
+        created = _create(staff_client, slug="counted", public_name="Counted School")
+        organization_id = uuid.UUID(created["id"])
+        for status in ("published", "published", "draft"):
+            course = make_course_with_text(db, title="A course", status=status)
+            course.organization_id = organization_id
+        binned = make_course_with_text(db, title="Binned", status="published")
+        binned.organization_id = organization_id
+        binned.deleted_at = datetime.now(UTC)
+        db.commit()
+
+        rows = staff_client.get("/api/v1/admin/organizations").json()
+        row = next(r for r in rows if r["id"] == created["id"])
+        assert row["published_courses"] == 2
 
     def test_a_duplicate_slug_is_a_conflict_not_a_crash(self, staff_client: TestClient):
         _create(staff_client, slug="taken", public_name="First Name")
@@ -180,7 +200,11 @@ class TestStates:
 
 
 class TestAppointingADirector:
-    def test_the_appointment_sets_both_role_and_organization(self, staff_client: TestClient, db: Session):
+    def test_the_appointment_is_a_membership_and_moves_nobody(self, staff_client: TestClient, db: Session):
+        """A teacher of the test organization appointed to direct a second one
+        directs the second and still teaches in the first. Until 2026-10-03
+        the appointment *moved* the person — the one-organization column —
+        which is how UCOAT's director had to stop directing to teach."""
         created = _create(staff_client, slug="needs-a-head", public_name="Needs A Head")
         person = User(
             id=uuid.uuid4(),
@@ -198,10 +222,30 @@ class TestAppointingADirector:
 
         assert resp.status_code == 200, resp.text
         assert resp.json()["director_emails"] == ["new-head@example.com"]
+        assert resp.json()["member_count"] == 1
 
         db.refresh(person)
-        assert person.role == UserRole.DIRECTOR.value
-        assert str(person.organization_id) == created["id"], "a director filed under the wrong organization"
+        roles = {
+            str(m.organization_id): m.role
+            for m in db.query(OrganizationMember).filter(OrganizationMember.user_id == person.id)
+        }
+        assert roles == {created["id"]: UserRole.DIRECTOR.value, str(TEST_ORGANIZATION_ID): UserRole.TEACHER.value}
+        assert person.role == UserRole.DIRECTOR.value, "profiles.role mirrors the highest membership"
+        # The deprecated column is left where it was: the person's first
+        # organization. It is written only when empty.
+        assert person.organization_id == TEST_ORGANIZATION_ID
+
+    def test_appointing_twice_changes_nothing(self, staff_client: TestClient, db: Session):
+        created = _create(staff_client, slug="twice", public_name="Twice")
+        db.add(User(id=uuid.uuid4(), email="head@example.com", role=UserRole.STUDENT.value))
+        db.commit()
+        for _ in range(2):
+            resp = staff_client.post(
+                f"/api/v1/admin/organizations/{created['id']}/director", json={"email": "head@example.com"}
+            )
+            assert resp.status_code == 200, resp.text
+        assert resp.json()["director_emails"] == ["head@example.com"]
+        assert resp.json()["member_count"] == 1
 
     def test_an_unknown_email_is_a_404(self, staff_client: TestClient):
         created = _create(staff_client, slug="nobody-here", public_name="Nobody Here")

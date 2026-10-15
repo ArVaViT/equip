@@ -26,7 +26,7 @@ describe("selected day heading", () => {
   it("names the clicked day whatever zone the profile chose", () => {
     // Honolulu is west of every zone a test machine is likely to run in.
     setDisplayTimeZone("Pacific/Honolulu")
-    render(<SelectedDayPanel selectedDay={new Date(2026, 9, 5)} events={[]} />, { wrapper: Wrapper })
+    render(<SelectedDayPanel selectedDay={new Date(2026, 9, 5)} events={[]} now={Date.now()} />, { wrapper: Wrapper })
     expect(screen.getByText("October 5")).toBeInTheDocument()
     expect(screen.getByText("Monday")).toBeInTheDocument()
   })
@@ -41,7 +41,7 @@ describe("selected day heading", () => {
   it("offers a past session's recording, not a way to join it or add it", () => {
     vi.useFakeTimers({ toFake: ["Date"] })
     vi.setSystemTime(new Date("2026-10-02T12:00:00Z"))
-    render(<SelectedDayPanel selectedDay={new Date(2026, 8, 28)} events={[session("2026-09-28T18:00:00Z")]} />, {
+    render(<SelectedDayPanel selectedDay={new Date(2026, 8, 28)} events={[session("2026-09-28T18:00:00Z")]} now={Date.now()} />, {
       wrapper: Wrapper,
     })
     expect(screen.getByRole("link", { name: /Session/ })).toHaveAttribute("href", "https://youtu.be/x")
@@ -52,7 +52,7 @@ describe("selected day heading", () => {
   it("still offers joining and adding a session that has not happened", () => {
     vi.useFakeTimers({ toFake: ["Date"] })
     vi.setSystemTime(new Date("2026-10-02T12:00:00Z"))
-    render(<SelectedDayPanel selectedDay={new Date(2026, 9, 5)} events={[session("2026-10-05T18:00:00Z")]} />, {
+    render(<SelectedDayPanel selectedDay={new Date(2026, 9, 5)} events={[session("2026-10-05T18:00:00Z")]} now={Date.now()} />, {
       wrapper: Wrapper,
     })
     expect(screen.getByRole("link", { name: /zoom|join/i })).toHaveAttribute("href", "https://zoom.us/j/1")

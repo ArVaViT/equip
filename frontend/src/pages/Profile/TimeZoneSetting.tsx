@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Clock, Loader2 } from "lucide-react"
 
@@ -43,6 +43,13 @@ export function TimeZoneSetting() {
       .sort((a, b) => a.offset - b.offset || a.zone.localeCompare(b.zone))
   }, [current, device, locale])
 
+  // The calendar's "change" link lands here: an SPA does not scroll to a
+  // hash on its own.
+  const rowRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (window.location.hash === "#time-zone") rowRef.current?.scrollIntoView({ block: "center" })
+  }, [user])
+
   if (!user) return null
 
   const save = async (zone: string, source: "chosen" | "detected") => {
@@ -59,7 +66,7 @@ export function TimeZoneSetting() {
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4">
+    <div id="time-zone" ref={rowRef} className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 scroll-mt-24">
       <div className="flex min-w-0 items-center gap-3">
         <Clock className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
         <div className="min-w-0">

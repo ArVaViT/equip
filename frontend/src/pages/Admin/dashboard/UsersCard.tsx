@@ -38,7 +38,7 @@ const VirtualAdminUsers = lazyRoute(() => import("../VirtualAdminUsers"))
 const USERS_VIRTUAL_THRESHOLD = 50
 
 /** Empty string = "all roles" (no filter). */
-export type RoleFilterValue = "" | "admin" | "teacher" | "student"
+export type RoleFilterValue = "" | "admin" | "director" | "teacher" | "student"
 
 interface Props {
   users: ProfileRow[]
@@ -138,6 +138,7 @@ export function UsersCard({
             <SelectContent>
               <SelectItem value="all">{t("admin.users.roleFilterAll")}</SelectItem>
               <SelectItem value="admin">{t("roles.admin")}</SelectItem>
+              <SelectItem value="director">{t("roles.director")}</SelectItem>
               <SelectItem value="teacher">{t("roles.teacher")}</SelectItem>
               <SelectItem value="student">{t("roles.student")}</SelectItem>
             </SelectContent>
@@ -163,7 +164,7 @@ export function UsersCard({
             Hides zero-count roles so the strip stays meaningful on
             small tenants. Active filter gets the primary fill. */}
         <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          {(["admin", "teacher", "student"] as const).map((role) => {
+          {(["admin", "director", "teacher", "student"] as const).map((role) => {
             if (roleCounts[role] === 0) return null
             const active = roleFilter === role
             return (
@@ -202,14 +203,18 @@ export function UsersCard({
             <span className="text-xs font-medium">
               {t("admin.users.selected", { count: selectedIds.size })}
             </span>
+            {/* The same one decision the row's RoleSelector offers: platform
+                staff or not. Teacher and director are held in an
+                organization, and the server leaves such people alone
+                (``held_by_membership``). "student" here is the request to
+                stop being admin; what is left is what the memberships say. */}
             <Select value={bulkRole} onValueChange={(v) => onBulkRoleChange(v as UserRole)}>
               <SelectTrigger size="sm" className="w-auto">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="student">{t("roles.student")}</SelectItem>
-                <SelectItem value="teacher">{t("roles.teacher")}</SelectItem>
-                <SelectItem value="admin">{t("roles.admin")}</SelectItem>
+                <SelectItem value="admin">{t("admin.users.bulkMakeAdmin")}</SelectItem>
+                <SelectItem value="student">{t("admin.users.bulkRevokeAdmin")}</SelectItem>
               </SelectContent>
             </Select>
             <Button

@@ -136,13 +136,17 @@ being a director and still gets the membership and the enrollment. The
 ordering is `TEACHING_ROLES` plus student, and it lives next to
 `can_teach()` rather than being re-derived.
 
-*Amended 2026-10-03:* across schools the two rules collide. Accepting moves
-the person to the inviting school, so a director or teacher of school A who
-accepted a student seat in school B arrived in B as its director or teacher;
-taking the offered role instead would cost them school A without a word (a
-stale course link was enough). Such an acceptance is now refused
-(`invitation.other_school`, 409) before anything is written. Moving with an
-equal or higher role offered, and platform staff, are unchanged.
+*Amended 2026-10-03:* across schools the two rules collided while an account
+sat in exactly one organization. Accepting moved the person to the inviting
+school, so a director or teacher of school A who accepted a student seat in
+school B arrived in B as its director or teacher; taking the offered role
+instead would have cost them school A without a word (a stale course link was
+enough). Such an acceptance was refused for a day (`invitation.other_school`,
+409). Membership is now a row per organization (`organization_members`,
+migration 20261003165050): accepting adds a membership in the inviting
+school in the offered role, the role never moves down *within* that school,
+and nothing about school A changes. `profiles.role` mirrors the highest
+membership. The refusal and its error code are gone.
 
 Enrollment reuses `enroll_user_in_course` — it already takes an
 arbitrary `user_id`, is idempotent on `(user, course, cohort)` and

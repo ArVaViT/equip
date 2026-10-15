@@ -25,10 +25,13 @@ import { GradebookStats } from "./gradebook/GradebookStats"
 import { gradebookNotice } from "./gradebook/notice"
 import { GradebookTabs } from "./gradebook/GradebookTabs"
 import { GradingConfigCard } from "./gradebook/GradingConfigCard"
+import { GradingScaleCard } from "./gradebook/GradingScaleCard"
 import { SummaryTab } from "./gradebook/SummaryTab"
 import { GradeTableTab } from "./gradebook/GradeTableTab"
 import { EMPTY_FORM } from "./gradebook/helpers"
 import { useUserTour } from "@/hooks/useUserTour"
+import { useAuth } from "@/context/useAuth"
+import { ROLES } from "@/types"
 import { gradebookSteps } from "@/lib/tourSteps"
 
 /**
@@ -41,6 +44,10 @@ export default function TeacherGradebook() {
   const { t } = useTranslation()
   const { courseId } = useParams<{ courseId: string }>()
   const [params, setParams] = useSearchParams()
+  const { user } = useAuth()
+  // How a course is graded is the school's call, not the teacher's (D1).
+  // Platform staff pass for the same reason they pass `require_director`.
+  const canChangeScheme = user?.role === ROLES.DIRECTOR || user?.role === ROLES.ADMIN
 
   const activeTab: ActiveTab = (TABS as readonly string[]).includes(params.get("tab") ?? "")
     ? (params.get("tab") as ActiveTab)
@@ -170,6 +177,14 @@ export default function TeacherGradebook() {
     }
   }, [courseId, reloadKey, t])
 
+  // Re-read the symbols after anything that changes what they mean — the
+  // weights, or the scheme they are read against.
+  const refreshSummary = useCallback(async () => {
+    if (!courseId) return
+    const gradeSummary = await coursesService.getGradeSummary(courseId)
+    setSummary(gradeSummary)
+  }, [courseId])
+
   const saveConfig = async () => {
     if (!courseId) return
     setSavingConfig(true)
@@ -177,8 +192,7 @@ export default function TeacherGradebook() {
       const updated = await coursesService.updateGradingConfig(courseId, configDraft)
       setConfig(updated)
       toast({ title: t("toast.gradingWeightsSaved"), variant: "success" })
-      const gradeSummary = await coursesService.getGradeSummary(courseId)
-      setSummary(gradeSummary)
+      await refreshSummary()
     } catch {
       toast({ title: t("toast.gradingConfigSaveFailed"), variant: "destructive" })
     } finally {
@@ -453,6 +467,17 @@ export default function TeacherGradebook() {
       <div data-tour="gradebook-table">
       {activeTab === "summary" && (
         <>
+          {courseId && (
+            <GradingScaleCard
+              courseId={courseId}
+              canChange={canChangeScheme}
+              onChanged={() => {
+                refreshSummary().catch(() => {
+                  // The scheme itself saved; the symbols catch up on the next load.
+                })
+              }}
+            />
+          )}
           <GradingConfigCard
             open={configOpen}
             onToggle={() => setConfigOpen(!configOpen)}

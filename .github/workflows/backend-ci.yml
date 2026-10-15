@@ -366,9 +366,10 @@ jobs:
           # 50 since 2026-10-01: `worker_leases` (background work that must
           # not run twice at once; a transaction lock did not survive the
           # sweep's own commits). 51: `chapter_notes` (a student's own note
-          # on a lesson).
-          if [ "$COUNT" -ne 51 ]; then
-            echo "::error::Expected 51 public tables after replay, got $COUNT — schema.sql may be stale or partial." >&2
+          # on a lesson). 52 since 2026-10-03: `organization_members` (an
+          # account belongs to several organizations; the role is held there).
+          if [ "$COUNT" -ne 52 ]; then
+            echo "::error::Expected 52 public tables after replay, got $COUNT — schema.sql may be stale or partial." >&2
             exit 1
           fi
           echo "OK: prod schema replays cleanly from supabase/schema.sql"

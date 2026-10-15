@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { useNavigate, useSearchParams } from "react-router-dom"
-import { BookOpen, Plus, Search } from "lucide-react"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
+import { BookOpen, ClipboardCheck, Plus, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -19,7 +19,6 @@ import {
   EmptyCoursesCard,
   PendingCertsCard,
   TeacherDashboardSkeleton,
-  TeacherStatsRow,
   TrashSection,
   type PendingCert,
 } from "./dashboard"
@@ -271,15 +270,28 @@ export default function TeacherDashboard() {
     <div className="container mx-auto max-w-5xl px-4 py-6 sm:py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 sm:mb-8">
         <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">{t("teacher.dashboardTitle")}</h1>
-        <Button
-          data-tour="new-course"
-          onClick={() => setShowCreate(!showCreate)}
-          size="sm"
-          className="h-11 sm:h-9"
-        >
-          <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
-          {t("teacher.newCourse")}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* The one number on this page a teacher acts on, and only when
+              there is something to act on; the row of four stat tiles it
+              replaces counted courses the list below already shows. */}
+          {pendingGrading > 0 && (
+            <Button asChild variant="outline" size="sm" className="h-11 sm:h-9">
+              <Link to="/teach/grading">
+                <ClipboardCheck className="h-4 w-4 mr-1.5" strokeWidth={1.75} aria-hidden />
+                {t("teacherDashboard.toGrade", { count: pendingGrading })}
+              </Link>
+            </Button>
+          )}
+          <Button
+            data-tour="new-course"
+            onClick={() => setShowCreate(!showCreate)}
+            size="sm"
+            className="h-11 sm:h-9"
+          >
+            <Plus className="h-4 w-4 mr-1.5" strokeWidth={1.75} />
+            {t("teacher.newCourse")}
+          </Button>
+        </div>
       </div>
 
       {showCreate && (
@@ -291,18 +303,6 @@ export default function TeacherDashboard() {
           saving={saving}
           onSubmit={handleCreate}
           onCancel={() => setShowCreate(false)}
-        />
-      )}
-
-      {/* Real stats, not a placeholder — only once there's at least one
-          course to summarize. A brand-new teacher with zero courses
-          gets the dedicated onboarding welcome card below instead
-          (EmptyCoursesCard), not a row of four zeroes. */}
-      {!loading && !error && courses.length > 0 && (
-        <TeacherStatsRow
-          courses={courses}
-          pendingActions={pendingCerts.length}
-          pendingGrading={pendingGrading}
         />
       )}
 

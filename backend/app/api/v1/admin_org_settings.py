@@ -29,9 +29,10 @@ from typing import Any
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import require_director
+from app.api.dependencies import acting_organization, requested_organization_id, require_director
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.models.organization import MembershipRole
 from app.models.user import User
 from app.schemas.org_settings import OrgSettingsResponse, OrgSettingsUpdate
 from app.services.audit_service import log_action
@@ -48,37 +49,35 @@ AUDIT_RESOURCE = "org_settings"
 AUDIT_ACTION = "org_settings_updated"
 
 
-def _organization_of(user: User) -> uuid.UUID:
-    """The caller's organization, or a 403 saying they have none.
+def _organization_of(db: Session, user: User, requested: uuid.UUID | None) -> uuid.UUID:
+    """The organization whose settings these are.
 
-    Platform staff have no organization of their own, and settings are an
-    organization's. Reading somebody's settings by being staff is a
-    different endpoint from reading your own, and conflating them is how
-    a null becomes "whichever row came back first".
+    Settings are an organization's, and a person may direct more than one
+    — so the organization is the one the request acts in
+    (``acting_organization``: the ``X-Organization-Id`` header, or the
+    only one they direct), checked for the director role *there*. Reading
+    somebody's settings by being staff is a different thing from reading
+    your own, and conflating them is how a null becomes "whichever row
+    came back first".
     """
-    if user.organization_id is None:
-        raise equip_error(
-            ErrorCode.AUTH_FORBIDDEN,
-            status_code=status.HTTP_403_FORBIDDEN,
-            message="These settings belong to an organization, and this account is not in one",
-            context={"resource_type": AUDIT_RESOURCE},
-        )
-    return user.organization_id
+    return acting_organization(db, user, requested, role=MembershipRole.DIRECTOR.value)
 
 
 @router.get("", response_model=OrgSettingsResponse)
 def read_org_settings(
     director: User = Depends(require_director),
+    requested: uuid.UUID | None = Depends(requested_organization_id),
     db: Session = Depends(get_db),
 ):
     """Everything this organization has decided, as one row."""
-    return get_org_settings(db, _organization_of(director))
+    return get_org_settings(db, _organization_of(db, director, requested))
 
 
 @router.put("", response_model=OrgSettingsResponse)
 def update_org_settings(
     data: OrgSettingsUpdate,
     director: User = Depends(require_director),
+    requested: uuid.UUID | None = Depends(requested_organization_id),
     db: Session = Depends(get_db),
 ):
     """Change it, with the previous values kept.
@@ -92,7 +91,7 @@ def update_org_settings(
     that can only be seen by looking at both. Bands are validated against the
     scheme they belong to, which is where the «3»-versus-threshold check lives.
     """
-    settings = get_org_settings(db, _organization_of(director))
+    settings = get_org_settings(db, _organization_of(db, director, requested))
     payload = data.model_dump(exclude_unset=True)
     if not payload:
         raise equip_error(

@@ -11,6 +11,7 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.enrollment import Enrollment
+    from app.models.organization import OrganizationMember
 
 
 # JSONB in Postgres, JSON in the SQLite test database (as in org_settings).
@@ -109,12 +110,22 @@ class User(Base):
     # just duplicate writes. Same logic applies to every other unique column.
     email: Mapped[str] = mapped_column(unique=True)
     full_name: Mapped[str | None] = mapped_column()
-    #: The organization this person belongs to, in whatever role they
-    #: hold there. Nullable because platform staff belong to none — and
-    #: that null must never satisfy an organization check by accident,
-    #: which is why every comparison is written ``IS NOT NULL AND =``
-    #: rather than ``=`` alone.
+    #: Deprecated 2026-10-03. Membership lives in ``organization_members``
+    #: (``memberships`` below), one row per organization a person is in.
+    #: Until the column is dropped (last phase of the plan) the backend
+    #: still *writes* it — the first organization a person joins, when it
+    #: is empty — so that rolling back to the previous release leaves
+    #: everyone with one membership working. Nothing reads it any more; a
+    #: test greps for a read and fails on one.
     organization_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organizations.id", ondelete="SET NULL"))
+    #: The most this account may do anywhere on the platform. ``admin`` is
+    #: platform staff, set only by the admin route and never touched by the
+    #: mirror. For everyone else this is a *mirror* of ``memberships``: the
+    #: highest active membership role (director > teacher > student), or
+    #: ``student`` with none — kept by ``mirror_profile_role()`` in Postgres
+    #: and by ``app.services.memberships`` for this test database. Which
+    #: organization, and whether they direct *this* one, is asked of the
+    #: memberships, not of this column.
     role: Mapped[str] = mapped_column(default=UserRole.STUDENT.value)
     # Per-user UI/content language. Drives both the i18n bundle on the
     # frontend and which translated copy of course content gets served.
@@ -193,6 +204,11 @@ class User(Base):
     onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     enrollments: Mapped[list["Enrollment"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    memberships: Mapped[list["OrganizationMember"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        foreign_keys="OrganizationMember.user_id",
+    )
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email!r} role={self.role!r}>"
