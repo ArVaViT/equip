@@ -20,6 +20,28 @@ vi.mock("@/lib/tour", () => ({
     Promise.resolve(createTourMock(...(args as []))),
 }))
 
+// The teacher-agreement signal, driven by hand. The real module polls the
+// server; all this hook needs from it is "is the agreement screen up".
+const agreement = vi.hoisted(() => {
+  let owed = false
+  const listeners = new Set<() => void>()
+  return {
+    get: () => owed,
+    subscribe: (cb: () => void) => {
+      listeners.add(cb)
+      return () => listeners.delete(cb)
+    },
+    set: (next: boolean) => {
+      owed = next
+      listeners.forEach((cb) => cb())
+    },
+  }
+})
+vi.mock("@/components/legal/useTeacherAgreement", () => ({
+  getTeacherAgreementOwed: agreement.get,
+  subscribeTeacherAgreement: agreement.subscribe,
+}))
+
 function makeUser(id: string): User {
   return {
     id,
@@ -182,6 +204,33 @@ describe("useUserTour", () => {
       expect(driveMock).toHaveBeenCalledTimes(0)
     } finally {
       setGrandTourActive(false)
+      vi.useRealTimers()
+    }
+  })
+
+  it("waits for the teacher agreement, and steps aside if it appears mid-tour", async () => {
+    // A tour under the agreement screen puts ``driver-active`` on <body> and
+    // takes pointer events from the screen on top: a new teacher tapped its
+    // checkbox six times and every tap landed on <body> (RUM, 2026-09-19).
+    vi.useFakeTimers()
+    try {
+      act(() => agreement.set(true))
+      renderWithUser("user-a", "teacher-dashboard-v1")
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(500)
+      })
+      expect(driveMock).not.toHaveBeenCalled()
+
+      act(() => agreement.set(false))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(500)
+      })
+      expect(driveMock).toHaveBeenCalledTimes(1)
+
+      act(() => agreement.set(true))
+      expect(destroyMock).toHaveBeenCalled()
+    } finally {
+      agreement.set(false)
       vi.useRealTimers()
     }
   })

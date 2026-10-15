@@ -180,6 +180,15 @@ export async function createEditorialTour({
   // reliable on the destroy hook — it gets reset before we see it.
   let reachedEnd = false
   const animate = !reducedMotionPreferred()
+  // A tap on what the tour is pointing at lands on <body>. The spotlit element
+  // is inert while it is lit (``disableActiveInteraction``) and the overlay has
+  // a hole cut over it, so driver.js — which closes on a tap on the overlay —
+  // hears nothing. A teacher told "click a student" tapped the students six
+  // times on a phone and nothing answered (RUM, 2026-10-15). Treat a tap in
+  // the hole like a tap on the overlay: the tour steps aside.
+  const closeOnTapInHole = (event: MouseEvent) => {
+    if (event.target === document.body) tour.destroy()
+  }
 
   const config: Config = {
     ...EDITORIAL_TOUR_BASE,
@@ -199,6 +208,8 @@ export async function createEditorialTour({
     // control that was not.
     onPopoverRender: (popover) => {
       popover.closeButton?.setAttribute("aria-label", labels.close)
+      // Once per step; the same listener is only ever added once.
+      document.addEventListener("click", closeOnTapInHole)
     },
     popoverClass: "editorial-tour-popover",
     onNextClick: (_el, _step, { state, driver: d }) => {
@@ -215,6 +226,7 @@ export async function createEditorialTour({
       d.destroy()
     },
     onDestroyed: () => {
+      document.removeEventListener("click", closeOnTapInHole)
       if (reachedEnd) {
         onDone?.()
       } else {
@@ -225,5 +237,6 @@ export async function createEditorialTour({
     },
   }
 
-  return driver(config)
+  const tour = driver(config)
+  return tour
 }
