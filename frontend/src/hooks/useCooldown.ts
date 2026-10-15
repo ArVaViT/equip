@@ -8,11 +8,15 @@ import { useCallback, useEffect, useRef, useState } from "react"
  * screen that offers "send it again" counts down rather than letting somebody
  * hammer the button into an error.
  *
- * Starts running immediately: the first email left a moment ago, so the
- * button is never offered at a time the server would refuse it anyway.
+ * Starts running immediately by default: the first email left a moment ago,
+ * so the button is never offered at a time the server would refuse it
+ * anyway. A screen where nothing has been sent yet passes `startNow: false`.
  */
-export function useCooldown(seconds: number): { remaining: number; restart: () => void } {
-  const [remaining, setRemaining] = useState(seconds)
+export function useCooldown(
+  seconds: number,
+  startNow: boolean = true,
+): { remaining: number; restart: () => void } {
+  const [remaining, setRemaining] = useState(startNow ? seconds : 0)
   const timer = useRef<ReturnType<typeof setInterval>>()
 
   useEffect(() => {

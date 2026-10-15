@@ -115,13 +115,13 @@ test.describe("page-level a11y (public)", () => {
     await expect(generate).toBeVisible();
     await generate.click();
 
-    // Both fields filled, and revealed so the value can be saved.
+    // Filled, and revealed so the value can be saved. One field: there is
+    // no second one to retype it into.
     const password = page.locator("#reg-password");
-    const confirm = page.locator("#reg-confirmPassword");
     await expect(password).toHaveAttribute("type", "text");
     const value = await password.inputValue();
     expect(value.length).toBeGreaterThanOrEqual(12);
-    await expect(confirm).toHaveValue(value);
+    await expect(page.locator("#reg-confirmPassword")).toHaveCount(0);
   });
 
   test("login page has no WCAG 2.1 AA violations", async ({ page }) => {

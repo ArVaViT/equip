@@ -325,7 +325,7 @@
         "share": "Wir verkaufen Ihre Daten nicht, es gibt keine Werbung und kein Tracking. Wir zeichnen aber jede Browsersitzung auf, einschließlich dessen, was auf Ihrem Bildschirm war — um Fehler zu finden und zu beheben; solange Sie angemeldet sind, trägt die Aufzeichnung Ihren Namen. Die Erklärung sagt genau, was darin landet.",
         "control": "Ihre Daten sehen und ändern können Sie im Profil. Für eine Kopie von allem oder zum Löschen Ihres Kontos schreiben Sie uns — wir erledigen das."
       },
-      "checkbox": "Ich habe die Datenschutzerklärung und die Nutzungsbedingungen gelesen und akzeptiere sie",
+      "checkbox": "Ich bin mindestens 16 oder von einer Schule eingeladen und habe die Datenschutzerklärung und die Nutzungsbedingungen gelesen und akzeptiere sie",
       "next": "Annehmen und fortfahren",
       "saveFailed": "Ihre Zustimmung konnte nicht gespeichert werden. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
       "renewal": {
@@ -685,7 +685,6 @@
   },
   "auth": {
     "welcomeBack": "Willkommen zurück",
-    "signInSubheading": "Melden Sie sich an, um weiterzulernen",
     "continueWithGoogle": "Mit Google fortfahren",
     "connecting": "Verbindung wird hergestellt …",
     "orContinueWithEmail": "oder mit E-Mail fortfahren",
@@ -708,17 +707,18 @@
       "googleSignUpFailed": "Registrierung mit Google fehlgeschlagen.",
       "invalidCredentials": "E-Mail-Adresse oder Passwort ist falsch.",
       "emailNotConfirmed": "Bestätigen Sie zuerst Ihre E-Mail-Adresse — der Link liegt in Ihrem Posteingang.",
-      "rateLimited": "Zu viele Versuche. Warten Sie eine Minute und versuchen Sie es erneut.",
+      "rateLimited": "Zu viele Versuche. Warten Sie ein paar Minuten und versuchen Sie es erneut.",
       "weakPassword": "Dieses Passwort kommt in bekannten Datenlecks vor. Wählen Sie ein anderes oder nutzen Sie „Sicheres erzeugen“.",
       "samePassword": "Das ist Ihr aktuelles Passwort. Wählen Sie ein anderes.",
       "linkExpired": "Dieser Link ist abgelaufen. Fordern Sie einen neuen an.",
       "serverError": "Bei uns ist etwas schiefgelaufen. Versuchen Sie es gleich noch einmal.",
-      "passwordRequired": "Bitte Passwort eingeben"
+      "passwordRequired": "Bitte Passwort eingeben",
+      "emailCooldown": "Eine E-Mail ist schon unterwegs. Erneut anfordern können Sie in {{seconds}} s.",
+      "emailQuota": "Wir können gerade keine E-Mail senden: Das stündliche Limit ist erschöpft. Versuchen Sie es später oder melden Sie sich mit Google an."
     },
     "callback": {
       "completing": "Anmeldung wird abgeschlossen …",
-      "timedOut": "Die Anmeldung wurde nicht abgeschlossen. Bitte erneut versuchen.",
-      "redirecting": "Weiterleitung zur Anmeldung …"
+      "timedOut": "Die Anmeldung wurde nicht abgeschlossen. Bitte erneut versuchen."
     },
     "notice": {
       "sessionExpired": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an, um fortzufahren.",
@@ -745,29 +745,21 @@
     },
     "resetPassword": {
       "heading": "Neues Passwort setzen",
-      "subheading": "Wählen Sie ein starkes Passwort für Ihr Konto",
       "newPassword": "Neues Passwort",
-      "confirmNewPassword": "Neues Passwort bestätigen",
       "submit": "Passwort ändern",
       "submitting": "Wird geändert …",
       "successHeading": "Passwort geändert",
-      "successSubheading": "Alles erledigt",
       "successBody": "Ihr Passwort wurde geändert.",
       "redirecting": "Weiterleitung zur Startseite …",
       "errors": {
-        "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein",
-        "resetFailed": "Das Passwort konnte nicht zurückgesetzt werden.",
-        "passwordTooShort_one": "Das Passwort muss mindestens {{count}} Zeichen haben",
-        "passwordTooShort_other": "Das Passwort muss mindestens {{count}} Zeichen haben"
+        "resetFailed": "Das Passwort konnte nicht zurückgesetzt werden."
       }
     },
     "passwordPolicy": {
       "ruleLength_one": "Mindestens {{count}} Zeichen",
       "ruleLength_other": "Mindestens {{count}} Zeichen",
-      "ruleMatch": "Beide Passwörter stimmen überein",
       "ruleMet": "erfüllt",
       "ruleNotMet": "noch nicht erfüllt",
-      "leakedNote": "Das Passwort darf in keinem bekannten Datenleck vorkommen — wir prüfen das beim Absenden.",
       "generate": "Sicheres erzeugen",
       "generated": "Passwort erzeugt und angezeigt. Speichern Sie es in Ihrem Passwortmanager, bevor Sie fortfahren.",
       "show": "Passwort anzeigen",
@@ -778,7 +770,9 @@
     "signInLinkSent": "Falls wir diese Adresse haben, ist die E-Mail unterwegs. Öffnen Sie sie und klicken Sie auf die Schaltfläche.",
     "signInLinkAgain": "Erneut senden",
     "signInLinkAgainIn": "Erneut senden in {{seconds}} s",
-    "signInLinkBackToPassword": "Mit Passwort anmelden"
+    "signInLinkBackToPassword": "Mit Passwort anmelden",
+    "googleInAppBrowser": "Google erlaubt die Anmeldung im Browser dieser App nicht — öffnen Sie die Seite in Chrome oder Safari.",
+    "sendNewLink": "Neuen Link senden"
   },
   "profile": {
     "myData": {
@@ -2913,43 +2907,32 @@
   },
   "authRegister": {
     "heading": "Konto erstellen",
-    "subheading": "Fangen Sie heute an zu lernen",
     "orRegisterEmail": "oder mit E-Mail registrieren",
     "fullName": "Vollständiger Name",
     "fullNamePlaceholder": "Max Mustermann",
-    "confirmPasswordShort": "Bestätigen",
     "alreadyHaveAccount": "Sie haben bereits ein Konto?",
     "creatingAccount": "Konto wird erstellt …",
     "createAccount": "Konto erstellen",
     "errors": {
       "fullNameTooShort": "Der Name muss mindestens 2 Zeichen haben",
       "emailInvalid": "Ungültige E-Mail-Adresse",
-      "passwordsDoNotMatch": "Die Passwörter stimmen nicht überein",
       "passwordTooShort_one": "Das Passwort muss mindestens {{count}} Zeichen haben",
       "passwordTooShort_other": "Das Passwort muss mindestens {{count}} Zeichen haben"
     },
     "duplicate": {
-      "heading": "Konto besteht möglicherweise",
-      "subheading": "Diese Adresse ist vielleicht schon registriert",
-      "bodyExists": "Ein Konto mit <strong>{{email}}</strong> besteht möglicherweise bereits.",
-      "bodyHint": "Versuchen Sie sich anzumelden, oder nutzen Sie „Passwort vergessen“, wenn Sie Ihre Zugangsdaten nicht mehr wissen.",
-      "goToSignIn": "Zur Anmeldung",
-      "forgotPassword": "Passwort vergessen?",
-      "contactSupport": "Support kontaktieren"
+      "heading": "Für diese Adresse gibt es bereits ein Konto",
+      "withGoogle": "Mit Google anmelden"
     },
     "success": {
       "headingDefault": "Sehen Sie in Ihr Postfach",
-      "subheadingDefault": "Fast geschafft — nur noch ein Schritt",
-      "body": "Wir haben einen Bestätigungslink an <strong>{{email}}</strong> geschickt.",
-      "clickLinkToActivate": "Klicken Sie den Link in der E-Mail, um Ihr Konto zu aktivieren.",
-      "backToSignIn": "Zurück zur Anmeldung",
-      "checkSpam": "Kommt innerhalb einer Minute nichts an, schauen Sie im Spam-Ordner nach. Der Link gilt 24 Stunden.",
       "resend": "E-Mail erneut senden",
       "resendIn": "Erneut senden in {{seconds}} s",
       "resent": "E-Mail erneut gesendet.",
-      "resendFailed": "E-Mail konnte nicht gesendet werden. Bitte in einer Minute erneut versuchen."
-    },
-    "ageFloor": "Ein eigenes Konto können Sie ab 16 anlegen. Jünger? Dann lädt Sie eine Schulleitung ein."
+      "resendFailed": "E-Mail konnte nicht gesendet werden. Bitte in einer Minute erneut versuchen.",
+      "line": "Die E-Mail ist an <strong>{{email}}</strong> unterwegs. Nicht im Posteingang? Sehen Sie im Spam nach. Nur die letzte E-Mail funktioniert.",
+      "repeated": "Diese Adresse wurde schon einmal registriert. Es gilt das Passwort vom ersten Versuch; wenn Sie es nicht mehr wissen, <reset>legen Sie ein neues fest</reset> — das bestätigt zugleich die Adresse.",
+      "changeAddress": "Andere Adresse verwenden"
+    }
   },
   "validation": {
     "titleRequired": "Der Titel ist erforderlich",

@@ -7,12 +7,14 @@ import { Label } from "@/components/ui/label"
 import { useAuth } from "@/context/useAuth"
 import { makeLoginSchema, type LoginFormData } from "@/lib/validations/auth"
 import AuthLayout from "@/components/layout/AuthLayout"
-import { Loader2 } from "lucide-react"
-import { authErrorMessage } from "@/lib/authError"
-import { GoogleIcon } from "./register/GoogleIcon"
+import { Loader2, RefreshCw } from "lucide-react"
+import { authErrorMessage, isEmailNotConfirmed, isRateLimited } from "@/lib/authError"
+import { GoogleButton, OrDivider } from "@/components/auth/GoogleButton"
+import { authService } from "@/services/auth"
+import { useCooldown } from "@/hooks/useCooldown"
 import { SignInLinkSent } from "./SignInLinkSent"
 import { takeSignOutReason, type SignOutReason } from "@/lib/signOutReason"
-import { peekReturnPath, rememberReturnPath, returnPathFrom } from "@/lib/authRedirect"
+import { emailFromState, peekReturnPath, rememberReturnPath, returnPathFrom } from "@/lib/authRedirect"
 
 /**
  * Why the sign-in form is on screen, when the person did not come here on
@@ -39,12 +41,6 @@ function noticeKeyFor(error: string | null, reason: SignOutReason | null, state:
   return null
 }
 
-/** An address another page already knows: the invite page, a sign-up that found an account. */
-function prefilledEmail(state: unknown): string {
-  const email = state && typeof state === "object" ? (state as { email?: unknown }).email : undefined
-  return typeof email === "string" ? email : ""
-}
-
 export default function Login() {
   const [searchParams] = useSearchParams()
   const location = useLocation()
@@ -55,7 +51,7 @@ export default function Login() {
   // Google and an emailed link come back in a fresh page; keep where the
   // visitor was going for /auth/callback (lib/authRedirect).
   useEffect(() => rememberReturnPath(location.state), [location.state])
-  const [prefilled] = useState(() => prefilledEmail(location.state))
+  const [prefilled] = useState(() => emailFromState(location.state))
   const [form, setForm] = useState<LoginFormData>({ email: prefilled, password: "" })
   const [errors, setErrors] = useState<Partial<Record<keyof LoginFormData, string>>>({})
   const [serverError, setServerError] = useState("")
@@ -63,6 +59,12 @@ export default function Login() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [linkSending, setLinkSending] = useState(false)
   const [linkSent, setLinkSent] = useState(false)
+  // The address exists and was never confirmed: the error alone left the
+  // person with nowhere to go but back to an inbox that may not have it.
+  const [unconfirmed, setUnconfirmed] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resent, setResent] = useState(false)
+  const resendCooldown = useCooldown(60, false)
   const { login, signInWithGoogle, sendSignInLink } = useAuth()
   const { t } = useTranslation()
 
@@ -87,9 +89,12 @@ export default function Login() {
     }
 
     setLoading(true)
+    setUnconfirmed(false)
+    setResent(false)
     try {
       await login(result.data.email, result.data.password)
     } catch (err) {
+      setUnconfirmed(isEmailNotConfirmed(err))
       // Never the server's own words. GoTrue always supplies a `message`,
       // so the `|| t(...)` that used to sit here was unreachable and a
       // German signing in read "Invalid login credentials" on an otherwise
@@ -101,6 +106,20 @@ export default function Login() {
       setLoading(false)
     }
   }
+
+  const resendConfirmation = useCallback(async () => {
+    setResending(true)
+    try {
+      await authService.resendConfirmation(form.email.trim())
+      setServerError("")
+      setResent(true)
+      resendCooldown.restart()
+    } catch (err) {
+      setServerError(authErrorMessage(err, "authRegister.success.resendFailed"))
+    } finally {
+      setResending(false)
+    }
+  }, [form.email, resendCooldown])
 
   /**
    * Ask for a one-time sign-in link.
@@ -123,9 +142,8 @@ export default function Login() {
       await sendSignInLink(parsed.data.email)
     } catch (err) {
       if (import.meta.env.DEV) console.error("sendSignInLink failed", err)
-      const message = authErrorMessage(err, "auth.errors.serverError")
-      if (message === t("auth.errors.rateLimited")) {
-        setServerError(message)
+      if (isRateLimited(err)) {
+        setServerError(authErrorMessage(err, "auth.errors.serverError"))
         setLinkSending(false)
         return
       }
@@ -134,7 +152,7 @@ export default function Login() {
     }
     setLinkSending(false)
     setLinkSent(true)
-  }, [form.email, sendSignInLink, t])
+  }, [form.email, sendSignInLink])
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true)
@@ -149,14 +167,14 @@ export default function Login() {
 
   if (linkSent) {
     return (
-      <AuthLayout heading={t("auth.welcomeBack")} subheading={t("auth.signInSubheading")}>
+      <AuthLayout heading={t("auth.welcomeBack")}>
         <SignInLinkSent email={form.email} onUsePassword={() => setLinkSent(false)} />
       </AuthLayout>
     )
   }
 
   return (
-    <AuthLayout heading={t("auth.welcomeBack")} subheading={t("auth.signInSubheading")}>
+    <AuthLayout heading={t("auth.welcomeBack")}>
       <div className="space-y-6 animate-fade-in">
         {/* Not an error of the reader's making, so not in the error colour:
             it explains the page, and steps aside once there is a real error
@@ -169,32 +187,36 @@ export default function Login() {
         {serverError && (
           <div role="alert" className="text-sm text-destructive-ink bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
             {serverError}
+            {unconfirmed && (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="mt-1 h-auto p-0 text-sm"
+                onClick={() => void resendConfirmation()}
+                disabled={resending || resendCooldown.remaining > 0}
+              >
+                {resending ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
+                ) : (
+                  <RefreshCw className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                )}
+                {resendCooldown.remaining > 0
+                  ? t("authRegister.success.resendIn", { seconds: resendCooldown.remaining })
+                  : t("authRegister.success.resend")}
+              </Button>
+            )}
           </div>
         )}
+        {resent && !serverError && (
+          <p role="status" className="text-sm text-success-ink">
+            {t("authRegister.success.resent")}
+          </p>
+        )}
 
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className="w-full font-medium rounded-md"
-          onClick={handleGoogleLogin}
-          disabled={googleLoading || loading}
-        >
-          {googleLoading ? (
-            <><Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />{t("auth.connecting")}</>
-          ) : (
-            <><GoogleIcon className="h-4 w-4 mr-2.5" />{t("auth.continueWithGoogle")}</>
-          )}
-        </Button>
+        <GoogleButton loading={googleLoading} disabled={loading} onClick={handleGoogleLogin} />
 
-        {/* Two rules either side of the words, not one rule under a patch of
-            page colour: the patch showed as a box once the sign-in screens got
-            the landing's scene behind them. */}
-        <div className="flex items-center gap-3 text-xs uppercase text-ink-muted">
-          <div className="h-px flex-1 bg-border" />
-          <span>{t("auth.orContinueWithEmail")}</span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
+        <OrDivider label={t("auth.orContinueWithEmail")} />
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

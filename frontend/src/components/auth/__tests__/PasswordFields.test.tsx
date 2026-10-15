@@ -19,6 +19,7 @@ import { I18nextProvider } from "react-i18next";
 import i18n from "@/i18n/config";
 import { axe } from "@/test/a11y";
 import { PasswordFields } from "@/components/auth/PasswordFields";
+import { PASSWORD_MIN_LENGTH } from "@/lib/passwordPolicy";
 
 function Wrapper({ children }: { children: ReactNode }) {
   return <I18nextProvider i18n={i18n}>{children}</I18nextProvider>;
@@ -26,7 +27,6 @@ function Wrapper({ children }: { children: ReactNode }) {
 
 const BASE = {
   password: "",
-  confirmPassword: "",
   idPrefix: "test",
   showPassword: false,
   passwordGenerated: false,
@@ -36,33 +36,30 @@ const BASE = {
 };
 
 describe("PasswordFields", () => {
-  it("states the rules and offers the generator", () => {
+  it("asks once — no second field to retype the password into", () => {
     render(
-      <Wrapper>
-        <PasswordFields {...BASE} />
-      </Wrapper>,
-    );
-    expect(screen.getByText(i18n.t("auth.passwordPolicy.leakedNote"))).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: i18n.t("auth.passwordPolicy.generate") }),
-    ).toBeInTheDocument();
-  });
-
-  it("reveals both fields together", () => {
-    const { rerender } = render(
       <Wrapper>
         <PasswordFields {...BASE} showPassword />
       </Wrapper>,
     );
-    const revealed = screen.getAllByRole("textbox");
-    expect(revealed).toHaveLength(2);
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+  });
+
+  it("states the length rule, ticked in text and not only in colour", () => {
+    const { rerender } = render(
+      <Wrapper>
+        <PasswordFields {...BASE} password="short" />
+      </Wrapper>,
+    );
+    expect(screen.getByText(new RegExp(String(PASSWORD_MIN_LENGTH)))).toBeInTheDocument();
+    expect(screen.getByText(i18n.t("auth.passwordPolicy.ruleNotMet"))).toBeInTheDocument();
 
     rerender(
       <Wrapper>
-        <PasswordFields {...BASE} />
+        <PasswordFields {...BASE} password={"a".repeat(PASSWORD_MIN_LENGTH)} />
       </Wrapper>,
     );
-    expect(screen.queryAllByRole("textbox")).toHaveLength(0);
+    expect(screen.getByText(i18n.t("auth.passwordPolicy.ruleMet"))).toBeInTheDocument();
   });
 
   it("keeps ids apart so two forms could share a page", () => {
@@ -72,19 +69,16 @@ describe("PasswordFields", () => {
       </Wrapper>,
     );
     const field = screen.getByLabelText(i18n.t("auth.password"));
-    expect(field.getAttribute("aria-describedby")).toBe(
-      "invite-password-error invite-password-requirements",
-    );
+    expect(field.getAttribute("aria-describedby")).toBe("invite-password-error invite-password-rule");
   });
 
   it("lets a screen keep its own wording", () => {
     render(
       <Wrapper>
-        <PasswordFields {...BASE} passwordLabel="Новый пароль" confirmLabel="Ещё раз" />
+        <PasswordFields {...BASE} label="Новый пароль" />
       </Wrapper>,
     );
     expect(screen.getByLabelText("Новый пароль")).toBeInTheDocument();
-    expect(screen.getByLabelText("Ещё раз")).toBeInTheDocument();
   });
 
   it("asks for a generated password when the button is pressed", async () => {
@@ -103,7 +97,7 @@ describe("PasswordFields", () => {
   it("has no accessibility violations", async () => {
     const { container } = render(
       <Wrapper>
-        <PasswordFields {...BASE} password="short" confirmPassword="other" passwordError="нет" />
+        <PasswordFields {...BASE} password="short" passwordError="нет" />
       </Wrapper>,
     );
     expect(await axe(container)).toHaveNoViolations();

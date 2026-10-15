@@ -2,6 +2,19 @@ import { DEFAULT_LOCALE, type SupportedLocale } from "@/i18n/config"
 import { supabase } from "@/lib/supabase"
 import type { Session } from "@supabase/supabase-js"
 
+/** What signing up did. */
+export interface SignUpOutcome {
+  userId: string | null
+  /**
+   * The address already had an unconfirmed account: a new email went out,
+   * and the password that works is the first attempt's, not this one.
+   */
+  repeated: boolean
+}
+
+/** Both timestamps are the server's; a fresh account's are milliseconds apart. */
+const REPEAT_GAP_MS = 10_000
+
 export const authService = {
   async register(
     email: string,
@@ -17,7 +30,7 @@ export const authService = {
      * which is 'en' — the answer for a signup that told us nothing.
      */
     preferredLocale: SupportedLocale = DEFAULT_LOCALE,
-  ): Promise<string | null> {
+  ): Promise<SignUpOutcome> {
     // Self-service signup always lands as student. Teacher / admin
     // promotion is admin-only via the role-change endpoint.
     const { data, error } = await supabase.auth.signUp({
@@ -37,9 +50,19 @@ export const authService = {
       throw new Error("DUPLICATE_EMAIL")
     }
 
+    // An unconfirmed account at this address already existed. GoTrue mails
+    // a fresh link for it but keeps everything else — including the password
+    // of the first attempt (`internal/api/signup.go`: «do not update the
+    // user»). It answers with that older account, so the gap between when it
+    // was made and when this mail went out is how we can tell, and the
+    // person can be told which password now works.
+    const created = Date.parse(data.user?.created_at ?? "")
+    const mailed = Date.parse(data.user?.confirmation_sent_at ?? "")
+    const repeated = Number.isFinite(created) && Number.isFinite(mailed) && mailed - created > REPEAT_GAP_MS
+
     // The new account's id exists from this moment, unconfirmed — the
     // caller uses it to name the RUM session (see AuthContext.register).
-    return data.user?.id ?? null
+    return { userId: data.user?.id ?? null, repeated }
   },
 
   async login(email: string, password: string): Promise<{ user: Session["user"]; session: Session }> {

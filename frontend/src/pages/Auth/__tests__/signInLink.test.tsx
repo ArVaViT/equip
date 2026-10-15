@@ -86,7 +86,7 @@ describe("signing in with a link", () => {
     )
     await askForALink()
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/too many|minute/i)
+    expect(await screen.findByRole("alert")).toHaveTextContent(/hourly email limit/i)
     expect(screen.queryByText(/on its way/i)).not.toBeInTheDocument()
   })
 

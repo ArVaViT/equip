@@ -104,3 +104,20 @@ describe("isDuplicateEmail", () => {
     expect(isDuplicateEmail(null)).toBe(false)
   })
 })
+
+describe("the two email limits behind one code", () => {
+  it("names the seconds when it is this address's one-a-minute limit", () => {
+    const err = Object.assign(new Error("For security purposes, you can only request this after 42 seconds."), {
+      code: "over_email_send_rate_limit",
+      status: 429,
+    })
+    expect(authErrorMessage(err, "auth.loginFailed")).toBe(i18n.t("auth.errors.emailCooldown", { seconds: 42 }))
+  })
+
+  it("does not say «a minute» when it is the project's hourly allowance", () => {
+    const err = Object.assign(new Error("email rate limit exceeded"), { code: "over_email_send_rate_limit", status: 429 })
+    const message = authErrorMessage(err, "auth.loginFailed")
+    expect(message).toBe(i18n.t("auth.errors.emailQuota"))
+    expect(message).not.toMatch(/minute/i)
+  })
+})

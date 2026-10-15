@@ -57,7 +57,7 @@ describe("the reset-password screen", () => {
 
     await ask()
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(/too many|minute/i)
+    expect(await screen.findByRole("alert")).toHaveTextContent(/hourly email limit/i)
   })
 
   it("still has something to say for an unrecognised failure", async () => {

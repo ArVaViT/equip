@@ -15,6 +15,7 @@ import { I18nextProvider } from "react-i18next";
 import { MemoryRouter } from "react-router-dom";
 
 import i18n from "@/i18n/config";
+import { PASSWORD_MIN_LENGTH } from "@/lib/passwordPolicy";
 import ResetPassword from "@/pages/Auth/ResetPassword";
 
 const getSession = vi.fn();
@@ -28,6 +29,8 @@ vi.mock("@/lib/supabase", () => ({
   },
 }));
 vi.mock("@/services/auth", () => ({ authService: { updatePassword: vi.fn() } }));
+const resetPassword = vi.fn();
+vi.mock("@/context/useAuth", () => ({ useAuth: () => ({ resetPassword }) }));
 
 const hasAuthArrival = vi.fn(() => false);
 const completeAuthLanding = vi.fn();
@@ -67,8 +70,9 @@ describe("ResetPassword", () => {
     await waitFor(() =>
       expect(screen.getByLabelText(i18n.t("auth.resetPassword.newPassword"))).toBeInTheDocument(),
     );
-    // And the rules are stated here too, not only on register.
-    expect(screen.getByText(i18n.t("auth.passwordPolicy.leakedNote"))).toBeInTheDocument();
+    // One field, and the rule stated here too, not only on register.
+    expect(screen.getByText(new RegExp(String(PASSWORD_MIN_LENGTH)))).toBeInTheDocument();
+    expect(document.querySelectorAll("input")).toHaveLength(1);
   });
 
   it("does not offer the form without a session", async () => {
@@ -86,9 +90,8 @@ describe("ResetPassword", () => {
 
     await vi.advanceTimersByTimeAsync(4100);
     expect(screen.getByRole("alert")).toHaveTextContent(i18n.t("auth.errors.linkExpired"));
-    expect(
-      screen.getByRole("link", { name: i18n.t("auth.forgotPassword.submit") }),
-    ).toBeInTheDocument();
+    // The new link is asked for right here, not on another page.
+    expect(screen.getByRole("button", { name: i18n.t("auth.sendNewLink") })).toBeInTheDocument();
     expect(screen.queryByLabelText(i18n.t("auth.resetPassword.newPassword"))).toBeNull();
     vi.useRealTimers();
   });

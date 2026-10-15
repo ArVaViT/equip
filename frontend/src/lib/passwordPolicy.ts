@@ -17,38 +17,15 @@
 export const PASSWORD_MIN_LENGTH = 12
 
 /**
- * A rule the browser can decide for itself while somebody types.
+ * The rule the browser can decide for itself while somebody types.
  *
- * "Not found in a known breach" is deliberately absent. That check runs on
- * Supabase's side against Have I Been Pwned, and a browser cannot answer it
- * without sending the password somewhere it has no business going. Awarding
- * a tick this code cannot honestly earn would be worse than saying plainly
- * that the check happens on submit — which is what the `leakedNote` string
- * under `auth.password` does.
+ * "Not found in a known breach" is deliberately not checked here. That check
+ * runs on Supabase's side against Have I Been Pwned, and a browser cannot
+ * answer it without sending the password somewhere it has no business going;
+ * a password it refuses says so on submit.
  */
-export type PasswordRuleId = "length" | "match"
-
-export interface PasswordRuleState {
-  id: PasswordRuleId
-  met: boolean
-}
-
-/**
- * The live state of every locally checkable rule.
- *
- * `match` stays false for an empty password on purpose: two empty fields are
- * equal, and ticking "the passwords match" before either has been typed
- * reads as progress the person has not made.
- */
-export function checkPassword(password: string, confirmPassword: string): PasswordRuleState[] {
-  return [
-    { id: "length", met: password.length >= PASSWORD_MIN_LENGTH },
-    { id: "match", met: password.length > 0 && password === confirmPassword },
-  ]
-}
-
-export function passwordMeetsLocalRules(password: string, confirmPassword: string): boolean {
-  return checkPassword(password, confirmPassword).every((rule) => rule.met)
+export function isLongEnough(password: string): boolean {
+  return password.length >= PASSWORD_MIN_LENGTH
 }
 
 /**

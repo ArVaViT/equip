@@ -8,7 +8,8 @@
  * person could have done — ask for a new link — was never mentioned.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
@@ -24,6 +25,12 @@ vi.mock("@/lib/authLanding", () => ({
 const getSession = vi.fn();
 vi.mock("@/lib/supabase", () => ({
   supabase: { auth: { getSession: () => getSession() } },
+}));
+
+const sendSignInLink = vi.fn();
+vi.mock("@/context/useAuth", () => ({ useAuth: () => ({ sendSignInLink }) }));
+vi.mock("@/context/useTheme", () => ({
+  useTheme: () => ({ theme: "light", toggleTheme: vi.fn() }),
 }));
 
 function renderAt(path = "/auth/callback") {
@@ -46,6 +53,8 @@ describe("AuthCallback", () => {
   beforeEach(() => {
     completeAuthLanding.mockReset();
     getSession.mockReset();
+    getSession.mockResolvedValue({ data: { session: null } });
+    sendSignInLink.mockReset();
   });
 
   afterEach(() => {
@@ -64,12 +73,25 @@ describe("AuthCallback", () => {
     expect(await screen.findByText("reset form")).toBeInTheDocument();
   });
 
-  it("says the link expired instead of spinning", async () => {
+  it("says the link expired and offers a new one on the spot", async () => {
+    const user = userEvent.setup();
     completeAuthLanding.mockResolvedValue({ status: "failed", reason: "expired" });
+    sendSignInLink.mockResolvedValue(undefined);
     renderAt("/auth/confirm");
     expect(await screen.findByRole("alert")).toHaveTextContent(i18n.t("auth.errors.linkExpired"));
-    // And offers the way out, rather than leaving the person on a dead page.
-    expect(screen.getByRole("link", { name: i18n.t("auth.signIn") })).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(i18n.t("auth.email")), " sasha@web.de ");
+    await user.click(screen.getByRole("button", { name: i18n.t("auth.sendNewLink") }));
+
+    expect(sendSignInLink).toHaveBeenCalledWith("sasha@web.de");
+    expect(await screen.findByRole("status")).toHaveTextContent(i18n.t("auth.signInLinkSent"));
+  });
+
+  it("takes a spent link opened in the browser it already signed in as success", async () => {
+    completeAuthLanding.mockResolvedValue({ status: "failed", reason: "expired" });
+    getSession.mockResolvedValue({ data: { session: { user: { id: "u1" } } } });
+    renderAt("/auth/confirm");
+    expect(await screen.findByText("dashboard")).toBeInTheDocument();
   });
 
   it("reports an unfamiliar failure without pretending it is an expiry", async () => {
@@ -92,13 +114,13 @@ describe("AuthCallback", () => {
     expect(await screen.findByText("dashboard")).toBeInTheDocument();
   });
 
-  it("sends a bare visit with no session back to sign-in", async () => {
+  it("leaves a bare visit with no session where it is, with a way to sign in", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     completeAuthLanding.mockResolvedValue({ status: "nothing" });
-    getSession.mockResolvedValue({ data: { session: null } });
     renderAt();
     expect(await screen.findByText(i18n.t("auth.callback.timedOut"))).toBeInTheDocument();
-    await vi.advanceTimersByTimeAsync(3100);
-    await waitFor(() => expect(screen.getByText("login page")).toBeInTheDocument());
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(screen.queryByText("login page")).toBeNull();
+    expect(screen.getByRole("link", { name: i18n.t("auth.signIn") })).toHaveAttribute("href", "/login");
   });
 });

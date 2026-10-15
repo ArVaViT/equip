@@ -9,11 +9,9 @@ import { generatePassword } from "@/lib/passwordPolicy"
  * they came to disagree: all three enforced six characters while the server
  * enforced twelve, and fixing one would have left the other two lying.
  *
- * `setBoth` writes the generated value into both fields. Filling only the
- * first hands the person a "passwords do not match" error for a password
- * they never typed.
+ * `setPassword` receives the generated value.
  */
-export function usePasswordAffordances(setBoth: (value: string) => void) {
+export function usePasswordAffordances(setPassword: (value: string) => void) {
   const [showPassword, setShowPassword] = useState(false)
   const [passwordGenerated, setPasswordGenerated] = useState(false)
 
@@ -27,12 +25,12 @@ export function usePasswordAffordances(setBoth: (value: string) => void) {
    * for it again.
    */
   const generate = useCallback(() => {
-    setBoth(generatePassword())
+    setPassword(generatePassword())
     setShowPassword(true)
     setPasswordGenerated(true)
-  }, [setBoth])
+  }, [setPassword])
 
-  /** Call when the person edits either field — the "save it" note goes stale. */
+  /** Call when the person edits the field — the "save it" note goes stale. */
   const noteEdited = useCallback(() => {
     setPasswordGenerated(false)
   }, [])

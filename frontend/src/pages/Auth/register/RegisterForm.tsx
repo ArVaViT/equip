@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import AuthLayout from "@/components/layout/AuthLayout"
 import { PasswordFields } from "@/components/auth/PasswordFields"
-import { GoogleIcon } from "./GoogleIcon"
+import { GoogleButton, OrDivider } from "@/components/auth/GoogleButton"
 import type { FormState } from "./useRegister"
 
 interface Props {
@@ -25,8 +25,8 @@ interface Props {
 }
 
 /**
- * The actual registration form — four text inputs, Google OAuth
- * shortcut, submit button. Self-signup is student-only (no role
+ * The registration form — name, address, one password, and Google above
+ * them. Self-signup is student-only (no role
  * selector); teacher accounts are granted via an admin-issued invite
  * (see pages/Invite/AcceptInvite.tsx). Receives state and handlers from
  * `useRegister`; nothing in here owns mutable state.
@@ -46,11 +46,10 @@ export function RegisterForm({
   onGeneratePassword,
 }: Props) {
   const { t } = useTranslation()
+  // Where the visitor was going travels to the sign-in page as well.
+  const { state } = useLocation()
   return (
-    <AuthLayout
-      heading={t("authRegister.heading")}
-      subheading={t("authRegister.subheading")}
-    >
+    <AuthLayout heading={t("authRegister.heading")}>
       <div className="space-y-6 animate-fade-in">
         {serverError && (
           <div
@@ -61,35 +60,9 @@ export function RegisterForm({
           </div>
         )}
 
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className="w-full font-medium rounded-md"
-          onClick={onGoogleSignUp}
-          disabled={googleLoading || loading}
-        >
-          {googleLoading ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />
-              {t("auth.connecting")}
-            </>
-          ) : (
-            <>
-              <GoogleIcon className="h-4 w-4 mr-2.5" />
-              {t("auth.continueWithGoogle")}
-            </>
-          )}
-        </Button>
+        <GoogleButton loading={googleLoading} disabled={loading} onClick={onGoogleSignUp} />
 
-        {/* Two rules either side of the words, not one rule under a patch of
-            page colour: the patch showed as a box once the sign-in screens got
-            the landing's scene behind them. */}
-        <div className="flex items-center gap-3 text-xs uppercase text-ink-muted">
-          <div className="h-px flex-1 bg-border" />
-          <span>{t("authRegister.orRegisterEmail")}</span>
-          <div className="h-px flex-1 bg-border" />
-        </div>
+        <OrDivider label={t("authRegister.orRegisterEmail")} />
 
         <form
           onSubmit={(e) => {
@@ -149,24 +122,13 @@ export function RegisterForm({
           <PasswordFields
             idPrefix="reg"
             password={form.password}
-            confirmPassword={form.confirmPassword}
             passwordError={errors.password}
-            confirmError={errors.confirmPassword}
             showPassword={showPassword}
             passwordGenerated={passwordGenerated}
-            onChange={onChange}
+            onChange={(value) => onChange("password", value)}
             onToggleShowPassword={onToggleShowPassword}
             onGeneratePassword={onGeneratePassword}
           />
-
-          {/* The age floor for signing yourself up, said on the form rather
-              than only in a policy two clicks away. It has been 16 in the
-              Privacy Policy and the Terms since they were written; until now
-              nobody met it before they had an account. Somebody younger is
-              brought in by a school administrator, who states their age. */}
-          <p className="text-xs leading-snug text-ink-muted">
-            {t("authRegister.ageFloor")}
-          </p>
 
           <Button
             type="submit"
@@ -189,6 +151,7 @@ export function RegisterForm({
           {t("authRegister.alreadyHaveAccount")}{" "}
           <Link
             to="/login"
+            state={state}
             className="text-brand font-medium hover:text-brand-ink transition-colors"
           >
             {t("auth.signIn")}

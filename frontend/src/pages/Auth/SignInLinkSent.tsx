@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Loader2, MailCheck, RotateCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { authService } from "@/services/auth"
-import { authErrorMessage } from "@/lib/authError"
+import { authErrorMessage, isRateLimited } from "@/lib/authError"
 import { useCooldown } from "@/hooks/useCooldown"
 
 const RESEND_COOLDOWN_SECONDS = 60
@@ -35,15 +35,14 @@ export function SignInLinkSent({ email, onUsePassword }: Props) {
       restart()
     } catch (err) {
       if (import.meta.env.DEV) console.error("sendSignInLink failed", err)
-      const message = authErrorMessage(err, "auth.errors.serverError")
       // Same disclosure rule as the first send: only a rate limit is worth
       // naming, because waiting is the one thing the reader can do about it.
-      if (message === t("auth.errors.rateLimited")) setError(message)
+      if (isRateLimited(err)) setError(authErrorMessage(err, "auth.errors.serverError"))
       else restart()
     } finally {
       setSending(false)
     }
-  }, [email, restart, t])
+  }, [email, restart])
 
   return (
     <div className="space-y-6 animate-fade-in">
