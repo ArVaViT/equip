@@ -34,7 +34,9 @@ def _chapter(db: Session, course_id: str, module_id: str | None, order: int, kin
     return ch
 
 
-def _course(db: Session, *, access_mode: str = "public", first_kind: str = "reading") -> tuple[str, Chapter, Chapter]:
+def _course(
+    db: Session, *, access_mode: str = "public", first_kind: str = "reading", first_written: bool = True
+) -> tuple[str, Chapter, Chapter]:
     course = make_course_with_text(
         db,
         course_id=f"guest-{uuid.uuid4().hex[:6]}",
@@ -46,7 +48,8 @@ def _course(db: Session, *, access_mode: str = "public", first_kind: str = "read
     module = make_module_with_text(db, course_id=course.id, title="Part one", order_index=0)
     first = _chapter(db, course.id, module.id, 0, first_kind)
     second = _chapter(db, course.id, module.id, 1)
-    make_chapter_block_with_content(db, chapter_id=first.id, content="<p>In the beginning</p>")
+    if first_written:
+        make_chapter_block_with_content(db, chapter_id=first.id, content="<p>In the beginning</p>")
     make_chapter_block_with_content(db, chapter_id=second.id, content="<p>Later on</p>")
     return course.id, first, second
 
@@ -79,6 +82,17 @@ def test_a_course_that_opens_with_a_test_has_no_preview(db: Session, anon_client
     course_id, first, _ = _course(db, first_kind="quiz")
     assert anon_client.get(f"/api/v1/courses/{course_id}").json()["preview_chapter_id"] is None
     assert anon_client.get(f"/api/v1/blocks/chapter/{first.id}").status_code == 401
+
+
+def test_a_course_whose_first_lesson_is_empty_promises_no_lesson(db: Session, anon_client: TestClient) -> None:
+    """The offer to read the first lesson led a guest to "No content has been
+    added to this lesson yet." (Teaching Course, 2026-10-15). No preview, and
+    not the second lesson instead: every wall says it is the *first* that is
+    open."""
+    course_id, first, second = _course(db, first_written=False)
+    assert anon_client.get(f"/api/v1/courses/{course_id}").json()["preview_chapter_id"] is None
+    assert anon_client.get(f"/api/v1/blocks/chapter/{first.id}").status_code == 401
+    assert anon_client.get(f"/api/v1/blocks/chapter/{second.id}").status_code == 401
 
 
 def test_signing_up_does_not_take_the_lesson_away(db: Session, client: TestClient, student_client: TestClient) -> None:
