@@ -3271,6 +3271,7 @@
         "marks": "Bewerten Sie ehrlich und an der Arbeit. Ein Zertifikat trägt Ihr Urteil, und jemand wird es jemand anderem zeigen."
       },
       "checkbox": "Ich habe die Lehrenden- und Beitragendenvereinbarung gelesen und akzeptiere sie",
+      "tickFirst": "Setzen Sie oben das Häkchen, um die Vereinbarung anzunehmen.",
       "next": "Annehmen und fortfahren",
       "saveFailed": "Ihre Zustimmung konnte nicht gespeichert werden. Prüfen Sie die Verbindung und versuchen Sie es erneut."
     },

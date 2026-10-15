@@ -133,7 +133,7 @@ describe("TeacherAgreementGate", () => {
     expect(await screen.findByText(TITLE())).toBeInTheDocument()
   })
 
-  it("keeps Continue disabled until the box is ticked, and ticks nothing in advance", async () => {
+  it("accepts nothing until the box is ticked, and ticks nothing in advance", async () => {
     const { legalService } = await import("@/services/legal")
     vi.mocked(legalService.status).mockResolvedValue(AGREEMENT_OWED)
 
@@ -146,10 +146,54 @@ describe("TeacherAgreementGate", () => {
 
     const checkbox = screen.getByRole("checkbox")
     expect(checkbox).not.toBeChecked()
-    expect(screen.getByRole("button", { name: CONTINUE() })).toBeDisabled()
+    fireEvent.click(screen.getByRole("button", { name: CONTINUE() }))
+    expect(legalService.accept).not.toHaveBeenCalled()
+  })
+
+  it("points at the box when the button is pressed without it, instead of doing nothing", async () => {
+    // A new teacher on a phone tapped around the box six times before hitting
+    // it (RUM, 2026-09-19). A disabled button answered none of those taps.
+    const { legalService } = await import("@/services/legal")
+    vi.mocked(legalService.status).mockResolvedValue(AGREEMENT_OWED)
+
+    render(
+      <Wrapper>
+        <TeacherAgreementGate />
+      </Wrapper>,
+    )
+    await screen.findByText(TITLE())
+
+    const button = screen.getByRole("button", { name: CONTINUE() })
+    expect(button).toBeEnabled()
+    fireEvent.click(button)
+
+    const checkbox = screen.getByRole("checkbox")
+    expect(screen.getByRole("alert")).toHaveTextContent(i18n.t("legalGate.teacher.tickFirst"))
+    expect(checkbox).toHaveAttribute("aria-invalid", "true")
+    expect(checkbox).toHaveFocus()
 
     fireEvent.click(checkbox)
-    expect(screen.getByRole("button", { name: CONTINUE() })).toBeEnabled()
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+    expect(checkbox).not.toHaveAttribute("aria-invalid")
+  })
+
+  it("ticks the box from anywhere on its row, not only the 16px square", async () => {
+    const { legalService } = await import("@/services/legal")
+    vi.mocked(legalService.status).mockResolvedValue(AGREEMENT_OWED)
+
+    render(
+      <Wrapper>
+        <TeacherAgreementGate />
+      </Wrapper>,
+    )
+    await screen.findByText(TITLE())
+
+    const checkbox = screen.getByRole("checkbox")
+    const row = checkbox.closest("label")
+    expect(row, "the box and its words are one label").not.toBeNull()
+    expect(row!.className).toContain("min-h-11")
+    fireEvent.click(row!)
+    expect(checkbox).toBeChecked()
   })
 
   it("records the acceptance with the version and the reader's language, then refetches the role", async () => {
