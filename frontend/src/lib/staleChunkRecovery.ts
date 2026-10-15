@@ -24,6 +24,41 @@ const CHUNK_LOAD_PATTERNS: RegExp[] = [
 const RELOAD_FLAG_KEY = "errorBoundary:lastChunkReload"
 const RELOAD_COOLDOWN_MS = 60_000
 
+// Set the moment this tab asks for a reload. Until the browser tears the page
+// down, code keeps running — and some of it is about to fail *because* of the
+// recovery (see `reloadUnderway`).
+let reloading = false
+
+/**
+ * Whether this tab has already started reloading to recover from a stale chunk.
+ *
+ * Vite's preload wrapper resolves a failed `import()` with `undefined` when a
+ * `vite:preloadError` listener prevents its default — which is exactly what
+ * `installPreloadErrorRecovery` does. The module the caller awaited is
+ * therefore missing, and `React.lazy` reading `.default` off it throws
+ * "Cannot read properties of undefined (reading 'default')" into the
+ * ErrorBoundary while the reload is still on its way: an error screen and a
+ * RUM error (2026-10-15, `/courses`) for a failure that was already handled.
+ * Callers use this to wait for the reload instead.
+ */
+export function reloadUnderway(): boolean {
+  return reloading
+}
+
+/**
+ * Start the reload. Every recovery path goes through here so `reloadUnderway`
+ * is true however the reload was asked for.
+ */
+export function startReload(): void {
+  reloading = true
+  window.location.reload()
+}
+
+/** Tests only: a fresh tab. */
+export function resetReloadState(): void {
+  reloading = false
+}
+
 function isChunkLoadError(error: Error): boolean {
   const message = error.message || ""
   return CHUNK_LOAD_PATTERNS.some((re) => re.test(message))
@@ -59,7 +94,7 @@ function markReloaded() {
 export function reloadOnceFor(error: Error): boolean {
   if (!isChunkLoadError(error) || recentlyReloaded()) return false
   markReloaded()
-  window.location.reload()
+  startReload()
   return true
 }
 

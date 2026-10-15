@@ -8,6 +8,7 @@
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest"
 import { lazyRoute } from "@/lib/lazyRoute"
+import { installPreloadErrorRecovery, resetReloadState } from "@/lib/staleChunkRecovery"
 
 const STALE = new Error(
   "Failed to fetch dynamically imported module: https://equipbible.com/assets/CoursesPage-DjbFVoeD.js",
@@ -27,6 +28,7 @@ describe("lazyRoute", () => {
 
   beforeEach(() => {
     sessionStorage.clear()
+    resetReloadState()
     vi.stubGlobal("location", { reload })
     reload.mockClear()
   })
@@ -49,6 +51,9 @@ describe("lazyRoute", () => {
     void loadOnce(() => Promise.reject(STALE))
     await vi.waitFor(() => expect(reload).toHaveBeenCalledOnce())
     reload.mockClear()
+    // The reloaded page starts with fresh module state; only sessionStorage
+    // carries over.
+    resetReloadState()
 
     // Second attempt in the same tab: the new build is broken too, so this
     // has to surface rather than loop.
@@ -84,5 +89,65 @@ describe("lazyRoute", () => {
     sessionStorage.setItem("equip:chunk-reloaded", "1")
     await loadOnce(() => Promise.resolve({ default: (() => null) as never }))
     expect(sessionStorage.getItem("equip:chunk-reloaded")).toBeNull()
+  })
+})
+
+/**
+ * The other half of the recovery: Vite's own `vite:preloadError` event, which
+ * `installPreloadErrorRecovery` answers by reloading and preventing Vite's
+ * rethrow. Vite's wrapper then *resolves* — with `undefined` — and the route
+ * read `.default` off nothing: "Cannot read properties of undefined (reading
+ * 'default')" reached the ErrorBoundary while the reload was on its way
+ * (RUM, 2026-10-15, `/courses`).
+ */
+describe("lazyRoute after Vite's preload listener took the failure", () => {
+  const reload = vi.fn()
+  let uninstall: () => void
+
+  /** What Vite's `__vitePreload` does when the chunk 404s. */
+  function vitePreloadFails(): void {
+    const event = new Event("vite:preloadError", { cancelable: true }) as Event & { payload?: unknown }
+    event.payload = STALE
+    window.dispatchEvent(event)
+    if (!event.defaultPrevented) throw STALE
+  }
+
+  beforeEach(() => {
+    sessionStorage.clear()
+    resetReloadState()
+    vi.stubGlobal("location", { reload })
+    reload.mockClear()
+    uninstall = installPreloadErrorRecovery()
+  })
+
+  afterEach(() => {
+    uninstall()
+    vi.unstubAllGlobals()
+  })
+
+  it("waits for the reload instead of handing React an undefined module", async () => {
+    const settled = vi.fn()
+    void loadOnce(async () => {
+      vitePreloadFails()
+      return undefined as unknown as { default: never }
+    }).then(settled, settled)
+
+    await vi.waitFor(() => expect(reload).toHaveBeenCalledOnce())
+    await new Promise((r) => setTimeout(r, 0))
+    expect(settled).not.toHaveBeenCalled()
+  })
+
+  it("waits for it too when the loader picks a named export off the missing module", async () => {
+    // App.tsx: `import("@/components/firstRun").then((m) => ({ default: m.FirstRunFlow }))`.
+    const settled = vi.fn()
+    void loadOnce(async () => {
+      vitePreloadFails()
+      const m = undefined as unknown as { FirstRunFlow: never }
+      return { default: m.FirstRunFlow }
+    }).then(settled, settled)
+
+    await vi.waitFor(() => expect(reload).toHaveBeenCalledOnce())
+    await new Promise((r) => setTimeout(r, 0))
+    expect(settled).not.toHaveBeenCalled()
   })
 })
