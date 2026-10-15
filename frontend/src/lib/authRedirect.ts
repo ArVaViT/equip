@@ -52,6 +52,12 @@ export const RETURN_PATH_TTL_MS = 60 * 60 * 1000
  * its own configuration, and a path in a URL would be a value from outside.
  * Still per browser, so a link opened on another device lands on the
  * dashboard.
+ *
+ * An invitation's path is kept by the tab alone. It carries the link's
+ * token, which is not something to leave in the browser for an hour for the
+ * next person at a shared computer — and it has no confirmation mail to
+ * wait for: an invited person's account is confirmed by the invitation
+ * itself, so the only round-trip it makes is Google's, in this same tab.
  */
 export function rememberReturnPath(state: unknown, now: number = Date.now()): void {
   const path = returnPathFrom(state)
@@ -61,6 +67,7 @@ export function rememberReturnPath(state: unknown, now: number = Date.now()): vo
   } catch {
     /* storage blocked: the dashboard is the fallback */
   }
+  if (path.startsWith("/invite/")) return
   try {
     localStorage.setItem(RETURN_KEY, JSON.stringify({ path, until: now + RETURN_PATH_TTL_MS }))
   } catch {

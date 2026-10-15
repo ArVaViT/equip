@@ -734,7 +734,8 @@
       "sessionExpired": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an, um fortzufahren.",
       "accountDeactivated": "Dieses Konto wurde deaktiviert. Falls das ein Irrtum ist, wenden Sie sich an Ihre Administration.",
       "signInToContinue": "Melden Sie sich an, um diese Seite zu öffnen.",
-      "sectionUnavailable": "Dieser Bereich steht Ihnen nicht zur Verfügung."
+      "sectionUnavailable": "Dieser Bereich steht Ihnen nicht zur Verfügung.",
+      "signInToAcceptInvite": "Melden Sie sich an, um die Einladung anzunehmen."
     },
     "forgotPassword": {
       "heading": "Passwort zurücksetzen",
@@ -3086,27 +3087,30 @@
   },
   "invite": {
     "heading": "Equip beitreten",
-    "alreadyIn": "Sie haben bereits Zugang zu dem, wozu diese Einladung führt. Melden Sie sich als <strong>{{email}}</strong> an, um fortzufahren.",
-    "formSubheading": "Sie wurden eingeladen, Equip als {{role}} beizutreten",
-    "readyBody": "Sie sind als <strong>{{email}}</strong> angemeldet. Nehmen Sie die Einladung an, um Equip als {{role}} beizutreten.",
-    "acceptButton": "Einladung annehmen",
     "createAccountButton": "Konto erstellen",
-    "confirmThenReturn": "Klicken Sie den Link in der E-Mail und kehren Sie dann auf diese Seite zurück, um den Beitritt abzuschließen.",
-    "accepted": "Alles erledigt.",
-    "acceptedAs": "Alles erledigt — Sie sind Equip als {{role}} beigetreten.",
     "goToDashboard": "Zur Startseite",
     "logOutAndSwitch": "Abmelden und Konto wechseln",
     "errors": {
       "notFound": "Dieser Einladungslink ist ungültig. Prüfen Sie den Link oder bitten Sie die einladende Person, ihn erneut zu senden.",
       "loadFailed": "Die Einladung konnte nicht geprüft werden. Prüfen Sie die Verbindung und versuchen Sie es erneut – der Link bleibt gültig.",
-      "unusable": "Diese Einladung wurde bereits genutzt, zurückgezogen oder ist abgelaufen. Bitten Sie um eine neue.",
-      "emailMismatch": "Diese Einladung ging an eine andere E-Mail-Adresse.",
       "emailMismatchDetail": "Diese Einladung ging an <strong>{{invited}}</strong>, angemeldet sind Sie aber als <strong>{{current}}</strong>.",
-      "acceptFailed": "Die Einladung konnte nicht angenommen werden. Bitte erneut versuchen.",
-      "inviterNotStaff": "Die Person, die diese Einladung geschickt hat, spricht nicht mehr für die Organisation. Bitten Sie deren Leitung um eine neue.",
-      "accountExists": "Sie haben mit dieser Adresse bereits ein Equip-Konto. Melden Sie sich an und öffnen Sie den Einladungslink dann erneut."
+      "acceptFailed": "Die Einladung konnte nicht angenommen werden. Bitte erneut versuchen."
     },
-    "openCourse": "Kurs öffnen"
+    "from": {
+      "platform": "Sie wurden zu Equip eingeladen.",
+      "course": "{{organization}} lädt Sie zum Kurs „{{course}}“ ein.",
+      "courseUntitled": "{{organization}} lädt Sie zu einem Kurs ein.",
+      "teach": "{{organization}} lädt Sie ein, zu unterrichten.",
+      "study": "{{organization}} lädt Sie zum Lernen ein."
+    },
+    "hasAccount": "Für <strong>{{email}}</strong> gibt es bereits ein Konto. Melden Sie sich an, dann ist die Einladung angenommen.",
+    "unusable": {
+      "expired": "Diese Einladung ist abgelaufen. Bitten Sie darum, sie erneut zu senden — der Link gilt dann wieder eine Woche.",
+      "used": "Diese Einladung wurde bereits angenommen.",
+      "revoked": "Diese Einladung wurde zurückgezogen.",
+      "course_gone": "Den Kurs, zu dem diese Einladung führte, gibt es nicht mehr.",
+      "inviter_left": "Die Person, die diese Einladung geschickt hat, spricht nicht mehr für die Organisation. Bitten Sie deren Leitung um eine neue."
+    }
   },
   "myGrade": {
     "title": "Ihre Note",

@@ -33,8 +33,16 @@ function noticeKeyFor(error: string | null, reason: SignOutReason | null, state:
   if (error === "oauth_timeout") return "auth.callback.timedOut"
   // The same target the public gate will use after sign-in, so the notice
   // promises exactly what happens.
-  if (returnPathFrom(state) ?? peekReturnPath()) return "auth.notice.signInToContinue"
+  const target = returnPathFrom(state) ?? peekReturnPath()
+  if (target?.startsWith("/invite/")) return "auth.notice.signInToAcceptInvite"
+  if (target) return "auth.notice.signInToContinue"
   return null
+}
+
+/** An address another page already knows: the invite page, a sign-up that found an account. */
+function prefilledEmail(state: unknown): string {
+  const email = state && typeof state === "object" ? (state as { email?: unknown }).email : undefined
+  return typeof email === "string" ? email : ""
 }
 
 export default function Login() {
@@ -47,7 +55,8 @@ export default function Login() {
   // Google and an emailed link come back in a fresh page; keep where the
   // visitor was going for /auth/callback (lib/authRedirect).
   useEffect(() => rememberReturnPath(location.state), [location.state])
-  const [form, setForm] = useState<LoginFormData>({ email: "", password: "" })
+  const [prefilled] = useState(() => prefilledEmail(location.state))
+  const [form, setForm] = useState<LoginFormData>({ email: prefilled, password: "" })
   const [errors, setErrors] = useState<Partial<Record<keyof LoginFormData, string>>>({})
   const [serverError, setServerError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -200,7 +209,7 @@ export default function Login() {
               onChange={(e) => handleChange("email", e.target.value)}
               aria-invalid={!!errors.email}
               aria-describedby={errors.email ? "email-error" : undefined}
-              autoFocus
+              autoFocus={!prefilled}
             />
             {errors.email && <p id="email-error" role="alert" className="text-xs text-destructive mt-1">{errors.email}</p>}
           </div>
@@ -224,6 +233,7 @@ export default function Login() {
               onChange={(e) => handleChange("password", e.target.value)}
               aria-invalid={!!errors.password}
               aria-describedby={errors.password ? "password-error" : undefined}
+              autoFocus={!!prefilled}
             />
             {errors.password && <p id="password-error" role="alert" className="text-xs text-destructive mt-1">{errors.password}</p>}
           </div>

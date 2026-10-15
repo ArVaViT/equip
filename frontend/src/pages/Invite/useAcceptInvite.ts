@@ -1,16 +1,21 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { usePasswordAffordances } from "@/components/auth/usePasswordAffordances"
 import { useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/context/useAuth"
-import { invitationsService, type InvitationPreview } from "@/services/invitations"
+import {
+  invitationsService,
+  type AcceptedInvitation,
+  type InvitationPreview,
+  type InvitationUnusableReason,
+} from "@/services/invitations"
 import { makeAcceptInviteSchema } from "@/lib/validations/auth"
-import { setPendingInviteToken, takePendingInviteToken } from "@/lib/pendingInvite"
 import { inviteAcceptPath, inviteTokenFrom, inviteTokenIsInQuery } from "@/lib/inviteLink"
+import { rememberReturnPath } from "@/lib/authRedirect"
 import { isAxiosError } from "axios"
 import { enrollmentsChanged } from "@/lib/enrollmentsChanged"
 import { getErrorCode } from "@/lib/errorCode"
 import { getErrorDetail } from "@/lib/errorDetail"
-import { authErrorMessage, isDuplicateEmail } from "@/lib/authError"
+import { authErrorMessage } from "@/lib/authError"
 import i18n, { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 
 export type FormState = {
@@ -21,40 +26,69 @@ export type FormState = {
 
 const EMPTY_FORM: FormState = { full_name: "", password: "", confirmPassword: "" }
 
-// A 404/410/409 from the preview or accept call all mean "this link
-// can't be used" -- distinguished only by which copy to show.
 export type AcceptInvitePhase =
   | "loading"
-  | "invalid" // token doesn't exist
+  | "invalid" // no such link
   | "unavailable" // the server did not answer; nothing is known about the link yet
-  | "unusable" // expired, already accepted, or revoked
-  | "alreadyIn" // fulfilled another way, caller not signed in -- they have an account, so sign in rather than sign up
-  | "form" // pending + valid, caller not authenticated yet -- show signup form
-  | "mismatch" // pending + valid, but signed in under a different email
-  | "ready" // pending + valid, signed in under the matching email -- show Accept button
-  | "accepting"
-  | "done" // accepted this session
-  | "awaitingConfirmation" // email/password signup submitted, waiting on email confirm
+  | "unusable" // the link admits nobody now -- `reason` says why
+  | "form" // nobody signed in, no account at this address: create one here
+  | "signIn" // nobody signed in, the address has an account: sign in, then this page accepts
+  | "mismatch" // signed in under another address
+  | "accepting" // signed in under this address: accepting, then off to what it offered
+  | "acceptFailed" // accepting failed for a reason with no screen of its own
+
+/** Where an accepted invitation leads: the course it seated them on, or home. */
+function destinationOf(result: AcceptedInvitation): string {
+  return result.enrolled_course_id ? `/courses/${result.enrolled_course_id}` : "/"
+}
+
+/**
+ * Where to go once the session just signed in has loaded.
+ *
+ * Signing in makes the app swap every route for its spinner while it loads
+ * the new profile, so this page unmounts between registering and arriving.
+ * What it had decided must outlive it — in memory, for this page load only,
+ * and only for the same link.
+ */
+let afterSignIn: { token: string; path: string } | null = null
+
+/** The server's refusals that have a screen of their own. */
+function reasonFor(code: string | null, status: number | undefined): InvitationUnusableReason | null {
+  if (code === "invitation.expired") return "expired"
+  if (code === "invitation.already_used") return "used"
+  if (code === "invitation.inviter_not_staff") return "inviter_left"
+  // The course an invitation seats on is the only thing it can 404 on
+  // besides the token itself, which has its own code.
+  if (code === "resource.not_found" || (status === 404 && code !== "invitation.not_found")) return "course_gone"
+  return null
+}
 
 export function useAcceptInvite() {
   const location = useLocation()
   const navigate = useNavigate()
   const token = inviteTokenFrom(location)
   const tokenInQuery = inviteTokenIsInQuery(location)
-  const { user, register, signInWithGoogle, logout, refreshUser } = useAuth()
+  const { user, login, signInWithGoogle, logout, refreshUser } = useAuth()
 
   const [preview, setPreview] = useState<InvitationPreview | null>(null)
-  const [previewFailed, setPreviewFailed] = useState(false)
+  const [missing, setMissing] = useState(false)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [previewAttempt, setPreviewAttempt] = useState(0)
-  const [phase, setPhase] = useState<AcceptInvitePhase>("loading")
+  // What the server said after the preview, which outranks it.
+  const [refusal, setRefusal] = useState<InvitationUnusableReason | null>(null)
+  const [accountExists, setAccountExists] = useState(false)
+  const [acceptFailed, setAcceptFailed] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [errors, setErrors] = useState<Partial<Record<string, string>>>({})
   const [serverError, setServerError] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
-  const [acceptedRole, setAcceptedRole] = useState<string | null>(null)
-  const [enrolledCourseId, setEnrolledCourseId] = useState<string | null>(null)
+  const acceptStarted = useRef(false)
+
+  const invitePath = (() => {
+    const { pathname, hash } = inviteAcceptPath(token)
+    return `${pathname}#${hash}`
+  })()
 
   // A letter sent before 2026-09-16 put the token in the query. The page
   // load that brought it here is already in the edge log, but moving it to
@@ -65,20 +99,27 @@ export function useAcceptInvite() {
     if (tokenInQuery) navigate(inviteAcceptPath(token), { replace: true })
   }, [tokenInQuery, token, navigate])
 
+  // Back from signing in with the password just chosen: the invitation was
+  // accepted when the account was made, so straight on to what it offered.
+  useEffect(() => {
+    if (!user || afterSignIn?.token !== token) return
+    const { path } = afterSignIn
+    afterSignIn = null
+    navigate(path, { replace: true })
+  }, [user, token, navigate])
+
   useEffect(() => {
     if (!token) {
-      setPreviewFailed(true)
-      setPhase("invalid")
+      setMissing(true)
       return
     }
     let cancelled = false
-    setPreviewFailed(false)
+    setMissing(false)
     setPreviewError(null)
     invitationsService
       .previewInvitation(token)
       .then((data) => {
-        if (cancelled) return
-        setPreview(data)
+        if (!cancelled) setPreview(data)
       })
       .catch((err: unknown) => {
         if (cancelled) return
@@ -87,7 +128,7 @@ export function useAcceptInvite() {
         // «ask the administrator to resend it» — for a link that was fine.
         const status = isAxiosError(err) ? err.response?.status : undefined
         if (status === 400 || status === 404 || status === 410 || status === 422) {
-          setPreviewFailed(true)
+          setMissing(true)
         } else {
           setPreviewError(getErrorDetail(err, i18n.t("invite.errors.loadFailed")))
         }
@@ -99,71 +140,60 @@ export function useAcceptInvite() {
 
   const retryPreview = useCallback(() => setPreviewAttempt((n) => n + 1), [])
 
-  // Derive the phase from (preview, previewFailed, user) whenever any of
-  // them change -- keeps the state machine in one place instead of
-  // scattered across the fetch handler and the auth-watching effect.
-  useEffect(() => {
-    if (phase === "accepting" || phase === "done" || phase === "awaitingConfirmation") return
-    if (previewError) {
-      setPhase("unavailable")
-      return
-    }
-    if (previewFailed) {
-      setPhase("invalid")
-      return
-    }
-    if (!preview) {
-      setPhase("loading")
-      return
-    }
-    // A fulfilled invitation stays usable by its invitee: the person already
-    // has what it offered (or, for a platform invitation, has just signed up
-    // from this very link), and accepting may still add the rest -- the
-    // backend accepts it without changing its status.
-    const usable = preview.status === "pending" || preview.status === "fulfilled"
-    if (!usable || preview.is_expired) {
-      setPhase("unusable")
-      return
-    }
-    if (!user) {
-      // Fulfilled means an account with this address exists, so the sign-up
-      // form could only fail with "account exists".
-      setPhase(preview.status === "fulfilled" ? "alreadyIn" : "form")
-      return
-    }
-    setPhase(user.email.trim().toLowerCase() === preview.email.trim().toLowerCase() ? "ready" : "mismatch")
-  }, [preview, previewFailed, previewError, user, phase])
+  const reason: InvitationUnusableReason | null =
+    refusal ?? preview?.unusable_reason ?? (preview?.is_expired ? "expired" : null)
+  const sameAddress =
+    !!user && !!preview && user.email.trim().toLowerCase() === preview.email.trim().toLowerCase()
 
-  const acceptNow = useCallback(async () => {
-    setPhase("accepting")
-    setServerError("")
+  const phase: AcceptInvitePhase = (() => {
+    if (!token || missing) return "invalid"
+    if (previewError) return "unavailable"
+    if (!preview || afterSignIn?.token === token) return "loading"
+    if (reason) return "unusable"
+    if (user) {
+      if (!sameAddress) return "mismatch"
+      return acceptFailed ? "acceptFailed" : "accepting"
+    }
+    return preview.has_account || accountExists ? "signIn" : "form"
+  })()
+
+  const showRefusal = useCallback((err: unknown): boolean => {
+    const code = getErrorCode(err)
+    const status = isAxiosError(err) ? err.response?.status : undefined
+    if (code === "invitation.not_found") {
+      setMissing(true)
+      return true
+    }
+    const refused = reasonFor(code, status)
+    if (refused) setRefusal(refused)
+    return refused !== null
+  }, [])
+
+  const accept = useCallback(async () => {
+    setAcceptFailed(false)
     try {
       const result = await invitationsService.acceptInvitation(token)
-      setAcceptedRole(result.role)
-      setEnrolledCourseId(result.enrolled_course_id)
-      // The dashboard reads enrollments in an effect keyed on the user
-      // and the locale; accepting moves neither, so without this it
-      // keeps the empty state it loaded before and only a refresh shows
-      // the course.
+      // The dashboard reads enrollments in an effect keyed on the user and
+      // the locale; accepting moves neither, so without this it keeps the
+      // empty state it loaded before and only a refresh shows the course.
       enrollmentsChanged()
+      // A teaching invitation changes the role the header and the gates read.
       await refreshUser()
-      setPhase("done")
+      navigate(destinationOf(result), { replace: true })
     } catch (err) {
-      const code = getErrorCode(err)
-      setServerError(
-        // ``invitation.other_school`` is gone (2026-10-03): an invitation to a
-        // second organization adds a membership instead of moving the person.
-        code === "invitation.email_mismatch"
-          ? i18n.t("invite.errors.emailMismatch")
-          : code === "invitation.inviter_not_staff"
-            // The person who sent it has since left the organization's
-            // staff; the link is left as it is and a fresh one is the answer.
-            ? i18n.t("invite.errors.inviterNotStaff")
-            : i18n.t("invite.errors.acceptFailed"),
-      )
-      setPhase("ready")
+      if (!showRefusal(err)) setAcceptFailed(true)
     }
-  }, [token, refreshUser])
+  }, [token, refreshUser, navigate, showRefusal])
+
+  // Signed in under the invited address -- by Google, by the sign-in page,
+  // or already: nothing is left to decide, so the page accepts on its own.
+  useEffect(() => {
+    if (phase !== "accepting" || acceptStarted.current) return
+    acceptStarted.current = true
+    void accept()
+  }, [phase, accept])
+
+  const retryAccept = useCallback(() => void accept(), [accept])
 
   const setBothPasswords = useCallback((value: string) => {
     setForm((prev) => ({ ...prev, password: value, confirmPassword: value }))
@@ -171,19 +201,22 @@ export function useAcceptInvite() {
   }, [])
   const passwordAffordances = usePasswordAffordances(setBothPasswords)
 
-  const handleChange = useCallback((field: keyof FormState, value: string) => {
-    if (field === "password" || field === "confirmPassword") passwordAffordances.noteEdited()
-    setForm((prev) => ({ ...prev, [field]: value }))
-    setErrors((prev) => ({ ...prev, [field]: undefined }))
-  }, [passwordAffordances])
+  const handleChange = useCallback(
+    (field: keyof FormState, value: string) => {
+      if (field === "password" || field === "confirmPassword") passwordAffordances.noteEdited()
+      setForm((prev) => ({ ...prev, [field]: value }))
+      setErrors((prev) => ({ ...prev, [field]: undefined }))
+    },
+    [passwordAffordances],
+  )
 
   const handleSubmit = useCallback(async () => {
     if (!preview) return
     setServerError("")
-    const result = makeAcceptInviteSchema().safeParse(form)
-    if (!result.success) {
+    const parsed = makeAcceptInviteSchema().safeParse(form)
+    if (!parsed.success) {
       const fieldErrors: Partial<Record<string, string>> = {}
-      for (const issue of result.error.issues) {
+      for (const issue of parsed.error.issues) {
         const key = String(issue.path[0])
         if (!fieldErrors[key]) fieldErrors[key] = issue.message
       }
@@ -191,71 +224,78 @@ export function useAcceptInvite() {
       return
     }
     setSubmitting(true)
+    const locale = isSupportedLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE
+    let result: AcceptedInvitation
     try {
-      const preferredLocale = isSupportedLocale(i18n.resolvedLanguage) ? i18n.resolvedLanguage : DEFAULT_LOCALE
-      // Persisted BEFORE register() -- email confirmation is required
-      // (see SuccessView), so there's no active session yet to redeem
-      // the token with. App.tsx's resume effect picks this up once the
-      // user comes back signed in after confirming.
-      setPendingInviteToken(token)
-      await register(preview.email, result.data.password, result.data.full_name, preferredLocale)
-      setPhase("awaitingConfirmation")
-    } catch (err: unknown) {
-      // register() failed -- there's no pending redirect coming, so drop
-      // the stashed token rather than leaving it to misfire on some
-      // unrelated later sign-in.
-      takePendingInviteToken()
-      // An invited person is being asked to create an account they were
-      // told to expect; getting an English GoTrue sentence back on a
-      // German invitation page is the worst possible first impression of a
-      // school that invited them. Translate, always.
-      setServerError(
-        isDuplicateEmail(err)
-          ? i18n.t("invite.errors.accountExists")
-          : authErrorMessage(err, "auth.errors.registrationFailed"),
+      result = await invitationsService.registerByInvitation(
+        token,
+        parsed.data.full_name,
+        parsed.data.password,
+        locale,
       )
-    } finally {
+    } catch (err) {
       setSubmitting(false)
+      const code = getErrorCode(err)
+      if (code === "invitation.account_exists") {
+        setAccountExists(true)
+      } else if (code === "auth.weak_password") {
+        setErrors({ password: i18n.t("auth.errors.weakPassword") })
+      } else if (!showRefusal(err)) {
+        // A 429 from our own limiter, or the sign-in service not answering.
+        const status = isAxiosError(err) ? err.response?.status : undefined
+        setServerError(i18n.t(status === 429 ? "auth.errors.rateLimited" : "auth.errors.serverError"))
+      }
+      return
     }
-  }, [form, preview, register, token])
-
-  // Keep the token across the sign-in page, so App's resume effect brings the
-  // person back here to finish -- the same bridge sign-up uses.
-  const rememberInviteForSignIn = useCallback(() => {
-    setPendingInviteToken(token)
-  }, [token])
-
-  const handleGoogleSignUp = useCallback(async () => {
-    setGoogleLoading(true)
+    const path = destinationOf(result)
+    afterSignIn = { token, path }
     try {
-      setPendingInviteToken(token)
+      await login(result.email, parsed.data.password)
+    } catch {
+      // The account exists and holds this invitation; only the sign-in
+      // failed. The sign-in page, pre-filled, takes them the rest of the way.
+      afterSignIn = null
+      navigate("/login", { replace: true, state: { from: path, email: result.email } })
+    }
+  }, [form, preview, token, login, navigate, showRefusal])
+
+  const handleGoogle = useCallback(async () => {
+    setGoogleLoading(true)
+    setServerError("")
+    // Google comes back to /auth/callback in a fresh page load; this tab is
+    // sent back here, signed in, and the page accepts on its own.
+    rememberReturnPath({ from: invitePath })
+    try {
       await signInWithGoogle()
     } catch (err: unknown) {
-      takePendingInviteToken()
       setServerError(authErrorMessage(err, "auth.errors.googleSignUpFailed"))
       setGoogleLoading(false)
     }
-  }, [signInWithGoogle, token])
+  }, [signInWithGoogle, invitePath])
 
   return {
+    phase,
+    reason,
+    preview,
     previewError,
     retryPreview,
-    phase,
-    preview,
+    retryAccept,
     form,
     errors,
     serverError,
     submitting,
     googleLoading,
-    acceptedRole,
-    enrolledCourseId,
+    invitePath,
     currentUserEmail: user?.email ?? null,
     passwordAffordances,
     handleChange,
     handleSubmit,
-    handleGoogleSignUp,
-    acceptNow,
+    handleGoogle,
     logout,
-    rememberInviteForSignIn,
   }
+}
+
+/** Test-only: forget a sign-in this "page load" was waiting on. */
+export function resetAcceptInviteForTests(): void {
+  afterSignIn = null
 }

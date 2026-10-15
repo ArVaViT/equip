@@ -67,6 +67,12 @@ describe("the sign-in form explains itself", () => {
     expect(screen.getByRole("status")).toHaveTextContent(i18n.t("auth.notice.signInToContinue"))
   })
 
+  it("says an invitation is waiting, and fills in the invited address", () => {
+    renderAt({ pathname: "/login", state: { from: "/invite/accept#token=t", email: "sasha@web.de" } })
+    expect(screen.getByRole("status")).toHaveTextContent(i18n.t("auth.notice.signInToAcceptInvite"))
+    expect(screen.getByLabelText(i18n.t("auth.email"))).toHaveValue("sasha@web.de")
+  })
+
   it("speaks the reader's language", async () => {
     await i18n.changeLanguage("de")
     rememberSignOutReason("session_expired")
