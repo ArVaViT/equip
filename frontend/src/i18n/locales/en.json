@@ -724,7 +724,8 @@
       "sessionExpired": "Your session has expired. Sign in again to continue.",
       "accountDeactivated": "This account has been deactivated. If that is a mistake, contact your administrator.",
       "signInToContinue": "Sign in to open this page.",
-      "sectionUnavailable": "This section is not available to you."
+      "sectionUnavailable": "This section is not available to you.",
+      "signInToAcceptInvite": "Sign in to accept the invitation."
     },
     "forgotPassword": {
       "heading": "Reset password",
@@ -3073,27 +3074,30 @@
   },
   "invite": {
     "heading": "Join Equip",
-    "alreadyIn": "You already have access to what this invitation offers. Sign in as <strong>{{email}}</strong> to continue.",
-    "formSubheading": "You've been invited to join Equip as a {{role}}",
-    "readyBody": "You're signed in as <strong>{{email}}</strong>. Accept this invitation to join Equip as a {{role}}.",
-    "acceptButton": "Accept invitation",
     "createAccountButton": "Create account",
-    "confirmThenReturn": "Click the link in the email, then come back to this page to finish joining.",
-    "accepted": "You're all set.",
-    "acceptedAs": "You're all set — you've joined Equip as a {{role}}.",
     "goToDashboard": "Go to dashboard",
     "logOutAndSwitch": "Log out and switch accounts",
     "errors": {
       "notFound": "This invitation link isn't valid. Double-check the link or ask the admin who invited you to resend it.",
       "loadFailed": "Could not check the invitation. Check your connection and try again — the link itself is still good.",
-      "unusable": "This invitation has already been used, was revoked, or has expired. Ask the admin who invited you for a new one.",
-      "emailMismatch": "This invitation was sent to a different email address.",
       "emailMismatchDetail": "This invitation was sent to <strong>{{invited}}</strong>, but you're signed in as <strong>{{current}}</strong>.",
-      "acceptFailed": "Couldn't accept this invitation. Please try again.",
-      "inviterNotStaff": "The person who sent this invitation no longer speaks for the organization. Ask its director for a new one.",
-      "accountExists": "You already have an Equip account with this email. Log in, then reopen this invite link to accept it."
+      "acceptFailed": "Couldn't accept this invitation. Please try again."
     },
-    "openCourse": "Open the course"
+    "from": {
+      "platform": "You've been invited to Equip.",
+      "course": "{{organization}} invites you to the course “{{course}}”.",
+      "courseUntitled": "{{organization}} invites you to a course.",
+      "teach": "{{organization}} invites you to teach.",
+      "study": "{{organization}} invites you to study."
+    },
+    "hasAccount": "You already have an account with <strong>{{email}}</strong>. Sign in and the invitation is accepted.",
+    "unusable": {
+      "expired": "This invitation has expired. Ask for it to be sent again — the link will work for another week.",
+      "used": "This invitation has already been accepted.",
+      "revoked": "This invitation was withdrawn.",
+      "course_gone": "The course this invitation was for no longer exists.",
+      "inviter_left": "The person who sent this invitation no longer speaks for the organization. Ask its director for a new one."
+    }
   },
   "myGrade": {
     "title": "Your grade",

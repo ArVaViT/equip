@@ -1,18 +1,33 @@
 import api from "./api"
-/** What the acceptance actually did, so the page can say it rather than guess. */
+import type { Invitation, InvitationRole, InvitationStatus } from "@/types"
+import type { SupportedLocale } from "@/i18n/config"
+
+/** What the acceptance actually did, so the page can go where it leads. */
 export interface AcceptedInvitation {
   role: InvitationRole
   scope: "platform" | "organization" | "course"
   enrolled_course_id: string | null
+  /** The address the account holds — what to sign in with after registering. */
+  email: string
 }
 
-import type { Invitation, InvitationRole, InvitationStatus } from "@/types"
+/** Why a link admits nobody now. Mirrors `UnusableReasonLiteral` on the server. */
+export type InvitationUnusableReason = "expired" | "used" | "revoked" | "inviter_left" | "course_gone"
 
 export interface InvitationPreview {
   email: string
   role: InvitationRole
+  scope: "platform" | "organization" | "course"
+  /** In the reader's language, or null — never another language's title. */
+  course_title: string | null
+  /** Who is inviting; null for a platform invitation. */
+  organization_name: string | null
   status: InvitationStatus
   is_expired: boolean
+  /** Null while the link still admits its person. */
+  unusable_reason: InvitationUnusableReason | null
+  /** The invited address already has a confirmed account: sign in, not sign up. */
+  has_account: boolean
 }
 
 /**
@@ -82,6 +97,27 @@ export const invitationsService = {
 
   async acceptInvitation(token: string): Promise<AcceptedInvitation> {
     const response = await api.post<AcceptedInvitation>("/invitations/accept", { token })
+    return response.data
+  },
+
+  /**
+   * Create the invited person's account from the link and accept it, in one
+   * request. No email: the account is made for the address the invitation
+   * was sent to, and it is confirmed already — the link proved the mailbox,
+   * so no second email follows. The caller signs in with `password` next.
+   */
+  async registerByInvitation(
+    token: string,
+    fullName: string,
+    password: string,
+    locale: SupportedLocale,
+  ): Promise<AcceptedInvitation> {
+    const response = await api.post<AcceptedInvitation>("/invitations/register", {
+      token,
+      full_name: fullName,
+      password,
+      locale,
+    })
     return response.data
   },
 }

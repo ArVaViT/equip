@@ -196,6 +196,19 @@ class ErrorCode(enum.StrEnum):
     left as it is, and a director who wants the person in writes a fresh
     invitation."""
 
+    INVITATION_ACCOUNT_EXISTS = "invitation.account_exists"
+    """Creating an account from an invitation, for an address that already
+    has a confirmed account. Its password is never touched from here: the
+    person signs in, and the page accepts the invitation for them."""
+
+    AUTH_WEAK_PASSWORD = "auth.weak_password"
+    """Supabase Auth refused the chosen password -- too short for the
+    project's minimum, or found in a known breach."""
+
+    AUTH_UNAVAILABLE = "auth.unavailable"
+    """Supabase Auth did not answer, or answered with something this
+    backend cannot act on. Nothing was changed; trying again is safe."""
+
     # ── Organizations ───────────────────────────────────────────────────
     ORGANIZATION_AMBIGUOUS = "organization.ambiguous"
     """The caller acts in more than one organization and the request did not

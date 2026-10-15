@@ -57,7 +57,6 @@ def _invitation(db: Session, *, scope: str = InvitationScope.ORGANIZATION.value,
         role=UserRole.STUDENT.value,
         scope=scope,
         course_id=course_id,
-        token=uuid.uuid4().hex,
         invited_by=ADMIN_ID,
         organization_id=TEST_ORGANIZATION_ID,
     )

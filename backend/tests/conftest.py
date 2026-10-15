@@ -161,6 +161,24 @@ def _belong_to_the_test_organization(session, _flush_context, _instances):
             )
 
 
+@event.listens_for(Session, "before_flush")
+def _every_invitation_has_a_link(session, _flush_context, _instances):
+    """Give every new invitation the hash of its derived token.
+
+    ``issue_token`` is what the service calls before writing a row; dozens
+    of tests write invitations directly and are about something else. A test
+    that wants a token from before the derivation (a random one, as mailed
+    until 2026-10-15) sets ``token_hash`` itself and is left alone. Read the
+    link back with ``invitation_token(row.id)``.
+    """
+    from app.models.invitation import Invitation
+    from app.services.invitation_service import issue_token
+
+    for obj in list(session.new):
+        if isinstance(obj, Invitation) and obj.token_hash is None:
+            issue_token(obj)
+
+
 #: ``session.info`` key: set to switch the acceptance autopopulator below off.
 NOBODY_HAS_SIGNED_ANYTHING = "nobody_has_signed_anything"
 
@@ -352,6 +370,22 @@ def db() -> Session:
     finally:
         session.rollback()
         session.close()
+
+
+@pytest.fixture(autouse=True)
+def gotrue(db: Session, monkeypatch: pytest.MonkeyPatch):
+    """Supabase Auth's admin API, faked for every test (``tests/_fake_gotrue``).
+
+    Autouse so that no test can reach a real GoTrue by accident: the
+    invitation preview asks it whether the invited address has an account.
+    """
+    from app.services import auth_admin
+    from tests._fake_gotrue import FakeGoTrue
+
+    fake = FakeGoTrue()
+    fake.db = db
+    monkeypatch.setattr(auth_admin, "_call", fake)
+    return fake
 
 
 # ---------------------------------------------------------------------------

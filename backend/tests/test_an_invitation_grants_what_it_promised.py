@@ -36,7 +36,7 @@ from app.models.enrollment import Enrollment
 from app.models.invitation import Invitation, InvitationScope, InvitationStatus
 from app.models.organization import MembershipSource, Organization, OrganizationMember
 from app.models.user import User, UserRole
-from app.services.invitation_service import accept_invitation, create_or_resend_invitation
+from app.services.invitation_service import accept_invitation, create_or_resend_invitation, invitation_token
 from tests.conftest import ADMIN_ID, TEST_ORGANIZATION_ID, leave_every_organization
 
 if TYPE_CHECKING:
@@ -124,7 +124,6 @@ def _invitation(
         role=role,
         scope=scope,
         course_id=course_id,
-        token=uuid.uuid4().hex,
         invited_by=invited_by,
         organization_id=organization_id or TEST_ORGANIZATION_ID,
     )
@@ -137,7 +136,7 @@ def _invitation(
 def _accept(db: Session, invitation: Invitation) -> Invitation:
     return accept_invitation(
         db,
-        token=invitation.token,
+        token=invitation_token(invitation.id),
         current_user_id=INVITEE_ID,
         current_user_email=INVITEE_EMAIL,
     )
@@ -368,7 +367,7 @@ class TestTheDedupKeyKnowsTheSchool:
 
         assert first_is_new and second_is_new
         assert first.id != second.id
-        assert first.token != second.token
+        assert first.token_hash != second.token_hash
         assert second.organization_id == OTHER_ORGANIZATION_ID
 
     def test_one_school_inviting_twice_to_the_same_course_resends(self, db: Session, admin: User) -> None:
@@ -397,7 +396,7 @@ class TestTheDedupKeyKnowsTheSchool:
         assert first.id == second.id
         # A resend keeps the original token and clock, so a link already
         # shared stays the one that works.
-        assert first.token == second.token
+        assert first.token_hash == second.token_hash
 
     def test_two_courses_are_two_invitations(self, db: Session, admin: User) -> None:
         first_course = _course(db, "preaching-1")
@@ -457,7 +456,7 @@ class TestThePreviewSaysWhereItLeads:
         db.commit()
         invitation = _invitation(db, scope=InvitationScope.COURSE.value, course_id=course.id)
 
-        body = anon.post(f"{INVITATIONS_PREFIX}/preview", json={"token": invitation.token}).json()
+        body = anon.post(f"{INVITATIONS_PREFIX}/preview", json={"token": invitation_token(invitation.id)}).json()
 
         assert body["scope"] == "course"
         assert body["course_title"] == "Preaching Course I"
@@ -465,7 +464,7 @@ class TestThePreviewSaysWhereItLeads:
     def test_an_organization_invitation_names_no_course(self, anon: TestClient, db: Session, admin: User) -> None:
         invitation = _invitation(db)
 
-        body = anon.post(f"{INVITATIONS_PREFIX}/preview", json={"token": invitation.token}).json()
+        body = anon.post(f"{INVITATIONS_PREFIX}/preview", json={"token": invitation_token(invitation.id)}).json()
 
         assert body["scope"] == "organization"
         assert body["course_title"] is None

@@ -33,6 +33,7 @@ from app.models.enrollment import Enrollment
 from app.models.invitation import Invitation
 from app.models.organization import MembershipSource, MembershipStatus, Organization, OrganizationMember
 from app.models.user import User, UserRole
+from app.services.invitation_service import hash_invitation_token, invitation_token
 from app.services.memberships import directs, grant_student_memberships
 from app.services.students_at_risk import students_at_risk
 from tests._cv_helpers import make_course_with_text
@@ -111,7 +112,7 @@ def _pending_invitation(db: Session, *, email: str, organization_id: uuid.UUID, 
             role=role,
             scope="organization",
             organization_id=organization_id,
-            token=token,
+            token_hash=hash_invitation_token(token),
             invited_by=invited_by.id,
             status="pending",
             expires_at=datetime.now(UTC) + timedelta(days=7),
@@ -296,7 +297,7 @@ class TestAPlatformInvitation:
             headers={"X-Organization-Id": str(A_ID)},
         )
         assert resp.status_code == 201, resp.text
-        token = db.query(Invitation).filter(Invitation.email == "new@example.com").one().token
+        token = invitation_token(db.query(Invitation).filter(Invitation.email == "new@example.com").one().id)
         assert _as(db, newcomer).post("/api/v1/invitations/accept", json={"token": token}).status_code == 200
         db.refresh(newcomer)
         assert newcomer.role == UserRole.STUDENT.value
@@ -341,7 +342,7 @@ class TestAPlatformInvitation:
                 role="teacher",
                 scope="platform",
                 organization_id=A_ID,
-                token=token,
+                token_hash=hash_invitation_token(token),
                 invited_by=world["director_a"].id,
                 status="pending",
                 expires_at=datetime.now(UTC) + timedelta(days=7),
@@ -477,7 +478,6 @@ class TestThePlatformInvitationIsNotTheDirectors:
                 role="student",
                 scope="platform",
                 organization_id=A_ID,
-                token=uuid.uuid4().hex,
                 invited_by=world["admin"].id,
                 status="pending",
                 expires_at=datetime.now(UTC) - timedelta(days=1),
@@ -620,7 +620,9 @@ class TestASuspendedMembershipAndAnInvitation:
         assert row is not None and row.status == "suspended"
         db.refresh(person)
         assert person.role == UserRole.STUDENT.value
-        assert db.query(Invitation).filter(Invitation.token == token).one().status == "pending"
+        assert (
+            db.query(Invitation).filter(Invitation.token_hash == hash_invitation_token(token)).one().status == "pending"
+        )
 
 
 class TestADeactivatedInviter:
@@ -631,7 +633,7 @@ class TestADeactivatedInviter:
         director = world["director_a"]
         newcomer = _person(db, "late@example.com", UserRole.STUDENT.value)
         assert _invite(db, director, email=newcomer.email, role="teacher", scope="organization").status_code == 201
-        token = db.query(Invitation).filter(Invitation.email == newcomer.email).one().token
+        token = invitation_token(db.query(Invitation).filter(Invitation.email == newcomer.email).one().id)
 
         assert _as(db, world["admin"]).delete(f"/api/v1/users/admin/users/{director.id}").status_code == 204
 

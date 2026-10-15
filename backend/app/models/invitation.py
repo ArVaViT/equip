@@ -47,8 +47,12 @@ class InvitationScope(enum.StrEnum):
     COURSE = "course"
 
 
+#: How long a link is good for, from when it was last sent.
+INVITATION_LIFETIME = timedelta(days=7)
+
+
 def _default_expires_at() -> datetime:
-    return datetime.now(UTC) + timedelta(days=7)
+    return datetime.now(UTC) + INVITATION_LIFETIME
 
 
 class Invitation(Base):
@@ -91,8 +95,26 @@ class Invitation(Base):
     #: dangling row would answer the preview route with a course that
     #: does not exist.
     course_id: Mapped[str | None] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), default=None)
-    # ``unique=True`` already creates a B-tree index for token lookups.
-    token: Mapped[str] = mapped_column(unique=True)
+    #: SHA-256 (hex) of the link's token, never the token itself.
+    #:
+    #: The token is a bearer secret -- whoever holds it can join a school,
+    #: some of them as a teacher -- and until 2026-10-15 it sat here in
+    #: plain text, readable by anything that could read this table: a
+    #: backup, a support query, a leaked connection string. Now a reader of
+    #: the table learns which row a token *would* open and nothing that
+    #: opens it. The token itself is derived from the row's id with a
+    #: server-held key (``invitation_service.invitation_token``), so a
+    #: resend mails the same link again instead of killing the first one.
+    #: ``unique=True`` creates the B-tree index lookups go through.
+    #:
+    #: Nullable in the database until the rollout's second migration
+    #: (20261015230000): the previous backend wrote ``token`` and a trigger
+    #: filled this from it. The application always writes it.
+    token_hash: Mapped[str] = mapped_column(unique=True, nullable=True)
+    #: The plain token, as the previous backend stored it. Mapped only so the
+    #: models match the table during the rollout; this backend never reads or
+    #: writes it, and 20261015230000 drops it.
+    token: Mapped[str | None] = mapped_column(unique=True, default=None)
     status: Mapped[str] = mapped_column(default=InvitationStatus.PENDING.value)
     invited_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("profiles.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

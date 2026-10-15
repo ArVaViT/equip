@@ -31,6 +31,7 @@ from app.models.user import User, UserRole
 from app.services.invitation_service import (
     accept_invitation,
     create_or_resend_invitation,
+    invitation_token,
     revoke_invitation,
 )
 from tests.conftest import ADMIN_ID, TEST_ORGANIZATION_ID, leave_every_organization
@@ -79,7 +80,6 @@ def _invitation(
         role=role,
         scope=scope,
         course_id=course_id if scope == InvitationScope.COURSE.value else None,
-        token=uuid.uuid4().hex,
         invited_by=ADMIN_ID,
         organization_id=TEST_ORGANIZATION_ID,
     )
@@ -92,7 +92,7 @@ def _invitation(
 def _accept(db: Session, invitation: Invitation, *, email: str = INVITEE_EMAIL) -> Invitation:
     return accept_invitation(
         db,
-        token=invitation.token,
+        token=invitation_token(invitation.id),
         current_user_id=INVITEE_ID,
         current_user_email=email,
     )

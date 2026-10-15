@@ -65,6 +65,10 @@ export type ErrorCode =
   | "invitation.already_used"
   | "invitation.email_mismatch"
   | "invitation.inviter_not_staff"
+  | "invitation.account_exists"
+  // sign-in service
+  | "auth.weak_password"
+  | "auth.unavailable"
   // plan limits
   | "plan.limit_reached"
   // validation

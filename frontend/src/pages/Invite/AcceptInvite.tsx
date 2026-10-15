@@ -1,264 +1,216 @@
-import { Link, Navigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { Trans, useTranslation } from "react-i18next"
-import { CheckCircle2, Loader2, MailCheck, XCircle } from "lucide-react"
+import { Loader2, XCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import AuthLayout from "@/components/layout/AuthLayout"
 import { PasswordFields } from "@/components/auth/PasswordFields"
 import { GoogleIcon } from "@/pages/Auth/register/GoogleIcon"
-import { ROLE_I18N_KEY } from "@/lib/roles"
+import type { InvitationPreview } from "@/services/invitations"
 import { useAcceptInvite } from "./useAcceptInvite"
 
+/** Who is inviting, and to what — the first thing a person reads here. */
+function invitedBy(preview: InvitationPreview, t: (key: string, values?: Record<string, unknown>) => string): string {
+  const organization = preview.organization_name
+  if (!organization) return t("invite.from.platform")
+  if (preview.scope === "course") {
+    return preview.course_title
+      ? t("invite.from.course", { organization, course: preview.course_title })
+      : t("invite.from.courseUntitled", { organization })
+  }
+  return t(preview.role === "teacher" ? "invite.from.teach" : "invite.from.study", { organization })
+}
+
 /**
- * Public /invite/accept#token=... route (or ?token= from older letters) --
- * reads the token, previews the
- * invite (email/role/validity), then either shows a signup form (not
- * authenticated), an "Accept" button (already signed in under the
- * matching email), or a terminal state (invalid/expired/mismatch/done).
+ * Public /invite/accept#token=… (or ?token= from older letters).
+ *
+ * One screen per situation, and none of them waits on an email: the link
+ * was delivered to the invited address, so it proves what a confirmation
+ * would. No account yet → a form that creates one, signs in and goes
+ * straight to what the invitation offered. An account → sign in (password
+ * or Google) and the page accepts on its own. Signed in already → accepted
+ * on arrival.
  */
 export default function AcceptInvite() {
   const { t } = useTranslation()
   const {
     phase,
+    reason,
     preview,
+    previewError,
+    retryPreview,
+    retryAccept,
     form,
     errors,
     serverError,
     submitting,
     googleLoading,
-    acceptedRole,
-    enrolledCourseId,
+    invitePath,
     currentUserEmail,
     passwordAffordances,
     handleChange,
     handleSubmit,
-    handleGoogleSignUp,
-    acceptNow,
+    handleGoogle,
     logout,
-    previewError,
-    retryPreview,
-    rememberInviteForSignIn,
   } = useAcceptInvite()
 
-  if (phase === "loading") {
+  const heading = t("invite.heading")
+  const subheading = preview ? invitedBy(preview, t) : undefined
+
+  if (phase === "loading" || phase === "accepting") {
     return (
-      <AuthLayout heading={t("invite.heading")}>
+      <AuthLayout heading={heading} subheading={subheading}>
         <div className="flex justify-center py-10">
-          <Loader2 className="h-6 w-6 animate-spin text-ink-muted" aria-hidden />
+          <Loader2 className="h-6 w-6 animate-spin text-ink-muted" strokeWidth={1.75} aria-hidden />
         </div>
       </AuthLayout>
     )
   }
 
-  if (phase === "unavailable") {
+  const notice = (message: React.ReactNode, tone: "warning" | "destructive") => (
+    <div className="flex flex-col items-center gap-4 py-4 text-center animate-fade-in">
+      <div
+        className={
+          tone === "warning"
+            ? "flex h-16 w-16 items-center justify-center rounded-md bg-warning/10"
+            : "flex h-16 w-16 items-center justify-center rounded-md bg-destructive/10"
+        }
+      >
+        <XCircle
+          className={tone === "warning" ? "h-8 w-8 text-warning-ink" : "h-8 w-8 text-destructive-ink"}
+          strokeWidth={1.75}
+          aria-hidden
+        />
+      </div>
+      <p role="alert" className="text-sm text-ink-muted leading-relaxed">
+        {message}
+      </p>
+    </div>
+  )
+
+  if (phase === "unavailable" || phase === "acceptFailed") {
     return (
-      <AuthLayout heading={t("invite.heading")}>
-        <div className="flex flex-col items-center gap-4 py-4 text-center animate-fade-in">
-          <div className="flex h-16 w-16 items-center justify-center rounded-md bg-warning/10">
-            <XCircle className="h-8 w-8 text-warning-ink" strokeWidth={1.75} aria-hidden />
-          </div>
-          <p role="alert" className="text-sm text-ink-muted leading-relaxed">
-            {previewError}
-          </p>
-          <Button size="lg" className="w-full" onClick={retryPreview}>
-            {t("common.tryAgain")}
-          </Button>
-        </div>
-      </AuthLayout>
-    )
-  }
-
-  if (phase === "invalid" || phase === "unusable") {
-    return (
-      <AuthLayout heading={t("invite.heading")}>
-        <div className="flex flex-col items-center gap-4 py-4 text-center animate-fade-in">
-          <div className="flex h-16 w-16 items-center justify-center rounded-md bg-destructive/10">
-            <XCircle className="h-8 w-8 text-destructive-ink" strokeWidth={1.75} aria-hidden />
-          </div>
-          <p className="text-sm text-ink-muted leading-relaxed">
-            {phase === "invalid" ? t("invite.errors.notFound") : t("invite.errors.unusable")}
-          </p>
-          <Link to="/login" className="block w-full">
-            <Button variant="outline" size="lg" className="w-full">
-              {t("authRegister.duplicate.goToSignIn")}
-            </Button>
-          </Link>
-        </div>
-      </AuthLayout>
-    )
-  }
-
-  if (phase === "alreadyIn") {
-    return (
-      <AuthLayout heading={t("invite.heading")}>
-        <div className="flex flex-col items-center gap-4 py-4 text-center animate-fade-in">
-          <div className="flex h-16 w-16 items-center justify-center rounded-md bg-success/10">
-            <CheckCircle2 className="h-8 w-8 text-success-ink" strokeWidth={1.75} aria-hidden />
-          </div>
-          <p className="text-sm text-ink-muted leading-relaxed">
-            <Trans
-              i18nKey="invite.alreadyIn"
-              values={{ email: preview?.email }}
-              components={{ strong: <strong className="text-ink" /> }}
-            />
-          </p>
-          <Link to="/login" className="block w-full" onClick={rememberInviteForSignIn}>
-            <Button size="lg" className="w-full">
-              {t("authRegister.duplicate.goToSignIn")}
-            </Button>
-          </Link>
-        </div>
-      </AuthLayout>
-    )
-  }
-
-  if (phase === "awaitingConfirmation") {
-    return (
-      <AuthLayout heading={t("invite.heading")}>
-        <div className="flex flex-col items-center gap-4 py-4 text-center animate-fade-in">
-          <div className="flex h-16 w-16 items-center justify-center rounded-md bg-brand/10">
-            <MailCheck className="h-8 w-8 text-brand-ink" strokeWidth={1.75} aria-hidden />
-          </div>
-          <p className="text-sm text-ink-muted leading-relaxed">
-            <Trans
-              i18nKey="authRegister.success.body"
-              values={{ email: preview?.email }}
-              components={{ strong: <strong className="text-ink" /> }}
-            />
-            <br />
-            {t("invite.confirmThenReturn")}
-          </p>
-        </div>
-      </AuthLayout>
-    )
-  }
-
-  if (phase === "done") {
-    return (
-      <AuthLayout heading={t("invite.heading")}>
-        <div className="flex flex-col items-center gap-4 py-4 text-center animate-fade-in">
-          <div className="flex h-16 w-16 items-center justify-center rounded-md bg-success/10">
-            <CheckCircle2 className="h-8 w-8 text-success-ink" strokeWidth={1.75} aria-hidden />
-          </div>
-          <p className="text-sm text-ink-muted leading-relaxed">
-            {acceptedRole
-              ? t("invite.acceptedAs", { role: t(ROLE_I18N_KEY[acceptedRole as "teacher" | "student"]) })
-              : t("invite.accepted")}
-          </p>
-          {/* Straight into the course when there is one. Somebody
-              invited onto a course came for the course; the dashboard
-              is a detour they then have to find their way out of. */}
-          <Link to={enrolledCourseId ? `/courses/${enrolledCourseId}` : "/"} className="block w-full">
-            <Button size="lg" className="w-full">
-              {enrolledCourseId ? t("invite.openCourse") : t("invite.goToDashboard")}
-            </Button>
-          </Link>
-        </div>
-      </AuthLayout>
-    )
-  }
-
-  if (phase === "mismatch") {
-    return (
-      <AuthLayout heading={t("invite.heading")}>
-        <div className="flex flex-col items-center gap-4 py-4 text-center animate-fade-in">
-          <div className="flex h-16 w-16 items-center justify-center rounded-md bg-warning/10">
-            <XCircle className="h-8 w-8 text-warning-ink" strokeWidth={1.75} aria-hidden />
-          </div>
-          <p className="text-sm text-ink-muted leading-relaxed">
-            <Trans
-              i18nKey="invite.errors.emailMismatchDetail"
-              values={{ invited: preview?.email, current: currentUserEmail }}
-              components={{ strong: <strong className="text-ink" /> }}
-            />
-          </p>
-          <Button variant="outline" size="lg" className="w-full" onClick={() => void logout()}>
-            {t("invite.logOutAndSwitch")}
-          </Button>
-        </div>
-      </AuthLayout>
-    )
-  }
-
-  if (phase === "ready" && preview) {
-    return (
-      <AuthLayout heading={t("invite.heading")}>
-        <div className="flex flex-col items-center gap-4 py-4 text-center animate-fade-in">
-          {serverError && (
-            <div role="alert" className="w-full text-sm text-destructive-ink bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
-              {serverError}
-            </div>
-          )}
-          <p className="text-sm text-ink-muted leading-relaxed">
-            <Trans
-              i18nKey="invite.readyBody"
-              values={{ email: currentUserEmail, role: t(ROLE_I18N_KEY[preview.role]) }}
-              components={{ strong: <strong className="text-ink" /> }}
-            />
-          </p>
-          <Button size="lg" className="w-full" onClick={() => void acceptNow()} disabled={phase !== "ready"}>
-            {t("invite.acceptButton")}
-          </Button>
-        </div>
-      </AuthLayout>
-    )
-  }
-
-  if (phase === "accepting") {
-    return (
-      <AuthLayout heading={t("invite.heading")}>
-        <div className="flex justify-center py-10">
-          <Loader2 className="h-6 w-6 animate-spin text-ink-muted" aria-hidden />
-        </div>
-      </AuthLayout>
-    )
-  }
-
-  // phase === "form": not authenticated -- signup form bound to the
-  // invited email + role.
-  if (!preview) return <Navigate to="/login" replace />
-
-  return (
-    <AuthLayout
-      heading={t("invite.heading")}
-      subheading={t("invite.formSubheading", { role: t(ROLE_I18N_KEY[preview.role]) })}
-    >
-      <div className="space-y-6 animate-fade-in">
-        {serverError && (
-          <div role="alert" className="text-sm text-destructive-ink bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
-            {serverError}
-          </div>
-        )}
-
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className="w-full font-medium rounded-md"
-          onClick={() => void handleGoogleSignUp()}
-          disabled={googleLoading || submitting}
-        >
-          {googleLoading ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />
-              {t("auth.connecting")}
-            </>
-          ) : (
-            <>
-              <GoogleIcon className="h-4 w-4 mr-2.5" />
-              {t("auth.continueWithGoogle")}
-            </>
-          )}
+      <AuthLayout heading={heading} subheading={subheading}>
+        {notice(phase === "unavailable" ? previewError : t("invite.errors.acceptFailed"), "warning")}
+        <Button size="lg" className="w-full" onClick={phase === "unavailable" ? retryPreview : retryAccept}>
+          {t("common.tryAgain")}
         </Button>
+      </AuthLayout>
+    )
+  }
 
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-surface px-3 text-ink-muted">{t("authRegister.orRegisterEmail")}</span>
-          </div>
+  if (phase === "invalid") {
+    return (
+      <AuthLayout heading={heading}>
+        {notice(t("invite.errors.notFound"), "destructive")}
+      </AuthLayout>
+    )
+  }
+
+  if (phase === "unusable" && reason) {
+    return (
+      <AuthLayout heading={heading} subheading={subheading}>
+        {notice(t(`invite.unusable.${reason}`), reason === "used" ? "warning" : "destructive")}
+        {/* Only a used link has a next step on this screen; the others are
+            a word to whoever sent it, and the copy says so. */}
+        {reason === "used" && (
+          <Link to={currentUserEmail ? "/" : "/login"} className="block w-full">
+            <Button size="lg" className="w-full">
+              {currentUserEmail ? t("invite.goToDashboard") : t("auth.signIn")}
+            </Button>
+          </Link>
+        )}
+      </AuthLayout>
+    )
+  }
+
+  if (phase === "mismatch" && preview) {
+    return (
+      <AuthLayout heading={heading} subheading={subheading}>
+        {notice(
+          <Trans
+            i18nKey="invite.errors.emailMismatchDetail"
+            values={{ invited: preview.email, current: currentUserEmail }}
+            components={{ strong: <strong className="text-ink" /> }}
+          />,
+          "warning",
+        )}
+        <Button variant="outline" size="lg" className="w-full" onClick={() => void logout()}>
+          {t("invite.logOutAndSwitch")}
+        </Button>
+      </AuthLayout>
+    )
+  }
+
+  if (!preview) return null
+
+  const googleButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="lg"
+      className="w-full font-medium rounded-md"
+      onClick={() => void handleGoogle()}
+      disabled={googleLoading || submitting}
+    >
+      {googleLoading ? (
+        <>
+          <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />
+          {t("auth.connecting")}
+        </>
+      ) : (
+        <>
+          <GoogleIcon className="h-4 w-4 mr-2.5" />
+          {t("auth.continueWithGoogle")}
+        </>
+      )}
+    </Button>
+  )
+
+  const errorBox = serverError && (
+    <div role="alert" className="text-sm text-destructive-ink bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
+      {serverError}
+    </div>
+  )
+
+  if (phase === "signIn") {
+    return (
+      <AuthLayout heading={heading} subheading={subheading}>
+        <div className="space-y-6 animate-fade-in">
+          {errorBox}
+          <p className="text-sm text-ink-muted leading-relaxed">
+            <Trans
+              i18nKey="invite.hasAccount"
+              values={{ email: preview.email }}
+              components={{ strong: <strong className="text-ink" /> }}
+            />
+          </p>
+          {/* The sign-in page brings them back here, signed in, and this page
+              accepts on its own. */}
+          <Link to="/login" state={{ from: invitePath, email: preview.email }} className="block">
+            <Button size="lg" className="w-full">
+              {t("auth.signIn")}
+            </Button>
+          </Link>
+          {googleButton}
+        </div>
+      </AuthLayout>
+    )
+  }
+
+  // phase === "form": no account at the invited address yet.
+  return (
+    <AuthLayout heading={heading} subheading={subheading}>
+      <div className="space-y-6 animate-fade-in">
+        {errorBox}
+
+        {googleButton}
+
+        <div className="flex items-center gap-3 text-xs uppercase text-ink-muted">
+          <div className="h-px flex-1 bg-border" />
+          <span>{t("authRegister.orRegisterEmail")}</span>
+          <div className="h-px flex-1 bg-border" />
         </div>
 
         <form
@@ -306,7 +258,7 @@ export default function AcceptInvite() {
             onGeneratePassword={passwordAffordances.generate}
           />
 
-          <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+          <Button type="submit" size="lg" className="w-full" disabled={submitting || googleLoading}>
             {submitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />

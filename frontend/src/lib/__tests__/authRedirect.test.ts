@@ -95,6 +95,12 @@ describe("rememberReturnPath / takeReturnPath", () => {
     expect(localStorage.getItem("equip:returnTo")).toBeNull()
   })
 
+  it("keeps an invitation's path, which carries its token, in the tab alone", () => {
+    rememberReturnPath({ from: "/invite/accept#token=secret-token" })
+    expect(window.localStorage.getItem("equip:returnTo")).toBeNull()
+    expect(takeReturnPath()).toBe("/invite/accept#token=secret-token")
+  })
+
   it("can be looked at without being spent — a render may run twice", () => {
     rememberReturnPath({ from: "/courses/c-1/chapters/ch-2" })
     expect(peekReturnPath()).toBe("/courses/c-1/chapters/ch-2")

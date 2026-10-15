@@ -19,6 +19,7 @@ from app.core.database import get_db
 from app.main import app
 from app.models.invitation import Invitation
 from app.models.user import User, UserRole
+from app.services.invitation_service import hash_invitation_token, invitation_token
 from tests._cv_helpers import make_course_with_text
 from tests.conftest import ADMIN_ID, TEST_ORGANIZATION_ID
 
@@ -42,7 +43,7 @@ def _seed_invitation(db: Session, *, email: str, role: str, invited_by: uuid.UUI
     that with two conflicting-identity TestClients in one test, so admin
     invite creation is seeded directly here instead of through the API.
     """
-    invitation = Invitation(email=email, role=role, token=uuid.uuid4().hex, invited_by=invited_by)
+    invitation = Invitation(email=email, role=role, invited_by=invited_by)
     db.add(invitation)
     db.commit()
     db.refresh(invitation)
@@ -196,15 +197,10 @@ def test_the_list_names_where_each_invitation_leads(
             role="student",
             scope="course",
             course_id=course.id,
-            token=uuid.uuid4().hex,
             invited_by=ADMIN_ID,
         )
     )
-    db.add(
-        Invitation(
-            email="account@example.com", role="student", scope="platform", token=uuid.uuid4().hex, invited_by=ADMIN_ID
-        )
-    )
+    db.add(Invitation(email="account@example.com", role="student", scope="platform", invited_by=ADMIN_ID))
     db.commit()
     admin_client.post(INVITATIONS_PREFIX, json={"email": "member@example.com", "role": "student", "age_attested": True})
 
@@ -251,7 +247,7 @@ def test_preview_invitation_by_token_ok(admin_client: TestClient, anon_client: T
     admin_client.post(
         INVITATIONS_PREFIX, json={"email": "preview@example.com", "role": "teacher", "age_attested": True}
     )
-    token = db.query(Invitation).filter(Invitation.email == "preview@example.com").one().token
+    token = invitation_token(db.query(Invitation).filter(Invitation.email == "preview@example.com").one().id)
 
     resp = anon_client.post(f"{INVITATIONS_PREFIX}/preview", json={"token": token})
     assert resp.status_code == 200, resp.text
@@ -277,7 +273,7 @@ def test_a_token_is_no_longer_read_from_the_path(admin_client: TestClient, anon_
     would keep writing live tokens into a log nothing here can redact.
     """
     admin_client.post(INVITATIONS_PREFIX, json={"email": "stale@example.com", "role": "student", "age_attested": True})
-    token = db.query(Invitation).filter(Invitation.email == "stale@example.com").one().token
+    token = invitation_token(db.query(Invitation).filter(Invitation.email == "stale@example.com").one().id)
 
     assert anon_client.get(f"{INVITATIONS_PREFIX}/token/{token}").status_code == 404
     assert anon_client.post(f"{INVITATIONS_PREFIX}/preview", json={"token": token}).status_code == 200
@@ -289,7 +285,7 @@ def test_a_token_is_no_longer_read_from_the_path(admin_client: TestClient, anon_
 
 
 def test_accept_invitation_promotes_role(invitee_client: TestClient, db: Session):
-    token = _seed_invitation(db, email=INVITEE_EMAIL, role="teacher").token
+    token = invitation_token(_seed_invitation(db, email=INVITEE_EMAIL, role="teacher").id)
 
     resp = invitee_client.post(f"{INVITATIONS_PREFIX}/accept", json={"token": token})
     assert resp.status_code == 200, resp.text
@@ -297,13 +293,13 @@ def test_accept_invitation_promotes_role(invitee_client: TestClient, db: Session
 
     updated = db.query(User).filter(User.id == INVITEE_ID).one()
     assert updated.role == "teacher"
-    row = db.query(Invitation).filter(Invitation.token == token).one()
+    row = db.query(Invitation).filter(Invitation.token_hash == hash_invitation_token(token)).one()
     assert row.status == "accepted"
     assert row.accepted_at is not None
 
 
 def test_accept_invitation_rejects_replay(invitee_client: TestClient, db: Session):
-    token = _seed_invitation(db, email=INVITEE_EMAIL, role="teacher").token
+    token = invitation_token(_seed_invitation(db, email=INVITEE_EMAIL, role="teacher").id)
 
     first = invitee_client.post(f"{INVITATIONS_PREFIX}/accept", json={"token": token})
     assert first.status_code == 200
@@ -324,14 +320,14 @@ def test_accept_invitation_rejects_expired(invitee_client: TestClient, db: Sessi
     row.expires_at = datetime.now(UTC) - timedelta(days=1)
     db.commit()
 
-    resp = invitee_client.post(f"{INVITATIONS_PREFIX}/accept", json={"token": row.token})
+    resp = invitee_client.post(f"{INVITATIONS_PREFIX}/accept", json={"token": invitation_token(row.id)})
     assert resp.status_code == 410, resp.text
     assert resp.json()["detail"]["code"] == "invitation.expired"
 
 
 def test_accept_invitation_rejects_email_mismatch(invitee_client: TestClient, db: Session):
     # Invite issued to a DIFFERENT email than the authenticated caller's.
-    token = _seed_invitation(db, email="someone.else@example.com", role="teacher").token
+    token = invitation_token(_seed_invitation(db, email="someone.else@example.com", role="teacher").id)
 
     resp = invitee_client.post(f"{INVITATIONS_PREFIX}/accept", json={"token": token})
     assert resp.status_code == 403, resp.text
@@ -382,7 +378,7 @@ def test_revoking_stops_the_link_from_working(admin_client: TestClient, db: Sess
     assert row is not None
     # The token itself still exists; what changed is that it is no longer
     # redeemable, which is what `accept_invitation` checks first.
-    preview = admin_client.post(f"{INVITATIONS_PREFIX}/preview", json={"token": row.token})
+    preview = admin_client.post(f"{INVITATIONS_PREFIX}/preview", json={"token": invitation_token(row.id)})
     assert preview.status_code in (200, 404, 410)
     if preview.status_code == 200:
         assert preview.json()["status"] == "revoked"

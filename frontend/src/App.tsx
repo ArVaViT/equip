@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useRef, useSyncExternalStore } from "react"
 import { lazyRoute } from "@/lib/lazyRoute"
-import { BrowserRouter, Route, Navigate, useLocation, useNavigate } from "react-router-dom"
+import { BrowserRouter, Route, Navigate, useLocation } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Routes } from "@datadog/browser-rum-react/react-router-v6"
 import { AuthProvider } from "./context/AuthContext"
@@ -21,8 +21,6 @@ import ScrollToTop from "./components/layout/ScrollToTop";
 import { MobileTabBar } from "./components/layout/MobileTabBar";
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useGrandTour } from "@/hooks/useGrandTour"
-import { takePendingInviteToken } from "@/lib/pendingInvite"
-import { inviteAcceptPath } from "@/lib/inviteLink"
 import { peekReturnPath, returnPathFrom, takeReturnPath } from "@/lib/authRedirect"
 import { canDirect, canTeach } from "@/lib/roles"
 import { DeniedRedirect } from "@/components/auth/DeniedRedirect"
@@ -194,29 +192,6 @@ const AUTH_PATHS = [
   "/invite/accept",
 ]
 
-/**
- * Resumes an in-progress invite redemption after a full-page redirect
- * (Google OAuth, or clicking the "confirm your email" link) lands the
- * visitor back on the app authenticated but on an unrelated route.
- * AcceptInvite persists the token via `setPendingInviteToken` right
- * before either redirect kicks off; this picks it up once `user`
- * becomes non-null and finishes the trip back to `/invite/accept`.
- * `takePendingInviteToken` clears the stored value on read, so this is
- * naturally a no-op on every render after the first.
- */
-function useResumePendingInvite() {
-  const { user } = useAuth()
-  const location = useLocation()
-  const navigate = useNavigate()
-  useEffect(() => {
-    if (!user) return
-    if (location.pathname === "/invite/accept") return
-    const token = takePendingInviteToken()
-    if (token) navigate(inviteAcceptPath(token), { replace: true })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id])
-}
-
 function AppRoutes() {
   const { loading, user } = useAuth()
   const location = useLocation()
@@ -227,7 +202,6 @@ function AppRoutes() {
   useLocaleSync()
   useTimeZoneSync()
   useRouteFocus()
-  useResumePendingInvite()
   // Grand tour lives here so it has access to React Router (for
   // programmatic navigation between steps) and AuthContext (for the
   // role gate). Mounts after auth is resolved; the hook itself gates
@@ -252,7 +226,7 @@ function AppRoutes() {
             <Route path="/auth/confirm" element={<AuthCallback />} />
             {/* No <Gate> -- must render correctly for both an anonymous
                 visitor (fresh invite link) and an authenticated one
-                (bounced back here after Google OAuth / email confirm). */}
+                (back here from Google or the sign-in page). */}
             <Route path="/invite/accept" element={<AcceptInvite />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>

@@ -276,7 +276,7 @@ END $$;
 
 DO $$
 BEGIN
-  INSERT INTO public.invitations (email, role, token)
+  INSERT INTO public.invitations (email, role, token_hash)
   VALUES ('self@test.local', 'teacher', 'forged-token');
   RAISE EXCEPTION 'SECURITY HOLE: authenticated can INSERT invitations (self-promotion to teacher)';
 EXCEPTION
