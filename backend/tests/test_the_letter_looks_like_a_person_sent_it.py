@@ -23,7 +23,6 @@ signal a recipient can give in our favour.
 
 from __future__ import annotations
 
-import uuid
 from typing import TYPE_CHECKING
 
 from app.models.invitation import Invitation, InvitationScope
@@ -47,7 +46,6 @@ def _invitation(db: Session) -> Invitation:
         email="newcomer@example.com",
         role=UserRole.STUDENT.value,
         scope=InvitationScope.ORGANIZATION.value,
-        token=uuid.uuid4().hex,
         invited_by=ADMIN_ID,
         organization_id=TEST_ORGANIZATION_ID,
     )

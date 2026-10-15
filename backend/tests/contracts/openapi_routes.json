@@ -2799,6 +2799,16 @@
     "body": true
   },
   {
+    "method": "POST",
+    "path": "/api/v1/invitations/register",
+    "params": [],
+    "responses": [
+      "201",
+      "422"
+    ],
+    "body": true
+  },
+  {
     "method": "DELETE",
     "path": "/api/v1/invitations/{invitation_id}",
     "params": [

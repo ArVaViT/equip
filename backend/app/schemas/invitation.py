@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 from app.schemas._request import RequestModel
+from app.schemas.locale import LocaleCode
 
 # Mirrors the Postgres CHECK constraints on invitations.role / .status
 # (see supabase/migrations/20260707120000_add_invitations_table.sql) and
@@ -17,6 +18,8 @@ InvitationStatusLiteral = Literal["pending", "accepted", "revoked", "fulfilled"]
 # Mirrors chk_invitations_scope. What accepting grants: an account, a
 # membership, or a membership plus a seat on one course.
 InvitationScopeLiteral = Literal["platform", "organization", "course"]
+#: Mirrors ``invitation_service.UnusableReason``.
+UnusableReasonLiteral = Literal["expired", "used", "revoked", "inviter_left", "course_gone"]
 
 
 class InvitationCreate(RequestModel):
@@ -127,8 +130,21 @@ class InvitationPreview(BaseModel):
     role: InvitationRoleLiteral
     scope: InvitationScopeLiteral
     course_title: str | None = None
+    #: Who is inviting, by the name the organization shows the public. A
+    #: person deciding whether to accept is told by whom before anything
+    #: else; ``None`` for a platform invitation, which comes from no school.
+    organization_name: str | None = None
     status: InvitationStatusLiteral
     is_expired: bool
+    #: Why the link admits nobody now, or ``None`` when it still does --
+    #: including the two reasons ``status`` cannot show: the course is gone,
+    #: or its sender no longer speaks for the school.
+    unusable_reason: UnusableReasonLiteral | None = None
+    #: The invited address already has a confirmed account, so the page asks
+    #: the person to sign in instead of handing them a form that can only end
+    #: in "this account exists". Told only to the holder of the link, which
+    #: was delivered to that very address.
+    has_account: bool = False
 
 
 class InvitationPreviewRequest(RequestModel):
@@ -141,9 +157,34 @@ class InvitationAcceptRequest(RequestModel):
     token: str = Field(min_length=1, max_length=128)
 
 
+class InvitationRegisterRequest(RequestModel):
+    """Create the invited person's account from the link.
+
+    No email: the account is made for the address the invitation was sent
+    to, which is the only address the link proves.
+    """
+
+    token: str = Field(min_length=1, max_length=128)
+    full_name: str = Field(min_length=2, max_length=200)
+    #: Supabase Auth judges the password itself (minimum length, known
+    #: breaches); the bound here only refuses a body nobody could mean.
+    password: str = Field(min_length=1, max_length=200)
+    locale: LocaleCode
+
+    @model_validator(mode="after")
+    def _a_name_is_not_blank(self) -> "InvitationRegisterRequest":
+        self.full_name = self.full_name.strip()
+        if len(self.full_name) < 2:
+            raise ValueError("full_name must have at least two characters")
+        return self
+
+
 class InvitationAcceptResponse(BaseModel):
     role: InvitationRoleLiteral
     #: What the acceptance actually did, so the page can say "you are
     #: enrolled" rather than guessing from the scope it asked for.
     scope: InvitationScopeLiteral
     enrolled_course_id: str | None = None
+    #: The address the account holds, so a page that has just created it can
+    #: sign in under it without trusting what it had on screen.
+    email: str

@@ -91,12 +91,14 @@ class TestTheSchoolIsAlreadyInTheCourse:
         """A link somebody already has in their inbox must keep working."""
         first, _ = courses
         original, _ = _invite(db, scope=InvitationScope.COURSE.value, course_id=first)
-        token, expires = original.token, original.expires_at
+        token_hash = original.token_hash
 
         again, _ = _invite(db, scope=InvitationScope.ORGANIZATION.value)
 
-        assert again.token == token
-        assert again.expires_at == expires
+        # The same link, its seven days started over: the person asking for a
+        # resend is asking for a link that works.
+        assert again.id == original.id
+        assert again.token_hash == token_hash
 
     def test_inviting_to_a_course_retires_a_bare_school_invitation(self, db: Session, courses) -> None:
         """The other direction: the new offer grants strictly more.

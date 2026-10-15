@@ -235,7 +235,6 @@ class TestInvitations:
             id=uuid.uuid4(),
             email="recruit@example.com",
             role=UserRole.TEACHER.value,
-            token=f"tok-{uuid.uuid4()}",
             invited_by=their_director.id,
             organization_id=THEIR_ORGANIZATION_ID,
             expires_at=datetime.now(UTC) + timedelta(days=7),

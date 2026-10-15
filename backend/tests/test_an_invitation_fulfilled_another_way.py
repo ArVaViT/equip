@@ -34,7 +34,7 @@ from app.models.invitation import Invitation, InvitationScope, InvitationStatus
 from app.models.organization import OrganizationMember
 from app.models.user import User, UserRole
 from app.schemas.invitation import InvitationStatusLiteral
-from app.services.invitation_service import accept_invitation, revoke_invitation
+from app.services.invitation_service import accept_invitation, invitation_token, revoke_invitation
 from tests.conftest import ADMIN_ID, TEST_ORGANIZATION_ID, leave_every_organization
 
 if TYPE_CHECKING:
@@ -79,7 +79,6 @@ def _fulfilled_course_invitation(db: Session) -> Invitation:
         role=UserRole.STUDENT.value,
         scope=InvitationScope.COURSE.value,
         course_id=COURSE_ID,
-        token=uuid.uuid4().hex,
         invited_by=ADMIN_ID,
         organization_id=TEST_ORGANIZATION_ID,
         status=InvitationStatus.FULFILLED.value,
@@ -98,7 +97,7 @@ class TestTheInviteeCanStillUseTheLink:
         invitation = _fulfilled_course_invitation(db)
 
         result = accept_invitation(
-            db, token=invitation.token, current_user_id=INVITEE_ID, current_user_email=INVITEE_EMAIL
+            db, token=invitation_token(invitation.id), current_user_id=INVITEE_ID, current_user_email=INVITEE_EMAIL
         )
 
         # Still "fulfilled": that is how the person actually arrived.
@@ -119,7 +118,7 @@ class TestTheInviteeCanStillUseTheLink:
         with pytest.raises(HTTPException) as exc:
             accept_invitation(
                 db,
-                token=invitation.token,
+                token=invitation_token(invitation.id),
                 current_user_id=INVITEE_ID,
                 current_user_email="someone-else@example.com",
             )

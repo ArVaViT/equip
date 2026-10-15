@@ -90,6 +90,11 @@ ENDPOINT_LIMITS: dict[str, tuple[int, int]] = {
     # (the path version stays for stale bundles only). Same ceiling, same
     # reason.
     "/api/v1/invitations/preview": (30, 60),
+    # Creating an account from an invitation link. Public, writes to
+    # Supabase Auth, and each guess is a password tried against a token, so
+    # tighter than the preview: a person gets it right in one or two tries
+    # (a password refused as breached is the usual second one).
+    "/api/v1/invitations/register": (10, 60),
     # Admin create/list + the authenticated accept-by-token route share
     # this bucket. Mirrors the admin-mutation ceiling above; accept is a
     # one-time action per invitee so 30/min/IP is generous.

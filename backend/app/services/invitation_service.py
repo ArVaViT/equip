@@ -1,19 +1,23 @@
 from __future__ import annotations
 
-import secrets
+import base64
+import hashlib
+import hmac
 import uuid
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from fastapi import status
+from sqlalchemy import func
 
 from app.core.config import settings
 from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import increment, timing
 from app.models.course import Course
-from app.models.invitation import Invitation, InvitationScope, InvitationStatus
+from app.models.invitation import INVITATION_LIFETIME, Invitation, InvitationScope, InvitationStatus
 from app.models.organization import STAFF_ROLES, MembershipSource
 from app.models.user import User
+from app.services import auth_admin
 from app.services.audit_service import log_action
 from app.services.course_service._enrollment import enroll_user_in_course
 from app.services.email.invitation import send_invitation_email
@@ -28,11 +32,64 @@ if TYPE_CHECKING:
 
     from app.schemas.locale import LocaleCode
 
-_TOKEN_BYTES = 32
+
+#: Why a link admits nobody, as the accept page names it. ``used`` covers
+#: accepted; a fulfilled invitation is still honoured for its invitee and is
+#: not here.
+UnusableReason = Literal["expired", "used", "revoked", "inviter_left", "course_gone"]
 
 
-def _generate_token() -> str:
-    return secrets.token_urlsafe(_TOKEN_BYTES)
+def _token_key() -> bytes:
+    """A key of the invitation link's own, derived from the server secret.
+
+    The same derivation the unsubscribe link uses (``email/course_mail.py``):
+    a key nothing else accepts, rather than the secret itself.
+    """
+    if not settings.JWT_SECRET_KEY:
+        raise RuntimeError("JWT_SECRET_KEY is not configured")
+    return hmac.new(settings.JWT_SECRET_KEY.encode(), b"equip-invitation-link", hashlib.sha256).digest()
+
+
+def invitation_token(invitation_id: uuid.UUID) -> str:
+    """The secret in an invitation's link, computed rather than stored.
+
+    Derived from the row's id with a server-held key, so the database never
+    holds it -- it holds ``hash_invitation_token`` of it -- and yet a resend
+    can mail the very same link again. A token that had to be stored to be
+    resent would have to be stored in a form that opens the invitation;
+    a fresh random token on every resend would kill the link in the first
+    letter, which is exactly what made Supabase's own repeated confirmation
+    mails so confusing: three letters, and only the last one works.
+    """
+    digest = hmac.new(_token_key(), str(invitation_id).encode(), hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
+
+
+def hash_invitation_token(token: str) -> str:
+    """What the table stores and looks up: SHA-256 of the token, hex.
+
+    The same function as the migration's backfill,
+    ``encode(sha256(convert_to(token, 'UTF8')), 'hex')``, so links mailed
+    before the table stopped holding tokens still open.
+    """
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def issue_token(invitation: Invitation) -> str:
+    """Give ``invitation`` its id and its token's hash; return the token.
+
+    Called for a new row and again on every resend. For a row written since
+    the derivation existed the hash comes out the same, and the link already
+    in somebody's inbox keeps working. A row from before it held a random
+    token that is no longer anywhere to be read: its resend replaces the
+    hash, and the older letter's link with it -- for rows at most seven days
+    old on the day this shipped.
+    """
+    if invitation.id is None:
+        invitation.id = uuid.uuid4()
+    token = invitation_token(invitation.id)
+    invitation.token_hash = hash_invitation_token(token)
+    return token
 
 
 def is_invitation_expired(invitation: Invitation) -> bool:
@@ -73,7 +130,7 @@ def _inviter_locale(db: Session, invited_by: uuid.UUID | str | None) -> LocaleCo
     return preferred_locale_of(db, invited_by)
 
 
-def _mail_the_invitation(db: Session, invitation: Invitation, *, invited_by: UUID) -> None:
+def _mail_the_invitation(db: Session, invitation: Invitation, *, token: str, invited_by: UUID) -> None:
     """Send the invitation, in the inviting person's language and name.
 
     Delivery is deliberately not checked: the row and its token already
@@ -86,7 +143,7 @@ def _mail_the_invitation(db: Session, invitation: Invitation, *, invited_by: UUI
     send_invitation_email(
         db,
         invitation,
-        accept_url=_accept_url(invitation.token),
+        accept_url=_accept_url(token),
         locale=_inviter_locale(db, invited_by),
         inviter_name=inviter.full_name if inviter else None,
         inviter_email=inviter.email if inviter else None,
@@ -213,9 +270,10 @@ def create_or_resend_invitation(
     school inviting the same person onto two courses hit the same index
     from the other side.
 
-    A resend does NOT rotate the token or reset ``expires_at`` -- a link
-    already shared stays valid on its original clock. An
-    expired-but-still-``pending`` row is revoked first so the fresh
+    A resend mails the same link again (``issue_token``) and starts its
+    seven days over: somebody asking for a resend on day six is asking for
+    a link that works, and until 2026-10-15 they got one that died the next
+    day. An expired-but-still-``pending`` row is revoked first so the fresh
     insert does not collide with the index.
 
     **Scopes are not peers.** A course invitation grants school
@@ -277,9 +335,11 @@ def create_or_resend_invitation(
         # stored is who last stood behind the invitation that is live.
         standing.age_attested_at = datetime.now(UTC)
         standing.age_attested_by = invited_by
+        standing.expires_at = datetime.now(UTC) + INVITATION_LIFETIME
+        token = issue_token(standing)
         db.commit()
         increment("equip.invitations.created_total", scope=scope, role=role, kind="resend")
-        _mail_the_invitation(db, standing, invited_by=invited_by)
+        _mail_the_invitation(db, standing, token=token, invited_by=invited_by)
         return standing, False
 
     # A platform row and a school row for the same address may both be
@@ -307,11 +367,11 @@ def create_or_resend_invitation(
         role=role,
         scope=scope,
         course_id=course_id,
-        token=_generate_token(),
         invited_by=invited_by,
         age_attested_at=datetime.now(UTC),
         age_attested_by=invited_by,
     )
+    token = issue_token(invitation)
     db.add(invitation)
     db.commit()
     db.refresh(invitation)
@@ -334,7 +394,7 @@ def create_or_resend_invitation(
     )
 
     increment("equip.invitations.created_total", scope=scope, role=role, kind="new")
-    _mail_the_invitation(db, invitation, invited_by=invited_by)
+    _mail_the_invitation(db, invitation, token=token, invited_by=invited_by)
     return invitation, True
 
 
@@ -375,7 +435,7 @@ def list_invitations(
 
 
 def get_invitation_by_token(db: Session, token: str) -> Invitation:
-    invitation = db.query(Invitation).filter(Invitation.token == token).first()
+    invitation = db.query(Invitation).filter(Invitation.token_hash == hash_invitation_token(token)).first()
     if invitation is None:
         raise equip_error(
             ErrorCode.INVITATION_NOT_FOUND,
@@ -460,6 +520,135 @@ def revoke_invitation(
     return invitation
 
 
+def _course_if_live(db: Session, invitation: Invitation) -> Course | None:
+    """The course a course invitation seats on, while it is still this school's."""
+    return (
+        db.query(Course)
+        .filter(
+            Course.id == invitation.course_id,
+            Course.organization_id == invitation.organization_id,
+            Course.deleted_at.is_(None),
+        )
+        .first()
+    )
+
+
+def _inviter_speaks_for_it(db: Session, invitation: Invitation) -> bool:
+    """Whether whoever wrote the invitation may still let people in by it.
+
+    The person who wrote the invitation must still speak for the
+    organization it leads into: its staff today for a student seat, its
+    director today (or platform staff) for a teaching role. An invitation
+    is good for seven days and a teacher can be let go in less; their
+    outstanding links must not keep letting people in — not back in
+    through a suspended membership, and not in for the first time either.
+    Until 2026-10-03 only the former was checked. The row is left pending:
+    a director who wants the person in writes a fresh one.
+
+    A deactivated account speaks for nobody. ``directs`` and ``teaches_in``
+    read the membership, and deactivation leaves memberships as they were
+    so that a restored account finds its seats again — which meant a
+    director the platform had switched off still admitted teachers through
+    the links they had written. The account is checked here, not in those
+    two, because they answer "is this role held" for the account's own
+    requests, and a deactivated account never gets as far as making one
+    (``get_current_user``).
+
+    A platform invitation leads into no organization, so nobody has to
+    speak for one.
+    """
+    if invitation.scope == InvitationScope.PLATFORM.value:
+        return True
+    inviter = db.query(User).filter(User.id == invitation.invited_by).first() if invitation.invited_by else None
+    speaks_for_it = directs if invitation.role in STAFF_ROLES else teaches_in
+    return (
+        inviter is not None
+        and inviter.deactivated_at is None
+        and speaks_for_it(db, inviter, invitation.organization_id)
+    )
+
+
+def unusable_reason(db: Session, invitation: Invitation) -> UnusableReason | None:
+    """Why this link admits nobody now, or ``None`` when it still does.
+
+    The accept page used to fold all of these into one sentence -- "used,
+    revoked or expired; ask for a new one" -- and say nothing at all about
+    the two it could not see, so a person filled in the whole form before
+    learning that the course was gone. Each has a different next step: an
+    expired link wants a resend, a used one wants signing in.
+    """
+    if invitation.status == InvitationStatus.REVOKED.value:
+        return "revoked"
+    if invitation.status == InvitationStatus.ACCEPTED.value:
+        return "used"
+    if is_invitation_expired(invitation):
+        return "expired"
+    if invitation.scope == InvitationScope.COURSE.value and _course_if_live(db, invitation) is None:
+        return "course_gone"
+    if not _inviter_speaks_for_it(db, invitation):
+        return "inviter_left"
+    return None
+
+
+def _refuse_unless_open(invitation: Invitation) -> None:
+    """Refuse a link that is spent, withdrawn or past its date.
+
+    A fulfilled invitation is still honoured for the person it was sent to.
+    The database closes an invitation the moment its person arrives another
+    way -- and for a platform invitation, signing up *is* arriving, so the
+    invitee who registers from the link finds it fulfilled by the time they
+    press Accept. Refusing them would break the invitation for exactly the
+    person it was for. Granting again is harmless (every write in
+    ``accept_invitation`` is idempotent or monotonic) and can still add
+    something: a person who enrolled on a public course by themselves gets
+    the membership the course invitation also offered.
+    """
+    if invitation.status not in (InvitationStatus.PENDING.value, InvitationStatus.FULFILLED.value):
+        increment("equip.invitations.refused_total", reason="already_used", scope=invitation.scope)
+        raise equip_error(
+            ErrorCode.INVITATION_ALREADY_USED,
+            status_code=status.HTTP_409_CONFLICT,
+            message="This invitation has already been used",
+            context={"resource_type": "invitation"},
+        )
+    if is_invitation_expired(invitation):
+        increment("equip.invitations.refused_total", reason="expired", scope=invitation.scope)
+        raise equip_error(
+            ErrorCode.INVITATION_EXPIRED,
+            status_code=status.HTTP_410_GONE,
+            message="This invitation has expired",
+            context={"resource_type": "invitation"},
+        )
+
+
+def _refuse_unless_standing(db: Session, invitation: Invitation) -> Course | None:
+    """Refuse a link whose course or sender is gone; return the course, if any.
+
+    The course is re-checked here even though creation checked it: seven
+    days is long enough for it to be deleted or moved, and a person meeting
+    a 404 must not also lose their invitation to it.
+    """
+    course: Course | None = None
+    if invitation.scope == InvitationScope.COURSE.value:
+        course = _course_if_live(db, invitation)
+        if course is None:
+            raise equip_error(
+                ErrorCode.RESOURCE_NOT_FOUND,
+                status_code=status.HTTP_404_NOT_FOUND,
+                message="Course not found",
+                context={"resource_type": "course", "resource_id": invitation.course_id},
+            )
+    if not _inviter_speaks_for_it(db, invitation):
+        increment("equip.invitations.refused_total", reason="inviter_not_staff", scope=invitation.scope)
+        raise equip_error(
+            ErrorCode.INVITATION_INVITER_NOT_STAFF,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="The person who sent this invitation no longer speaks for the organization",
+            context={"resource_type": "invitation"},
+        )
+    return course
+
+
 def accept_invitation(
     db: Session,
     *,
@@ -469,9 +658,9 @@ def accept_invitation(
 ) -> Invitation:
     """Redeem a token and grant everything the invitation promised.
 
-    The caller must already be authenticated as a user whose email
-    matches the invitation -- see the migration/module docstrings for
-    why the backend does not mint the Supabase Auth user itself.
+    The caller is the person the invitation was sent to: signed in under
+    its address, or the account ``register_by_invitation`` has just made
+    for it.
 
     One transaction, four writes, all or nothing: the invitation flips
     to accepted, the role moves (never downward), the person joins the
@@ -492,34 +681,8 @@ def accept_invitation(
     is no longer there.
     """
     invitation = get_invitation_by_token(db, token)
-
-    # A fulfilled invitation is still honoured for the person it was sent to.
-    # The database closes an invitation the moment its person arrives another
-    # way -- and for a platform invitation, signing up *is* arriving, so the
-    # invitee who registers from the link finds it fulfilled by the time they
-    # press Accept. Refusing them would break the invitation for exactly the
-    # person it was for. Granting again is harmless (every write below is
-    # idempotent or monotonic) and can still add something: a person who
-    # enrolled on a public course by themselves gets the membership the
-    # course invitation also offered.
+    _refuse_unless_open(invitation)
     is_fulfilled = invitation.status == InvitationStatus.FULFILLED.value
-
-    if invitation.status != InvitationStatus.PENDING.value and not is_fulfilled:
-        increment("equip.invitations.refused_total", reason="already_used", scope=invitation.scope)
-        raise equip_error(
-            ErrorCode.INVITATION_ALREADY_USED,
-            status_code=status.HTTP_409_CONFLICT,
-            message="This invitation has already been used",
-            context={"resource_type": "invitation"},
-        )
-    if is_invitation_expired(invitation):
-        increment("equip.invitations.refused_total", reason="expired", scope=invitation.scope)
-        raise equip_error(
-            ErrorCode.INVITATION_EXPIRED,
-            status_code=status.HTTP_410_GONE,
-            message="This invitation has expired",
-            context={"resource_type": "invitation"},
-        )
     if invitation.email != current_user_email.strip().lower():
         increment("equip.invitations.refused_total", reason="email_mismatch", scope=invitation.scope)
         raise equip_error(
@@ -528,50 +691,7 @@ def accept_invitation(
             message="This invitation was sent to a different email address",
             context={"resource_type": "invitation"},
         )
-
-    # Everything that can refuse comes before anything that changes.
-    # The course is re-checked here even though creation checked it:
-    # seven days is long enough for it to be deleted or moved, and a
-    # person meeting a 404 must not also lose their invitation to it.
-    course = (
-        course_of_organization(db, invitation.course_id or "", invitation.organization_id)
-        if invitation.scope == InvitationScope.COURSE.value
-        else None
-    )
-
-    # The person who wrote the invitation must still speak for the
-    # organization it leads into: its staff today for a student seat, its
-    # director today (or platform staff) for a teaching role. An invitation
-    # is good for seven days and a teacher can be let go in less; their
-    # outstanding links must not keep letting people in — not back in
-    # through a suspended membership, and not in for the first time either.
-    # Until 2026-10-03 only the former was checked. The row is left pending:
-    # a director who wants the person in writes a fresh one.
-    #
-    # A deactivated account speaks for nobody. ``directs`` and ``teaches_in``
-    # read the membership, and deactivation leaves memberships as they were
-    # so that a restored account finds its seats again — which meant a
-    # director the platform had switched off still admitted teachers through
-    # the links they had written. The account is checked here, not in those
-    # two, because they answer "is this role held" for the account's own
-    # requests, and a deactivated account never gets as far as making one
-    # (``get_current_user``).
-    if invitation.scope != InvitationScope.PLATFORM.value:
-        inviter = (
-            db.query(User).filter(User.id == invitation.invited_by).first()
-            if invitation.invited_by is not None
-            else None
-        )
-        speaks_for_it = directs if invitation.role in STAFF_ROLES else teaches_in
-        still_an_account = inviter is not None and inviter.deactivated_at is None
-        if not (still_an_account and speaks_for_it(db, inviter, invitation.organization_id)):
-            increment("equip.invitations.refused_total", reason="inviter_not_staff", scope=invitation.scope)
-            raise equip_error(
-                ErrorCode.INVITATION_INVITER_NOT_STAFF,
-                status_code=status.HTTP_403_FORBIDDEN,
-                message="The person who sent this invitation no longer speaks for the organization",
-                context={"resource_type": "invitation"},
-            )
+    course = _refuse_unless_standing(db, invitation)
 
     # Single-use guard: only flips a row still 'pending'. A concurrent
     # accept (double click, retried request) loses the race here rather
@@ -709,3 +829,92 @@ def accept_invitation(
     )
 
     return invitation
+
+
+def register_by_invitation(
+    db: Session,
+    *,
+    token: str,
+    full_name: str,
+    password: str,
+    locale: LocaleCode,
+) -> Invitation:
+    """Create the invited person's account from the link, and accept it.
+
+    The link was delivered to the invited address, so holding it proves
+    what a confirmation email would prove. Until 2026-10-15 the accept page
+    signed the person up through Supabase anyway and then waited on that
+    second email -- a dead end for anybody whose mail was slow, filtered,
+    or opened on a different device -- and every person stuck at sign-up
+    in that period had come by invitation.
+
+    The address is the invitation's, never the caller's. Three shapes:
+
+    * **No account** -- one is created, already confirmed.
+    * **An account nobody confirmed** -- typically this person's own
+      earlier attempt, sometimes somebody who typed their address. The
+      link outranks either: the account is confirmed and given the
+      password chosen now. Supabase's sign-up would have kept the first
+      attempt's password and mailed yet another link.
+    * **A confirmed account** -- refused with ``invitation.account_exists``.
+      Its password belongs to whoever confirmed it and is never set from
+      here; the page sends the person to sign in, and accepts for them
+      once they have.
+
+    Everything that can refuse the invitation itself is checked before any
+    account is touched, so a link that admits nobody does not leave an
+    account behind it.
+    """
+    invitation = get_invitation_by_token(db, token)
+    _refuse_unless_open(invitation)
+    _refuse_unless_standing(db, invitation)
+
+    metadata = {"full_name": full_name, "preferred_locale": locale}
+    account = account_for_address(db, invitation.email)
+    if account is None:
+        try:
+            user_id = auth_admin.create_confirmed(invitation.email, password, metadata)
+        except auth_admin.EmailTaken:
+            # Created between our look and our write -- most likely this same
+            # form submitted twice. Decide again on what is there now.
+            account = account_for_address(db, invitation.email)
+            if account is None:
+                raise _account_exists() from None
+    if account is not None:
+        if account.confirmed:
+            increment("equip.invitations.refused_total", reason="account_exists", scope=invitation.scope)
+            raise _account_exists()
+        auth_admin.confirm_with_password(account.id, password, metadata)
+        user_id = account.id
+        # The profile was written from the first attempt's metadata; the
+        # name and language given now are the ones this person stands by.
+        db.query(User).filter(User.id == user_id).update(
+            {User.full_name: full_name, User.preferred_locale: locale, User.locale_source: "chosen"},
+            synchronize_session="fetch",
+        )
+        db.commit()
+
+    increment("equip.invitations.registered_total", scope=invitation.scope, existing=str(account is not None).lower())
+    return accept_invitation(db, token=token, current_user_id=user_id, current_user_email=invitation.email)
+
+
+def account_for_address(db: Session, email: str) -> auth_admin.AuthAccount | None:
+    """The Supabase Auth account holding ``email``, if there is one.
+
+    Found through the profile, which ``handle_new_user`` writes for every
+    account the moment it exists -- confirmed or not -- with the same id.
+    A profile whose account has gone is no account.
+    """
+    profile = db.query(User.id).filter(func.lower(User.email) == email.strip().lower()).first()
+    if profile is None:
+        return None
+    return auth_admin.get_account(profile[0])
+
+
+def _account_exists() -> Exception:
+    return equip_error(
+        ErrorCode.INVITATION_ACCOUNT_EXISTS,
+        status_code=status.HTTP_409_CONFLICT,
+        message="An account with this address already exists; sign in to accept the invitation",
+        context={"resource_type": "invitation"},
+    )

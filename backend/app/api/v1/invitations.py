@@ -1,7 +1,7 @@
 from typing import cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Header, Path, Query, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import (
@@ -24,6 +24,7 @@ from app.schemas.invitation import (
     InvitationCreate,
     InvitationPreview,
     InvitationPreviewRequest,
+    InvitationRegisterRequest,
     InvitationResponse,
     InvitationRoleLiteral,
     InvitationScopeLiteral,
@@ -32,13 +33,16 @@ from app.schemas.invitation import (
 from app.schemas.locale import normalize_locale
 from app.services.invitation_service import (
     accept_invitation,
+    account_for_address,
     course_title_for_invitation,
     create_or_resend_invitation,
     get_invitation_by_id,
     get_invitation_by_token,
     is_invitation_expired,
     list_invitations,
+    register_by_invitation,
     revoke_invitation,
+    unusable_reason,
 )
 from app.services.memberships import active_memberships, belongs_to, default_organization_id, directs, teaches_in
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
@@ -319,6 +323,12 @@ def _preview(db: Session, response: Response, token: str, accept_language: str |
     # The course title is the only translated text on this route, and it
     # is resolved per reader, so the answer varies by header.
     response.headers["Vary"] = "Accept-Language"
+    reason = unusable_reason(db, invitation)
+    organization = (
+        db.query(Organization.public_name).filter(Organization.id == invitation.organization_id).scalar()
+        if invitation.scope != InvitationScope.PLATFORM.value
+        else None
+    )
     return InvitationPreview(
         email=invitation.email,
         role=cast("InvitationRoleLiteral", invitation.role),
@@ -330,11 +340,28 @@ def _preview(db: Session, response: Response, token: str, accept_language: str |
         # profile yet, so the browser's header is the only thing that
         # knows what they read.
         course_title=course_title_for_invitation(db, invitation, display_locale=normalize_locale(accept_language)),
+        organization_name=organization,
         status=cast("InvitationStatusLiteral", invitation.status),
         # A fulfilled invitation is still redeemable by its invitee (see
         # accept_invitation), on the same clock as a pending one.
         is_expired=invitation.status in ("pending", "fulfilled") and is_invitation_expired(invitation),
+        unusable_reason=reason,
+        has_account=reason is None and _has_account(db, invitation.email),
     )
+
+
+def _has_account(db: Session, email: str) -> bool:
+    """Whether the invited address has a confirmed account, as far as we can tell.
+
+    A question the page asks to choose between a form and a sign-in button,
+    not one it must have answered: when Supabase Auth does not answer, the
+    form is shown, and creating the account refuses an existing one anyway.
+    """
+    try:
+        account = account_for_address(db, email)
+    except HTTPException:
+        return False
+    return account is not None and account.confirmed
 
 
 @router.post("/preview", response_model=InvitationPreview)
@@ -367,10 +394,9 @@ def accept_invitation_route(
 ) -> InvitationAcceptResponse:
     """Redeem an invite token for the signed-in caller.
 
-    The caller must already have an account (self-registered as student,
-    or logged in via Google) under the exact email the invite was sent
-    to -- see the migration docstring for why the backend doesn't mint
-    the Supabase Auth user itself.
+    The caller must already have an account (signed in with a password,
+    or with Google) under the exact email the invite was sent to. A person
+    without one creates it from the link instead (``/register``).
     """
     invitation = accept_invitation(
         db,
@@ -378,8 +404,36 @@ def accept_invitation_route(
         current_user_id=current_user.id,
         current_user_email=current_user.email,
     )
+    return _accepted(invitation)
+
+
+@router.post("/register", response_model=InvitationAcceptResponse, status_code=201)
+def register_by_invitation_route(
+    body: InvitationRegisterRequest,
+    db: Session = Depends(get_db),
+) -> InvitationAcceptResponse:
+    """Create the invited person's account from the link, and accept it.
+
+    Public: the token is the credential, and it was delivered to the very
+    address the account is made for, so no confirmation email follows. The
+    page signs in with the password just chosen and goes straight to what
+    the invitation offered. See ``register_by_invitation`` for the three
+    shapes an address can be in, and why a confirmed account is refused.
+    """
+    invitation = register_by_invitation(
+        db,
+        token=body.token,
+        full_name=body.full_name,
+        password=body.password,
+        locale=body.locale,
+    )
+    return _accepted(invitation)
+
+
+def _accepted(invitation: Invitation) -> InvitationAcceptResponse:
     return InvitationAcceptResponse(
         role=cast("InvitationRoleLiteral", invitation.role),
         scope=cast("InvitationScopeLiteral", invitation.scope),
         enrolled_course_id=invitation.course_id,
+        email=invitation.email,
     )

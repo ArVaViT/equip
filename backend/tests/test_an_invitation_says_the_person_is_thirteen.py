@@ -164,7 +164,6 @@ def test_half_an_attestation_cannot_be_stored(db: Session) -> None:
         Invitation(
             email="half@example.com",
             role="student",
-            token="half-token",
             age_attested_at=datetime.now(UTC),
             age_attested_by=None,
         )

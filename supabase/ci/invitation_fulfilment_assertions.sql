@@ -59,7 +59,7 @@ END $$;
 
 -- 1) Enrolling on the course closes a course invitation. Written straight
 --    into `enrollments`, as a cohort add does.
-INSERT INTO public.invitations (email, role, token, organization_id, scope, course_id)
+INSERT INTO public.invitations (email, role, token_hash, organization_id, scope, course_id)
 VALUES ('enrols@test.local', 'student', 't1', 'a0000000-0000-0000-0000-00000000000a', 'course', 'course-a');
 SELECT pg_temp.expect(pg_temp.status_of('enrols@test.local', 'course', 'course-a'), 'pending',
   'a course invitation starts pending');
@@ -68,7 +68,7 @@ VALUES ('e1', '10000000-0000-0000-0000-000000000001', 'course-a');
 SELECT pg_temp.expect(pg_temp.status_of('enrols@test.local', 'course', 'course-a'), 'fulfilled',
   'enrolling on the course fulfils its invitation');
 SELECT pg_temp.expect(
-  (SELECT (fulfilled_at IS NOT NULL AND accepted_at IS NULL)::text FROM public.invitations WHERE token = 't1'),
+  (SELECT (fulfilled_at IS NOT NULL AND accepted_at IS NULL)::text FROM public.invitations WHERE token_hash = 't1'),
   'true', 'a fulfilled invitation records when, and does not claim its link was used');
 
 -- 2) A teacher invitation is not fulfilled by enrolling as a student, nor by
@@ -76,7 +76,7 @@ SELECT pg_temp.expect(
 --    organization. (Since 20261003203000 the role is read from
 --    organization_members, not from profiles.role, which mirrors the highest
 --    role held anywhere.)
-INSERT INTO public.invitations (email, role, token, organization_id, scope, course_id)
+INSERT INTO public.invitations (email, role, token_hash, organization_id, scope, course_id)
 VALUES ('wants-teaching@test.local', 'teacher', 't2', 'a0000000-0000-0000-0000-00000000000a', 'course', 'course-a');
 INSERT INTO public.enrollments (id, user_id, course_id)
 VALUES ('e2', '10000000-0000-0000-0000-000000000002', 'course-a');
@@ -95,7 +95,7 @@ SELECT pg_temp.expect(pg_temp.status_of('wants-teaching@test.local', 'course', '
 
 -- 3) Organization invitations: an active membership of the right
 --    organization, matched without case.
-INSERT INTO public.invitations (email, role, token, organization_id, scope)
+INSERT INTO public.invitations (email, role, token_hash, organization_id, scope)
 VALUES ('joins.org@test.local', 'student', 't3', 'a0000000-0000-0000-0000-00000000000a', 'organization');
 INSERT INTO public.organization_members (user_id, organization_id, role, joined_via)
 VALUES ('10000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-00000000000b', 'student', 'invitation');
@@ -122,7 +122,7 @@ SELECT pg_temp.expect(pg_temp.status_of('joins.org@test.local', 'organization'),
 --     closes it.
 INSERT INTO public.organization_members (user_id, organization_id, role, joined_via)
 VALUES ('10000000-0000-0000-0000-000000000008', 'a0000000-0000-0000-0000-00000000000a', 'student', 'invitation');
-INSERT INTO public.invitations (email, role, token, organization_id, scope)
+INSERT INTO public.invitations (email, role, token_hash, organization_id, scope)
 VALUES ('promoted-elsewhere@test.local', 'teacher', 't3b', 'a0000000-0000-0000-0000-00000000000a', 'organization');
 SELECT pg_temp.expect(pg_temp.status_of('promoted-elsewhere@test.local', 'organization'), 'pending',
   'a student of A holds a teacher invitation into A');
@@ -139,7 +139,7 @@ SELECT pg_temp.expect(pg_temp.status_of('promoted-elsewhere@test.local', 'organi
 
 -- 4) A platform invitation is an account, so creating the account fulfils it
 --    (handle_new_user inserts the profile; the backend never sees that).
-INSERT INTO public.invitations (email, role, token, organization_id, scope)
+INSERT INTO public.invitations (email, role, token_hash, organization_id, scope)
 VALUES ('newcomer@test.local', 'student', 't4', 'a0000000-0000-0000-0000-00000000000a', 'platform');
 INSERT INTO public.profiles (id, email, role)
 VALUES ('10000000-0000-0000-0000-000000000007', 'newcomer@test.local', 'student');
@@ -148,7 +148,7 @@ SELECT pg_temp.expect(pg_temp.status_of('newcomer@test.local', 'platform'), 'ful
 
 -- 5) An expired invitation is closed too: it still reads pending, and the list
 --    would offer to resend it to somebody who is already there.
-INSERT INTO public.invitations (email, role, token, organization_id, scope, course_id, created_at, expires_at)
+INSERT INTO public.invitations (email, role, token_hash, organization_id, scope, course_id, created_at, expires_at)
 VALUES ('late@test.local', 'student', 't5', 'a0000000-0000-0000-0000-00000000000a', 'course', 'course-a',
         now() - interval '30 days', now() - interval '23 days');
 INSERT INTO public.enrollments (id, user_id, course_id)
@@ -157,7 +157,7 @@ SELECT pg_temp.expect(pg_temp.status_of('late@test.local', 'course', 'course-a')
   'an expired invitation is fulfilled as well');
 
 -- 6) Another course of the same organization is not this course.
-INSERT INTO public.invitations (email, role, token, organization_id, scope, course_id)
+INSERT INTO public.invitations (email, role, token_hash, organization_id, scope, course_id)
 VALUES ('wrong-course@test.local', 'student', 't6', 'a0000000-0000-0000-0000-00000000000a', 'course', 'course-a');
 INSERT INTO public.enrollments (id, user_id, course_id)
 VALUES ('e6', '10000000-0000-0000-0000-000000000005', 'course-b');
@@ -166,29 +166,29 @@ SELECT pg_temp.expect(pg_temp.status_of('wrong-course@test.local', 'course', 'co
 
 -- 7) Revoked and accepted invitations are the sender's and the link's
 --    decisions; arriving does not rewrite them.
-INSERT INTO public.invitations (email, role, token, organization_id, scope, course_id, status)
+INSERT INTO public.invitations (email, role, token_hash, organization_id, scope, course_id, status)
 VALUES ('wrong-course@test.local', 'student', 't7', 'a0000000-0000-0000-0000-00000000000a', 'course', 'course-b', 'revoked');
-INSERT INTO public.invitations (email, role, token, organization_id, scope, course_id, status, accepted_at)
+INSERT INTO public.invitations (email, role, token_hash, organization_id, scope, course_id, status, accepted_at)
 VALUES ('wrong-course@test.local', 'student', 't7b', 'a0000000-0000-0000-0000-00000000000a', 'course', 'course-b', 'accepted', now());
 INSERT INTO public.organization_members (user_id, organization_id, role, joined_via)
 VALUES ('10000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-00000000000a', 'student', 'invitation');
-SELECT pg_temp.expect((SELECT status FROM public.invitations WHERE token = 't7'), 'revoked',
+SELECT pg_temp.expect((SELECT status FROM public.invitations WHERE token_hash = 't7'), 'revoked',
   'a revoked invitation stays revoked');
-SELECT pg_temp.expect((SELECT status FROM public.invitations WHERE token = 't7b'), 'accepted',
+SELECT pg_temp.expect((SELECT status FROM public.invitations WHERE token_hash = 't7b'), 'accepted',
   'an accepted invitation stays accepted');
 
 -- 8) An invitation written for somebody who is already on the course is
 --    closed as it is written.
-INSERT INTO public.invitations (email, role, token, organization_id, scope, course_id)
+INSERT INTO public.invitations (email, role, token_hash, organization_id, scope, course_id)
 VALUES ('enrols@test.local', 'student', 't8', 'a0000000-0000-0000-0000-00000000000a', 'course', 'course-a');
-SELECT pg_temp.expect((SELECT status FROM public.invitations WHERE token = 't8'), 'fulfilled',
+SELECT pg_temp.expect((SELECT status FROM public.invitations WHERE token_hash = 't8'), 'fulfilled',
   'an invitation for somebody already there is fulfilled on insert');
 
 -- 9) The backfill: state left behind before the rule existed (triggers off),
 --    closed by one run of the function, and a second run closes nothing.
 ALTER TABLE public.invitations DISABLE TRIGGER trg_invitations_created_fulfil;
 ALTER TABLE public.enrollments DISABLE TRIGGER trg_enrollments_fulfil_invitations;
-INSERT INTO public.invitations (email, role, token, organization_id, scope, course_id)
+INSERT INTO public.invitations (email, role, token_hash, organization_id, scope, course_id)
 VALUES ('backfill@test.local', 'student', 't9', 'a0000000-0000-0000-0000-00000000000a', 'course', 'course-b');
 INSERT INTO public.enrollments (id, user_id, course_id)
 VALUES ('e9', '10000000-0000-0000-0000-000000000006', 'course-b');
@@ -208,7 +208,7 @@ SELECT pg_temp.expect(pg_temp.status_of('wrong-course@test.local', 'course', 'co
 -- 10) The status and its timestamp agree.
 DO $$
 BEGIN
-  UPDATE public.invitations SET status = 'fulfilled', fulfilled_at = NULL WHERE token = 't6';
+  UPDATE public.invitations SET status = 'fulfilled', fulfilled_at = NULL WHERE token_hash = 't6';
   RAISE EXCEPTION 'INVITATION FULFILMENT BROKEN: fulfilled without fulfilled_at was accepted';
 EXCEPTION
   WHEN check_violation THEN RAISE NOTICE 'OK: fulfilled requires fulfilled_at';

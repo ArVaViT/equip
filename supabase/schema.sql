@@ -1085,7 +1085,6 @@ CREATE TABLE public.invitations (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     email text NOT NULL,
     role text NOT NULL,
-    token text NOT NULL,
     status text DEFAULT 'pending'::text NOT NULL,
     invited_by uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
@@ -1097,6 +1096,7 @@ CREATE TABLE public.invitations (
     fulfilled_at timestamp with time zone,
     age_attested_at timestamp with time zone,
     age_attested_by uuid,
+    token_hash text NOT NULL,
     CONSTRAINT chk_invitations_age_attested_together CHECK (((age_attested_at IS NULL) = (age_attested_by IS NULL))),
     CONSTRAINT chk_invitations_course_matches_scope CHECK ((((scope = 'course'::text) AND (course_id IS NOT NULL)) OR ((scope <> 'course'::text) AND (course_id IS NULL)))),
     CONSTRAINT chk_invitations_fulfilled_at_matches_status CHECK (((status = 'fulfilled'::text) = (fulfilled_at IS NOT NULL))),
@@ -1851,11 +1851,11 @@ ALTER TABLE ONLY public.invitations
 
 
 --
--- Name: invitations invitations_token_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: invitations invitations_token_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.invitations
-    ADD CONSTRAINT invitations_token_key UNIQUE (token);
+    ADD CONSTRAINT invitations_token_hash_key UNIQUE (token_hash);
 
 
 --

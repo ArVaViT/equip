@@ -31,6 +31,7 @@ EXPECTED_OVERRIDES: tuple[tuple[str, int, int], ...] = (
     ("/api/v1/auth/me", 10, 60),
     ("/api/v1/certificates/verify/abc-123", 30, 60),
     ("/api/v1/verse-of-the-day", 60, 60),
+    ("/api/v1/invitations/register", 10, 60),
 )
 
 
