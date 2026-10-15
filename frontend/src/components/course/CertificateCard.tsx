@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useId } from "react"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,7 @@ export default function CertificateCard({ courseId, progress, blocked = false, c
   useEffect(() => {
     return () => clearTimeout(copyTimer.current)
   }, [])
+  const reviewHeadingId = useId()
   const [reviewRating, setReviewRating] = useState(0)
   const [reviewHover, setReviewHover] = useState(0)
   const [reviewComment, setReviewComment] = useState("")
@@ -225,7 +226,7 @@ export default function CertificateCard({ courseId, progress, blocked = false, c
               <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                 {t("certificates.card.review.eyebrow")}
               </p>
-              <h4 className="font-serif text-base font-semibold tracking-tight">{t("certificates.card.review.heading")}</h4>
+              <h4 id={reviewHeadingId} className="font-serif text-base font-semibold tracking-tight">{t("certificates.card.review.heading")}</h4>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((value) => (
                   <button
@@ -234,8 +235,9 @@ export default function CertificateCard({ courseId, progress, blocked = false, c
                     onClick={() => setReviewRating(value)}
                     onMouseEnter={() => setReviewHover(value)}
                     onMouseLeave={() => setReviewHover(0)}
-                    className="transition-transform hover:scale-110 focus:outline-none"
+                    className="rounded-sm transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                     aria-label={t("certificates.card.review.starAria", { value })}
+                    aria-pressed={value === reviewRating}
                   >
                     <Star
                       className={`h-6 w-6 transition-colors ${
@@ -256,6 +258,7 @@ export default function CertificateCard({ courseId, progress, blocked = false, c
                 value={reviewComment}
                 onChange={(e) => setReviewComment(e.target.value)}
                 placeholder={t("certificates.card.review.commentPlaceholder")}
+                aria-labelledby={reviewHeadingId}
                 rows={3}
                 className="flex min-h-[80px] w-full rounded-md -strong bg-surface px-3 py-2 text-sm placeholder:text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               />

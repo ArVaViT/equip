@@ -7,6 +7,7 @@ import { AuthProvider } from "./context/AuthContext"
 import { ThemeProvider } from "./context/ThemeContext"
 import { useAuth } from "./context/useAuth"
 import { usePageTitle } from "./hooks/usePageTitle"
+import { useCanonicalUrl } from "./hooks/useCanonicalUrl"
 import { useLocaleSync } from "./i18n/useLocaleSync"
 import { useTimeZoneSync } from "./i18n/useTimeZoneSync"
 import ErrorBoundary from "./components/ErrorBoundary"
@@ -222,6 +223,7 @@ function AppRoutes() {
   const { t } = useTranslation()
   const isAuthPage = AUTH_PATHS.some((p) => location.pathname.startsWith(p))
   usePageTitle()
+  useCanonicalUrl()
   useLocaleSync()
   useTimeZoneSync()
   useRouteFocus()

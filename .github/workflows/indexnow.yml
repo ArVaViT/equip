@@ -1,0 +1,68 @@
+name: IndexNow
+
+# Tell Bing, Yandex, Seznam, Naver and the other IndexNow engines that the
+# site changed, right after a production deploy — instead of waiting for
+# their crawlers to come back on their own schedule.
+#
+# Vercel reports each deploy to GitHub as a deployment; the frontend's
+# production environment is named "Production – equip-frontend" (an en
+# dash, as Vercel writes it). The URL list is the live sitemap, which the
+# build regenerates from the catalogue, so a new course is announced on the
+# deploy that first lists it.
+#
+# The key is public by design: IndexNow proves ownership by fetching it from
+# https://equipbible.com/<key>.txt (frontend/public/). Nothing secret here.
+#
+# Best effort. A failed ping costs a few hours of crawl latency, never a
+# deploy, so no step here can fail the run.
+
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: indexnow
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.environment == 'Production – equip-frontend'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    env:
+      HOST: equipbible.com
+      KEY: 6d9683e9d67acb95f32d95c1adc7c3dd
+    steps:
+      - name: Submit the sitemap's URLs
+        run: |
+          set -u
+          if ! curl -fsS --max-time 30 "https://${HOST}/sitemap.xml" -o sitemap.xml; then
+            echo "::warning::sitemap.xml could not be fetched; nothing submitted"
+            exit 0
+          fi
+          python3 - <<'PY'
+          import json, os, re
+          host, key = os.environ["HOST"], os.environ["KEY"]
+          xml = open("sitemap.xml", encoding="utf-8").read()
+          urls = [u for u in re.findall(r"<loc>\s*([^<\s]+)\s*</loc>", xml) if u.startswith(f"https://{host}/")]
+          urls = list(dict.fromkeys(urls))[:10000]  # IndexNow's per-request limit
+          print(f"{len(urls)} URLs")
+          json.dump({"host": host, "key": key, "keyLocation": f"https://{host}/{key}.txt", "urlList": urls},
+                    open("payload.json", "w"))
+          PY
+          status=$(curl -sS --max-time 30 -o response.txt -w '%{http_code}' \
+            -H 'Content-Type: application/json; charset=utf-8' \
+            --data @payload.json https://api.indexnow.org/indexnow || echo "000")
+          echo "IndexNow answered ${status}"
+          cat response.txt 2>/dev/null || true
+          # 200 accepted, 202 accepted pending key check; anything else is
+          # worth a look but not a red run.
+          case "$status" in
+            200|202) ;;
+            *) echo "::warning::IndexNow answered ${status}" ;;
+          esac
