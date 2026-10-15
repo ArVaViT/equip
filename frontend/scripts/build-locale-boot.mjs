@@ -116,6 +116,31 @@ export function buildLocaleBoot() {
 
   document.documentElement.lang = locale;
 
+  // Start the chosen catalog now. The app fetches it before its first render
+  // (\`i18nReady\`), but only once the entry bundle has downloaded and run —
+  // and a hashed asset URL is not something this file can know when it is
+  // generated. The build writes the URLs onto this script's tag
+  // (\`data-catalogs\`, vite.config.ts) and the request starts here, in
+  // parallel with the bundle. \`crossorigin\` makes the preload match the
+  // app's same-origin \`fetch\`. No attribute (dev server): nothing to do.
+  try {
+    var tag = document.currentScript;
+    var catalogs = tag && tag.getAttribute("data-catalogs");
+    var href = catalogs && JSON.parse(catalogs)[locale];
+    // Only a bundled catalog path: the attribute is written by the build,
+    // but a URL taken from the DOM is not handed to the network unchecked.
+    if (typeof href === "string" && /^\\/assets\\/[A-Za-z0-9_-]+\\.json$/.test(href)) {
+      var link = document.createElement("link");
+      link.rel = "preload";
+      link.setAttribute("as", "fetch");
+      link.setAttribute("crossorigin", "anonymous");
+      link.href = href;
+      document.head.appendChild(link);
+    }
+  } catch (e) {
+    // A head start, never a dependency: the app fetches it regardless.
+  }
+
   // A page written at build time for one course (scripts/prerender-pages.mjs)
   // already names itself: its title and description are the course's, and
   // the generic ones would overwrite exactly what a crawler running this

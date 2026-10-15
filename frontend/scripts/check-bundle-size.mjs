@@ -56,9 +56,11 @@ const BUDGETS_GZIP_KB = {
   //           the sentinel fails loudly either way — once for an unwatched
   //           chunk, once for a budget pointing at a chunk that no longer
   //           exists.
-  index: 109, // shell — always loaded. Under 8.2 this was 29 kB and the
+  index: 71, // shell — always loaded. Under 8.2 this was 29 kB and the
   //           Datadog RUM core sat beside it in a nameless `esm` chunk;
-  //           8.3 folds that core, sonner and the radix dialog/tooltip in.
+  //           8.3 folded that core, sonner and the radix dialog/tooltip in
+  //           (106 kB). 2026-10-15: the RUM SDK moved out to `datadogRum`.
+  datadogRum: 73, // Datadog RUM SDK, loaded after boot (`lib/datadog.ts`).
   katex: 86, // math typesetting, pulled in by lesson content rendering.
   vendor: 82, // React + react-router + react-dom.
   supabase: 61, // supabase-js v2 client.

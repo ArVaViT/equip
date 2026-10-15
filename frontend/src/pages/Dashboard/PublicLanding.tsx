@@ -57,6 +57,51 @@ import { TEXT_VEIL } from "./landing/textVeil";
 // opening a lesson.
 const LandingBackdrop = lazy(() => import("./landing/LandingBackdrop"));
 
+/**
+ * Run `fn` a second after the page's own load, once the main thread is idle
+ * — or after `LOAD_CAP_MS` regardless, so a slow image elsewhere on the page
+ * cannot keep the scene away for good. Returns a cancel function.
+ *
+ * Why the extra second: on a fast connection `load` fires before the largest
+ * paint has been reported, and Lighthouse's mobile model (PageSpeed
+ * Insights uses the same one) charges every request started before that
+ * paint to it, as if made on a slow phone. Started at `load`, `three` was in
+ * that window on some runs and not on others, and moved the landing's LCP by
+ * about 0.7 s between otherwise identical runs.
+ */
+const AFTER_LOAD_MS = 1000;
+const LOAD_CAP_MS = 5000;
+function afterPageLoad(fn: () => void): () => void {
+  let done = false;
+  let idle: number | undefined;
+  let wait: number | undefined;
+  const run = () => {
+    if (done) return;
+    done = true;
+    fn();
+  };
+  const whenIdle = () => {
+    if (typeof window.requestIdleCallback === "function") {
+      idle = window.requestIdleCallback(run, { timeout: 1000 });
+    } else {
+      run();
+    }
+  };
+  const schedule = () => {
+    wait = window.setTimeout(whenIdle, AFTER_LOAD_MS);
+  };
+  const cap = window.setTimeout(run, LOAD_CAP_MS);
+  if (document.readyState === "complete") schedule();
+  else window.addEventListener("load", schedule, { once: true });
+  return () => {
+    done = true;
+    window.clearTimeout(cap);
+    if (wait !== undefined) window.clearTimeout(wait);
+    window.removeEventListener("load", schedule);
+    if (idle !== undefined) window.cancelIdleCallback?.(idle);
+  };
+}
+
 export function PublicLanding() {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
@@ -80,7 +125,16 @@ export function PublicLanding() {
   const [wideEnough, setWideEnough] = useState(false);
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
-    setCanAnimate(true);
+    // Not before the page has loaded, since 2026-10-15. Requested on first
+    // render, `three` (the largest chunk a visitor downloads) went out in
+    // the same moment as the tour's poster — the page's largest paint on a
+    // phone — and its parse and WebGL start-up ran while that paint was
+    // waiting. The scene arrives behind content that is already there, as
+    // it did before; it just no longer competes with it.
+    return afterPageLoad(() => setCanAnimate(true));
+  }, []);
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
     const query = window.matchMedia("(min-width: 1024px)");
     const sync = () => setWideEnough(query.matches);
     sync();

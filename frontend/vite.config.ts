@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { readdirSync } from 'fs'
 
 // VERCEL_GIT_COMMIT_SHA is injected by Vercel at build time. Falls back to
 // 'dev' for local builds so Datadog RUM can still tag events with a version.
@@ -26,9 +27,72 @@ function webMcpOriginTrial(): Plugin {
   }
 }
 
+// A preconnect to the API origin, written into index.html at build time.
+// The API is a different origin (api.equipbible.com) and nothing in the HTML
+// names it, so its DNS, TCP and TLS handshakes used to start only when the
+// first page asked for data — after the bundle, the locale catalog and the
+// first render. On a phone that is three round trips added to the course
+// page's largest paint, which is text the API returns. `crossorigin`: the
+// requests are CORS without cookies, which use the anonymous connection pool.
+// Same-origin or unset (a local build against a proxy): nothing to warm.
+function apiPreconnect(): Plugin {
+  let origin = ''
+  return {
+    name: 'equip-api-preconnect',
+    configResolved(config) {
+      const raw = (config.env.VITE_API_URL ?? process.env.VITE_API_URL ?? '').trim()
+      try {
+        const url = new URL(raw)
+        origin = url.protocol === 'https:' ? url.origin : ''
+      } catch {
+        origin = ''
+      }
+    },
+    transformIndexHtml() {
+      if (!origin) return []
+      return [{ tag: 'link', attrs: { rel: 'preconnect', href: origin, crossorigin: true }, injectTo: 'head' }]
+    },
+  }
+}
+
+// The hashed URL of each locale catalog, written onto the
+// `<script src="/locale-boot.js">` tag so that script can preload the one it
+// picks (see scripts/build-locale-boot.mjs). Build only: the dev server
+// serves catalogs as modules, and the boot script does nothing without the
+// attribute. The tag is matched exactly and the build fails if it is not
+// there, so a rename of index.html cannot drop the preload in silence.
+const LOCALE_BOOT_TAG = '<script src="/locale-boot.js"></script>'
+function localeCatalogPreload(): Plugin {
+  return {
+    name: 'equip-locale-catalog-preload',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        const locales = readdirSync(path.resolve(import.meta.dirname, 'src/i18n/locales'))
+          .filter((f) => f.endsWith('.json'))
+          .map((f) => f.slice(0, -'.json'.length))
+        const catalogs: Record<string, string> = {}
+        for (const file of Object.keys(ctx.bundle ?? {})) {
+          const match = /^assets\/([a-z]+)-[A-Za-z0-9_-]{8}\.json$/.exec(file)
+          if (match?.[1] && locales.includes(match[1])) catalogs[match[1]] = `/${file}`
+        }
+        if (Object.keys(catalogs).length !== locales.length) {
+          throw new Error(`locale catalogs: expected ${locales.join(', ')}, found ${JSON.stringify(catalogs)}`)
+        }
+        if (!html.includes(LOCALE_BOOT_TAG)) throw new Error(`index.html: ${LOCALE_BOOT_TAG} not found`)
+        return html.replace(
+          LOCALE_BOOT_TAG,
+          `<script src="/locale-boot.js" data-catalogs='${JSON.stringify(catalogs)}'></script>`,
+        )
+      },
+    },
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), webMcpOriginTrial()],
+  plugins: [react(), webMcpOriginTrial(), apiPreconnect(), localeCatalogPreload()],
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
   },

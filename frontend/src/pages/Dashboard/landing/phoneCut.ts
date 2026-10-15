@@ -34,7 +34,7 @@ function subscribe(onChange: () => void) {
   return () => query.removeEventListener("change", onChange)
 }
 
-function isPhone() {
+export function isPhone() {
   return typeof window.matchMedia === "function" && window.matchMedia(PHONE).matches
 }
 

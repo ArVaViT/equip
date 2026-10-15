@@ -25,11 +25,20 @@
  * - `preload="none"` with a `poster` — the poster is a still, so an
  *   unstarted video costs one image instead of megabytes of unwatched film.
  * - `playsInline` — iOS otherwise hijacks the video into fullscreen.
+ * - The poster itself waits until the film is about a screen away. A
+ *   `<video poster>` is fetched as soon as the element exists, wherever it
+ *   is on the page, and the phone still is 239 kB: on a cold phone load it
+ *   was the heaviest image requested, five screens below the fold, in the
+ *   same seconds as the tour poster that is the page's largest paint
+ *   (Lighthouse, 2026-10-15). The frame keeps its size meanwhile, so
+ *   nothing moves when the still arrives.
  *
  * NO HEADING. One was added and taken straight back out: the poster is now
  * a frame of the product with its own caption burnt in, so a line of type
  * above it was labelling something that already introduces itself.
  */
+
+import { useEffect, useRef, useState } from "react";
 
 import { Section } from "@/components/layout/Section";
 
@@ -56,8 +65,38 @@ const INTRO: { wide: Cut; phone: Cut } | null = {
   },
 };
 
+/** How far ahead of the viewport the poster starts loading. */
+const POSTER_LEAD = "100% 0px";
+
+/**
+ * True once `ref`'s element is within a screen of the viewport, and from then
+ * on. Without `IntersectionObserver` (jsdom, a very old browser) it is true
+ * at once — the still is shown as it always was.
+ */
+function useNearViewport(ref: React.RefObject<Element | null>): boolean {
+  const [near, setNear] = useState(() => typeof IntersectionObserver === "undefined");
+  useEffect(() => {
+    const el = ref.current;
+    if (near || !el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setNear(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: POSTER_LEAD },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [near, ref]);
+  return near;
+}
+
 export function HeroVideo() {
   const phone = usePhoneCut();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const near = useNearViewport(videoRef);
   if (!INTRO) return null;
   const cut = phone ? INTRO.phone : INTRO.wide;
 
@@ -71,12 +110,13 @@ export function HeroVideo() {
               // Keyed on the cut: a new `<source>` alone does not reload a
               // mounted element (see `phoneCut.ts`).
               key={cut.mp4}
+              ref={videoRef}
               data-backdrop-target
               className={`block rounded-xl border border-line shadow-[0_40px_90px_-40px_hsl(var(--accent)/0.6)] bg-surface object-cover ${frameClass(phone)}`}
               controls
               playsInline
               preload="none"
-              poster={cut.poster}
+              poster={near ? cut.poster : undefined}
               width={cut.width}
               height={cut.height}
             >

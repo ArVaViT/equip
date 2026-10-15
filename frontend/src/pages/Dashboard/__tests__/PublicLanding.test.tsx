@@ -106,7 +106,27 @@ describe("PublicLanding (unauth marketing page)", () => {
   })
 
   it("offers the film behind a poster, and never starts it by itself", () => {
-    renderLanding()
+    // The film reports itself on screen at once: its poster is only
+    // requested once it is near the viewport (HeroVideo). Only the film —
+    // the tour would try to play, and jsdom cannot.
+    const original = globalThis.IntersectionObserver
+    globalThis.IntersectionObserver = class {
+      constructor(private readonly callback: IntersectionObserverCallback) {}
+      observe(target: Element) {
+        if (!target.hasAttribute("controls")) return
+        this.callback([{ isIntersecting: true, target } as IntersectionObserverEntry], this as never)
+      }
+      unobserve() {}
+      disconnect() {}
+      takeRecords() {
+        return []
+      }
+    } as unknown as typeof IntersectionObserver
+    try {
+      renderLanding()
+    } finally {
+      globalThis.IntersectionObserver = original
+    }
     const videos = [...document.querySelectorAll("video")]
     const film = videos.find((v) => v.hasAttribute("controls"))
 
@@ -115,6 +135,14 @@ describe("PublicLanding (unauth marketing page)", () => {
     expect(film?.getAttribute("poster")).toBeTruthy()
     expect(film?.hasAttribute("autoplay")).toBe(false)
     expect(film?.getAttribute("preload")).toBe("none")
+  })
+
+  it("holds the film's poster back until the film is near the viewport", () => {
+    // The setup's IntersectionObserver never reports: the film stays far away.
+    renderLanding()
+    const film = [...document.querySelectorAll("video")].find((v) => v.hasAttribute("controls"))
+    expect(film).toBeDefined()
+    expect(film?.hasAttribute("poster")).toBe(false)
   })
 
   it("plays the silent tour by itself, and only silently", () => {
