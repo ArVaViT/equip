@@ -497,11 +497,8 @@ class TestTheToken:
         assert new_link != old_link
         assert invitation_service.get_invitation_by_token(db, new_link).id == first.id
 
-    def test_the_backend_never_writes_the_plain_token(self, db: Session, admin: User) -> None:
-        invitation, _new = create_or_resend_invitation(
-            db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
-        )
-        assert invitation.token is None
+    def test_the_table_has_no_place_for_a_plain_token(self) -> None:
+        assert "token" not in Invitation.__table__.c
 
     def test_no_response_to_staff_carries_the_token(self, admin_client: TestClient, db: Session) -> None:
         created = admin_client.post(PREFIX, json={"email": EMAIL, "role": "teacher", "age_attested": True})
