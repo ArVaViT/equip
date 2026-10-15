@@ -1,0 +1,34 @@
+# Equip
+
+> Equip (equipbible.com) is a free platform for systematic Bible study: courses in a fixed order, real assessment (essays among the four question types, read by a teacher) and a certificate anyone can check. Courses are taught by organizations — Bible schools, churches and ministries — and are read in English, Russian, Ukrainian or German.
+
+- Every course in the catalogue is free to take, and so is the certificate at the end of it.
+- The catalogue and every course page are open to anyone without an account. Enrolling, quizzes and progress need a free account (email or Google sign-in).
+- A course reaches the catalogue only once it exists in all four languages; Scripture is quoted from a published Bible translation in each.
+- Certificates are issued in English; each carries its own number, checkable on the verification page.
+- Equip is open source (MIT): https://github.com/ArVaViT/equip
+
+## Public pages
+
+- [Course catalogue](https://equipbible.com/courses): every public course, searchable (`https://equipbible.com/courses?q=<words>`). Each course has a page at `https://equipbible.com/courses/<course id>` with its description, modules and lessons; the first lesson can be read without an account
+- [Organizations](https://equipbible.com/organizations): the schools, churches and ministries teaching on Equip; each has a page at `https://equipbible.com/o/<slug>`
+- [Verify a certificate](https://equipbible.com/verify): enter the number printed on a certificate; no account needed
+- [Sitemap](https://equipbible.com/sitemap.xml): every public page, including each course and organization
+
+## Public API (read-only, no authentication)
+
+- [List or search courses](https://api.equipbible.com/api/v1/courses): `GET /api/v1/courses?search=<words>&limit=<1-200>`; the `Accept-Language` header (`en`, `ru`, `uk`, `de`) picks the language of titles and descriptions
+- [One course](https://api.equipbible.com/api/v1/courses): `GET /api/v1/courses/<course id>` — title, description, modules and lesson titles
+
+## Legal
+
+- [Privacy Policy](https://equipbible.com/privacy)
+- [Infrastructure providers](https://equipbible.com/privacy/providers)
+- [Terms of Use](https://equipbible.com/terms)
+- [Teacher & contributor agreement](https://equipbible.com/teacher-terms)
+- [School agreement](https://equipbible.com/school-agreement)
+- [Copyright complaints (DMCA)](https://equipbible.com/dmca)
+
+## Optional
+
+- [Source code and documentation](https://github.com/ArVaViT/equip)
