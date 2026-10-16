@@ -3936,13 +3936,6 @@ ALTER TABLE ONLY public.translation_jobs
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: announcements announcements_select_authenticated; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY announcements_select_authenticated ON public.announcements FOR SELECT TO authenticated USING ((( SELECT auth.uid() AS uid) IS NOT NULL));
-
-
---
 -- Name: assignment_rubrics; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -3961,13 +3954,6 @@ ALTER TABLE public.assignment_submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.assignments ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: assignments assignments_select_all; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY assignments_select_all ON public.assignments FOR SELECT TO authenticated USING ((( SELECT auth.uid() AS uid) IS NOT NULL));
-
-
---
 -- Name: audit_logs; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -3980,13 +3966,6 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY audit_logs_select_admin ON public.audit_logs FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
    FROM public.profiles p
   WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = 'admin'::text)))));
-
-
---
--- Name: chapter_blocks blocks_select_all; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY blocks_select_all ON public.chapter_blocks FOR SELECT TO authenticated USING ((( SELECT auth.uid() AS uid) IS NOT NULL));
 
 
 --
@@ -4035,24 +4014,10 @@ CREATE POLICY chapter_progress_select ON public.chapter_progress FOR SELECT TO a
 ALTER TABLE public.chapters ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: chapters chapters_select_public; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY chapters_select_public ON public.chapters FOR SELECT TO authenticated USING (true);
-
-
---
 -- Name: cohort_courses; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.cohort_courses ENABLE ROW LEVEL SECURITY;
-
---
--- Name: cohort_courses cohort_courses_select_all; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY cohort_courses_select_all ON public.cohort_courses FOR SELECT USING (true);
-
 
 --
 -- Name: cohorts; Type: ROW SECURITY; Schema: public; Owner: -
@@ -4276,13 +4241,6 @@ ALTER TABLE public.legal_notices_seen ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.modules ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: modules modules_select_public; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY modules_select_public ON public.modules FOR SELECT TO authenticated USING (true);
-
-
---
 -- Name: notifications; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -4319,13 +4277,6 @@ CREATE POLICY organization_members_select_self ON public.organization_members FO
 --
 
 ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
-
---
--- Name: course_prerequisites prereqs_select_all; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY prereqs_select_all ON public.course_prerequisites FOR SELECT TO authenticated USING ((( SELECT auth.uid() AS uid) IS NOT NULL));
-
 
 --
 -- Name: profiles; Type: ROW SECURITY; Schema: public; Owner: -
@@ -4402,44 +4353,16 @@ CREATE POLICY quiz_extra_attempts_select_own ON public.quiz_extra_attempts FOR S
 ALTER TABLE public.quiz_options ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: quiz_options quiz_options_select_all; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY quiz_options_select_all ON public.quiz_options FOR SELECT TO authenticated USING ((( SELECT auth.uid() AS uid) IS NOT NULL));
-
-
---
 -- Name: quiz_questions; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.quiz_questions ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: quiz_questions quiz_questions_select_all; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY quiz_questions_select_all ON public.quiz_questions FOR SELECT TO authenticated USING ((( SELECT auth.uid() AS uid) IS NOT NULL));
-
-
---
 -- Name: quizzes; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.quizzes ENABLE ROW LEVEL SECURITY;
-
---
--- Name: quizzes quizzes_select_all; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY quizzes_select_all ON public.quizzes FOR SELECT TO authenticated USING ((( SELECT auth.uid() AS uid) IS NOT NULL));
-
-
---
--- Name: course_reviews reviews_select_all; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY reviews_select_all ON public.course_reviews FOR SELECT TO authenticated USING ((( SELECT auth.uid() AS uid) IS NOT NULL));
-
 
 --
 -- Name: rubric_criteria; Type: ROW SECURITY; Schema: public; Owner: -
