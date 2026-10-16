@@ -1,7 +1,8 @@
 /**
  * What the Storage buckets actually accept.
  *
- * Mirrors `supabase/migrations/20260227031449_create_storage_buckets.sql`.
+ * Mirrors `supabase/migrations/20260227031449_create_storage_buckets.sql`,
+ * less SVG on `course-assets` (`20261016011000_a_teacher_touches_only_their_own_course_files.sql`).
  * The bucket enforces these on the server; the client used to promise more
  * than that — a 10 MB image cap in the editor against a 5 MB bucket, a
  * ``.mp4`` in the materials picker against a bucket that only knows
@@ -27,9 +28,9 @@ export interface BucketSpec {
 /** Public bucket: covers and inline content images. */
 export const COURSE_ASSETS: BucketSpec = {
   maxBytes: 5 * MB,
-  mimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"],
-  extensions: [".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"],
-  formatLabels: ["JPG", "PNG", "WebP", "GIF", "SVG"],
+  mimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  extensions: [".jpg", ".jpeg", ".png", ".webp", ".gif"],
+  formatLabels: ["JPG", "PNG", "WebP", "GIF"],
 }
 
 /** Private bucket: course materials and chapter file blocks. */
@@ -110,7 +111,6 @@ const MIME_BY_EXTENSION: Readonly<Record<string, string>> = {
   png: "image/png",
   webp: "image/webp",
   gif: "image/gif",
-  svg: "image/svg+xml",
 }
 
 /** The part of a file we need to reason about a type; `File` satisfies it. */
