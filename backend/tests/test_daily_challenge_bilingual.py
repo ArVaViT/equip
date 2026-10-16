@@ -130,20 +130,20 @@ def _seed_question(
 # ── queue list ────────────────────────────────────────────────────────
 
 
-def test_queue_lists_by_status(db: Session, author: User, teacher: User, client: TestClient):
+def test_queue_lists_by_status(db: Session, author: User, admin_client: TestClient):
     _seed_question(db, author_id=author.id, status="doctrinally_reviewed")
     _seed_question(db, author_id=author.id, status="draft")
-    resp = client.get("/api/v1/admin/daily-challenge/questions?status=doctrinally_reviewed")
+    resp = admin_client.get("/api/v1/admin/daily-challenge/questions?status=doctrinally_reviewed")
     assert resp.status_code == 200
     body = resp.json()
     assert body["total"] == 1
     assert all(i["status"] == "doctrinally_reviewed" for i in body["items"])
 
 
-def test_queue_missing_locale_filter(db: Session, author: User, teacher: User, client: TestClient):
+def test_queue_missing_locale_filter(db: Session, author: User, admin_client: TestClient):
     _seed_question(db, author_id=author.id, ru_text=None)  # missing RU
     _seed_question(db, author_id=author.id)  # has both
-    resp = client.get("/api/v1/admin/daily-challenge/questions?missing_locale=ru")
+    resp = admin_client.get("/api/v1/admin/daily-challenge/questions?missing_locale=ru")
     assert resp.status_code == 200
     body = resp.json()
     assert len(body["items"]) == 1
@@ -154,28 +154,28 @@ def test_queue_missing_locale_filter(db: Session, author: User, teacher: User, c
     assert set(body["items"][0]["has_locale"]) == {"ru", "en", "de", "uk"}
 
 
-def test_queue_filters_on_a_language_nobody_wrote_by_hand(db: Session, author: User, teacher: User, client: TestClient):
+def test_queue_filters_on_a_language_nobody_wrote_by_hand(db: Session, author: User, admin_client: TestClient):
     # German arrived after these questions were written, so every one of
     # them is missing it. The filter has to work for the languages added
     # later — that is the case it exists for.
     _seed_question(db, author_id=author.id)
     _seed_question(db, author_id=author.id)
-    resp = client.get("/api/v1/admin/daily-challenge/questions?missing_locale=de")
+    resp = admin_client.get("/api/v1/admin/daily-challenge/questions?missing_locale=de")
     assert resp.status_code == 200
     body = resp.json()
     assert len(body["items"]) == 2
     assert all(item["has_locale"]["de"] is False for item in body["items"])
 
 
-def test_queue_refuses_a_language_it_does_not_serve(db: Session, author: User, teacher: User, client: TestClient):
-    resp = client.get("/api/v1/admin/daily-challenge/questions?missing_locale=fr")
+def test_queue_refuses_a_language_it_does_not_serve(db: Session, author: User, admin_client: TestClient):
+    resp = admin_client.get("/api/v1/admin/daily-challenge/questions?missing_locale=fr")
     assert resp.status_code == 422
 
 
-def test_queue_excludes_rejected_by_default(db: Session, author: User, teacher: User, client: TestClient):
+def test_queue_excludes_rejected_by_default(db: Session, author: User, admin_client: TestClient):
     _seed_question(db, author_id=author.id, rejected=True)
     _seed_question(db, author_id=author.id)
-    resp = client.get("/api/v1/admin/daily-challenge/questions")
+    resp = admin_client.get("/api/v1/admin/daily-challenge/questions")
     body = resp.json()
     assert all(i["rejected"] is False for i in body["items"])
     assert body["total"] == 1
@@ -184,9 +184,9 @@ def test_queue_excludes_rejected_by_default(db: Session, author: User, teacher: 
 # ── bilingual view ───────────────────────────────────────────────────
 
 
-def test_bilingual_view_returns_parallel_cells(db: Session, author: User, teacher: User, client: TestClient):
+def test_bilingual_view_returns_parallel_cells(db: Session, author: User, admin_client: TestClient):
     q = _seed_question(db, author_id=author.id)
-    resp = client.get(f"/api/v1/admin/daily-challenge/questions/{q.id}/bilingual")
+    resp = admin_client.get(f"/api/v1/admin/daily-challenge/questions/{q.id}/bilingual")
     assert resp.status_code == 200
     body = resp.json()
     assert body["question_text"]["en"]["text"].startswith("Romans 8")
@@ -198,9 +198,7 @@ def test_bilingual_view_returns_parallel_cells(db: Session, author: User, teache
     assert all(o["texts"]["ru"]["cv_id"] is None for o in body["options"])
 
 
-def test_a_german_row_the_pipeline_wrote_reaches_the_screen(
-    db: Session, author: User, teacher: User, client: TestClient
-):
+def test_a_german_row_the_pipeline_wrote_reaches_the_screen(db: Session, author: User, admin_client: TestClient):
     # The view fans out over LOCALE_CODES and its docstring says so. The
     # query underneath it asked for ``locale IN ('en','ru')``, so a German
     # row could exist, be active, be OK — and the cell stayed empty and
@@ -222,19 +220,17 @@ def test_a_german_row_the_pipeline_wrote_reaches_the_screen(
     )
     db.commit()
 
-    view = client.get(f"/api/v1/admin/daily-challenge/questions/{q.id}/bilingual").json()
+    view = admin_client.get(f"/api/v1/admin/daily-challenge/questions/{q.id}/bilingual").json()
     assert view["question_text"]["de"]["text"] == "Was sagt Römer 8?"
     assert view["question_text"]["de"]["cv_id"] is not None
 
-    listed = client.get("/api/v1/admin/daily-challenge/questions").json()["items"]
+    listed = admin_client.get("/api/v1/admin/daily-challenge/questions").json()["items"]
     assert next(item for item in listed if item["id"] == str(q.id))["has_locale"]["de"] is True
 
 
-def test_bilingual_view_returns_empty_cell_when_locale_missing(
-    db: Session, author: User, teacher: User, client: TestClient
-):
+def test_bilingual_view_returns_empty_cell_when_locale_missing(db: Session, author: User, admin_client: TestClient):
     q = _seed_question(db, author_id=author.id, ru_text=None)
-    resp = client.get(f"/api/v1/admin/daily-challenge/questions/{q.id}/bilingual")
+    resp = admin_client.get(f"/api/v1/admin/daily-challenge/questions/{q.id}/bilingual")
     body = resp.json()
     assert body["question_text"]["ru"]["text"] == ""
     assert body["question_text"]["ru"]["cv_id"] is None
@@ -244,9 +240,9 @@ def test_bilingual_view_returns_empty_cell_when_locale_missing(
 # ── cv upsert ───────────────────────────────────────────────────────
 
 
-def test_cv_upsert_creates_new_locale(db: Session, author: User, teacher: User, client: TestClient):
+def test_cv_upsert_creates_new_locale(db: Session, author: User, admin_client: TestClient):
     q = _seed_question(db, author_id=author.id, ru_text=None)
-    resp = client.post(
+    resp = admin_client.post(
         f"/api/v1/admin/daily-challenge/questions/{q.id}/cv",
         json={"field": "question_text", "locale": "ru", "text": "Новый русский перевод"},
     )
@@ -256,24 +252,24 @@ def test_cv_upsert_creates_new_locale(db: Session, author: User, teacher: User, 
     assert body["locale"] == "ru"
     assert body["origin"] == "human"
     # Followed up by GET → the RU cell now populated.
-    view = client.get(f"/api/v1/admin/daily-challenge/questions/{q.id}/bilingual").json()
+    view = admin_client.get(f"/api/v1/admin/daily-challenge/questions/{q.id}/bilingual").json()
     assert view["question_text"]["ru"]["text"] == "Новый русский перевод"
 
 
-def test_cv_upsert_supersedes_existing(db: Session, author: User, teacher: User, client: TestClient):
+def test_cv_upsert_supersedes_existing(db: Session, author: User, admin_client: TestClient):
     q = _seed_question(db, author_id=author.id)
-    resp = client.post(
+    resp = admin_client.post(
         f"/api/v1/admin/daily-challenge/questions/{q.id}/cv",
         json={"field": "question_text", "locale": "ru", "text": "Полностью переписанный перевод"},
     )
     assert resp.status_code == 200
-    view = client.get(f"/api/v1/admin/daily-challenge/questions/{q.id}/bilingual").json()
+    view = admin_client.get(f"/api/v1/admin/daily-challenge/questions/{q.id}/bilingual").json()
     assert view["question_text"]["ru"]["text"] == "Полностью переписанный перевод"
 
 
-def test_cv_upsert_option_text_requires_option_id(db: Session, author: User, teacher: User, client: TestClient):
+def test_cv_upsert_option_text_requires_option_id(db: Session, author: User, admin_client: TestClient):
     q = _seed_question(db, author_id=author.id)
-    resp = client.post(
+    resp = admin_client.post(
         f"/api/v1/admin/daily-challenge/questions/{q.id}/cv",
         json={"field": "option_text", "locale": "ru", "text": "Вариант на русском"},
     )
@@ -284,10 +280,10 @@ def test_cv_upsert_option_text_requires_option_id(db: Session, author: User, tea
     assert "option_id" in detail.get("message", "").lower()
 
 
-def test_cv_upsert_option_text_with_valid_option_persists(db: Session, author: User, teacher: User, client: TestClient):
+def test_cv_upsert_option_text_with_valid_option_persists(db: Session, author: User, admin_client: TestClient):
     q = _seed_question(db, author_id=author.id)
     option_id = q.options[0].id
-    resp = client.post(
+    resp = admin_client.post(
         f"/api/v1/admin/daily-challenge/questions/{q.id}/cv",
         json={
             "field": "option_text",
@@ -297,14 +293,14 @@ def test_cv_upsert_option_text_with_valid_option_persists(db: Session, author: U
         },
     )
     assert resp.status_code == 200
-    view = client.get(f"/api/v1/admin/daily-challenge/questions/{q.id}/bilingual").json()
+    view = admin_client.get(f"/api/v1/admin/daily-challenge/questions/{q.id}/bilingual").json()
     edited = next(o for o in view["options"] if o["id"] == str(option_id))
     assert edited["texts"]["ru"]["text"] == "Вариант на русском"
 
 
-def test_cv_upsert_refuses_rejected_question(db: Session, author: User, teacher: User, client: TestClient):
+def test_cv_upsert_refuses_rejected_question(db: Session, author: User, admin_client: TestClient):
     q = _seed_question(db, author_id=author.id, rejected=True)
-    resp = client.post(
+    resp = admin_client.post(
         f"/api/v1/admin/daily-challenge/questions/{q.id}/cv",
         json={"field": "question_text", "locale": "ru", "text": "irrelevant"},
     )
@@ -312,9 +308,9 @@ def test_cv_upsert_refuses_rejected_question(db: Session, author: User, teacher:
     assert resp.json()["detail"]["code"] == "validation.failed"
 
 
-def test_cv_upsert_refuses_unknown_option_id(db: Session, author: User, teacher: User, client: TestClient):
+def test_cv_upsert_refuses_unknown_option_id(db: Session, author: User, admin_client: TestClient):
     q = _seed_question(db, author_id=author.id)
-    resp = client.post(
+    resp = admin_client.post(
         f"/api/v1/admin/daily-challenge/questions/{q.id}/cv",
         json={
             "field": "option_text",
@@ -327,12 +323,12 @@ def test_cv_upsert_refuses_unknown_option_id(db: Session, author: User, teacher:
     assert resp.json()["detail"]["code"] == "validation.failed"
 
 
-def test_cv_upsert_rejects_whitespace_only_text(db: Session, author: User, teacher: User, client: TestClient):
+def test_cv_upsert_rejects_whitespace_only_text(db: Session, author: User, admin_client: TestClient):
     """Pydantic ``min_length=1`` accepts ``"   "`` because it counts
     characters, not non-whitespace ones. The route must reject so
     a whitespace-only translation doesn't quietly land in cv."""
     q = _seed_question(db, author_id=author.id)
-    resp = client.post(
+    resp = admin_client.post(
         f"/api/v1/admin/daily-challenge/questions/{q.id}/cv",
         json={"field": "question_text", "locale": "ru", "text": "   "},
     )

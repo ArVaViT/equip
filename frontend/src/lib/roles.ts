@@ -35,6 +35,15 @@ export function canDirect(role: UserRole | null | undefined): boolean {
 }
 
 /**
+ * Platform staff: Equip's own administration, above every organization.
+ * Mirrors the backend's ``require_admin``. A director runs one school and
+ * is not staff — see ``canDirect``.
+ */
+export function isPlatformStaff(role: UserRole | null | undefined): boolean {
+  return role === ROLES.ADMIN
+}
+
+/**
  * Single source of truth for mapping a ``UserRole`` enum value (which
  * mirrors Pydantic / Postgres ``CHECK`` constraint) to its i18n key.
  *

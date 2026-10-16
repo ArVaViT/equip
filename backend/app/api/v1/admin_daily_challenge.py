@@ -13,9 +13,13 @@ The AI generation orchestrator + bulk editorial UI lands later. These
 endpoints are sufficient for a human editor to manually seed the
 initial 60-90 question bank Vadym wants before public launch.
 
-Role gate: every route requires ``require_teacher`` — i.e. teacher OR
-admin. The editorial team is staffed from teacher-role users; the
-admin role inherits.
+Role gate: every route requires ``require_admin`` — platform staff only.
+A question published here is shown to every user of the platform, and
+``/generate`` spends the platform's Gemini budget, so the editor's seat is
+Equip's, not any one organization's. It used to be ``require_teacher``,
+from when every teacher was one of ours; since organizations, that opened
+the platform-wide card — and the answer keys of questions not yet shown —
+to a teacher of any school (security review, 2026-10-15).
 """
 
 from __future__ import annotations
@@ -26,7 +30,7 @@ from uuid import UUID  # noqa: TC003 — FastAPI runtime resolution
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.dependencies import require_teacher
+from app.api.dependencies import require_admin
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.daily_challenge import DailyChallengeQuestion
@@ -93,7 +97,7 @@ def _question_or_404(db: Session, question_id: UUID) -> DailyChallengeQuestion:
 
 def _serialize_editorial(db: Session, q: DailyChallengeQuestion) -> DailyChallengeQuestionEditorial:
     """Build the full editorial view — INCLUDES the answer key. Caller
-    is responsible for gating this behind a teacher/admin role check."""
+    is responsible for gating this behind the platform-staff check."""
     source_locale = normalize_locale(q.source_locale)
     bundle = fetch_question_text_bundle(
         db,
@@ -141,7 +145,7 @@ def _serialize_editorial(db: Session, q: DailyChallengeQuestion) -> DailyChallen
 )
 def create_question_route(
     data: DailyChallengeQuestionCreate,
-    teacher: User = Depends(require_teacher),
+    editor: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> DailyChallengeQuestionEditorial:
     try:
@@ -156,8 +160,8 @@ def create_question_route(
             options=[OptionDraft(text=o.text, is_correct=o.is_correct) for o in data.options],
             explanation=data.explanation,
             category=data.category,
-            created_by=teacher.id,
-            fallback_locale=teacher.preferred_locale,
+            created_by=editor.id,
+            fallback_locale=editor.preferred_locale,
         )
     except ValueError as exc:
         raise equip_error(
@@ -178,7 +182,7 @@ def create_question_route(
 )
 def get_question_editorial(
     question_id: UUID,
-    teacher: User = Depends(require_teacher),
+    editor: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> DailyChallengeQuestionEditorial:
     q = _question_or_404(db, question_id)
@@ -192,12 +196,12 @@ def get_question_editorial(
 )
 def promote_question_route(
     question_id: UUID,
-    teacher: User = Depends(require_teacher),
+    editor: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> DailyChallengeQuestionEditorial:
     q = _question_or_404(db, question_id)
     try:
-        q = promote_status(db, question=q, actor_id=teacher.id)
+        q = promote_status(db, question=q, actor_id=editor.id)
     except QuestionRejectedError as exc:
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,
@@ -228,11 +232,11 @@ def promote_question_route(
 def reject_question_route(
     question_id: UUID,
     body: DailyChallengeRejectRequest,
-    teacher: User = Depends(require_teacher),
+    editor: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> DailyChallengeQuestionEditorial:
     q = _question_or_404(db, question_id)
-    q = reject_question(db, question=q, actor_id=teacher.id, reason=body.reason)
+    q = reject_question(db, question=q, actor_id=editor.id, reason=body.reason)
     q = _question_or_404(db, question_id)
     return _serialize_editorial(db, q)
 
@@ -244,12 +248,12 @@ def reject_question_route(
 )
 def publish_question_route(
     question_id: UUID,
-    teacher: User = Depends(require_teacher),
+    editor: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> DailyChallengeQuestionEditorial:
     q = _question_or_404(db, question_id)
     try:
-        q = publish_question(db, question=q, actor_id=teacher.id)
+        q = publish_question(db, question=q, actor_id=editor.id)
     except QuestionRejectedError as exc:
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,
@@ -280,7 +284,7 @@ def publish_question_route(
 )
 def schedule_route(
     data: DailyChallengeScheduleCreate,
-    teacher: User = Depends(require_teacher),
+    editor: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> DailyChallengeScheduleResponse:
     q = _question_or_404(db, data.question_id)
@@ -289,7 +293,7 @@ def schedule_route(
             db,
             question=q,
             on_date=data.challenge_date,
-            actor_id=teacher.id,
+            actor_id=editor.id,
         )
     except QuestionRejectedError as exc:
         raise equip_error(
@@ -328,7 +332,7 @@ def schedule_route(
 )
 def generate_route(
     data: DailyChallengeGenerateRequest,
-    teacher: User = Depends(require_teacher),
+    editor: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> DailyChallengeGenerateResponse:
     """Kick off the 6-round confrontation flow on a single passage.
@@ -355,7 +359,7 @@ def generate_route(
         verse_to=data.bible_verse_to,
         n_candidates_per_agent=data.n_candidates_per_agent,
         max_survivors=data.max_survivors,
-        created_by=teacher.id,
+        created_by=editor.id,
     )
     with GeminiPromptClient(api_key=api_key) as client:
         outcome = run_generation(db, client=client, request=request)
@@ -399,7 +403,7 @@ def list_questions_route(
     rejected: bool = Query(default=False),
     limit: int = Query(default=25, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    teacher: User = Depends(require_teacher),
+    editor: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> DailyChallengeQuestionQueueResponse:
     items, total = list_review_queue(
@@ -438,7 +442,7 @@ def list_questions_route(
 )
 def get_bilingual_view_route(
     question_id: UUID,
-    teacher: User = Depends(require_teacher),
+    editor: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> DailyChallengeBilingualView:
     q = _question_or_404(db, question_id)
@@ -475,7 +479,7 @@ def get_bilingual_view_route(
 def upsert_cv_route(
     question_id: UUID,
     data: DailyChallengeCvUpsertRequest,
-    teacher: User = Depends(require_teacher),
+    editor: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> DailyChallengeCvCell:
     q = _question_or_404(db, question_id)
@@ -487,7 +491,7 @@ def upsert_cv_route(
             locale=data.locale,
             text=data.text,
             option_id=data.option_id,
-            actor_id=teacher.id,
+            actor_id=editor.id,
         )
     except _QRRejectedError as exc:
         raise equip_error(

@@ -282,12 +282,11 @@ class TestSchedule:
 
 
 class TestEndpoints:
-    def test_create_through_publish_walk(self, db: Session, client):
-        """End-to-end via the client: create draft → walk DAG →
-        publish → schedule. Uses the default ``client`` fixture which
-        authenticates as a teacher (per conftest)."""
+    def test_create_through_publish_walk(self, db: Session, admin_client):
+        """End-to-end as platform staff: create draft → walk DAG →
+        publish → schedule."""
         # Create
-        resp = client.post(
+        resp = admin_client.post(
             "/api/v1/admin/daily-challenge/questions",
             json={
                 "question_type": "multiple_choice",
@@ -311,26 +310,26 @@ class TestEndpoints:
 
         # Promote 4x to reach pilot_passed; then publish separately.
         for _ in range(4):
-            resp = client.post(f"/api/v1/admin/daily-challenge/questions/{qid}/promote")
+            resp = admin_client.post(f"/api/v1/admin/daily-challenge/questions/{qid}/promote")
             assert resp.status_code == 200, resp.text
         assert resp.json()["status"] == "pilot_passed"
 
-        resp = client.post(f"/api/v1/admin/daily-challenge/questions/{qid}/publish")
+        resp = admin_client.post(f"/api/v1/admin/daily-challenge/questions/{qid}/publish")
         assert resp.status_code == 200, resp.text
         assert resp.json()["status"] == "published"
         assert resp.json()["published_at"] is not None
 
         # Schedule.
-        resp = client.post(
+        resp = admin_client.post(
             "/api/v1/admin/daily-challenge/schedule",
             json={"challenge_date": "2026-06-15", "question_id": qid},
         )
         assert resp.status_code == 201, resp.text
         assert resp.json()["challenge_date"] == "2026-06-15"
 
-    def test_promote_rejected_returns_409(self, db: Session, client):
+    def test_promote_rejected_returns_409(self, db: Session, admin_client):
         # Create + reject + try to promote → 409 validation.failed.
-        resp = client.post(
+        resp = admin_client.post(
             "/api/v1/admin/daily-challenge/questions",
             json={
                 "question_type": "multiple_choice",
@@ -345,14 +344,45 @@ class TestEndpoints:
             },
         )
         qid = resp.json()["id"]
-        client.post(
+        admin_client.post(
             f"/api/v1/admin/daily-challenge/questions/{qid}/reject",
             json={"reason": "ambiguous"},
         )
-        resp = client.post(f"/api/v1/admin/daily-challenge/questions/{qid}/promote")
+        resp = admin_client.post(f"/api/v1/admin/daily-challenge/questions/{qid}/promote")
         assert resp.status_code == 409
         assert resp.json()["detail"]["code"] == "validation.failed"
 
     def test_student_cannot_access_admin_routes(self, db: Session, student_client):
         resp = student_client.get(f"/api/v1/admin/daily-challenge/questions/{uuid.uuid4()}")
         assert resp.status_code == 403
+
+
+class TestOnlyPlatformStaffEdits:
+    """The card is the whole platform's, so is the seat that edits it.
+
+    Every route on the editorial router, not a hand-picked few: the next
+    route added to it is covered without anyone remembering to add it here.
+    """
+
+    @staticmethod
+    def _editorial_routes() -> list[tuple[str, str]]:
+        from fastapi.routing import APIRoute
+
+        from app.api.v1 import admin_daily_challenge
+
+        routes = []
+        for route in admin_daily_challenge.router.routes:
+            assert isinstance(route, APIRoute)
+            path = route.path.replace("{question_id}", str(uuid.uuid4()))
+            routes.extend((method, path) for method in sorted(route.methods))
+        return routes
+
+    @pytest.mark.parametrize("role", [UserRole.TEACHER, UserRole.DIRECTOR])
+    def test_a_school_s_staff_is_refused_on_every_route(self, db: Session, client, teacher: User, role: UserRole):
+        teacher.role = role.value
+        db.commit()
+        routes = self._editorial_routes()
+        assert routes, "the editorial router has no routes to check"
+        for method, path in routes:
+            resp = client.request(method, f"/api/v1{path}", json={})
+            assert resp.status_code == 403, f"{method} {path} answered {resp.status_code}"

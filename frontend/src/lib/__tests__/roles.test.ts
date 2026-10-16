@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { ROLE_BADGE_VARIANT, ROLE_I18N_KEY, TEACHING_ROLES, canTeach } from "@/lib/roles"
+import { ROLE_BADGE_VARIANT, ROLE_I18N_KEY, TEACHING_ROLES, canTeach, isPlatformStaff } from "@/lib/roles"
 
 /**
  * ``lib/roles.ts`` is the single source of truth that maps a
@@ -100,5 +100,13 @@ describe("canTeach", () => {
 
   it("is defined once, and matches the backend's TEACHING_ROLES", () => {
     expect([...TEACHING_ROLES].sort()).toEqual(["admin", "director", "teacher"])
+  })
+})
+
+describe("isPlatformStaff", () => {
+  it("is the admin alone — a director runs one school, not the platform", () => {
+    expect(ALL_ROLES.filter((r) => isPlatformStaff(r))).toEqual(["admin"])
+    expect(isPlatformStaff(null)).toBe(false)
+    expect(isPlatformStaff(undefined)).toBe(false)
   })
 })
