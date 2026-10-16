@@ -4,12 +4,16 @@ from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, get_live_course_or_404
+from app.api.dependencies import (
+    course_a_reader_may_see,
+    get_current_user,
+    get_live_course_or_404,
+    get_optional_user,
+)
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import gauge
 from app.models.certificate import Certificate, CertificateStatus
-from app.models.course import CourseStatus
 from app.models.review import CourseReview
 from app.models.user import User
 from app.schemas.review import ReviewCreate, ReviewResponse
@@ -22,19 +26,14 @@ def list_course_reviews(
     course_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
+    current_user: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
-    # ``get_live_course_or_404`` raises the canonical 404 for a missing /
-    # soft-deleted course; an unpublished course is masked behind the same
-    # 404 here so its existence does not leak to anonymous callers.
-    course = get_live_course_or_404(db, course_id)
-    if course.status != CourseStatus.PUBLISHED:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=status.HTTP_404_NOT_FOUND,
-            message="Course not found",
-            context={"resource_type": "course", "resource_id": course_id},
-        )
+    # Visible exactly when the course page is. Until 2026-10-15 this route
+    # asked only "published?", so the reviews of a school's closed
+    # (``institute``) course — and who wrote them — read 200 to anyone with
+    # the course id, signed in or not, while the course itself read 404.
+    course_a_reader_may_see(db, get_live_course_or_404(db, course_id), course_id, current_user)
     return (
         db.query(CourseReview)
         .filter(CourseReview.course_id == course_id)

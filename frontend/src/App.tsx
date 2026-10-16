@@ -22,7 +22,7 @@ import { MobileTabBar } from "./components/layout/MobileTabBar";
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useGrandTour } from "@/hooks/useGrandTour"
 import { peekReturnPath, returnPathFrom, takeReturnPath } from "@/lib/authRedirect"
-import { canDirect, canTeach } from "@/lib/roles"
+import { canDirect, canTeach, isPlatformStaff } from "@/lib/roles"
 import { DeniedRedirect } from "@/components/auth/DeniedRedirect"
 import { getTeacherAgreementOwed, subscribeTeacherAgreement } from "@/components/legal/useTeacherAgreement"
 import { hasStoredSupabaseSession } from "@/lib/storedSession"
@@ -140,7 +140,7 @@ function useRouteFocus() {
   }, [pathname])
 }
 
-type RouteMode = "private" | "public" | "open" | "teacher" | "admin"
+type RouteMode = "private" | "public" | "open" | "teacher" | "admin" | "staff"
 
 function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -177,6 +177,9 @@ function Gate({ mode, children }: { mode: RouteMode; children: React.ReactNode }
     return <Navigate to="/" replace />
   }
   if (mode === "admin" && !canDirect(user.role)) {
+    return <DeniedRedirect />
+  }
+  if (mode === "staff" && !isPlatformStaff(user.role)) {
     return <DeniedRedirect />
   }
   return <>{children}</>
@@ -343,8 +346,8 @@ function AppRoutes() {
               <Route path="/teacher/courses/:courseId/vedomost" element={<Gate mode="teacher"><VedomostPage /></Gate>} />
               <Route path="/admin" element={<Gate mode="admin"><AdminDashboard /></Gate>} />
               <Route path="/admin/cohorts/:cohortId" element={<Gate mode="admin"><CohortDetailPage /></Gate>} />
-              <Route path="/admin/daily-challenge/review" element={<Gate mode="teacher"><DailyChallengeReviewPage /></Gate>} />
-              <Route path="/admin/daily-challenge/review/:questionId" element={<Gate mode="teacher"><DailyChallengeReviewDetailPage /></Gate>} />
+              <Route path="/admin/daily-challenge/review" element={<Gate mode="staff"><DailyChallengeReviewPage /></Gate>} />
+              <Route path="/admin/daily-challenge/review/:questionId" element={<Gate mode="staff"><DailyChallengeReviewDetailPage /></Gate>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

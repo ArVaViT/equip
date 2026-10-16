@@ -10,21 +10,17 @@ import {
 } from "@/lib/uploadLimits"
 
 /**
- * These mirror `supabase/migrations/20260227031449_create_storage_buckets.sql`.
+ * These mirror `supabase/migrations/20260227031449_create_storage_buckets.sql`,
+ * less SVG on `course-assets` (`20261016011000_a_teacher_touches_only_their_own_course_files.sql`).
  * The client used to promise more than the bucket — 10 MB against 5,
  * ``.mp4`` against a bucket that only knows ``audio/mp4`` — and a teacher's
  * file passed every check on screen and failed in English on the server.
  */
 describe("bucket specs match the migration", () => {
-  it("course-assets: 5 MB, five image types", () => {
+  it("course-assets: 5 MB, four raster image types and no SVG", () => {
     expect(COURSE_ASSETS.maxBytes).toBe(5 * MB)
-    expect(COURSE_ASSETS.mimeTypes).toEqual([
-      "image/jpeg",
-      "image/png",
-      "image/webp",
-      "image/gif",
-      "image/svg+xml",
-    ])
+    expect(COURSE_ASSETS.mimeTypes).toEqual(["image/jpeg", "image/png", "image/webp", "image/gif"])
+    expect(acceptAttribute(COURSE_ASSETS)).not.toContain("svg")
   })
 
   it("course-materials: 50 MB, documents and audio, no video", () => {

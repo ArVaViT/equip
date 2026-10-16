@@ -19,7 +19,7 @@ from app.models.enrollment import Enrollment
 from app.models.prerequisite import CoursePrerequisite
 from app.models.review import CourseReview
 from app.models.user import User, UserRole
-from tests.conftest import STUDENT_ID, TEACHER_ID
+from tests.conftest import STUDENT_ID, TEACHER_ID, leave_every_organization
 
 ADMIN_ID = uuid.UUID("cccccccc-cccc-cccc-cccc-cccccccccccc")
 
@@ -314,10 +314,41 @@ class TestListReviews:
         resp = client.get("/api/v1/reviews/course/no-such-course")
         assert resp.status_code == 404
 
-    def test_unpublished_course_reviews_hidden(self, client: TestClient, db: Session):
+    def test_unpublished_course_reviews_hidden(self, student_client: TestClient, db: Session):
         _seed_course(db, course_id="course-draft", status="draft")
-        resp = client.get("/api/v1/reviews/course/course-draft")
+        resp = student_client.get("/api/v1/reviews/course/course-draft")
         assert resp.status_code == 404
+
+
+class TestReviewsOfAClosedCourse:
+    """A school's closed course is not there to an outsider — nor its reviews.
+
+    The same rule as the course page (``course_a_reader_may_see``): until
+    2026-10-15 this route asked only "published?", so who reviewed an
+    ``institute`` course read 200 to anyone with its id.
+    """
+
+    @staticmethod
+    def _closed_course_with_a_review(db: Session) -> None:
+        course = _seed_course(db, course_id="course-closed")
+        course.access_mode = "institute"
+        db.commit()
+        _seed_review(db, user_id=STUDENT_ID, course_id="course-closed")
+
+    def test_a_guest_gets_404(self, anon_client: TestClient, db: Session):
+        self._closed_course_with_a_review(db)
+        assert anon_client.get("/api/v1/reviews/course/course-closed").status_code == 404
+
+    def test_someone_outside_the_school_gets_404(self, student_client: TestClient, db: Session):
+        self._closed_course_with_a_review(db)
+        leave_every_organization(db, STUDENT_ID)
+        assert student_client.get("/api/v1/reviews/course/course-closed").status_code == 404
+
+    def test_a_member_of_the_school_reads_them(self, student_client: TestClient, db: Session):
+        self._closed_course_with_a_review(db)
+        resp = student_client.get("/api/v1/reviews/course/course-closed")
+        assert resp.status_code == 200
+        assert len(resp.json()) == 1
 
 
 # ===================================================================

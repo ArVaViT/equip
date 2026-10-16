@@ -24,12 +24,12 @@ if TYPE_CHECKING:
 
 
 class TestQuestionOr404:
-    def test_get_unknown_question_returns_404(self, client: TestClient) -> None:
+    def test_get_unknown_question_returns_404(self, admin_client: TestClient) -> None:
         """`GET /admin/dc/questions/{uuid}` returns 404 with the
         canonical message when the id doesn't exist. Pin both the
         status code and the message shape since the frontend surfaces
         a localized banner keyed on `RESOURCE_NOT_FOUND`."""
-        r = client.get(f"/api/v1/admin/daily-challenge/questions/{uuid.uuid4()}")
+        r = admin_client.get(f"/api/v1/admin/daily-challenge/questions/{uuid.uuid4()}")
         assert r.status_code == 404
         body = r.json()
         assert "not found" in body["detail"]["message"].lower()
@@ -38,7 +38,7 @@ class TestQuestionOr404:
 class TestCreateQuestionRoute:
     def test_value_error_maps_to_400(
         self,
-        client: TestClient,
+        admin_client: TestClient,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The service raises ``ValueError`` for option-validation
@@ -56,7 +56,7 @@ class TestCreateQuestionRoute:
 
         monkeypatch.setattr(route_mod, "create_question", fake_create)
 
-        r = client.post(
+        r = admin_client.post(
             "/api/v1/admin/daily-challenge/questions",
             json={
                 "question_type": "multiple_choice",
@@ -78,7 +78,7 @@ class TestCreateQuestionRoute:
 class TestPromoteQuestion:
     def test_rejected_question_returns_409(
         self,
-        client: TestClient,
+        admin_client: TestClient,
         db,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -93,13 +93,13 @@ class TestPromoteQuestion:
             raise dc_admin.QuestionRejectedError(f"question {qid} is rejected; cannot promote")
 
         monkeypatch.setattr(route_mod, "promote_status", fake_promote)
-        r = client.post(f"/api/v1/admin/daily-challenge/questions/{qid}/promote")
+        r = admin_client.post(f"/api/v1/admin/daily-challenge/questions/{qid}/promote")
         assert r.status_code == 409
         assert "rejected" in r.json()["detail"]["message"]
 
     def test_transition_error_returns_409_with_current_status(
         self,
-        client: TestClient,
+        admin_client: TestClient,
         db,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -114,7 +114,7 @@ class TestPromoteQuestion:
             raise dc_admin.StatusTransitionError("no forward edge from published")
 
         monkeypatch.setattr(route_mod, "promote_status", fake_promote)
-        r = client.post(f"/api/v1/admin/daily-challenge/questions/{qid}/promote")
+        r = admin_client.post(f"/api/v1/admin/daily-challenge/questions/{qid}/promote")
         assert r.status_code == 409
         body = r.json()["detail"]
         assert "no forward edge" in body["message"]
@@ -124,7 +124,7 @@ class TestPromoteQuestion:
 class TestPublishQuestion:
     def test_rejected_blocks_publish(
         self,
-        client: TestClient,
+        admin_client: TestClient,
         db,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -136,12 +136,12 @@ class TestPublishQuestion:
             raise dc_admin.QuestionRejectedError(f"question {qid} is rejected")
 
         monkeypatch.setattr(route_mod, "publish_question", fake_publish)
-        r = client.post(f"/api/v1/admin/daily-challenge/questions/{qid}/publish")
+        r = admin_client.post(f"/api/v1/admin/daily-challenge/questions/{qid}/publish")
         assert r.status_code == 409
 
     def test_transition_error_on_publish_returns_409(
         self,
-        client: TestClient,
+        admin_client: TestClient,
         db,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -153,14 +153,14 @@ class TestPublishQuestion:
             raise dc_admin.StatusTransitionError("cannot publish from draft")
 
         monkeypatch.setattr(route_mod, "publish_question", fake_publish)
-        r = client.post(f"/api/v1/admin/daily-challenge/questions/{qid}/publish")
+        r = admin_client.post(f"/api/v1/admin/daily-challenge/questions/{qid}/publish")
         assert r.status_code == 409
 
 
 class TestScheduleRoute:
     def test_question_rejected_returns_409(
         self,
-        client: TestClient,
+        admin_client: TestClient,
         db,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -172,7 +172,7 @@ class TestScheduleRoute:
             raise dc_admin.QuestionRejectedError("cannot schedule a rejected question")
 
         monkeypatch.setattr(route_mod, "schedule_for_date", fake_schedule)
-        r = client.post(
+        r = admin_client.post(
             "/api/v1/admin/daily-challenge/schedule",
             json={"question_id": str(qid), "challenge_date": "2026-12-31"},
         )
@@ -180,7 +180,7 @@ class TestScheduleRoute:
 
     def test_not_publishable_returns_409_with_date_context(
         self,
-        client: TestClient,
+        admin_client: TestClient,
         db,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -192,7 +192,7 @@ class TestScheduleRoute:
             raise dc_admin.NotPublishableError("question is not in 'published' status")
 
         monkeypatch.setattr(route_mod, "schedule_for_date", fake_schedule)
-        r = client.post(
+        r = admin_client.post(
             "/api/v1/admin/daily-challenge/schedule",
             json={"question_id": str(qid), "challenge_date": "2026-12-31"},
         )
@@ -206,7 +206,7 @@ class TestScheduleRoute:
 class TestGenerateRoute:
     def test_missing_gemini_key_returns_503(
         self,
-        client: TestClient,
+        admin_client: TestClient,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Without a configured Gemini key the route refuses with 503 —
@@ -216,7 +216,7 @@ class TestGenerateRoute:
 
         monkeypatch.setattr(core_config.settings, "GEMINI_API_KEY", None)
 
-        r = client.post(
+        r = admin_client.post(
             "/api/v1/admin/daily-challenge/generate",
             json={
                 "bible_book": "Romans",

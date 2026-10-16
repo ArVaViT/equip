@@ -4,10 +4,16 @@ from fastapi import Depends, Header, Query, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, get_optional_user, is_owner_or_admin, require_teacher
+from app.api.dependencies import (
+    course_a_reader_may_see,
+    get_current_user,
+    get_optional_user,
+    is_owner_or_admin,
+    require_teacher,
+)
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
-from app.models.course import Course, CourseStatus
+from app.models.course import Course
 from app.models.organization import Organization
 from app.models.user import User, UserRole
 from app.schemas.course import CourseResponse, CourseSummary, ModuleResponse, OrganizationCourses
@@ -19,7 +25,7 @@ from app.services.course_service import (
     get_module,
     get_teacher_courses,
 )
-from app.services.memberships import active_memberships, belongs_to
+from app.services.memberships import active_memberships
 from app.services.reading_time import course_reading_minutes
 from app.services.translation.resolve_for_display import (
     build_localized_course_response_with_tree,
@@ -142,56 +148,9 @@ def _course_a_reader_may_see(db: Session, course_id: str, current_user: User | N
     Shared by the course page and everything a reader asks about the course
     from it, so the two cannot drift: what one hides the other must too.
     Loads the whole tree; a route that only needs the verdict passes its own
-    slim row to ``_a_reader_may_see``.
+    slim row to ``course_a_reader_may_see``.
     """
-    return _a_reader_may_see(db, get_course(db, course_id), course_id, current_user)
-
-
-def _a_reader_may_see(db: Session, course: Course | None, course_id: str, current_user: User | None) -> Course:
-    """The one rule for who may read a course, applied to a row already fetched.
-
-    Until 2026-10-03 the module route kept a private copy of this — status and
-    owner, nothing about ``access_mode`` — so an institute course's modules
-    and the titles of their lessons read 200 to anyone with the ids, signed
-    in or not, while the course itself read 404. The rule lives here once.
-    """
-    if not course:
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=404,
-            message=f"Course '{course_id}' not found",
-            context={"resource_type": "course", "resource_id": course_id},
-        )
-    if course.status != CourseStatus.PUBLISHED and not is_owner_or_admin(course, current_user):
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=404,
-            message=f"Course '{course_id}' not found",
-            context={"resource_type": "course", "resource_id": course_id},
-        )
-    # An ``institute`` course belongs to its organization and to nobody
-    # else. Until 2026-08-27 anyone with the id could read the whole tree
-    # of one, because there were no organizations to belong to; since
-    # 2026-10-03 "belongs" is a membership (``belongs_to``), in any role,
-    # and a person may belong to several.
-    #
-    # 404 rather than 403, deliberately. A 403 answers the question the
-    # request was really asking — does this course exist — and a course id
-    # is guessable enough to be worth not confirming. The owner and
-    # platform staff still see it, and they are the only two who should
-    # be able to tell the difference between "not yours" and "not there".
-    if (
-        course.access_mode == "institute"
-        and not is_owner_or_admin(course, current_user)
-        and not belongs_to(db, current_user, course.organization_id)
-    ):
-        raise equip_error(
-            ErrorCode.RESOURCE_NOT_FOUND,
-            status_code=404,
-            message=f"Course '{course_id}' not found",
-            context={"resource_type": "course", "resource_id": course_id},
-        )
-    return course
+    return course_a_reader_may_see(db, get_course(db, course_id), course_id, current_user)
 
 
 @router.get("/{course_id}", response_model=CourseResponse)
@@ -332,9 +291,9 @@ def get_module_detail(
     # The course row without its tree — the verdict needs status, owner and
     # access_mode, and the overlay below needs source_locale; nothing here
     # needs the modules and chapters loaded. The verdict itself is the
-    # course page's (``_a_reader_may_see``): an institute course's module is
+    # course page's (``course_a_reader_may_see``): an institute course's module is
     # exactly as visible as the course.
-    course = _a_reader_may_see(
+    course = course_a_reader_may_see(
         db,
         db.query(Course).filter(Course.id == course_id, Course.deleted_at.is_(None)).first(),
         course_id,

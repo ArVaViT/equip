@@ -98,7 +98,7 @@ describe("what the teacher is told", () => {
     it("translates the 415 and names the formats", () => {
       const err = storageError(415, "mime type image/heic is not supported", "InvalidMimeType")
       expect(describeUploadError(err, COURSE_ASSETS)).toBe(
-        "Такой формат файла не поддерживается. Подойдут: JPG, PNG, WebP, GIF, SVG.",
+        "Такой формат файла не поддерживается. Подойдут: JPG, PNG, WebP, GIF.",
       )
     })
 

@@ -14,7 +14,7 @@ from app.models.enrollment import Enrollment
 from app.models.organization import MembershipRole, Organization
 from app.models.user import User, UserRole, can_teach
 from app.services.chapter_gate import chapter_is_open_to
-from app.services.memberships import default_organization_id, directs, membership_of, organizations_where
+from app.services.memberships import belongs_to, default_organization_id, directs, membership_of, organizations_where
 
 security = HTTPBearer()
 optional_security = HTTPBearer(auto_error=False)
@@ -373,6 +373,53 @@ def is_owner_or_admin(entity: object, user: User | None) -> bool:
     if created_by is not None and str(created_by) == str(user.id):
         return True
     return user.role == UserRole.ADMIN.value
+
+
+def course_a_reader_may_see(db: Session, course: Course | None, course_id: str, current_user: User | None) -> Course:
+    """The one rule for who may read a course, applied to a row already fetched.
+
+    Until 2026-10-03 the module route kept a private copy of this — status and
+    owner, nothing about ``access_mode`` — so an institute course's modules
+    and the titles of their lessons read 200 to anyone with the ids, signed
+    in or not, while the course itself read 404. The rule lives here once.
+    """
+    if not course:
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=404,
+            message=f"Course '{course_id}' not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
+    if course.status != CourseStatus.PUBLISHED and not is_owner_or_admin(course, current_user):
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=404,
+            message=f"Course '{course_id}' not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
+    # An ``institute`` course belongs to its organization and to nobody
+    # else. Until 2026-08-27 anyone with the id could read the whole tree
+    # of one, because there were no organizations to belong to; since
+    # 2026-10-03 "belongs" is a membership (``belongs_to``), in any role,
+    # and a person may belong to several.
+    #
+    # 404 rather than 403, deliberately. A 403 answers the question the
+    # request was really asking — does this course exist — and a course id
+    # is guessable enough to be worth not confirming. The owner and
+    # platform staff still see it, and they are the only two who should
+    # be able to tell the difference between "not yours" and "not there".
+    if (
+        course.access_mode == "institute"
+        and not is_owner_or_admin(course, current_user)
+        and not belongs_to(db, current_user, course.organization_id)
+    ):
+        raise equip_error(
+            ErrorCode.RESOURCE_NOT_FOUND,
+            status_code=404,
+            message=f"Course '{course_id}' not found",
+            context={"resource_type": "course", "resource_id": course_id},
+        )
+    return course
 
 
 # ``assert_course_owner`` was moved to ``app.services.domain_access`` so

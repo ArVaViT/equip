@@ -785,4 +785,25 @@ BEGIN
   RAISE NOTICE 'OK: no policy reads profiles.organization_id';
 END $$;
 
+-- Structural guard (20261016011100): no policy lets a client role in on
+-- "signed in" alone. `USING (true)` or `auth.uid() IS NOT NULL` for anon /
+-- authenticated read a whole table to anyone who registers — that is how
+-- the outline of every school's closed courses was readable through
+-- PostgREST. A table no client reads has no client policy; one a client
+-- does read asks who the row is for.
+DO $$
+DECLARE offenders text;
+BEGIN
+  SELECT string_agg(tablename || '.' || policyname, ', ') INTO offenders
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND (roles && ARRAY['anon', 'authenticated', 'public']::name[])
+    AND (coalesce(qual, '') IN ('true', '(( SELECT auth.uid() AS uid) IS NOT NULL)', '(auth.uid() IS NOT NULL)')
+         OR coalesce(with_check, '') IN ('true', '(( SELECT auth.uid() AS uid) IS NOT NULL)', '(auth.uid() IS NOT NULL)'));
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'SECURITY HOLE: policies open a table to anyone signed in: %', offenders;
+  END IF;
+  RAISE NOTICE 'OK: no policy opens a table to anyone signed in';
+END $$;
+
 SELECT 'RLS policy assertions passed' AS result;
