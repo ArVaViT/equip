@@ -12,6 +12,7 @@ import { AxiosError, AxiosHeaders } from "axios"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import i18n from "@/i18n/config"
+import { rememberReturnPath } from "@/lib/authRedirect"
 import { getAccountDeleted, publishAccountDeleted, rememberRestoreRequested, wasRestoreRequested } from "@/lib/accountDeleted"
 
 const restoreMyAccount = vi.fn()
@@ -63,6 +64,7 @@ describe("AccountDeletedScreen", () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     localStorage.clear()
+    sessionStorage.clear()
     publishAccountDeleted(true)
     await i18n.changeLanguage("en")
   })
@@ -154,5 +156,13 @@ describe("AccountDeletedScreen", () => {
     await userEvent.click(screen.getByRole("button", { name: i18n.t("common.signOut") }))
     await waitFor(() => expect(logout).toHaveBeenCalledTimes(1))
     expect(restoreMyAccount).not.toHaveBeenCalled()
+  })
+
+  it("after restoring, carries on to where the sign-in was heading (an invitation)", async () => {
+    rememberReturnPath({ from: "/invite/accept#token=abc" })
+    restoreMyAccount.mockResolvedValue(undefined)
+    render(<AccountDeletedScreen />, { wrapper: Wrapper })
+    await userEvent.click(screen.getByRole("button", { name: "Restore account" }))
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith("/invite/accept#token=abc", { replace: true }))
   })
 })

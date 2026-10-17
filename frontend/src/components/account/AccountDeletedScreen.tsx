@@ -15,6 +15,7 @@ import {
   wasRestoreRequested,
 } from "@/lib/accountDeleted"
 import { emailSendErrorMessage } from "@/lib/authError"
+import { takeReturnPath } from "@/lib/authRedirect"
 import { getErrorCode } from "@/lib/errorCode"
 import { toast } from "@/lib/toast"
 import { authService } from "@/services/auth"
@@ -93,7 +94,9 @@ export function AccountDeletedScreen() {
         publishAccountDeleted(false)
         await refreshUser()
         toast({ title: t("account.deleted.restored"), variant: "success" })
-        navigate("/", { replace: true })
+        // Where the sign-in was heading — an invitation, a lesson — is still
+        // remembered: this screen stood in front of it, nothing spent it.
+        navigate(takeReturnPath() ?? "/", { replace: true })
       } catch (err) {
         if (quiet) return
         if (getErrorCode(err) === "account.restore_needs_email_link") {
