@@ -455,6 +455,15 @@ EXCEPTION
   WHEN check_violation THEN RAISE NOTICE 'OK: profiles.organization_id is not client-writable (trigger)';
 END $$;
 
+DO $$
+BEGIN
+  UPDATE public.profiles SET onboarding_completed_at = now()
+  WHERE id = '33333333-3333-3333-3333-333333333333';
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated skipped the first-run gate';
+EXCEPTION
+  WHEN check_violation THEN RAISE NOTICE 'OK: profiles.onboarding_completed_at is not client-writable (trigger)';
+END $$;
+
 -- Shut the account off as the owner first: "NULL -> NULL" is not a change,
 -- so an account that was never deactivated cannot prove anything here.
 RESET ROLE;
@@ -471,14 +480,22 @@ EXCEPTION
   WHEN check_violation THEN RAISE NOTICE 'OK: profiles.deactivated_at is not client-writable (trigger)';
 END $$;
 
+-- A deactivated account is frozen for its owner: even a safe field does
+-- not move (20261016130000). Proven on the same account, then undone as
+-- the owner so the positive control below runs on a live account.
 DO $$
 BEGIN
-  UPDATE public.profiles SET onboarding_completed_at = now()
+  UPDATE public.profiles SET full_name = 'Should not land'
   WHERE id = '33333333-3333-3333-3333-333333333333';
-  RAISE EXCEPTION 'SECURITY HOLE: authenticated skipped the first-run gate';
+  RAISE EXCEPTION 'SECURITY HOLE: a deactivated account edited its own profile';
 EXCEPTION
-  WHEN check_violation THEN RAISE NOTICE 'OK: profiles.onboarding_completed_at is not client-writable (trigger)';
+  WHEN check_violation THEN RAISE NOTICE 'OK: a deactivated account cannot edit its profile (trigger)';
 END $$;
+
+RESET ROLE;
+UPDATE public.profiles SET deactivated_at = NULL
+WHERE id = '33333333-3333-3333-3333-333333333333';
+SET ROLE authenticated;
 
 -- Positive control for this section: the safe fields still move, so the
 -- three assertions above are proving a guard rather than a broken write
