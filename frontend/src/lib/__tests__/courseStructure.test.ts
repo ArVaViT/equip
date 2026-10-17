@@ -114,27 +114,62 @@ describe("readCourseStructure", () => {
     expect(ids(structure.groups[0]!.chapters)).toEqual(["l1", "l2", "l3"])
   })
 
-  it("puts the ungrouped lessons in one group after the last module", () => {
+  it("reads a lesson outside modules where the teacher put it, between modules too", () => {
+    // One sequence (2026-10-16): modules and loose lessons share one
+    // numbering; the student reads what the teacher arranged.
     const structure = readCourseStructure(
       course({
         modules: [
+          module("m-2", {
+            order_index: 3,
+            chapters: [chapter("b1", { module_id: "m-2", order_index: 4 })],
+          }),
           module("m-1", {
             order_index: 0,
-            chapters: [chapter("a1", { module_id: "m-1", order_index: 0 })],
-          }),
-          module("m-2", {
-            order_index: 1,
-            chapters: [chapter("b1", { module_id: "m-2", order_index: 0 })],
+            chapters: [chapter("a1", { module_id: "m-1", order_index: 1 })],
           }),
         ],
-        // Deliberately low order indexes: the tail is a rule about grouping,
-        // not a consequence of the numbers.
-        chapters: [chapter("loose2", { order_index: 1 }), chapter("loose1", { order_index: 0 })],
+        chapters: [chapter("loose2", { order_index: 5 }), chapter("loose1", { order_index: 2 })],
       }),
     )
 
-    expect(structure.groups.map((g) => g.moduleId)).toEqual(["m-1", "m-2", null])
-    expect(ids(structure.chapters)).toEqual(["a1", "b1", "loose1", "loose2"])
+    expect(structure.groups.map((g) => g.moduleId)).toEqual(["m-1", null, "m-2", null])
+    expect(ids(structure.chapters)).toEqual(["a1", "loose1", "b1", "loose2"])
+  })
+
+  it("never lets a module's own lesson numbers move a loose lesson past it", () => {
+    // The old defect: renumbering a module's lessons 0..n-1 carried the
+    // loose lesson after the module in front of it. Inside a module the
+    // numbers order only its own lessons.
+    const shape = (a: number, b: number) =>
+      readCourseStructure(
+        course({
+          modules: [
+            module("m-1", {
+              order_index: 0,
+              chapters: [
+                chapter("a1", { module_id: "m-1", order_index: a }),
+                chapter("a2", { module_id: "m-1", order_index: b }),
+              ],
+            }),
+          ],
+          chapters: [chapter("after", { order_index: 3 })],
+        }),
+      )
+
+    expect(ids(shape(1, 0).chapters)).toEqual(["a2", "a1", "after"])
+    expect(ids(shape(90, 91).chapters)).toEqual(["a1", "a2", "after"])
+  })
+
+  it("breaks a tie between a module and a loose lesson the way the server does", () => {
+    const structure = readCourseStructure(
+      course({
+        modules: [module("m-1", { order_index: 1, chapters: [chapter("in", { module_id: "m-1" })] })],
+        chapters: [chapter("b-loose", { order_index: 1 }), chapter("a-loose", { order_index: 1 })],
+      }),
+    )
+
+    expect(ids(structure.chapters)).toEqual(["in", "a-loose", "b-loose"])
   })
 
   it("keeps an empty module in the outline and out of the reading order", () => {
@@ -251,7 +286,7 @@ describe("findChapter", () => {
     expect(last?.prev?.id).toBe("a1")
   })
 
-  it("steps from the last module into the ungrouped tail", () => {
+  it("steps from the last module into the lesson after it", () => {
     expect(findChapter(structure, "b1")?.next?.id).toBe("loose")
   })
 

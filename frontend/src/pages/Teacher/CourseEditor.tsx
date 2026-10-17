@@ -375,9 +375,7 @@ export default function CourseEditor() {
       <CourseOutline
         courseId={courseId ?? ""}
         structure={data.structure}
-        modules={data.sortedModules}
-        onModuleDragEnd={data.reorderModules}
-        onChapterDragEnd={data.reorderChapters}
+        onOutlineDragEnd={data.reorderOutline}
         onAddModule={async () => {
           await data.addModule()
           void readiness.refresh()

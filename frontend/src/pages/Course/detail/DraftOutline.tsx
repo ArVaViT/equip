@@ -85,7 +85,7 @@ export function DraftOutline({ courseId, structure }: Props) {
               // The lessons no module groups. No card and no heading over
               // them: a heading here would be a module by another name, and
               // the point is that these lessons need none.
-              <Card key="ungrouped" className="transition-colors">
+              <Card key={`loose-${idx}`} className="transition-colors">
                 <CardContent className="px-4 py-2">
                   <ChapterLinks courseId={courseId} chapters={group.chapters} />
                 </CardContent>

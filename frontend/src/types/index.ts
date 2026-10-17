@@ -705,8 +705,8 @@ export interface CalendarEvent {
  *
  * The stand-in has `id === UNGROUPED_GROUP_ID` (see `lib/courseStructure`),
  * an empty `title` — the screen supplies the wording — and an `order_index`
- * past the last real module, so it sorts to the tail. It appears only when
- * the course actually has a loose lesson.
+ * that is its rank in the course's reading order (where its first lesson
+ * stands). It appears only when the course actually has a loose lesson.
  */
 export interface CourseGroupInfo {
   id: string

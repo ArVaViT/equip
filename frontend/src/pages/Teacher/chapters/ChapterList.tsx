@@ -19,6 +19,14 @@ interface ChapterListProps {
    * droppables cannot share an id.
    */
   droppableId?: string;
+  /**
+   * Set when the list sits inside a drag context of its parent's — the course
+   * outline, where modules and lessons are dragged in one context and a
+   * module's own lessons in a nested list. The list then draws no context of
+   * its own (two nested contexts do not cooperate), and `type` keeps its rows
+   * to this list.
+   */
+  nested?: { type: string };
 }
 
 /**
@@ -35,33 +43,34 @@ export function ChapterList({
   onDelete,
   moveFor,
   droppableId = "chapters",
+  nested,
 }: ChapterListProps) {
-  return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <Droppable droppableId={droppableId}>
-        {(provided) => (
-          <div
-            className="space-y-3 mb-6"
-            ref={provided.innerRef}
-            {...provided.droppableProps}
-          >
-            {chapters.map((ch, idx) => (
-              <ChapterRow
-                key={ch.id}
-                chapter={ch}
-                index={idx}
-                onTitleChange={(title) => onTitleChange(ch.id, title)}
-                onRename={(title) => onRename(ch, title)}
-                onToggleLock={() => onToggleLock(ch)}
-                onEdit={() => onEdit(ch.id)}
-                onDelete={() => onDelete(ch.id)}
-                move={moveFor?.(ch)}
-              />
-            ))}
-            {provided.placeholder}
-          </div>
-        )}
-      </Droppable>
-    </DragDropContext>
+  const list = (
+    <Droppable droppableId={droppableId} type={nested?.type}>
+      {(provided) => (
+        <div
+          className="space-y-3 mb-6"
+          ref={provided.innerRef}
+          {...provided.droppableProps}
+        >
+          {chapters.map((ch, idx) => (
+            <ChapterRow
+              key={ch.id}
+              chapter={ch}
+              index={idx}
+              onTitleChange={(title) => onTitleChange(ch.id, title)}
+              onRename={(title) => onRename(ch, title)}
+              onToggleLock={() => onToggleLock(ch)}
+              onEdit={() => onEdit(ch.id)}
+              onDelete={() => onDelete(ch.id)}
+              move={moveFor?.(ch)}
+            />
+          ))}
+          {provided.placeholder}
+        </div>
+      )}
+    </Droppable>
   );
+  if (nested) return list;
+  return <DragDropContext onDragEnd={onDragEnd}>{list}</DragDropContext>;
 }
