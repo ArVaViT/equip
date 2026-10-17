@@ -220,6 +220,12 @@ def my_notes(
                 available=available,
             )
         )
-    order = {(c.id): (m.order_index if m else 10_000, c.order_index) for _, c, m, _ in rows}
+    # The course's one sequence (``course_structure``): a module and a
+    # lesson outside modules share one numbering, a module's lessons sit
+    # under it. A binned module groups nothing.
+    order = {
+        c.id: (m.order_index, 0, c.order_index) if m is not None and m.deleted_at is None else (c.order_index, 1, 0)
+        for _, c, m, _ in rows
+    }
     out.sort(key=lambda n: (n.course_title or "", n.course_id, order[n.chapter_id]))
     return out

@@ -140,9 +140,13 @@ def test_a_previewer_does_not_get_a_file_s_path_or_a_quiz_s_id(db: Session, anon
 
 
 def test_the_first_lesson_is_the_one_the_reader_sees_first(db: Session, anon_client: TestClient) -> None:
-    """A lesson in no module is listed after the modules on the course page;
-    the preview is the module's first lesson even when the loose one is
-    numbered lower."""
+    """The course's one sequence decides: a lesson in no module placed
+    after the module leaves the module's first lesson as the preview, and
+    one placed before the module is the first lesson — here an empty one,
+    so there is no preview rather than a later lesson in its stead."""
     course_id, first, _ = _course(db)
-    _chapter(db, course_id, None, -5)
+    _chapter(db, course_id, None, 10)
     assert anon_client.get(f"/api/v1/courses/{course_id}").json()["preview_chapter_id"] == first.id
+
+    _chapter(db, course_id, None, -5)
+    assert anon_client.get(f"/api/v1/courses/{course_id}").json()["preview_chapter_id"] is None

@@ -323,7 +323,8 @@ def test_a_new_lesson_lands_after_everything_the_course_has(client: TestClient):
     loose = _in_course(client, course_id, "Lesson 3")
     third = _in_module(client, course_id, module_id, "Lesson 4")
 
-    assert [row["order_index"] for row in (first, second, loose, third)] == [0, 1, 2, 3]
+    # The module took place 0; modules and lessons share one sequence.
+    assert [row["order_index"] for row in (first, second, loose, third)] == [1, 2, 3, 4]
 
 
 def test_a_lesson_appended_to_a_module_still_shows_last_in_it(client: TestClient):
@@ -351,7 +352,7 @@ def test_a_lesson_appended_to_a_module_still_shows_last_in_it(client: TestClient
     assert by_module[second] == [added[1], added[3]]
 
 
-def test_a_regrouped_lesson_goes_to_the_end_of_the_course(client: TestClient):
+def test_a_lesson_moved_into_a_module_goes_to_the_end_of_it(client: TestClient):
     """Otherwise it would collide with a number the new group already uses.
 
     Two chapters sharing an ``order_index`` inside one module are shown
@@ -363,12 +364,12 @@ def test_a_regrouped_lesson_goes_to_the_end_of_the_course(client: TestClient):
     second = _module(client, course_id, "Module 2")
     moving = _in_module(client, course_id, first, "Moving")
     _in_module(client, course_id, second, "Stays")
-    assert moving["order_index"] == 0
+    assert moving["order_index"] == 2
 
     moved = client.put(f"{PREFIX}/{course_id}/chapters/{moving['id']}", json={"module_id": second})
 
     assert moved.status_code == 200, moved.text
-    assert moved.json()["order_index"] == 2
+    assert moved.json()["order_index"] == 4
     assert [chapter["title"] for module in _tree(client, course_id)["modules"] for chapter in module["chapters"]] == [
         "Stays",
         "Moving",
@@ -397,9 +398,9 @@ def test_an_order_that_is_not_moving_anywhere_is_left_alone(client: TestClient):
     module_id = _module(client, course_id)
     first = _in_module(client, course_id, module_id, "One")
     second = _in_module(client, course_id, module_id, "Two")
-    assert second["order_index"] == 1
+    assert second["order_index"] == 2
 
     unmoved = client.put(f"{PREFIX}/{course_id}/chapters/{first['id']}", json={"module_id": module_id})
 
     assert unmoved.status_code == 200, unmoved.text
-    assert unmoved.json()["order_index"] == 0
+    assert unmoved.json()["order_index"] == 1

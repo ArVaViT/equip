@@ -322,16 +322,16 @@ def test_a_course_without_loose_chapters_grows_no_extra_group(db: Session, teach
 
 
 def test_the_groups_chapters_run_consecutively(db: Session, teacher: User, student: User):
-    """Course-global order, each heading's lessons together, the loose
-    ones as one group at the tail."""
+    """One sequence, each heading's lessons together, the loose ones
+    where the teacher put them — here, after both modules."""
     course = _course(db)
     one = _module(db, course, title="One", order=0)
-    two = _module(db, course, title="Two", order=1)
-    _chapter(db, course, module=two, title="two-a", order=0, chapter_id="two-a")
-    _chapter(db, course, title="loose-b", order=1, chapter_id="loose-b")
-    _chapter(db, course, module=one, title="one-b", order=1, chapter_id="one-b")
-    _chapter(db, course, title="loose-a", order=0, chapter_id="loose-a")
-    _chapter(db, course, module=one, title="one-a", order=0, chapter_id="one-a")
+    two = _module(db, course, title="Two", order=3)
+    _chapter(db, course, module=two, title="two-a", order=4, chapter_id="two-a")
+    _chapter(db, course, title="loose-b", order=6, chapter_id="loose-b")
+    _chapter(db, course, module=one, title="one-b", order=2, chapter_id="one-b")
+    _chapter(db, course, title="loose-a", order=5, chapter_id="loose-a")
+    _chapter(db, course, module=one, title="one-a", order=1, chapter_id="one-a")
     _enroll(db, course)
 
     detail = build_student_chapter_detail(db, course, course.id, str(STUDENT_ID))

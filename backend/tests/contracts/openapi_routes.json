@@ -1862,6 +1862,21 @@
     "body": true
   },
   {
+    "method": "PUT",
+    "path": "/api/v1/courses/{course_id}/outline",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": true
+  },
+  {
     "method": "DELETE",
     "path": "/api/v1/courses/{course_id}/permanent",
     "params": [

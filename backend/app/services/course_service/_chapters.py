@@ -6,10 +6,10 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func
-
 from app.models.course import Chapter, Module
 from app.services.content_versions import dual_write_entity_content
+from app.services.course_service._outline import live_spine, next_outline_order, write_outline
+from app.services.course_structure import places_of
 from app.services.domain_access import course_source_locale_for_chapter
 
 if TYPE_CHECKING:
@@ -21,28 +21,12 @@ if TYPE_CHECKING:
 def _next_chapter_order(db: Session, course_id: str) -> int:
     """Return the tail ``order_index`` for a new chapter of this course.
 
-    Course-global since 2026-09-07, where it used to be the maximum
-    inside one module. The decided model is one order per course, with a
-    module as a label whose members sit together — and a chapter that
-    belongs to no module has no per-module maximum to be the tail of, so
-    the old question had no answer for it.
-
-    Existing courses keep the order they display. How a course reads is
-    ``course_structure.build_spine`` and nowhere else — headings by
-    ``module.order_index``, lessons by ``order_index`` inside each
-    heading, a lesson with no heading placed by its own number — and a
-    course-global maximum plus one is by construction greater than any
-    single module's maximum plus one: an appended chapter still lands at
-    the tail of its own module, exactly where the per-module number used
-    to put it, and an appended loose chapter lands at the tail of the
-    course. What changes is the number, not the position.
+    The place after everything the course holds, modules included — see
+    ``_outline.next_outline_order``. A lesson appended into a module
+    lands at that module's tail (inside a module its number only has to
+    be the largest there), and a loose one at the tail of the course.
     """
-    current_max = (
-        db.query(func.max(Chapter.order_index))
-        .filter(Chapter.course_id == course_id, Chapter.deleted_at.is_(None))
-        .scalar()
-    )
-    return 0 if current_max is None else current_max + 1
+    return next_outline_order(db, course_id)
 
 
 def _course_id_for_module(db: Session, module_id: str) -> str:
@@ -132,6 +116,16 @@ def create_chapter(
     return chapter
 
 
+def _seat_after_module(db: Session, chapter: Chapter, module_id: str) -> None:
+    """Renumber the course so ``chapter`` — already detached from
+    ``module_id`` in memory — sits right after that module."""
+    db.flush()
+    places = [(m, ids) for m, ids in places_of(live_spine(db, chapter.course_id)) if chapter.id not in ids]
+    at = next((i + 1 for i, (m, _) in enumerate(places) if m == module_id), len(places))
+    places.insert(at, (None, [chapter.id]))
+    write_outline(db, chapter.course_id, places)
+
+
 def update_chapter(db: Session, chapter: Chapter, data: ChapterUpdate) -> Chapter:
     patch = data.model_dump(exclude_unset=True)
     # Whether this patch moves the lesson to another group (or out of
@@ -139,17 +133,20 @@ def update_chapter(db: Session, chapter: Chapter, data: ChapterUpdate) -> Chapte
     # grouping is gone. ``module_id`` is checked against the course by
     # the route; nothing here can change which course a chapter is in.
     regrouped = "module_id" in patch and patch["module_id"] != chapter.module_id
+    leaving_module = chapter.module_id if regrouped and patch["module_id"] is None else None
     for field, value in patch.items():
         setattr(chapter, field, value)
     if regrouped and "order_index" not in patch:
-        # A lesson that changes group without being told where to sit
-        # goes to the end of the course. Keeping the number it had would
-        # collide with whatever chapter already holds it in the new
-        # group, and two chapters sharing an ``order_index`` are shown in
-        # whichever order the query plan felt like — the same class of
-        # defect that had chapters rendering backwards before the
-        # relationship got its explicit ``order_by``.
-        chapter.order_index = _next_chapter_order(db, chapter.course_id)
+        if leaving_module is not None:
+            # Out of a module, the lesson stays where it was: right after
+            # the module it leaves, not at the far end of the course.
+            _seat_after_module(db, chapter, leaving_module)
+        else:
+            # Into a module: at that module's tail. Keeping the number it
+            # had could collide with a lesson already there, and two
+            # lessons sharing a number read in whichever order the query
+            # plan felt like.
+            chapter.order_index = _next_chapter_order(db, chapter.course_id)
     db.flush()
     if "title" in patch:
         dual_write_entity_content(
@@ -198,6 +195,17 @@ def restore_chapter(db: Session, chapter: Chapter) -> Chapter:
         )
         .first()
     )
+    if taken is None and chapter.module_id is None:
+        # A loose lesson shares its numbers with the modules, too.
+        taken = (
+            db.query(Module.id)
+            .filter(
+                Module.course_id == chapter.course_id,
+                Module.deleted_at.is_(None),
+                Module.order_index == chapter.order_index,
+            )
+            .first()
+        )
     if taken is not None:
         chapter.order_index = _next_chapter_order(db, chapter.course_id)
     db.commit()

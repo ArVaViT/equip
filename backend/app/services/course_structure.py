@@ -3,51 +3,36 @@
 A chapter belongs to its course; a module is an optional heading that
 groups some of them. That leaves a course with two kinds of lesson —
 grouped and loose — and every surface that walks a course has to give
-the same answer about how the two interleave. The readiness checklist,
-the teacher's progress board and the PDF export all walk a course, and
-until this module they walked it three ways.
+the same answer about how the two interleave: the student's course page,
+"next lesson", the sequential lock, the teacher's editor and board, the
+readiness checklist and the PDF.
 
-The rule, decided once and applied everywhere:
+The rule (2026-10-16, Vadym's decision: one order for everybody, the one
+the teacher set):
 
-* **the headings run in the order the teacher gave them** —
-  ``module.order_index``, ties broken by id;
-* **a heading's lessons run consecutively** under it, in their own
-  ``order_index``: a heading whose lessons are scattered is not a
-  heading;
-* **a lesson in no module sits where its own ``order_index`` puts it** —
-  before the first heading whose lessons start above it. It has no
-  heading to sit under, so the only thing left to honour is the number
-  the author gave it.
+* **the course is one sequence of places.** A module takes a place, and
+  so does every lesson that sits in no module. Both are numbered by
+  their own ``order_index`` in one shared space — a module's number and
+  a loose lesson's number are compared with each other directly;
+* **a module's lessons run consecutively under it**, in their own
+  ``order_index``. Inside a module that number only orders the module's
+  lessons; it is never compared with anything outside the module;
+* ties (only possible in hand-edited or legacy rows) go module first,
+  then by id, so every reader breaks them the same way.
 
-The third clause is the one that replaces an assumption with an order.
-The board used to park every loose lesson in a tail after the last
-module: not where the author put it, just where nothing else was. The
-PDF used to sort the whole course flat by ``chapter.order_index`` and
-let a module take the position of its first lesson — which reads well
-but assumes that number means something across the whole course, and
-:func:`build_spine` is where that assumption is not made.
+So a lesson the teacher put between two modules stays between them, for
+the teacher and the student alike, and reordering the lessons inside a
+module cannot move anything outside it — the defect the previous rule
+had, where a loose lesson was placed by comparing its number with the
+numbers of the lessons a module *started* with, and renumbering one
+module's lessons could carry a loose lesson past it.
 
-Why the two numbers are not one number. ``module.order_index`` is the
-authored order of headings and ``chapter.order_index`` the authored
-order of lessons, and they answer different questions: moving a heading
-does not renumber the lessons under it. A flat sort by lesson number
-alone would therefore quietly ignore a heading the teacher had just
-moved — so headings are ordered by the number that tracks them, and
-lesson numbers decide only what a lesson number can decide: the order
-inside a heading, and where a loose lesson falls between headings.
-
-That second use does need lesson numbers to mean something across the
-course, and since 2026-09-07 they do: ``_next_chapter_order`` gives a
-new chapter the course maximum plus one whichever module it lands in.
-Rows written before that date were numbered per module — every module
-restarting at zero — and the migration
-``20260908..._one_order_for_the_course`` renumbers them, without moving
-anything anybody can see.
-
-Where the numbering is scrambled anyway (a heading moved, its lessons
-left behind), the heading order still wins and the fallback below keeps
-the sequence total rather than surprising: a heading never starts below
-the one before it.
+The write side keeps the numbers clean: :func:`number_outline` hands out
+one counter over the whole course in reading order — a module, then its
+lessons, then the next place — so the numbers are also monotonic across
+the course, and the migration
+``20261016120000_one_sequence_for_modules_and_loose_lessons`` brought
+the existing rows into that shape without moving anything.
 """
 
 from __future__ import annotations
@@ -56,7 +41,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterable, Sequence
 
     from app.models.course import Chapter, Module
 
@@ -117,11 +102,18 @@ class CourseSpine:
         """Where this group sits in the reading order, counting from 0.
 
         The board hands its clients a group list to sort, and this is the
-        number to sort it by — a module's own ``order_index`` cannot say
-        where a loose stretch falls between two modules, because both
-        neighbours have already taken their integer.
+        number to sort it by — the client sorts groups, and a course can
+        hold several loose stretches that report as one group.
         """
         return self.group_ids.index(group_id)
+
+    def predecessor_of(self, chapter_id: str) -> Chapter | None:
+        """The lesson a reader meets just before this one, across module
+        boundaries; ``None`` for the first lesson or one not in the spine."""
+        for index, chapter in enumerate(self.chapters):
+            if chapter.id == chapter_id:
+                return self.chapters[index - 1] if index > 0 else None
+        return None
 
 
 def build_spine(modules: Sequence[Module], chapters: Sequence[Chapter]) -> CourseSpine:
@@ -148,46 +140,33 @@ def build_spine(modules: Sequence[Module], chapters: Sequence[Chapter]) -> Cours
 
     for members in grouped.values():
         members.sort(key=lambda c: (c.order_index, c.id))
-    loose.sort(key=lambda c: (c.order_index, c.id))
 
-    headings = sorted(modules, key=lambda m: (m.order_index, m.id))
-
-    # Where each heading starts, in lesson numbers — the cut a loose
-    # lesson is compared against. Running maximum, so the cuts ascend
-    # even when the lesson numbers do not: a heading that was moved above
-    # one whose lessons are numbered lower keeps its authored place, and
-    # no loose lesson is dragged backwards through it. An empty heading
-    # inherits the cut of the heading before it, which is what "it has no
-    # lessons of its own to start at" comes to.
-    starts: list[int] = []
-    running = -1
-    for module in headings:
-        members = grouped.get(module.id) or []
-        if members:
-            running = max(running, members[0].order_index)
-        starts.append(running)
+    # The course's places: modules and loose lessons in one sort. The
+    # middle key puts a module ahead of a loose lesson holding the same
+    # number — arbitrary, but the same choice the client makes.
+    places: list[tuple[int, int, str, Module | None, Chapter | None]] = [
+        (m.order_index, 0, m.id, m, None) for m in modules
+    ]
+    places.extend((c.order_index, 1, c.id, None, c) for c in loose)
+    places.sort(key=lambda p: (p[0], p[1], p[2]))
 
     runs: list[SpineRun] = []
-    taken = 0
+    pending_loose: list[Chapter] = []
 
-    def _emit_loose(limit: int | None) -> None:
-        """Emit the loose lessons numbered below ``limit`` as one run.
+    def _flush_loose() -> None:
+        # Consecutive loose lessons share a run: they carry no heading, so
+        # splitting them would only scatter a flat course.
+        if pending_loose:
+            runs.append(SpineRun(module=None, chapters=tuple(pending_loose)))
+            pending_loose.clear()
 
-        ``None`` means "everything left" — the tail. Consecutive loose
-        lessons share a run: they carry no heading, so splitting them
-        would only scatter a flat course.
-        """
-        nonlocal taken
-        start = taken
-        while taken < len(loose) and (limit is None or loose[taken].order_index < limit):
-            taken += 1
-        if taken > start:
-            runs.append(SpineRun(module=None, chapters=tuple(loose[start:taken])))
-
-    for module, start in zip(headings, starts, strict=True):
-        _emit_loose(start)
-        runs.append(SpineRun(module=module, chapters=tuple(grouped.get(module.id) or ())))
-    _emit_loose(None)
+    for _order, _kind, _id, module, lesson in places:
+        if lesson is not None:
+            pending_loose.append(lesson)
+        elif module is not None:
+            _flush_loose()
+            runs.append(SpineRun(module=module, chapters=tuple(grouped.get(module.id) or ())))
+    _flush_loose()
 
     ordered: list[Chapter] = []
     group_ids: list[str] = []
@@ -202,3 +181,48 @@ def build_spine(modules: Sequence[Module], chapters: Sequence[Chapter]) -> Cours
         group_of=group_of,
         runs=tuple(runs),
     )
+
+
+@dataclass(frozen=True)
+class OutlineNumbers:
+    """What :func:`number_outline` hands out: a number per module, and a
+    number and a module (or ``None``) per lesson."""
+
+    modules: dict[str, int]
+    chapters: dict[str, tuple[int, str | None]]
+
+
+def number_outline(places: Iterable[tuple[str | None, Sequence[str]]]) -> OutlineNumbers:
+    """Number a course written out as places, in reading order.
+
+    Each place is ``(module_id, chapter_ids)`` — a module and the lessons
+    under it, or ``(None, chapter_ids)`` for lessons that sit in no
+    module. One counter runs over the whole course: a module takes the
+    next number and its lessons the ones after it, a loose lesson takes
+    the next number. The result reads back through :func:`build_spine`
+    as exactly the sequence handed in, and the lesson numbers alone are
+    monotonic over the course too.
+    """
+    counter = 0
+    module_numbers: dict[str, int] = {}
+    chapter_numbers: dict[str, tuple[int, str | None]] = {}
+    for module_id, chapter_ids in places:
+        if module_id is not None:
+            module_numbers[module_id] = counter
+            counter += 1
+        for chapter_id in chapter_ids:
+            chapter_numbers[chapter_id] = (counter, module_id)
+            counter += 1
+    return OutlineNumbers(modules=module_numbers, chapters=chapter_numbers)
+
+
+def places_of(spine: CourseSpine) -> list[tuple[str | None, list[str]]]:
+    """The spine written out as places — the input :func:`number_outline`
+    takes. A loose stretch becomes one place per lesson."""
+    places: list[tuple[str | None, list[str]]] = []
+    for run in spine.runs:
+        if run.module is None:
+            places.extend((None, [c.id]) for c in run.chapters)
+        else:
+            places.append((run.module.id, [c.id for c in run.chapters]))
+    return places

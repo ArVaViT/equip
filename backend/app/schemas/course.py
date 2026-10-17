@@ -483,3 +483,18 @@ class OrganizationCourses(BaseModel):
     organization_name: str
     role: str
     courses: list[CourseSummary] = []
+
+
+class OutlinePlace(RequestModel):
+    """One place in a course: a module with the lessons under it, or —
+    ``module_id`` null — lessons that sit in no module."""
+
+    module_id: str | None = None
+    chapter_ids: list[str] = Field(default_factory=list, max_length=1000)
+
+
+class CourseOutlineUpdate(RequestModel):
+    """The whole course, in reading order. Every live module and lesson
+    exactly once; see ``course_structure`` for how it reads back."""
+
+    places: list[OutlinePlace] = Field(max_length=2000)
