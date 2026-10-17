@@ -2945,6 +2945,7 @@
   "editor": {
     "toast": {
       "imageUploadFailed": "Bild konnte nicht hochgeladen werden",
+      "pastedImagesSkipped": "Die Bilder aus dem Dokument wurden nicht übernommen – fügen Sie sie einzeln ein oder ziehen Sie die Dateien hinein.",
       "audioUrlInvalid": "Die Audio-Adresse muss mit http(s) beginnen",
       "invalidUrl": "Das sieht nicht nach einer gültigen Adresse aus. Nutzen Sie eine vollständige wie https://example.com/seite."
     },

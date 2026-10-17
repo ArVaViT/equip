@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Editor } from "@tiptap/react";
 import type { EditorView } from "@tiptap/pm/view";
@@ -7,6 +7,7 @@ import { storageService } from "@/services/storage";
 import { toast } from "@/lib/toast";
 import { describeUploadError, preflightUpload } from "@/lib/uploadError";
 import { COURSE_ASSETS } from "@/lib/uploadLimits";
+import { htmlHasText, preparePastedHtml, replaceImageSrc, type PreparedPaste } from "./pastedImages";
 
 /**
  * Image upload state + handlers shared between the RichTextEditor's
@@ -16,6 +17,19 @@ import { COURSE_ASSETS } from "@/lib/uploadLimits";
  * success/failure toasts stay in sync regardless of which entry point
  * the user triggered.
  */
+type PreparedRef = { current: PreparedPaste | null };
+
+function takePrepared(ref: PreparedRef): PreparedPaste | null {
+  const prepared = ref.current;
+  ref.current = null;
+  return prepared;
+}
+
+/** The HTML is not going in after all: let go of its `blob:` URLs. */
+function discard(prepared: PreparedPaste | null): void {
+  prepared?.files.forEach((_file, url) => URL.revokeObjectURL(url));
+}
+
 export function useImageUpload() {
   const { t } = useTranslation();
   const [uploading, setUploading] = useState(false);
@@ -70,15 +84,52 @@ export function useImageUpload() {
     [upload],
   );
 
+  /** What `transformPastedHTML` made of the last pasted or dropped HTML.
+   *  ProseMirror runs that transform before `handlePaste`/`handleDrop`
+   *  (it parses first, then asks), so the transform only rewrites and the
+   *  handlers below decide whether the pictures it found are used. */
+  const preparedRef = useRef<PreparedPaste | null>(null);
+
+  /** The HTML is going in: upload its pictures, say once what could not come. */
+  const settle = useCallback(
+    (view: EditorView, prepared: PreparedPaste | null) => {
+      if (!prepared) return;
+      if (prepared.skipped > 0) {
+        toast({ title: t("editor.toast.pastedImagesSkipped") });
+      }
+      prepared.files.forEach((file, blobUrl) => {
+        void upload(file)
+          .then((url) => replaceImageSrc(view, blobUrl, url))
+          .finally(() => URL.revokeObjectURL(blobUrl));
+      });
+    },
+    [t, upload],
+  );
+
+  /** TipTap `editorProps.transformPastedHTML` impl — see `pastedImages.ts`. */
+  const transformPastedHTML = useCallback((html: string): string => {
+    discard(takePrepared(preparedRef));
+    const prepared = preparePastedHtml(html);
+    preparedRef.current = prepared;
+    return prepared.html;
+  }, []);
+
   /**
    * TipTap `editorProps.handleDrop` impl — uploads the dropped image and
    * inserts it at the drop coordinates.
    */
   const handleDrop = useCallback(
     (view: EditorView, event: DragEvent, moved: boolean): boolean => {
-      if (moved || !event.dataTransfer?.files?.length) return false;
-      const file = event.dataTransfer.files[0];
-      if (!file || !file.type.startsWith("image/")) return false;
+      const prepared = takePrepared(preparedRef);
+      const file = moved ? undefined : event.dataTransfer?.files?.[0];
+      if (!file || !file.type.startsWith("image/")) {
+        // Not a picture file: ProseMirror inserts the dropped content
+        // itself, pictures and all.
+        if (!moved) settle(view, prepared);
+        else discard(prepared);
+        return false;
+      }
+      discard(prepared);
       event.preventDefault();
       void upload(file).then((url) => {
         if (!url) return;
@@ -93,36 +144,46 @@ export function useImageUpload() {
       });
       return true;
     },
-    [upload],
+    [upload, settle],
   );
 
   /**
-   * TipTap `editorProps.handlePaste` impl — uploads the first pasted
-   * image and replaces the current selection with it.
+   * TipTap `editorProps.handlePaste` impl.
+   *
+   * A picture on the clipboard with no words beside it (a screenshot, an
+   * image copied from a page) is uploaded and replaces the selection.
+   * Anything with words is a piece of a document: Word, Excel and Pages
+   * also put a picture of the copied range on the clipboard, and taking
+   * that instead of the HTML pasted a screenshot of the text. The document
+   * goes in as HTML; its own pictures are handled by `settle`.
    */
   const handlePaste = useCallback(
     (view: EditorView, event: ClipboardEvent): boolean => {
-      const items = event.clipboardData?.items;
-      if (!items) return false;
-      for (const item of items) {
-        if (!item.type.startsWith("image/")) continue;
-        event.preventDefault();
-        const file = item.getAsFile();
-        if (!file) return false;
-        void upload(file).then((url) => {
-          if (!url) return;
-          const { schema } = view.state;
-          const imageNode = schema.nodes.image;
-          if (!imageNode) return;
-          const node = imageNode.create({ src: url });
-          view.dispatch(view.state.tr.replaceSelectionWith(node));
-        });
-        return true;
+      const prepared = takePrepared(preparedRef);
+      const data = event.clipboardData;
+      if (data && !htmlHasText(data.getData("text/html"))) {
+        for (const item of data.items ?? []) {
+          if (!item.type.startsWith("image/")) continue;
+          const file = item.getAsFile();
+          if (!file) break;
+          event.preventDefault();
+          discard(prepared);
+          void upload(file).then((url) => {
+            if (!url || view.isDestroyed) return;
+            const { schema } = view.state;
+            const imageNode = schema.nodes.image;
+            if (!imageNode) return;
+            const node = imageNode.create({ src: url });
+            view.dispatch(view.state.tr.replaceSelectionWith(node));
+          });
+          return true;
+        }
       }
+      settle(view, prepared);
       return false;
     },
-    [upload],
+    [upload, settle],
   );
 
-  return { uploading, uploadAndInsert, handleDrop, handlePaste, lastError };
+  return { uploading, uploadAndInsert, handleDrop, handlePaste, transformPastedHTML, lastError };
 }

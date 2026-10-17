@@ -2664,6 +2664,7 @@
   "editor": {
     "toast": {
       "imageUploadFailed": "Не удалось загрузить изображение",
+      "pastedImagesSkipped": "Картинки из документа не вставились — добавьте их отдельно или перетащите файлы.",
       "audioUrlInvalid": "URL аудио должен начинаться с http(s)",
       "invalidUrl": "Это не похоже на корректный URL. Используйте полный адрес, например https://example.com/page."
     },

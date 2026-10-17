@@ -2945,6 +2945,7 @@
   "editor": {
     "toast": {
       "imageUploadFailed": "Image upload failed",
+      "pastedImagesSkipped": "The document's pictures didn't come along — add them separately or drag the files in.",
       "audioUrlInvalid": "Audio URL must start with http(s)",
       "invalidUrl": "That doesn't look like a valid URL. Use a full address like https://example.com/page."
     },
