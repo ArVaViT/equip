@@ -232,8 +232,8 @@ describe("frontend/vercel.json", () => {
     // `set-cookie`, either of which keeps Vercel's CDN from storing the
     // response (`x-vercel-cache: MISS` on every request, 2026-10-17). The
     // project predates 2026-04-06, so external rewrites are not cached
-    // until `x-vercel-enable-rewrite-caching` opts in; the CDN-targeted
-    // header then overrides the upstream policy, and the transform drops
+    // until `x-vercel-enable-rewrite-caching` opts in; `s-maxage`
+    // then sets the CDN lifetime, and the transform drops
     // the cookie. Object keys are unique and written once, so a year is
     // safe. The browser policy (`Cache-Control`) stays as it was.
     const imgRule = main.find((r) => matches(r, "/img/course-assets/x/cover-ab12.png"));
@@ -247,8 +247,8 @@ describe("frontend/vercel.json", () => {
 
     it("opts the external rewrite into CDN caching for a year", () => {
       expect(imgRule!.headers!["x-vercel-enable-rewrite-caching"]).toBe("1");
-      const edge = imgRule!.headers!["CDN-Cache-Control"];
-      expect(edge).toMatch(/max-age=31536000\b/);
+      const edge = imgRule!.headers!["Cache-Control"];
+      expect(edge).toMatch(/\bs-maxage=31536000\b/);
       expect(edge).not.toMatch(/\b(no-cache|no-store|private)\b/);
       expect(imgRule!.headers!["Cache-Control"]).toMatch(/\bmax-age=86400\b/);
     });
