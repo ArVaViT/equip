@@ -12,9 +12,10 @@ const applyUser = vi.fn()
 let currentUser: User | null = null
 vi.mock("@/context/useAuth", () => ({ useAuth: () => ({ user: currentUser, applyUser }) }))
 
+let deviceZone = "Europe/Kyiv"
 vi.mock("../timeZone", async (orig) => ({
   ...(await orig<typeof import("../timeZone")>()),
-  browserTimeZone: () => "Europe/Kyiv",
+  browserTimeZone: () => deviceZone,
 }))
 
 import { useTimeZoneSync } from "../useTimeZoneSync"
@@ -39,6 +40,7 @@ describe("time zone sync", () => {
   beforeEach(() => {
     reportDetectedTimeZone.mockReset()
     applyUser.mockReset()
+    deviceZone = "Europe/Kyiv"
   })
 
   it("reports the device zone once, even if the profile object changes meanwhile", async () => {
@@ -76,5 +78,34 @@ describe("time zone sync", () => {
     currentUser = { ...base, time_zone: null, time_zone_source: "default", deleted_at: "2026-10-16T00:00:00Z", deactivated_at: "2026-10-16T00:00:00Z" }
     renderHook(() => useTimeZoneSync())
     expect(reportDetectedTimeZone).not.toHaveBeenCalled()
+  })
+
+  // 2026-10-17: 42 of 48 profiles had no zone at all (time_zone_source=default).
+  it.each(["UTC", "Etc/UTC", "Etc/GMT"])("records nothing when the browser only says %s", (zone) => {
+    deviceZone = zone
+    currentUser = { ...base, time_zone: null, time_zone_source: "default" }
+    renderHook(() => useTimeZoneSync())
+    expect(reportDetectedTimeZone).not.toHaveBeenCalled()
+  })
+
+  it("confirms a zone that is right but still marked default", async () => {
+    reportDetectedTimeZone.mockResolvedValue({ id: "u1", time_zone: "Europe/Kyiv", time_zone_source: "detected" })
+    currentUser = { ...base, time_zone: "Europe/Kyiv", time_zone_source: "default" }
+    renderHook(() => useTimeZoneSync())
+    await waitFor(() => expect(reportDetectedTimeZone).toHaveBeenCalledWith("Europe/Kyiv"))
+  })
+
+  it("leaves a detected zone alone while the device agrees", () => {
+    currentUser = { ...base, time_zone: "Europe/Kyiv", time_zone_source: "detected" }
+    renderHook(() => useTimeZoneSync())
+    expect(reportDetectedTimeZone).not.toHaveBeenCalled()
+  })
+
+  it("follows the device to a new place when the zone was only detected", async () => {
+    deviceZone = "America/Indiana/Indianapolis"
+    reportDetectedTimeZone.mockResolvedValue({ id: "u1", time_zone: deviceZone, time_zone_source: "detected" })
+    currentUser = { ...base, time_zone: "Europe/Kyiv", time_zone_source: "detected" }
+    renderHook(() => useTimeZoneSync())
+    await waitFor(() => expect(reportDetectedTimeZone).toHaveBeenCalledWith("America/Indiana/Indianapolis"))
   })
 })
