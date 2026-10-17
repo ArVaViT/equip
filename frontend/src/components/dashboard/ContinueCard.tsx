@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 import { ArrowRight } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import { useAuth } from "@/context/useAuth"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import { chapterHref } from "@/lib/courseStructure"
@@ -57,23 +57,28 @@ export function ContinueCard() {
           {/* Not «Продолжить · урок 1 из 5»: the button says «Продолжить». */}
           {t("dashboard.continue.position", { current: position, total })}
         </p>
+        {/* The whole card is the way in: RUM saw people tap the lesson's
+            title and nothing happen (2026-10-13). One link — the title,
+            stretched over the card, as on the teacher's course cards — and
+            «Continue» drawn inside it. The cover is on the title and not on
+            the button because the button scales on press, and a transform
+            makes it the box the cover is laid out in: between press and
+            release the cover shrank to the button and the tap was lost
+            (found with a real mouse on the stand, 2026-10-17). */}
         <h2 id="continue-heading" className="mt-1 line-clamp-2 break-words font-serif text-lg font-semibold text-ink">
-          {orNotTranslated(t, chapter.title)}
+          <Link
+            to={chapterHref(course.id, chapter.id)}
+            className="after:absolute after:inset-0 after:rounded-card focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-brand"
+          >
+            {orNotTranslated(t, chapter.title)}
+          </Link>
         </h2>
         <p className="truncate text-sm text-ink-muted">{orNotTranslated(t, course.title)}</p>
       </div>
-      {/* The whole card is the way in: RUM saw people tap the lesson's
-          title and nothing happen (2026-10-13). One link, stretched over the
-          card, as on the teacher's course cards — not a second link. */}
-      <Button asChild size="sm">
-        <Link
-          to={chapterHref(course.id, chapter.id)}
-          className="after:absolute after:inset-0 after:rounded-card focus-visible:after:ring-2 focus-visible:after:ring-brand"
-        >
-          {t("dashboard.continue.cta")}
-          <ArrowRight className="ml-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-        </Link>
-      </Button>
+      <span aria-hidden className={buttonVariants({ size: "sm" })}>
+        {t("dashboard.continue.cta")}
+        <ArrowRight className="ml-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+      </span>
     </section>
   )
 }
