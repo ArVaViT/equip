@@ -18,15 +18,16 @@ dashboard-only.** Concretely:
   not worth an email.
 - Every monitor sets `renotify_interval: 0` — one email per incident, never
   re-nags — and `notify_no_data: false`, except the ones whose whole job is to
-  notice silence: `translation-backlog-not-draining.json` (the metric stops
-  when the worker stops) and the RUM and telemetry "gone quiet" monitors,
+  notice silence: `translation-backlog-not-draining.json` and
+  `daily-challenge-worker-silent.json` (each metric stops when its worker
+  stops) and the RUM and telemetry "gone quiet" monitors,
   which alert on an absence by query rather than by no-data.
 
-The live set (checked 2026-10-03) is **18 monitors**: the 4 synthetic uptime
+The live set (checked 2026-10-16) is **20 monitors**: the 4 synthetic uptime
 checks (`/health`, frontend `/`, `/api/v1/courses`, Supabase), managed in the
-Synthetics UI and not mirrored here, and 14 others — 13 of the 16 files in
-this directory (the translation set applied 2026-08-22; the thinking-tokens
-monitor stays blocked and the two added 2026-10-03 are not applied yet, see
+Synthetics UI and not mirrored here, and 16 others — 15 of the 18 files in
+this directory (the thinking-tokens monitor stays blocked and the two
+Daily Challenge worker monitors added 2026-10-16 are not applied yet, see
 their rows) plus «telemetry has gone quiet (no worker metric)», which is live
 but has no file yet. Two are
 dashboard-only: the warning spike and «An edit has been waiting on
@@ -42,8 +43,10 @@ translation too long».
 | `translation-jobs-stuck-processing.json` | jobs piling up in `processing` (workers dying mid-run) | **email** |
 | `equip-frontend-rum-error-spike.json` | spike in real-user JS errors (RUM) | **email** |
 | `equip-backend-warning-log-spike.json` | ≥20 backend `status:warning` logs in 15 min | dashboard-only |
-| `daily-challenge-replenish-failing.json` | the nightly generator produced no question twice in three days (added 2026-10-03, **not yet applied**) | **email** |
-| `backend-platform-5xx.json` | Vercel answered 5xx for the backend — crashes and timeouts the app's logger never sees (added 2026-10-03, **not yet applied**) | **email** |
+| `daily-challenge-replenish-failing.json` | the nightly generator produced no question twice in three days (added 2026-10-03, live) | **email** |
+| `daily-challenge-worker-silent.json` | the nightly worker reported no tick at all for 36 hours — cron stopped or the metric rule is gone (added 2026-10-16, **not yet applied**; alerts on no-data by design) | **email** |
+| `daily-challenge-worker-erroring.json` | the nightly worker ended in `error` or `no_actor` twice in three days (added 2026-10-16, **not yet applied**) | **email** |
+| `backend-platform-5xx.json` | Vercel answered 5xx for the backend — crashes and timeouts the app's logger never sees (added 2026-10-03, live) | **email** |
 
 ### Translation and spend (added 2026-08-17, applied 2026-08-22)
 

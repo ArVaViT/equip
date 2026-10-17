@@ -1,0 +1,25 @@
+{
+  "name": "[Equip] Daily Challenge worker has gone silent",
+  "type": "metric alert",
+  "query": "sum(last_12h):sum:equip.daily_challenge.replenish_total{*}.as_count() < 1",
+  "message": "The nightly Daily Challenge worker has not reported a single tick in 36 hours.\n\n`equip.daily_challenge.replenish_total` is counted once per tick of the cron `0 9 * * *` (`backend/vercel.json`), whatever the outcome — `scheduled`, `no_survivors`, `error` or `no_actor`. Silence therefore means the tick did not run at all, or ran and its metric line never reached Datadog. Nothing breaks today (the schedule is filled months ahead), which is exactly why nobody would notice.\n\nCheck, in order:\n1. Vercel → backend project → Cron Jobs: did `/api/v1/internal/daily-challenge-worker` run, and with what status?\n2. Logs: `service:equip-backend \"equip.metric: equip.daily_challenge.replenish_total\"` — a line here with no metric point means the log-based-metric rule is gone (see `docs/datadog/README.md`, «Метрика без правила»).\n3. The worker needs a Gemini key; a tick without one returns early and counts nothing.\n\n@supportequip@gmail.com\n\nNO DATA IS THE ALERT HERE, deliberately: the metric only exists when a tick runs, so a sum below 1 can never be evaluated — the absence is the signal, as with «Translation queue is not draining».",
+  "tags": [
+    "env:production",
+    "project:equip",
+    "managed_by:claude"
+  ],
+  "priority": 3,
+  "options": {
+    "thresholds": {
+      "critical": 1.0
+    },
+    "notify_no_data": true,
+    "no_data_timeframe": 2160,
+    "renotify_interval": 0,
+    "notify_audit": false,
+    "include_tags": false,
+    "new_host_delay": 300,
+    "groupby_simple_monitor": false,
+    "silenced": {}
+  }
+}

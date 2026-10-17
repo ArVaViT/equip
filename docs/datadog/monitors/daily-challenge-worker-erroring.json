@@ -1,0 +1,24 @@
+{
+  "name": "[Equip] Daily Challenge worker is erroring",
+  "type": "metric alert",
+  "query": "sum(last_3d):sum:equip.daily_challenge.replenish_total{status:error OR status:no_actor}.as_count() >= 2",
+  "message": "The nightly Daily Challenge worker ended in `error` or `no_actor` on two of the last three nights.\n\n* `no_actor` — there is no active admin to attribute generated questions to (`replenish.py`). Somebody's admin role was removed or the account deactivated.\n* `error` — generation, publish or scheduling threw. The tick's WARNING line names the stage (`generation:`, `publish:`, `schedule:`, `stuck at status=`).\n\n`no_survivors` (every candidate rejected by a gate) has its own monitor, «Daily Challenge generator produced nothing».\n\nLogs: `service:equip-backend status:warn \"replenish:\"`\n\n@supportequip@gmail.com",
+  "tags": [
+    "env:production",
+    "project:equip",
+    "managed_by:claude"
+  ],
+  "priority": 3,
+  "options": {
+    "thresholds": {
+      "critical": 2.0
+    },
+    "notify_no_data": false,
+    "renotify_interval": 0,
+    "notify_audit": false,
+    "include_tags": true,
+    "new_host_delay": 300,
+    "groupby_simple_monitor": false,
+    "silenced": {}
+  }
+}
