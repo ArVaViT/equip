@@ -90,7 +90,14 @@ export function CalendarSubscribe() {
           if (!next) setCopied(false)
         }}
       >
-        <DialogContent aria-describedby={descriptionId} className="max-w-md">
+        {/*
+          The feed address carries the subscriber's token in `?token=`, and
+          it is written into the `href` of the two links below. Session
+          Replay runs at `mask-user-input`, which leaves attributes alone;
+          `mask` censors an anchor's `href` along with the text. Without it
+          the replay of this dialog holds a working calendar link.
+        */}
+        <DialogContent aria-describedby={descriptionId} className="max-w-md" data-dd-privacy="mask">
           <DialogHeader>
             <DialogTitle>{t("calendar.subscribe.title")}</DialogTitle>
           </DialogHeader>
