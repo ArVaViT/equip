@@ -5,6 +5,12 @@
 # Grouping strategy: minor/patch upgrades are batched into one PR per ecosystem
 # to keep review load manageable; major upgrades always get their own PR so
 # breaking changes get individual attention.
+#
+# Cooldown: a release is not taken the day it is published. Minor and patch
+# bumps (the ones `dependabot-auto-merge.yml` merges on green) wait a week,
+# majors two — long enough for a yanked release or a hijacked package to be
+# noticed upstream before it is pulled into main. Security updates ignore
+# the cooldown, so an advisory still lands right away.
 version: 2
 
 updates:
@@ -16,6 +22,9 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Etc/UTC"
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -99,6 +108,9 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Etc/UTC"
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -145,6 +157,9 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Etc/UTC"
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
     open-pull-requests-limit: 3
     labels:
       - "dependencies"
