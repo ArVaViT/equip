@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -130,29 +129,39 @@ def get_account(user_id: UUID) -> AuthAccount | None:
     return AuthAccount(id=UUID(body["id"]), confirmed=bool(body.get("email_confirmed_at")))
 
 
-def email_change_requested_at(user_id: UUID) -> datetime | None:
-    """When this account last asked to move to another address, if ever.
+@dataclass(frozen=True)
+class AddressState:
+    """Where an account's emails go now, as Supabase Auth holds it."""
 
-    Restoring a deleted account trusts an email we sent to "the account's
-    address" (``users.restore_my_account``). A sign-in link is only proof of
-    the *owner's* address if the address is still the owner's: somebody who
-    knows only the password could otherwise sign in, move the account to a
-    mailbox of theirs (``PUT /auth/v1/user`` is the client's own call, and a
-    deleted account is closed by our API, not banned in GoTrue), open a link
-    there and restore. ``email_change_sent_at`` is when GoTrue mailed the
-    confirmation of such a move — confirmed or not. Unreadable answers
-    raise, so a restore fails closed.
+    email: str
+    #: A phone on the account. Equip signs nobody in by phone; a phone
+    #: verified by SMS would also arrive as amr ``otp``.
+    has_phone: bool
+
+
+def address_state(user_id: UUID) -> AddressState:
+    """The account's current address (and whether it carries a phone).
+
+    Restoring a deleted account trusts a link we emailed to "the account's
+    address" (``users.restore_my_account``). That proves the owner only if
+    the address is still the one the account had when it was deleted:
+    somebody who knows just the password can sign in (a deleted account is
+    closed by our API, not banned in GoTrue), move the address to a mailbox
+    of theirs and open a link there. Compared with the snapshot taken at the
+    deletion, so neither a confirmed move nor a later password change (which
+    clears GoTrue's ``email_change_sent_at``) gets past it. Unreadable
+    answers raise, so a restore fails closed.
     """
     response = _call("GET", f"/admin/users/{user_id}")
     if response.status_code != status.HTTP_200_OK:
         raise _refuse(response, "read")
-    raw = response.json().get("email_change_sent_at")
-    if not raw:
-        return None
     try:
-        return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
-    except ValueError:
-        raise _unavailable("unreadable_email_change_sent_at") from None
+        body = response.json()
+        email = str(body.get("email") or "")
+        phone = str(body.get("phone") or "")
+    except (ValueError, AttributeError):
+        raise _unavailable("unreadable_user") from None
+    return AddressState(email=email, has_phone=bool(phone))
 
 
 def create_confirmed(email: str, password: str, metadata: dict[str, str]) -> UUID:

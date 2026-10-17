@@ -3413,6 +3413,7 @@
       "restore": "Restore account",
       "restored": "Welcome back — your account is restored.",
       "restoreFailed": "Could not restore the account. Please try again.",
+      "restoreRefused": "This account cannot be restored here: its email address changed after it was deleted. Write to supportequip@gmail.com.",
       "linkSent": "We sent a link to {{email}}. Open it and your account is restored. No email? Check the spam folder."
     }
   }

@@ -99,11 +99,17 @@ export function AccountDeletedScreen() {
         navigate(takeReturnPath() ?? "/", { replace: true })
       } catch (err) {
         if (quiet) return
-        if (getErrorCode(err) === "account.restore_needs_email_link") {
+        const code = getErrorCode(err)
+        if (code === "account.restore_needs_email_link") {
           await sendLink()
           return
         }
-        toast({ title: t("account.deleted.restoreFailed"), variant: "destructive" })
+        // The address moved after the deletion: no link of ours proves the
+        // owner any more, and "try again" would only send them in circles.
+        toast({
+          title: t(code === "account.restore_refused" ? "account.deleted.restoreRefused" : "account.deleted.restoreFailed"),
+          variant: "destructive",
+        })
       } finally {
         setBusy(false)
       }

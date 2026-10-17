@@ -16,10 +16,12 @@ from typing import TYPE_CHECKING
 
 import httpx
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from app.api.consent_gate import consent_subject
 from app.api.dependencies import Caller, get_caller_even_if_closed, get_current_user, refuse_if_closed
+from app.api.v1.users import address_fingerprint
 from app.core.database import get_db
 from app.core.errors import ErrorCode
 from app.main import app
@@ -36,7 +38,6 @@ from .conftest import STUDENT_ID, TEACHER_ID, TEST_ORGANIZATION_ID
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from fastapi import HTTPException
     from sqlalchemy.orm import Session
 
 ME = "/api/v1/users/me"
@@ -45,13 +46,17 @@ TOKEN = "the-person-s-own-access-token"
 
 
 @pytest.fixture(autouse=True)
-def address_never_moved(monkeypatch: pytest.MonkeyPatch) -> list[datetime | None]:
-    """Supabase's answer to "when did this account ask to change address": never.
+def supabase_address(monkeypatch: pytest.MonkeyPatch) -> list[auth_admin.AddressState | None]:
+    """Where Supabase mails the account now. ``None``: the student's own address.
 
-    A test sets ``[0]`` to a moment to say otherwise.
+    A test sets ``[0]`` to say otherwise.
     """
-    answer: list[datetime | None] = [None]
-    monkeypatch.setattr(auth_admin, "email_change_requested_at", lambda _user_id: answer[0])
+    answer: list[auth_admin.AddressState | None] = [None]
+
+    def state(_user_id: object) -> auth_admin.AddressState:
+        return answer[0] or auth_admin.AddressState(email="student@example.com", has_phone=False)
+
+    monkeypatch.setattr(auth_admin, "address_state", state)
     return answer
 
 
@@ -132,7 +137,11 @@ def test_deleting_closes_the_account_and_keeps_everything_the_school_holds(
     assert ended_sessions == [TOKEN]
     audit = db.query(AuditLog).filter(AuditLog.resource_id == str(STUDENT_ID)).one()
     assert audit.action == "delete"
-    assert audit.details == {"mode": "self", "role": "student"}
+    assert audit.details == {
+        "mode": "self",
+        "role": "student",
+        "address_sha256": address_fingerprint("student@example.com"),
+    }
 
 
 def test_after_deleting_every_other_route_answers_account_deleted(
@@ -273,9 +282,14 @@ def test_the_exemption_is_exact_and_not_a_prefix() -> None:
 # ── Restoring ──────────────────────────────────────────────────────────
 
 
-def _delete(db: Session, user: User, *, at: datetime) -> None:
+def _delete(db: Session, user: User, *, at: datetime, fingerprint: bool = True) -> None:
+    """What ``DELETE /users/me`` leaves behind, at a chosen moment."""
     user.deleted_at = at
     user.deactivated_at = at
+    details: dict[str, object] = {"mode": "self", "role": user.role}
+    if fingerprint:
+        details["address_sha256"] = address_fingerprint(user.email)
+    db.add(AuditLog(user_id=user.id, action="delete", resource_type="user", resource_id=str(user.id), details=details))
     db.commit()
 
 
@@ -345,14 +359,26 @@ def test_only_the_email_entry_s_time_counts(db: Session, teacher: User, student:
         assert client.post(RESTORE).status_code == 204
 
 
-def test_an_address_moved_after_the_deletion_is_no_proof(
-    db: Session, teacher: User, student: User, address_never_moved: list[datetime | None]
+@pytest.mark.parametrize(
+    "now",
+    [
+        auth_admin.AddressState(email="attacker@example.net", has_phone=False),
+        auth_admin.AddressState(email="student@example.com", has_phone=True),
+    ],
+    ids=["address-moved", "phone-added"],
+)
+def test_a_link_to_an_address_it_was_not_deleted_with_is_no_proof(
+    db: Session,
+    teacher: User,
+    student: User,
+    supabase_address: list[auth_admin.AddressState | None],
+    now: auth_admin.AddressState,
 ) -> None:
-    """The password alone could move the address to a mailbox of the holder's and
-    open a link there; that link proves nothing about the owner (review, 2026-10-17)."""
-    deleted = datetime.now(UTC) - timedelta(hours=2)
-    _delete(db, student, at=deleted)
-    address_never_moved[0] = deleted + timedelta(minutes=30)
+    """The password alone could move the address to a mailbox of the holder's
+    (then change the password, which clears GoTrue's own record of the move)
+    and open a link there, or verify a phone by SMS (also amr "otp")."""
+    _delete(db, student, at=datetime.now(UTC) - timedelta(hours=2))
+    supabase_address[0] = now
 
     for client in _client_as(db, student, signed_in_at=datetime.now(UTC), method="otp"):
         response = client.post(RESTORE)
@@ -362,23 +388,43 @@ def test_an_address_moved_after_the_deletion_is_no_proof(
     assert student.deleted_at is not None
 
 
-def test_an_address_change_from_before_the_deletion_is_no_obstacle(
-    db: Session, teacher: User, student: User, address_never_moved: list[datetime | None]
+def test_the_same_address_in_other_case_is_the_same_address(
+    db: Session, teacher: User, student: User, supabase_address: list[auth_admin.AddressState | None]
 ) -> None:
-    deleted = datetime.now(UTC) - timedelta(hours=2)
-    _delete(db, student, at=deleted)
-    address_never_moved[0] = deleted - timedelta(days=30)
+    _delete(db, student, at=datetime.now(UTC) - timedelta(hours=2))
+    supabase_address[0] = auth_admin.AddressState(email=" Student@Example.COM", has_phone=False)
     for client in _client_as(db, student, signed_in_at=datetime.now(UTC), method="magiclink"):
         assert client.post(RESTORE).status_code == 204
+
+
+def test_a_deletion_without_a_fingerprint_is_left_to_an_administrator(
+    db: Session, teacher: User, student: User
+) -> None:
+    _delete(db, student, at=datetime.now(UTC) - timedelta(hours=2), fingerprint=False)
+    for client in _client_as(db, student, signed_in_at=datetime.now(UTC), method="magiclink"):
+        response = client.post(RESTORE)
+        assert response.status_code == 403
+        assert response.json()["detail"]["code"] == ErrorCode.ACCOUNT_RESTORE_REFUSED.value
+
+
+def test_the_route_records_the_fingerprint_it_will_check(
+    me: TestClient, db: Session, student: User, ended_sessions: list[str]
+) -> None:
+    assert me.delete(ME).status_code == 204
+    row = db.query(AuditLog).filter(AuditLog.action == "delete").one()
+    assert row.details is not None
+    assert row.details["address_sha256"] == address_fingerprint("student@example.com")
+    # A fingerprint, not the address.
+    assert "student@example.com" not in str(row.details)
 
 
 def test_supabase_not_answering_restores_nothing(
     db: Session, teacher: User, student: User, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def down(_user_id: object) -> datetime | None:
+    def down(_user_id: object) -> auth_admin.AddressState:
         raise auth_admin._unavailable("timeout")
 
-    monkeypatch.setattr(auth_admin, "email_change_requested_at", down)
+    monkeypatch.setattr(auth_admin, "address_state", down)
     _delete(db, student, at=datetime.now(UTC) - timedelta(hours=1))
     for client in _client_as(db, student, signed_in_at=datetime.now(UTC), method="magiclink"):
         assert client.post(RESTORE).status_code == 503
@@ -386,25 +432,25 @@ def test_supabase_not_answering_restores_nothing(
     assert student.deleted_at is not None
 
 
-def test_reading_when_the_address_moved(monkeypatch: pytest.MonkeyPatch) -> None:
-    """GoTrue's admin user carries ``email_change_sent_at``; absent means never."""
-
+def test_reading_the_address_supabase_holds(monkeypatch: pytest.MonkeyPatch) -> None:
     class Answer:
         status_code = 200
 
-        def __init__(self, body: dict[str, object]) -> None:
+        def __init__(self, body: object) -> None:
             self._body = body
 
-        def json(self) -> dict[str, object]:
+        def json(self) -> object:
             return self._body
 
     monkeypatch.undo()
-    monkeypatch.setattr(
-        auth_admin, "_call", lambda *_a, **_k: Answer({"email_change_sent_at": "2026-10-17T03:00:00.5Z"})
-    )
-    assert auth_admin.email_change_requested_at(uuid.uuid4()) == datetime(2026, 10, 17, 3, 0, 0, 500000, tzinfo=UTC)
-    monkeypatch.setattr(auth_admin, "_call", lambda *_a, **_k: Answer({"email_change_sent_at": None}))
-    assert auth_admin.email_change_requested_at(uuid.uuid4()) is None
+    monkeypatch.setattr(auth_admin, "_call", lambda *_a, **_k: Answer({"email": "a@b.c", "phone": ""}))
+    assert auth_admin.address_state(uuid.uuid4()) == auth_admin.AddressState(email="a@b.c", has_phone=False)
+    monkeypatch.setattr(auth_admin, "_call", lambda *_a, **_k: Answer({"email": "a@b.c", "phone": "4915112345678"}))
+    assert auth_admin.address_state(uuid.uuid4()).has_phone
+    monkeypatch.setattr(auth_admin, "_call", lambda *_a, **_k: Answer(["not", "an", "object"]))
+    with pytest.raises(HTTPException) as refused:
+        auth_admin.address_state(uuid.uuid4())
+    assert refused.value.status_code == 503
 
 
 def test_a_malformed_amr_is_refused_not_crashed(db: Session, teacher: User, student: User) -> None:

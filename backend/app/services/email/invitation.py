@@ -126,7 +126,7 @@ def _offset(local: datetime) -> str:
 
 
 def _session_text(moment: datetime, locale: LocaleCode, zone: ZoneInfo) -> str:
-    """ "12.10.2026, 19:00 по времени Индианы (США) (16:00 по тихоокеанскому времени США)".
+    """ "12.10.2026, 19:00 по времени Индианы (США) / 16:00 по тихоокеанскому времени США".
 
     On the school's clock (``org_settings.time_zone``), with that clock named:
     the invited person has no account, so there is no zone of theirs to use.

@@ -165,4 +165,33 @@ describe("AccountDeletedScreen", () => {
     await userEvent.click(screen.getByRole("button", { name: "Restore account" }))
     await waitFor(() => expect(navigate).toHaveBeenCalledWith("/invite/accept#token=abc", { replace: true }))
   })
+
+  it("an address that moved after the deletion is sent to support, not round again", async () => {
+    const headers = new AxiosHeaders()
+    restoreMyAccount.mockRejectedValue(
+      new AxiosError("403", "ERR_BAD_REQUEST", undefined, undefined, {
+        status: 403,
+        statusText: "Forbidden",
+        headers,
+        config: { headers },
+        data: { detail: { code: "account.restore_refused", message: "", context: {} } },
+      }),
+    )
+    const { toast } = await import("@/lib/toast")
+    render(<AccountDeletedScreen />, { wrapper: Wrapper })
+    await userEvent.click(screen.getByRole("button", { name: "Restore account" }))
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith({ title: i18n.t("account.deleted.restoreRefused"), variant: "destructive" }),
+    )
+    expect(sendSignInLink).not.toHaveBeenCalled()
+  })
+
+  it("a page load that only tried quietly does not claim a link was sent", async () => {
+    rememberRestoreRequested("u1")
+    restoreMyAccount.mockRejectedValue(needsEmailLink())
+    render(<AccountDeletedScreen />, { wrapper: Wrapper })
+    await waitFor(() => expect(restoreMyAccount).toHaveBeenCalledTimes(1))
+    expect(screen.queryByText(/We sent a link/)).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Restore account" })).toBeInTheDocument()
+  })
 })

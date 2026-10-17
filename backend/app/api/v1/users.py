@@ -1,3 +1,5 @@
+import hashlib
+import hmac
 import logging
 from datetime import UTC, datetime
 from uuid import UUID
@@ -10,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import Caller, get_caller_even_if_closed, get_current_user, refuse_if_closed, require_admin
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
+from app.models.audit_log import AuditLog
 from app.models.enrollment import Enrollment
 from app.models.organization import MembershipRole, MembershipStatus, Organization, OrganizationMember
 from app.models.user import User, UserRole
@@ -322,9 +325,16 @@ def delete_my_account(
     now = datetime.now(UTC)
     user.deleted_at = now
     user.deactivated_at = now
-    # No address in the record: the row is about an account, and the
-    # account id already says whose.
-    log_action(db, user.id, "delete", "user", str(user.id), details={"mode": "self", "role": user.role})
+    # No address in the record, only its fingerprint: the restore checks
+    # that the address its link went to is still this one.
+    log_action(
+        db,
+        user.id,
+        "delete",
+        "user",
+        str(user.id),
+        details={"mode": "self", "role": user.role, "address_sha256": address_fingerprint(user.email)},
+    )
     db.commit()
 
     if not auth_admin.sign_out_everywhere(caller.token):
@@ -341,9 +351,9 @@ def delete_my_account(
 #: the method after the email that was verified (``ParseAuthenticationMethod``).
 #: An address-change confirmation also arrives as ``otp`` (``verifyPost``
 #: names every token-hash verification so), which is why the restore also
-#: refuses an account whose address moved after the deletion
-#: (``auth_admin.email_change_requested_at``) — and why production Auth keeps
-#: "Secure email change" on, so a move needs the old mailbox as well.
+#: refuses an account whose address is not the one it was deleted with
+#: (``_still_the_owners_address``). Production Auth should also keep "Secure
+#: email change" on and the phone provider off.
 EMAIL_PROOF_METHODS = frozenset({"magiclink", "otp", "recovery"})
 
 
@@ -409,12 +419,13 @@ def restore_my_account(
             message="Open the link we email to this account's address to restore it",
         )
 
-    # The link proves the address it went to. If the address has been moved
-    # since the deletion — the one thing a holder of the password alone
-    # could do to an account we closed — it is no longer the owner's proof.
-    moved_at = auth_admin.email_change_requested_at(user.id)
-    if moved_at is not None and _aware(moved_at) > _aware(user.deleted_at):
-        logger.warning("restore of %s refused: the address was changed after the deletion", user.id)
+    # The link proves the address it went to — which proves the owner only
+    # while that is still the address the account was deleted with. Moving
+    # it is the one thing a holder of the password alone could do to an
+    # account we closed (review, 2026-10-17); a phone on the account would
+    # also sign in as "otp".
+    if not _still_the_owners_address(db, user):
+        logger.warning("restore of %s refused: the address is not the one it was deleted with", user.id)
         raise equip_error(
             ErrorCode.ACCOUNT_RESTORE_REFUSED,
             status_code=status.HTTP_403_FORBIDDEN,
@@ -434,6 +445,32 @@ def restore_my_account(
     )
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def address_fingerprint(email: str) -> str:
+    """The address, reduced to what a comparison needs."""
+    return hashlib.sha256(email.strip().lower().encode()).hexdigest()
+
+
+def _still_the_owners_address(db: Session, user: User) -> bool:
+    """Whether Supabase still mails this account where it did at the deletion."""
+    deletion = (
+        db.query(AuditLog)
+        .filter(
+            AuditLog.user_id == user.id,
+            AuditLog.action == "delete",
+            AuditLog.resource_type == "user",
+            AuditLog.resource_id == str(user.id),
+        )
+        .order_by(AuditLog.created_at.desc())
+        .first()
+    )
+    snapshot = (deletion.details or {}).get("address_sha256") if deletion is not None else None
+    if not isinstance(snapshot, str):
+        # No fingerprint, no proof: an administrator can still restore.
+        return False
+    now = auth_admin.address_state(user.id)
+    return not now.has_phone and hmac.compare_digest(address_fingerprint(now.email), snapshot)
 
 
 def _aware(moment: datetime) -> datetime:

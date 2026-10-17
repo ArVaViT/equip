@@ -729,7 +729,7 @@
       "signInToContinue": "Melden Sie sich an, um diese Seite zu öffnen.",
       "sectionUnavailable": "Dieser Bereich steht Ihnen nicht zur Verfügung.",
       "signInToAcceptInvite": "Melden Sie sich an, um die Einladung anzunehmen.",
-      "accountDeleted": "Ihr Konto wurde gelöscht. Sie haben es sich anders überlegt? Melden Sie sich wieder an und tippen Sie auf „Konto wiederherstellen“: Wir schicken Ihnen einen Link per E-Mail."
+      "accountDeleted": "Ihr Konto wurde gelöscht. Sie haben es sich anders überlegt? Melden Sie sich wieder an und klicken Sie auf „Konto wiederherstellen“: Wir schicken Ihnen einen Link per E-Mail."
     },
     "forgotPassword": {
       "heading": "Passwort zurücksetzen",
@@ -3399,7 +3399,7 @@
         "signedOut": "Sie werden auf allen Geräten abgemeldet.",
         "hidden": "Andere sehen „Gelöschter Nutzer“ statt Ihres Namens — ohne E-Mail-Adresse und Foto.",
         "kept": "Ihre Arbeiten, Noten und Zertifikate bleiben bei der Schule.",
-        "restore": "Um zurückzukommen, melden Sie sich wieder an und tippen Sie auf „Konto wiederherstellen“ — wir schicken Ihnen einen Link per E-Mail."
+        "restore": "Um zurückzukommen, melden Sie sich wieder an und klicken Sie auf „Konto wiederherstellen“ — wir schicken Ihnen einen Link per E-Mail."
       },
       "confirm": "Konto löschen",
       "failed": "Das Konto konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",
@@ -3413,6 +3413,7 @@
       "restore": "Konto wiederherstellen",
       "restored": "Willkommen zurück — Ihr Konto ist wiederhergestellt.",
       "restoreFailed": "Das Konto konnte nicht wiederhergestellt werden. Bitte versuchen Sie es erneut.",
+      "restoreRefused": "Dieses Konto lässt sich hier nicht wiederherstellen: Seine E-Mail-Adresse wurde nach dem Löschen geändert. Schreiben Sie an supportequip@gmail.com.",
       "linkSent": "Wir haben einen Link an {{email}} geschickt. Öffnen Sie ihn, und Ihr Konto ist wiederhergestellt. Keine E-Mail? Sehen Sie im Spam-Ordner nach."
     }
   }
