@@ -166,8 +166,67 @@ def test_a_short_heading_saves_on_a_field_already_written_in_two_languages(db: S
     dual_write_entity_content(db, entity_type="course", entity_id=cid, texts={"title": "12"}, fallback_locale="ru")
     db.commit()
 
-    # Filed by the newest person-written row, and it replaces the source.
-    assert _human_rows(db, "course", cid, "title") == [("en", "12")]
+    # Filed under the field's source — the Russian the editor shows — not
+    # under the newer English row, which stays as it was.
+    assert _human_rows(db, "course", cid, "title") == [("en", NEW_TITLE_EN), ("ru", "12")]
+
+
+def test_the_sources_own_words_filed_under_another_language_change_nothing(db: Session) -> None:
+    _ensure_teacher(db)
+    course = Course(
+        id=f"c-{uuid.uuid4().hex[:8]}", status=CourseStatus.DRAFT, source_locale="ru", created_by=TEACHER_ID
+    )
+    db.add(course)
+    db.commit()
+    cid = str(course.id)
+    record_human_version(db, entity_type="course", entity_id=cid, field="title", locale="ru", text="Иов")
+    db.commit()
+
+    record_human_version(
+        db, entity_type="course", entity_id=cid, field="title", locale="uk", text="Иов", course_locale="ru"
+    )
+    db.commit()
+
+    assert _human_rows(db, "course", cid, "title") == [("ru", "Иов")]
+
+
+def test_the_block_editor_reopens_on_the_authors_words(client: TestClient, db: Session) -> None:
+    """Lesson text has its own resolver; it showed the machine's Russian
+    back, and an autosave of that would have made it the source."""
+    created = client.post(PREFIX, json={"title": "Деяния"})
+    course_id = created.json()["id"]
+    course = db.get(Course, course_id)
+    assert course is not None
+    course.source_locale = "ru"
+    db.commit()
+    chapter = client.post(f"{PREFIX}/{course_id}/chapters", json={"title": RU_NAME})
+    assert chapter.status_code == 201, chapter.text
+    chapter_id = chapter.json()["id"]
+    block = client.post(
+        f"/api/v1/blocks/chapter/{chapter_id}",
+        json={"block_type": "text", "order_index": 0, "content": f"<p>{RU_NAME}</p>"},
+    )
+    assert block.status_code == 201, block.text
+    block_id = block.json()["id"]
+    edited = client.put(f"/api/v1/blocks/{block_id}", json={"content": f"<p>{EN_NAME}</p>"})
+    assert edited.status_code == 200, edited.text
+    # The pipeline's Russian translation of the English edit.
+    record_mt_version(
+        db,
+        entity_type="chapter_block",
+        entity_id=block_id,
+        field="content",
+        locale="ru",
+        text=f"<p>{TRANSLATED['ru']}</p>",
+        source_locale="en",
+        source_hash=compute_source_hash(f"<p>{EN_NAME}</p>", locale="en"),
+    )
+    db.commit()
+
+    shown = client.get(f"/api/v1/blocks/chapter/{chapter_id}", params={"source": 1})
+
+    assert shown.status_code == 200, shown.text
+    assert [b["content"] for b in shown.json()] == [f"<p>{EN_NAME}</p>"]
 
 
 # ─── A live course: the edit waits, then replaces the source ────────────

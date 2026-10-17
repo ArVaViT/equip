@@ -156,6 +156,10 @@ def record_human_version(
         if course_locale is not None
         else None
     )
+    if replaced is not None and replaced.text == text:
+        # The source's own words, merely filed under another language (a
+        # short heading the detector could not place): nothing was edited.
+        return replaced
 
     new_id = uuid.uuid4()
     if existing is not None or replaced is not None:

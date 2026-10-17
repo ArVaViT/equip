@@ -1137,11 +1137,17 @@ def localize_chapter_block_rows(
     by_block_locale: dict[tuple[str, str], str] = {}
     any_by_block: dict[str, str] = {}
     human_by_block: dict[str, str] = {}
+    human_in_source: dict[str, str] = {}
+    newest_human: dict[str, str] = {}
     for eid, locale, text, origin in rows:
         by_block_locale.setdefault((eid, locale), text)
         any_by_block.setdefault(eid, text)
         if origin == "human":
             human_by_block.setdefault(eid, text)
+            if text and locale == source_locale:
+                human_in_source[eid] = text
+            if text:
+                newest_human[eid] = text  # oldest first: the last is the newest
     held: dict[tuple[str, str], str] = {}
     if prefer_human:
         from app.services.staged_edits.read import author_texts_bulk
@@ -1150,7 +1156,17 @@ def localize_chapter_block_rows(
     out: list[BlockResponse] = []
     for b in blocks:
         bid = str(b.id)
-        content = held.get((bid, "content")) or by_block_locale.get((bid, display_locale))
+        # The author's source view reads the block's source — the person-
+        # written row in the course's language, else the newest one — like
+        # ``fetch_cv_entity_texts_with_fallback``: after an edit written in
+        # another language the display locale holds the machine's
+        # translation of it, and an autosave of that would make it the source.
+        authored = (
+            human_in_source.get(bid) or newest_human.get(bid)
+            if prefer_human and display_locale == source_locale
+            else None
+        )
+        content = held.get((bid, "content")) or authored or by_block_locale.get((bid, display_locale))
         if content is None and fallback == "source_then_any":
             any_tier = human_by_block.get(bid) or any_by_block.get(bid) if prefer_human else any_by_block.get(bid)
             content = by_block_locale.get((bid, source_locale)) or any_tier

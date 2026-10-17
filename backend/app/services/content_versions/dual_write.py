@@ -14,7 +14,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 from app.models.content_version import ContentVersion
-from app.services.content_versions.write import record_human_version
+from app.services.content_versions.write import field_source_row, record_human_version
 from app.services.language_detection import detect_locale
 
 if TYPE_CHECKING:
@@ -77,7 +77,9 @@ def dual_write_entity_content(
             continue
         text_str = str(raw)
         locale = (
-            detect_locale(text_str) or _locale_of_existing_text(db, entity_type, entity_id, field) or fallback_locale
+            detect_locale(text_str)
+            or _locale_of_existing_text(db, entity_type, entity_id, field, course_locale)
+            or fallback_locale
         )
         if locale is None:
             continue
@@ -105,7 +107,9 @@ def dual_write_entity_content(
         )
 
 
-def _locale_of_existing_text(db: Session, entity_type: str, entity_id: str, field: str) -> str | None:
+def _locale_of_existing_text(
+    db: Session, entity_type: str, entity_id: str, field: str, course_locale: str | None
+) -> str | None:
     """The locale this field is already written in, if a person wrote it.
 
     Editing a field is editing a language version of it. When the
@@ -118,11 +122,20 @@ def _locale_of_existing_text(db: Session, entity_type: str, entity_id: str, fiel
     English text active and served: the edit would appear to have done
     nothing. That could not happen while the platform served one
     language per script; it can now.
+
+    "Before" is the field's source — the row the editor shows the author
+    (``field_source_row``: the course's language first, then the newest).
+    A field can hold a person's text in two locales (a hand translation,
+    or an edit filed in another language before such edits replaced the
+    source); ``.scalar()`` raised on two rows, and the newest would file
+    a Russian heading under a hand translation's language and retire the
+    Russian source with it.
     """
-    # The newest: a field can hold a person's text in two locales (a hand
-    # translation, or an edit filed in another language before such an
-    # edit replaced the source), and ``.scalar()`` raised on two rows —
-    # a 500 on the next save of a heading too short to classify.
+    if course_locale is not None:
+        source = field_source_row(
+            db, entity_type=entity_type, entity_id=entity_id, field=field, course_locale=course_locale
+        )
+        return source.locale if source is not None else None
     return (
         db.query(ContentVersion.locale)
         .filter(

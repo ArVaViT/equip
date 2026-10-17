@@ -186,8 +186,8 @@ def get_course_detail(
                 context={"resource_type": "course", "resource_id": course_id},
             )
         response.headers["Vary"] = "Accept-Language"
-        # The author's own view: their newest words for each field, a held
-        # edit included — not the machine's translation of an edit they
+        # The author's own view: each field's source text (the course's
+        # language first, then the newest a person wrote), a held edit included — not the machine's translation of an edit they
         # wrote in another language, and not an empty name before it lands.
         populate_spine_texts(db, [course], prefer_human=True)
         return CourseResponse.model_validate(course, from_attributes=True)
