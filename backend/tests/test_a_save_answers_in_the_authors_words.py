@@ -4,17 +4,21 @@ Since an edit written in another language replaces the course's source
 (``content_versions.write.record_human_version``), the author's own view
 must read the newest human row. The course, module and lesson routes did;
 the event's save answered with an empty title until the response asked for
-the author's view too (review, 2026-10-17).
+the author's view too (review, 2026-10-17). The assignment and announcement
+saves got the same fix in the same commit; their tests are here too, and
+so is the other half of "the author's words": on a live course the edit
+is held back from readers, and the save still answers with it.
 """
 
 from __future__ import annotations
 
+import uuid
 from typing import TYPE_CHECKING
 
 import pytest
 from pydantic import SecretStr
 
-from app.models.course import Course
+from app.models.course import Chapter, Course, CourseStatus, Module
 from app.services.translation.service import reset_translation_provider_cache
 
 if TYPE_CHECKING:
@@ -59,3 +63,57 @@ def test_an_event_saved_in_another_language_answers_with_it(client: TestClient, 
 
     assert saved.status_code == 200, saved.text
     assert saved.json()["title"] == EN
+
+
+def _chapter(db: Session, cid: str) -> str:
+    module = Module(id=str(uuid.uuid4()), course_id=cid, title="Раздел", order_index=0)
+    db.add(module)
+    db.flush()
+    chapter = Chapter(
+        id=str(uuid.uuid4()),
+        module_id=module.id,
+        course_id=cid,
+        title="Глава",
+        order_index=0,
+        chapter_type="assignment",
+    )
+    db.add(chapter)
+    db.commit()
+    return str(chapter.id)
+
+
+def _publish(db: Session, cid: str) -> None:
+    course = db.get(Course, cid)
+    assert course is not None
+    course.status = CourseStatus.PUBLISHED
+    db.commit()
+
+
+@pytest.mark.usefixtures("translation_on")
+@pytest.mark.parametrize("live", [False, True], ids=["draft", "live"])
+def test_an_assignment_saved_in_another_language_answers_with_it(client: TestClient, db: Session, live: bool) -> None:
+    cid = _russian_course(client, db)
+    created = client.post("/api/v1/assignments", json={"chapter_id": _chapter(db, cid), "title": RU, "description": RU})
+    assert created.status_code == 201, created.text
+    if live:
+        _publish(db, cid)
+
+    saved = client.put(f"/api/v1/assignments/{created.json()['id']}", json={"title": EN, "description": EN})
+
+    assert saved.status_code == 200, saved.text
+    assert (saved.json()["title"], saved.json()["description"]) == (EN, EN)
+
+
+@pytest.mark.usefixtures("translation_on")
+@pytest.mark.parametrize("live", [False, True], ids=["draft", "live"])
+def test_an_announcement_saved_in_another_language_answers_with_it(client: TestClient, db: Session, live: bool) -> None:
+    cid = _russian_course(client, db)
+    created = client.post("/api/v1/announcements", json={"title": RU, "content": RU, "course_id": cid})
+    assert created.status_code == 201, created.text
+    if live:
+        _publish(db, cid)
+
+    saved = client.put(f"/api/v1/announcements/{created.json()['id']}", json={"title": EN, "content": EN})
+
+    assert saved.status_code == 200, saved.text
+    assert (saved.json()["title"], saved.json()["content"]) == (EN, EN)
