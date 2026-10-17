@@ -170,9 +170,42 @@ async function uploadToPublicBucket(
   path: string,
   file: File,
 ): Promise<string> {
-  const { error } = await supabase.storage.from(bucket).upload(path, file)
-  if (error) throw error
+  await putPublicObject(bucket, path, file)
   return getPublicUrl(bucket, path)
+}
+
+/**
+ * How a public object may be cached: for a year, by anyone, unchanged.
+ *
+ * True by construction — every public key is fresh (`cover-<hex>`,
+ * `avatar-<hex>`, `content-images/<ms>-<hex>`) and never written twice, so
+ * a cached copy can never be stale. Storage serves whatever `cache-control`
+ * the object was stored with, and objects uploaded the old way came back
+ * `no-cache`: every view of every cover went through to Storage and no CDN
+ * in between kept a copy. `s-maxage` is for the edge in front of `/img/`:
+ * Vercel keeps an external rewrite's response only when the origin allows
+ * a shared cache to. `backend/scripts/storage_cache_control.py` rewrites
+ * the objects uploaded before this.
+ */
+export const PUBLIC_OBJECT_CACHE_CONTROL = "public, max-age=31536000, s-maxage=31536000, immutable"
+
+/**
+ * Upload the bytes rather than the `File`.
+ *
+ * storage-js sends a `File` as multipart, and on that path Storage builds
+ * the header itself — `max-age=<cacheControl>`, or `no-cache` when it does
+ * not find the field, which is what production objects carry. A plain body
+ * is stored with the `cache-control` header exactly as sent (Storage's
+ * `uploader.ts`), so the value above is what the object answers with.
+ * The content type is then ours to state; `withBucketContentType` has
+ * already settled it for the bucket.
+ */
+async function putPublicObject(bucket: string, path: string, file: File): Promise<void> {
+  const { error } = await supabase.storage.from(bucket).upload(path, await file.arrayBuffer(), {
+    contentType: file.type || "application/octet-stream",
+    headers: { "cache-control": PUBLIC_OBJECT_CACHE_CONTROL },
+  })
+  if (error) throw error
 }
 
 /**
@@ -345,12 +378,6 @@ export const storageService = {
     const random = crypto.randomUUID().slice(0, 8)
     const path = `content-images/${Date.now()}-${random}.${ext}`
 
-    // Content images use upsert: false so the random suffix prevents
-    // overwriting an existing path; `uploadToPublicBucket` would upsert.
-    const { error } = await supabase.storage
-      .from(COURSE_ASSETS_BUCKET)
-      .upload(path, withBucketContentType(file, COURSE_ASSETS))
-    if (error) throw error
-    return getPublicUrl(COURSE_ASSETS_BUCKET, path)
+    return uploadToPublicBucket(COURSE_ASSETS_BUCKET, path, withBucketContentType(file, COURSE_ASSETS))
   },
 }
