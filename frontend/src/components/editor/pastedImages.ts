@@ -158,7 +158,12 @@ export function trackPastedUpload(blobUrl: string, upload: Promise<string | null
   pastedUploads.set(blobUrl, tracked);
 }
 
-const BLOB_SRC = /<img\b[^>]*\bsrc="blob:/i;
+const BLOB_SRC = /<img\b[^>]*(?<![-\w])src="blob:/i;
+
+/** How long a save waits for a picture still uploading before it leaves it
+ *  out. An upload has no timeout of its own; a save must not hang on one —
+ *  the editor's swap of the address, if it ever comes, is one more save. */
+export const UPLOAD_WAIT_MS = 60_000;
 
 /** Point or drop each `blob:` picture by what its upload came to. */
 function rewriteBlobImages(html: string, resolve: (blobUrl: string) => string | null): string {
@@ -175,14 +180,20 @@ function rewriteBlobImages(html: string, resolve: (blobUrl: string) => string | 
  * The HTML as it may be saved: every pasted picture at its stored address,
  * waiting for uploads still under way. A picture whose upload failed, or a
  * `blob:` this page never made (one kept in a draft from an earlier visit),
- * is dropped — it could never load for anybody.
+ * is dropped — it could never load for anybody. So is one still uploading
+ * after `UPLOAD_WAIT_MS`.
  */
 export async function withUploadedImages(html: string): Promise<string> {
   if (!BLOB_SRC.test(html)) return html;
   const doc = new DOMParser().parseFromString(html, "text/html");
   const urls = new Set<string>();
   doc.querySelectorAll('img[src^="blob:"]').forEach((img) => urls.add(img.getAttribute("src") ?? ""));
-  await Promise.all([...urls].map((url) => pastedUploads.get(url)));
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    Promise.all([...urls].map((url) => pastedUploads.get(url))),
+    new Promise((resolve) => (timer = setTimeout(resolve, UPLOAD_WAIT_MS))),
+  ]);
+  clearTimeout(timer);
   return rewriteBlobImages(html, (url) => settledUploads.get(url) ?? null);
 }
 

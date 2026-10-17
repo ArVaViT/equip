@@ -400,6 +400,41 @@ describe("TextBlockEditor — a picture still uploading when the block is saved"
     expect(updateCalls).toHaveLength(2)
   })
 
+  it("a block closed and reopened while an autosave waits on a picture never has its new text overwritten", async () => {
+    const finish = pendingUpload()
+    const first = renderEditor()
+    typeInto(WITH_BLOB)
+    await elapse(2000) // the autosave starts and waits for the upload
+    first.unmount()
+
+    renderEditor({ content: WITH_BLOB })
+    typeInto("<p>Новый текст</p>")
+    await elapse(2000) // the reopened editor's autosave queues behind it
+    expect(updateCalls).toHaveLength(0)
+
+    finish(STORED)
+    await elapse(0)
+    await elapse(0)
+
+    // Before: the waiting save landed last and put the old text back.
+    expect(updateCalls.map(([, d]) => d.content)).toEqual([
+      `<p>Глава</p><img src="${STORED}">`,
+      "<p>Новый текст</p>",
+    ])
+  })
+
+  it("does not wait forever on an upload that never returns", async () => {
+    pendingUpload()
+    const { unmount } = renderEditor()
+    typeInto(WITH_BLOB)
+    unmount()
+    await elapse(59_000)
+    expect(updateCalls).toHaveLength(0)
+
+    await elapse(1_000)
+    expect(updateCalls).toEqual([["b-1", { content: "<p>Глава</p>" }]])
+  })
+
   it("a page that is leaving sends what it has and leaves a picture still uploading out", async () => {
     pendingUpload()
     renderEditor()
