@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Literal
@@ -31,6 +32,8 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Query, Session
 
     from app.schemas.locale import LocaleCode
+
+logger = logging.getLogger(__name__)
 
 
 #: Why a link admits nobody, as the accept page names it. ``used`` covers
@@ -157,13 +160,18 @@ def _inviter_locale(db: Session, invited_by: uuid.UUID | str | None) -> LocaleCo
 def _mail_the_invitation(db: Session, invitation: Invitation, *, token: str, invited_by: UUID) -> None:
     """Send the invitation, in the inviting person's language and name.
 
-    Delivery is deliberately not checked: the row and its token already
-    exist, the link works whether or not the mail got out, and a
-    provider hiccup must not turn "invitation created" into an error on
-    somebody's screen. What a failure does leave is a log line — see
-    ``services/email/send.py``.
+    A failed delivery is not an error on anybody's screen: the row and its
+    token already exist, the link works whether or not the mail got out,
+    and a provider hiccup must not turn "invitation created" into a 500.
+    What delivery does decide is ``mailed_at``: it is stamped *before* the
+    send, so a second click arriving while the provider is still answering
+    sees it and does not mail the same letter again, and put back if the
+    provider refused, so the next press does mail.
     """
     inviter = db.query(User).filter(User.id == invited_by).first()
+    previous = invitation.mailed_at
+    invitation.mailed_at = datetime.now(UTC)
+    db.commit()
     delivery = send_invitation_email(
         db,
         invitation,
@@ -173,9 +181,13 @@ def _mail_the_invitation(db: Session, invitation: Invitation, *, token: str, inv
         inviter_email=inviter.email if inviter else None,
     )
     # ``getattr``: tests stand in for the sender with a bare callable.
-    if getattr(delivery, "sent", False):
-        invitation.mailed_at = datetime.now(UTC)
-        db.commit()
+    if not getattr(delivery, "sent", False):
+        invitation.mailed_at = previous
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            logger.exception("invitation %s: could not clear mailed_at after a failed send", invitation.id)
 
 
 def course_of_organization(db: Session, course_id: str, organization_id: UUID) -> Course:

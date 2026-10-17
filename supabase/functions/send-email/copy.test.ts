@@ -23,6 +23,7 @@ import {
   renderEmail,
   renderText,
   escapeHtml,
+  letterName,
   REPEAT_WINDOW_SECONDS,
   repeatRefusal,
   repeatWaitSeconds,
@@ -366,7 +367,8 @@ const ago = (s: number) => new Date(NOW.getTime() - s * 1000).toISOString();
 
 Deno.test("a repeat inside the window is refused with what is left of it", () => {
   assertEquals(repeatWaitSeconds("signup", { confirmation_sent_at: ago(60) }, NOW), REPEAT_WINDOW_SECONDS - 60);
-  assertEquals(repeatWaitSeconds("recovery", { recovery_sent_at: ago(299) }, NOW), 1);
+  assertEquals(repeatWaitSeconds("recovery", { recovery_sent_at: ago(119) }, NOW), 1);
+  assertEquals(repeatWaitSeconds("recovery", { recovery_sent_at: ago(120) }, NOW), null);
 });
 
 Deno.test("first sends, sends after the window, and other kinds go through", () => {
@@ -376,7 +378,7 @@ Deno.test("first sends, sends after the window, and other kinds go through", () 
   // A recovery the day after a signup email is not a repeat of it.
   assertEquals(repeatWaitSeconds("recovery", { confirmation_sent_at: ago(10) }, NOW), null);
   // A sign-in link shares the reset's token in GoTrue, so it shares the clock.
-  assertEquals(repeatWaitSeconds("magiclink", { recovery_sent_at: ago(10) }, NOW), REPEAT_WINDOW_SECONDS - 10);
+  assertEquals(repeatWaitSeconds("magiclink", { recovery_sent_at: ago(10) }, NOW), 110);
   assertEquals(repeatWaitSeconds("email_change", { confirmation_sent_at: ago(10) }, NOW), null);
   // A timestamp from the future (clock skew) never locks anyone out.
   assertEquals(repeatWaitSeconds("signup", { confirmation_sent_at: ago(-600) }, NOW), null);
@@ -391,10 +393,21 @@ Deno.test("the refusal reads like GoTrue's own, so the client's parser understan
 });
 
 Deno.test("a name typed at signup cannot put markup into the letter", () => {
-  const evil = '<a href="https://evil.example">Confirm here</a>';
+  const evil = "<b onclick=x>Вадим</b>";
   for (const type of ["signup", "recovery"] as const) {
     const html = renderEmail(copyFor(type, "en"), evil, LINK, "en");
-    assert(!html.includes("evil.example\">"), `${type}: raw markup reached the html`);
+    assert(!html.includes("<b onclick"), `${type}: raw markup reached the html`);
     assertStringIncludes(html, escapeHtml(evil));
   }
+});
+
+Deno.test("a name that reads like a link or an address never reaches the letter", () => {
+  for (const bad of ["Your account is locked, confirm at https://evil.example", "go to evil.example/x", "a@b.c", "two\nlines", "www.evil"]) {
+    assertEquals(letterName(bad), "", bad);
+  }
+  assertEquals(letterName("Вадим Арнаут"), "Вадим Арнаут");
+  assertEquals(letterName("O'Brien"), "O'Brien");
+  assertEquals(letterName(123), "");
+  assertEquals(letterName("x".repeat(80)).length, 61);
+  assert(!renderText(copyFor("signup", "en"), "confirm at https://evil.example", LINK).includes("evil"));
 });

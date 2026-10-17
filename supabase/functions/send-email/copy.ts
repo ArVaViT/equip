@@ -298,8 +298,21 @@ export function escapeHtml(text: string): string {
     .replace(/'/g, "&#39;");
 }
 
+/**
+ * The name as it may appear in a letter. A confirmation goes to an address
+ * nobody has proven yet, so the name is the one thing in it a stranger
+ * chooses: «Your account is locked, confirm at https://…» would be linkified
+ * by the mail client even after escaping. Anything that looks like a link or
+ * an address, or spans lines, is dropped; the rest is capped.
+ */
+export function letterName(raw: unknown): string {
+  const name = typeof raw === "string" ? raw.trim() : "";
+  if (!name || /[\r\n@]|:\/\/|www\.|\.[a-z]{2,}\b\/?/i.test(name)) return "";
+  return name.length > 60 ? `${name.slice(0, 60)}…` : name;
+}
+
 export function renderEmail(copy: Copy, rawName: string, url: string, locale: Locale = DEFAULT_LOCALE): string {
-  const name = escapeHtml(rawName);
+  const name = escapeHtml(letterName(rawName));
   const heading = copy.greeting ? copy.heading : `${copy.heading}${name ? `, ${name}` : ""}`;
   const greeting = copy.greeting ? `<p style="${P_STYLE}">${copy.greeting(name)}</p>` : "";
   return `<!doctype html>
@@ -331,7 +344,8 @@ export function renderEmail(copy: Copy, rawName: string, url: string, locale: Lo
  * invitation stopped doing that on 2026-09-12; this is the same fix for
  * the one message every new account must receive to exist at all.
  */
-export function renderText(copy: Copy, name: string, url: string): string {
+export function renderText(copy: Copy, rawName: string, url: string): string {
+  const name = letterName(rawName);
   const heading = copy.greeting ? copy.heading : `${copy.heading}${name ? `, ${name}` : ""}`;
   const lines = [heading, ""];
   if (copy.greeting) {
@@ -459,14 +473,17 @@ export function confirmationUrl(opts: {
  */
 export const REPEAT_WINDOW_SECONDS = 300;
 
-// A sign-in link and a password reset share one token in GoTrue
-// (`recovery_token`, `recovery_sent_at`): either one kills the link of the
-// other. So they share one clock too — otherwise a reset sent a minute ago
-// dies the moment somebody asks for a sign-in link.
-const SENT_AT_FIELD: Record<string, "confirmation_sent_at" | "recovery_sent_at"> = {
-  signup: "confirmation_sent_at",
-  recovery: "recovery_sent_at",
-  magiclink: "recovery_sent_at",
+/**
+ * Per kind. A confirmation waits five minutes. A reset and a sign-in link
+ * share one token in GoTrue (`recovery_token`, `recovery_sent_at`) — either
+ * one kills the other's link — so they share one clock, and a short one:
+ * somebody who used a sign-in link on the phone and now needs another on
+ * the laptop has no working link at all, and must not wait long for it.
+ */
+export const REPEAT_WINDOWS: Record<string, { field: "confirmation_sent_at" | "recovery_sent_at"; seconds: number }> = {
+  signup: { field: "confirmation_sent_at", seconds: REPEAT_WINDOW_SECONDS },
+  recovery: { field: "recovery_sent_at", seconds: 120 },
+  magiclink: { field: "recovery_sent_at", seconds: 120 },
 };
 
 export interface SentTimes {
@@ -476,14 +493,14 @@ export interface SentTimes {
 
 /** Seconds this address must still wait for `emailType`, or `null` to send. */
 export function repeatWaitSeconds(emailType: string, user: SentTimes, now: Date = new Date()): number | null {
-  const field = SENT_AT_FIELD[emailType];
-  if (!field) return null;
-  const last = Date.parse(user[field] ?? "");
+  const window = REPEAT_WINDOWS[emailType];
+  if (!window) return null;
+  const last = Date.parse(user[window.field] ?? "");
   if (!Number.isFinite(last)) return null;
   const elapsed = (now.getTime() - last) / 1000;
   // A clock far ahead of ours is not a reason to refuse for ever.
-  if (elapsed < 0 || elapsed >= REPEAT_WINDOW_SECONDS) return null;
-  return Math.max(1, Math.ceil(REPEAT_WINDOW_SECONDS - elapsed));
+  if (elapsed < 0 || elapsed >= window.seconds) return null;
+  return Math.max(1, Math.ceil(window.seconds - elapsed));
 }
 
 /** GoTrue's wording for the same refusal, so one client parser reads both. */

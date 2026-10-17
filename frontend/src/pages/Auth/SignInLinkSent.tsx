@@ -6,7 +6,9 @@ import { authService } from "@/services/auth"
 import { authErrorMessage, isRateLimited } from "@/lib/authError"
 import { useCooldown } from "@/hooks/useCooldown"
 
-const RESEND_COOLDOWN_SECONDS = 60
+// The send-email hook's window for a sign-in link (and a reset, which shares
+// its token): `supabase/functions/send-email/copy.ts::REPEAT_WINDOWS`.
+const RESEND_COOLDOWN_SECONDS = 120
 
 interface Props {
   email: string

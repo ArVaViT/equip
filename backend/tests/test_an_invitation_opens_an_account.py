@@ -500,6 +500,34 @@ class TestTheToken:
         assert len(calls) == 2
         assert first.mailed_at is not None
 
+    def test_a_click_arriving_while_the_provider_answers_does_not_mail_twice(
+        self, db: Session, admin: User, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The stamp goes on before the send: a second request that lands
+        while the first is still waiting on the provider sees it."""
+        calls: list[str] = []
+
+        def send(*_a: object, accept_url: str, **_k: object) -> Delivery:
+            calls.append(accept_url)
+            if len(calls) == 1:
+                # The double click, arriving mid-send.
+                create_or_resend_invitation(
+                    db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+                )
+            return Delivery(sent=True, provider_id="re_3")
+
+        monkeypatch.setattr(invitation_service, "send_invitation_email", send)
+        first, _new = create_or_resend_invitation(
+            db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+        )
+        first.mailed_at = datetime.now(UTC) - timedelta(minutes=11)
+        db.commit()
+        calls.clear()
+        create_or_resend_invitation(
+            db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+        )
+        assert len(calls) == 1
+
     def test_a_link_mailed_before_the_hashing_still_opens(self, anon: TestClient, db: Session) -> None:
         """What the migration's backfill promises: the random tokens already
         in inboxes are found by their hash."""

@@ -10,8 +10,9 @@
 -- Idempotent: a database that has the constraint is left alone. A database
 -- that lacks it first loses the invitations that already point at nothing
 -- (what ON DELETE CASCADE would have done at the time), then gets the
--- constraint. Everything runs in one transaction; at a few hundred rows the
--- lock it takes on `invitations` is momentary.
+-- constraint. Everything runs in one transaction; ADD FOREIGN KEY briefly
+-- locks writes to both `invitations` and `courses` — momentary at a few
+-- hundred rows.
 
 DO $$
 BEGIN
