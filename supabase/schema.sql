@@ -720,6 +720,13 @@ CREATE TABLE public.chapters (
 
 
 --
+-- Name: COLUMN chapters.order_index; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.chapters.order_index IS 'For a lesson in no module: its place in the course, in the sequence it shares with modules.order_index. For a lesson in a module: its order among that module''s lessons only. See app/services/course_structure.build_spine.';
+
+
+--
 -- Name: cohort_courses; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1178,6 +1185,13 @@ CREATE TABLE public.modules (
     due_date timestamp with time zone,
     deleted_at timestamp with time zone
 );
+
+
+--
+-- Name: COLUMN modules.order_index; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.modules.order_index IS 'This module''s place in its course, in the one sequence it shares with the course''s lessons that sit in no module (compared directly with their chapters.order_index). See app/services/course_structure.build_spine.';
 
 
 --
@@ -4323,6 +4337,13 @@ CREATE POLICY profiles_service_role_full ON public.profiles TO service_role USIN
 --
 
 CREATE POLICY profiles_update_own_safe_fields ON public.profiles FOR UPDATE TO authenticated USING ((( SELECT auth.uid() AS uid) = id)) WITH CHECK ((( SELECT auth.uid() AS uid) = id));
+
+
+--
+-- Name: POLICY profiles_update_own_safe_fields ON profiles; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON POLICY profiles_update_own_safe_fields ON public.profiles IS 'Self-update is gated on row ownership. Column-level immutability (id / role / email / created_at / organization_id / deactivated_at / deleted_at / onboarding_completed_at / phone), and the rule that a deactivated account edits nothing, are enforced by trg_profiles_protect_immutable_fields, which only fires for the authenticated role so service-mediated writes (FastAPI postgres connection, service_role JWT) can still legitimately change those columns. The safe fields that remain are full_name, avatar_url, preferred_locale, locale_source, time_zone, time_zone_source, birth_date, country_code, region, city, church and email_off.';
 
 
 --
