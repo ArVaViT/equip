@@ -3264,7 +3264,7 @@
       "saveFailed": "Couldn't record your acceptance. Check your connection and try again."
     },
     "notice": {
-      "body": "The {{document}} was updated on {{date}}. Nothing you agreed to has changed, so there is nothing to sign.",
+      "body": "The {{document}} has a new version, in effect from {{date}}. Nothing you agreed to has changed, so there is nothing to sign.",
       "read": "Read what changed",
       "dismiss": "Dismiss"
     },

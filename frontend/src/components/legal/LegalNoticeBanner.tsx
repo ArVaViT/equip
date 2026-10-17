@@ -4,6 +4,7 @@ import { Link } from "react-router-dom"
 import { X } from "lucide-react"
 import { legalService, type LegalDocumentSummary } from "@/services/legal"
 import { useAuth } from "@/context/useAuth"
+import { formatDayLong } from "@/i18n/format"
 
 /** Where each document lives, so the banner can link to the thing it names.
  *  ``providers`` is here because the supplier list is the one page this
@@ -90,7 +91,9 @@ export function LegalNoticeBanner() {
       className="flex items-start gap-3 border-b border-edge bg-muted/30 px-4 py-2.5 text-sm text-ink-muted sm:px-6"
     >
       <p className="flex-1">
-        {t("legalGate.notice.body", { document: name, date: notice.effective })}{" "}
+        {/* `effective` is a calendar day ("2026-12-15"): printed as one, in
+            the reader's language, never as the raw ISO string it arrives as. */}
+        {t("legalGate.notice.body", { document: name, date: formatDayLong(notice.effective) || notice.effective })}{" "}
         <Link to={path} className="text-brand underline underline-offset-4">
           {t("legalGate.notice.read")}
         </Link>
