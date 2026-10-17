@@ -189,6 +189,48 @@ class TestAMoveIsMeasuredOnTheSeriesClock:
         ]
 
 
+class TestASeriesWithNoZoneNamed:
+    """Most profiles have no zone until a device reports one ('default')."""
+
+    @pytest.mark.parametrize(
+        ("school_zone", "expected"),
+        [
+            (None, "America/Indiana/Indianapolis"),
+            ("Europe/Kyiv", "Europe/Kyiv"),
+        ],
+    )
+    def test_is_stepped_on_the_school_s_clock_not_utc(
+        self, client: TestClient, db: Session, student: User, school_zone: str | None, expected: str
+    ) -> None:
+        from app.models.course import Course
+        from app.models.user import User as Profile
+        from app.services.grading_scheme import get_org_settings
+
+        course_id = _course(db, student)
+        teacher = db.get(Profile, TEACHER_ID)
+        assert teacher is not None
+        teacher.time_zone = None
+        course = db.get(Course, course_id)
+        assert course is not None
+        get_org_settings(db, course.organization_id).time_zone = school_zone
+        db.commit()
+        r = client.post(
+            f"{COURSES}/{course_id}/events",
+            json={
+                "title": "Урок",
+                "event_type": "live_session",
+                "event_date": "2026-10-17T23:00:00Z",
+                "repeat": {"every_weeks": 1, "until": "2026-11-07"},
+            },
+        )
+        assert r.status_code == 201, r.text
+        db.expire_all()
+        rows = db.query(CourseEvent).filter(CourseEvent.course_id == course_id).order_by(CourseEvent.event_date).all()
+        zone = zone_or_utc(expected)
+        assert len({_aware(r.event_date).astimezone(zone).strftime("%H:%M") for r in rows}) == 1
+        assert {r.time_zone for r in rows} == {expected}
+
+
 class TestTheReminderGoesOutAtTheRightInstant:
     @pytest.mark.parametrize(
         "start",

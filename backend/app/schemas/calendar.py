@@ -70,7 +70,7 @@ class EventRepeat(RequestModel):
     ``until`` is a day on the calendar of ``time_zone`` — the zone the
     teacher is scheduling in, which the client knows and the server does
     not — and is inclusive. Without a zone the teacher's profile zone is
-    used, then UTC.
+    used, then the school's clock (``school_clock``).
     """
 
     every_weeks: int = Field(1, ge=1, le=4)

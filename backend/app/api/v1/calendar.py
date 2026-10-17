@@ -44,6 +44,7 @@ from app.services.notification_service import (
     notification_text,
     translatable,
 )
+from app.services.school_clock import school_time_zone
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import localize_course_event_rows
 
@@ -340,7 +341,12 @@ def create_course_event(
         starts = [data.event_date]
         series_id = None
     else:
-        zone = zone_or_utc(data.repeat.time_zone or teacher.time_zone)
+        # The app always names the zone it showed the teacher. A client that
+        # does not, for a teacher whose profile has none (most profiles until
+        # the device reports one), gets the school's clock — not UTC, on
+        # which "19:00" would slide an hour at the next clock change.
+        named = data.repeat.time_zone or teacher.time_zone
+        zone = zone_or_utc(named) if named else school_time_zone(db, course.organization_id)
         try:
             starts = WeeklySeries(
                 first=data.event_date, every_weeks=data.repeat.every_weeks, until=data.repeat.until, zone=zone
@@ -507,7 +513,8 @@ def update_course_event(
     # before the zone was stored. Popped either way: it is not a field the
     # patch may write.
     editor_zone = updates.pop("time_zone", None)
-    zone = zone_or_utc(event.time_zone or editor_zone or teacher.time_zone)
+    named = event.time_zone or editor_zone or teacher.time_zone
+    zone = zone_or_utc(named) if named else school_time_zone(db, course.organization_id)
     text_patch: dict[str, str | None] = {}
     if "title" in updates:
         v = updates.pop("title")
