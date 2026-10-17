@@ -32,16 +32,16 @@ from app.services.content_versions import (
     fetch_cv_entity_texts_with_fallback,
 )
 from app.services.course_notifications import (
-    course_title_for_locale,
+    course_title,
     delete_notifications_about,
     enrolled_recipients_by_locale,
-    entity_title_for_locale,
+    entity_title,
+    stored_params,
 )
 from app.services.event_series import SeriesRejected, WeeklySeries, series_positions, shift_on_wall_clock, zone_or_utc
 from app.services.notification_service import (
     create_notifications_bulk,
     notification_text,
-    resolve_params,
     translatable,
 )
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
@@ -101,11 +101,10 @@ def notify_students_about_event(
     teacher could put an exam on the calendar and nobody would know
     until they happened to open it. Each recipient is written to in the
     language they read in, with the event's title in that language when
-    it has one (see ``entity_title_for_locale`` for when it does not).
+    it has one, read when the bell is opened (see ``entity_title``).
     The kind — deadline, exam — comes from the catalog so the sentence
     is whole in every language.
     """
-    source_locale = normalize_locale(course.source_locale)
     recipients_by_locale = enrolled_recipients_by_locale(
         db, course_id=course.id, exclude_user_id=author.id if author else None
     )
@@ -122,18 +121,12 @@ def notify_students_about_event(
         params: dict[str, Any] = {
             # A catalog key, translated whenever the bell is opened.
             "kind": translatable(f"event_type.{event.event_type}"),
-            "title": entity_title_for_locale(
-                db,
-                entity_type="course_event",
-                entity_id=event.id,
-                locale=locale,
-                source_locale=source_locale,
-                fallback_key="fallback.event",
-            ),
-            "course": course_title_for_locale(db, course, locale),
+            # Read when the bell is opened, from released rows only.
+            "title": entity_title("course_event", event.id, fallback_key="fallback.event"),
+            "course": course_title(course),
         }
         title = t(locale, f"{key}.title")
-        message = t(locale, f"{key}.body", **resolve_params(params, locale))
+        message = t(locale, f"{key}.body", **stored_params(db, params, locale))
         link = _event_link(course.id)
         metadata: dict[str, str] = {"course_id": course.id, "event_id": str(event.id)}
         # The bell is where a student is standing when the session is
