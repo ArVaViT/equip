@@ -14,10 +14,10 @@ export function PreviousAttempts({ attempts, autoMaxScore }: Props) {
   if (attempts.length === 0) return null
   return (
     <div className="border-t p-5">
-      <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+      <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
         <Clock className="h-4 w-4 text-ink-muted" strokeWidth={1.75} />
         {t("quiz.previousAttempts")}
-      </h4>
+      </h3>
       <div className="space-y-2">
         {attempts.map((att) => {
           const inProgress = !att.completed_at

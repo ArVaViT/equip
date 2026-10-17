@@ -49,6 +49,16 @@ function renderCard(pendingGrading?: number, course: Course = makeCourse()) {
   )
 }
 
+describe("CourseCard — in the page outline", () => {
+  // The dashboard's h1 is «Мои курсы» and each course sits straight under
+  // it, so the name is an h2 (it was an h3: h1 → h3 skipped a level).
+  it("names the course with an h2", () => {
+    renderCard()
+    expect(screen.getByRole("heading", { level: 2 })).toBeInTheDocument()
+    expect(screen.queryByRole("heading", { level: 3 })).not.toBeInTheDocument()
+  })
+})
+
 describe("CourseCard — work waiting on the teacher", () => {
   it("says how much is waiting and links straight to the gradebook", async () => {
     await i18n.changeLanguage("ru")

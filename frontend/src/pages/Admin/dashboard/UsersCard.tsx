@@ -112,7 +112,7 @@ export function UsersCard({
             single flex-wrap row, and at laptop widths the chip strip
             below would wrap up under the search input creating an
             orphan visual that looked unfinished. */}
-        <CardTitle>{t("admin.users.title")}</CardTitle>
+        <CardTitle as="h2">{t("admin.users.title")}</CardTitle>
 
         {/* Row 2: filter + search aligned right. ``items-center`` so
             the search h-9 input and select line up; ``ml-auto`` pushes

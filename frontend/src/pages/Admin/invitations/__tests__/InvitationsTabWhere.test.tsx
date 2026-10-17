@@ -73,7 +73,7 @@ describe("InvitationsTab — where each invitation leads", () => {
 
   it("stacks the title over the button below the first breakpoint", async () => {
     render(<InvitationsTab />, { wrapper: Wrapper })
-    const title = await screen.findByText("Приглашения", { selector: "h3, div" })
+    const title = await screen.findByText("Приглашения", { selector: "h2, div" })
     // jsdom lays nothing out; the arrangement is the classes, so they are
     // what is checked: a column by default, a row only from `sm` up.
     expect(title.parentElement?.className).toMatch(/\bflex-col\b/)

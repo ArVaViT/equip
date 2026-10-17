@@ -70,9 +70,9 @@ export function ResultsView({ result, quiz, questions, answers }: Props) {
       </Card>
 
       <div className="space-y-4">
-        <h4 className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
+        <h3 className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
           {t("quiz.reviewAnswers")}
-        </h4>
+        </h3>
         <StaggerChildren className="space-y-4">
           {questions.map((q, idx) => {
           const userAnswer = answers[q.id]

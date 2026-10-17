@@ -95,14 +95,14 @@ export function CourseCard({
                 the app; it was plain text, and the way in was an icon. */}
             {/* Its own line on a phone: beside «Опубликован» the name had
                 a few letters and read «Де…». */}
-            <h3 className="line-clamp-2 min-w-0 basis-full break-words text-base font-semibold sm:basis-0 sm:flex-1 sm:line-clamp-1 sm:text-lg">
+            <h2 className="line-clamp-2 min-w-0 basis-full break-words text-base font-semibold sm:basis-0 sm:flex-1 sm:line-clamp-1 sm:text-lg">
               <Link
                 to={`/teacher/courses/${course.id}`}
                 className="underline-offset-4 transition-colors after:absolute after:inset-0 after:rounded-card hover:text-brand hover:underline focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-brand"
               >
                 {course.title}
               </Link>
-            </h3>
+            </h2>
             <Badge
               variant={isPublished ? "success" : isPublishing ? "warningSubtle" : "warning"}
               className="shrink-0"

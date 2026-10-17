@@ -46,22 +46,32 @@ const CardHeader = React.forwardRef<
 ))
 CardHeader.displayName = "CardHeader"
 
-const CardTitle = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
-  <h3
-    ref={ref}
-    // Editorial convention: card titles are serif (Literata) + tight
-    // tracking everywhere — folded into the base so call sites stop
-    // re-adding (and occasionally forgetting) `font-serif tracking-tight`.
-    className={cn(
-      "font-serif text-lg font-semibold leading-none tracking-tight",
-      className
-    )}
-    {...props}
-  />
-))
+type HeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
+
+interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
+  /** The heading level in the page outline. A card has no idea where it
+   *  sits: a card straight under the page's h1 is an h2, one inside a
+   *  section is an h3. Defaults to h3, the most common nesting; pick the
+   *  level that keeps h1 → h2 → h3 without a gap. Looks the same at any
+   *  level — the size is the className's job, not the tag's. */
+  as?: HeadingLevel
+}
+
+const CardTitle = React.forwardRef<HTMLHeadingElement, CardTitleProps>(
+  ({ as: Heading = "h3", className, ...props }, ref) => (
+    <Heading
+      ref={ref}
+      // Editorial convention: card titles are serif (Literata) + tight
+      // tracking everywhere — folded into the base so call sites stop
+      // re-adding (and occasionally forgetting) `font-serif tracking-tight`.
+      className={cn(
+        "font-serif text-lg font-semibold leading-none tracking-tight",
+        className
+      )}
+      {...props}
+    />
+  )
+)
 CardTitle.displayName = "CardTitle"
 
 const CardDescription = React.forwardRef<

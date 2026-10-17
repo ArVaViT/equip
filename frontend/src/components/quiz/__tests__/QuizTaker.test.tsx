@@ -5,7 +5,7 @@ import { I18nextProvider } from "react-i18next"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Quiz, QuizAttempt } from "@/types"
 import i18n from "@/i18n/config"
-import { axe } from "@/test/a11y"
+import { axe, headingOutline } from "@/test/a11y"
 import { AuthContext } from "@/context/auth-context"
 
 const getChapterQuiz = vi.fn()
@@ -175,7 +175,7 @@ describe("QuizTaker", () => {
     submitQuiz.mockResolvedValue(makeAttempt())
     const user = userEvent.setup()
 
-    render(<QuizTaker chapterId="chap-1" />, renderOpts)
+    const { container } = render(<QuizTaker chapterId="chap-1" />, renderOpts)
     await waitFor(() => screen.getByText("Genesis 1 Quiz"))
 
     await user.click(screen.getByLabelText("6"))
@@ -185,6 +185,10 @@ describe("QuizTaker", () => {
     await waitFor(() => {
       expect(screen.getByText(/you passed/i)).toBeInTheDocument()
     })
+    // The quiz's name is an h2 under the lesson's h1; «review your
+    // answers» under it is an h3 (it was an h4, a skipped level).
+    expect(headingOutline(container).gaps).toEqual([])
+    expect(screen.getByRole("heading", { level: 3, name: /review/i })).toBeInTheDocument()
     expect(submitQuiz).toHaveBeenCalledWith("quiz-1", [
       { question_id: "q1", selected_option_id: "o1b", text_answer: undefined },
       { question_id: "q2", selected_option_id: "o2a", text_answer: undefined },

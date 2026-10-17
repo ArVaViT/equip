@@ -12,7 +12,7 @@
 import { describe, it, expect } from "vitest";
 import { render } from "@testing-library/react";
 
-import { axe } from "@/test/a11y";
+import { axe, headingOutline } from "@/test/a11y";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +49,41 @@ describe("a11y foundation", () => {
       </Card>,
     );
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("CardTitle is an h3 by default and takes its level from `as`", () => {
+    const { getByRole, rerender } = render(<CardTitle>Recent activity</CardTitle>);
+    expect(getByRole("heading", { level: 3, name: "Recent activity" })).toBeInTheDocument();
+    rerender(<CardTitle as="h2">Recent activity</CardTitle>);
+    expect(getByRole("heading", { level: 2, name: "Recent activity" })).toBeInTheDocument();
+  });
+
+  it("a page of cards under one h1 keeps the outline without gaps", async () => {
+    const { container } = render(
+      <main>
+        <h1>Profile</h1>
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Preferences</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <h3>Language</h3>
+          </CardContent>
+        </Card>
+      </main>,
+    );
+    expect(headingOutline(container)).toEqual({ levels: [1, 2, 3], gaps: [] });
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("headingOutline names a skipped level", () => {
+    const { container } = render(
+      <div>
+        <h1>Profile</h1>
+        <CardTitle>Preferences</CardTitle>
+      </div>,
+    );
+    expect(headingOutline(container).gaps).toEqual(["h1 → h3 «Preferences»"]);
   });
 
   it("Badge with text content has no violations", async () => {

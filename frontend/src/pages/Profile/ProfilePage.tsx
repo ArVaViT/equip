@@ -275,7 +275,7 @@ export default function ProfilePage() {
             {user && <MyOrganizationsCard userId={user.id} />}
             <Card className="transition-[border-color] duration-200 hover:border-brand/25">
               <CardHeader className="space-y-1">
-                <CardTitle>
+                <CardTitle as="h2">
                   {t("profile.learningProgress")}
                 </CardTitle>
               </CardHeader>
@@ -336,7 +336,7 @@ export default function ProfilePage() {
 
             <Card className="transition-[border-color] duration-200 hover:border-brand/25">
               <CardHeader>
-                <CardTitle>{t("profile.accountDetails")}</CardTitle>
+                <CardTitle as="h2">{t("profile.accountDetails")}</CardTitle>
               </CardHeader>
               <CardContent>
                 {/* Each group is a `div` holding its `dt` and `dd` directly, as
@@ -376,7 +376,7 @@ export default function ProfilePage() {
           <div id="profile-panel-settings" role="tabpanel" aria-labelledby="profile-tab-settings">
             <Card className="transition-[border-color] duration-200 hover:border-brand/25">
               <CardHeader>
-                <CardTitle>{t("profile.preferences")}</CardTitle>
+                <CardTitle as="h2">{t("profile.preferences")}</CardTitle>
               </CardHeader>
               <CardContent className="divide-y divide-border rounded-md px-0">
                 <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4">

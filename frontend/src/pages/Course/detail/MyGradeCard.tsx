@@ -126,7 +126,7 @@ export function MyGradeCard({
         >
           <span className="flex min-w-0 items-center gap-2.5">
             <GraduationCap className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-            <CardTitle className="truncate font-serif text-base">{t("myGrade.title")}</CardTitle>
+            <CardTitle as="h2" className="truncate font-serif text-base">{t("myGrade.title")}</CardTitle>
           </span>
           <span className="flex shrink-0 items-center gap-2 text-sm text-ink-muted">
             {display.headline !== null && (
