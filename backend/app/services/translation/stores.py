@@ -45,6 +45,8 @@ from app.services.translation.version import TRANSLATOR_VERSION
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import Iterable
+    from datetime import datetime
 
     from sqlalchemy.orm import Session
 
@@ -367,34 +369,82 @@ class StagedStore:
         (``record_human_version`` with ``course_locale``), and its locale
         needs a translation of the new words like every other.
         """
-        from app.models.course import Course
-        from app.services.content_versions.write import replaced_source_row
+        key = (entity_type, entity_id, field)
+        return self._replaced_source_locales(db, [key]).get(key)
 
-        edit_locale = (
-            db.query(StagedContentVersion.locale)
-            .filter(
-                StagedContentVersion.entity_type == entity_type,
-                StagedContentVersion.entity_id == entity_id,
-                StagedContentVersion.field == field,
-                StagedContentVersion.origin == "human",
+    def _replaced_source_locales(
+        self, db: Session, fields: Iterable[tuple[str, str, str]]
+    ) -> dict[tuple[str, str, str], str]:
+        """``_replaced_source_locale`` for many fields in two reads.
+
+        ``active_rows`` used to ask field by field: two or three round
+        trips for every field with a live human row, which is every
+        field (its source is one). Fields whose edit replaces nothing
+        are absent from the answer.
+        """
+        from app.models.course import Course
+        from app.services.content_versions.write import pick_field_source
+
+        wanted = list(dict.fromkeys(fields))
+        if not wanted:
+            return {}
+        chunk = 500
+        # The newest person-written held edit of each field: its locale.
+        edit_locale: dict[tuple[str, str, str], str] = {}
+        newest: dict[tuple[str, str, str], datetime] = {}
+        for start in range(0, len(wanted), chunk):
+            window = wanted[start : start + chunk]
+            rows = (
+                db.query(
+                    StagedContentVersion.entity_type,
+                    StagedContentVersion.entity_id,
+                    StagedContentVersion.field,
+                    StagedContentVersion.locale,
+                    StagedContentVersion.created_at,
+                )
+                .filter(
+                    tuple_(
+                        StagedContentVersion.entity_type,
+                        StagedContentVersion.entity_id,
+                        StagedContentVersion.field,
+                    ).in_(window),
+                    StagedContentVersion.origin == "human",
+                )
+                .all()
             )
-            .order_by(StagedContentVersion.created_at.desc())
-            .limit(1)
-            .scalar()
-        )
-        if edit_locale is None:
-            return None
+            for entity_type, entity_id, field, locale, created_at in rows:
+                key = (entity_type, entity_id, field)
+                if key not in newest or created_at > newest[key]:
+                    newest[key] = created_at
+                    edit_locale[key] = locale
+        if not edit_locale:
+            return {}
         if self._course_locale is None:
             self._course_locale = db.query(Course.source_locale).filter(Course.id == self.course_id).scalar() or "en"
-        replaced = replaced_source_row(
-            db,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            field=field,
-            edit_locale=edit_locale,
-            course_locale=self._course_locale,
-        )
-        return replaced.locale if replaced is not None else None
+
+        # The source each of those fields is translated from now.
+        edited = list(edit_locale)
+        live_by_field: dict[tuple[str, str, str], list[ContentVersion]] = {}
+        for start in range(0, len(edited), chunk):
+            window = edited[start : start + chunk]
+            for row in (
+                db.query(ContentVersion)
+                .filter(
+                    tuple_(ContentVersion.entity_type, ContentVersion.entity_id, ContentVersion.field).in_(window),
+                    ContentVersion.origin == "human",
+                    ContentVersion.status == ContentVersionStatus.OK,
+                    ContentVersion.superseded_by.is_(None),
+                )
+                .all()
+            ):
+                live_by_field.setdefault((row.entity_type, row.entity_id, row.field), []).append(row)
+
+        replaced: dict[tuple[str, str, str], str] = {}
+        for key, locale in edit_locale.items():
+            source = pick_field_source(live_by_field.get(key, []), course_locale=self._course_locale)
+            if source is not None and source.locale != locale:
+                replaced[key] = source.locale
+        return replaced
 
     def active_row(
         self,
@@ -492,6 +542,7 @@ class StagedStore:
         # says nothing here, because it translates the text this edit
         # replaces. A live human row does — it is never overwritten.
         remaining = [key for key in keys if key not in found]
+        replaced = self._replaced_source_locales(db, (key[:3] for key in remaining))
         for start in range(0, len(remaining), chunk):
             window = remaining[start : start + chunk]
             live_rows = (
@@ -517,10 +568,7 @@ class StagedStore:
                 .all()
             )
             for entity_type, entity_id, field, locale, status, source_hash, text in live_rows:
-                if (
-                    self._replaced_source_locale(db, entity_type=entity_type, entity_id=entity_id, field=field)
-                    == locale
-                ):
+                if replaced.get((entity_type, entity_id, field)) == locale:
                     continue
                 found[(entity_type, entity_id, field, locale)] = ActiveRow(
                     origin="human",

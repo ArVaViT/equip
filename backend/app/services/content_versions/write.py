@@ -213,6 +213,12 @@ def field_source_row(
         )
         .all()
     )
+    return pick_field_source(rows, course_locale=course_locale)
+
+
+def pick_field_source(rows: Sequence[ContentVersion], *, course_locale: str) -> ContentVersion | None:
+    """``field_source_row``'s ranking over one field's active human rows,
+    for a caller that read many fields at once."""
     live = [r for r in rows if r.text and r.text.strip()]
     if not live:
         return None
