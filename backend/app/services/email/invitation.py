@@ -73,13 +73,19 @@ def _course_title(db: Session, course_id: str, locale: LocaleCode) -> str | None
     return titles.get(course_id) or None
 
 
-#: The two clocks a lesson time is written in. A time without a zone in an
-#: invitation is worse than no time at all: half these students are on
-#: the west coast, and "20:00" has meant two different evenings to two
-#: readers of the same letter. The sentence names them ("Eastern",
-#: "Pacific"), so they are fixed here rather than taken from the school's
-#: clock — that one decides the link's last day (``school_clock``).
-_EASTERN = ZoneInfo("America/Indiana/Indianapolis")
+#: The zones a school is known to keep, named the way a reader of that
+#: language says them. "Eastern" alone read as their own Eastern European
+#: time to a reader in Kyiv; "Indiana (US)" cannot be misread.
+_ZONE_NAME = {
+    "America/Indiana/Indianapolis": "indiana",
+    "America/Indianapolis": "indiana",
+    "Europe/Kyiv": "kyiv",
+    "Europe/Kiev": "kyiv",
+}
+
+#: Half the American school is on the west coast, where "19:00" in Indiana
+#: has meant a different evening; a school on an American clock gets the
+#: Pacific time beside its own.
 _ALSO_SHOWN = ZoneInfo("America/Los_Angeles")
 
 
@@ -110,19 +116,37 @@ def _expiry_day(moment: datetime, locale: LocaleCode, zone: ZoneInfo) -> str:
     return _day(moment.astimezone(zone), locale)
 
 
-def _session_text(moment: datetime, locale: LocaleCode) -> str:
-    """ "12 сентября, 20:00 по восточному (17:00 по тихоокеанскому)"."""
+def _offset(local: datetime) -> str:
+    """ "UTC+2", "UTC-4", "UTC+5:30" — a zone's name where we have no words for it."""
+    delta = local.utcoffset()
+    minutes = int(delta.total_seconds() // 60) if delta is not None else 0
+    sign = "+" if minutes >= 0 else "-"
+    hours, rest = divmod(abs(minutes), 60)
+    return f"UTC{sign}{hours}" + (f":{rest:02d}" if rest else "")
+
+
+def _session_text(moment: datetime, locale: LocaleCode, zone: ZoneInfo) -> str:
+    """ "12.10.2026, 19:00 по времени Индианы (США) (16:00 по тихоокеанскому времени США)".
+
+    On the school's clock (``org_settings.time_zone``), with that clock named:
+    the invited person has no account, so there is no zone of theirs to use.
+    """
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=UTC)
-    eastern = moment.astimezone(_EASTERN)
-    pacific = moment.astimezone(_ALSO_SHOWN)
-    return t(
-        locale,
-        "email.invitation.session_at",
-        date=_day(eastern, locale),
-        eastern=eastern.strftime("%H:%M"),
-        pacific=pacific.strftime("%H:%M"),
+    local = moment.astimezone(zone)
+    name = _ZONE_NAME.get(str(zone))
+    zone_text = (
+        t(locale, f"email.invitation.zone.{name}")
+        if name
+        else t(locale, "email.invitation.zone.other", offset=_offset(local))
     )
+    text = t(
+        locale, "email.invitation.session_at", date=_day(local, locale), time=local.strftime("%H:%M"), zone=zone_text
+    )
+    if str(zone).startswith("America/") and str(zone) != str(_ALSO_SHOWN):
+        pacific = moment.astimezone(_ALSO_SHOWN).strftime("%H:%M")
+        text += " " + t(locale, "email.invitation.session_also_pacific", time=pacific)
+    return text
 
 
 def build_invitation_message(
@@ -153,12 +177,16 @@ def build_invitation_message(
         course = db.query(Course).filter(Course.id == invitation.course_id).first()
         course_title = _course_title(db, invitation.course_id, locale) if course else None
 
+    school_zone = school_time_zone(db, invitation.organization_id)
     facts: list[Fact] = []
     if course is not None:
         session = _next_session(db, course.id)
         if session is not None:
             facts.append(
-                Fact(label=t(locale, "email.invitation.fact.first_session"), value=_session_text(session, locale))
+                Fact(
+                    label=t(locale, "email.invitation.fact.first_session"),
+                    value=_session_text(session, locale, school_zone),
+                )
             )
         lessons = _lesson_count(db, course.id)
         if lessons:
@@ -199,7 +227,7 @@ def build_invitation_message(
             t(
                 locale,
                 "email.invitation.expires",
-                date=_expiry_day(invitation.expires_at, locale, school_time_zone(db, invitation.organization_id)),
+                date=_expiry_day(invitation.expires_at, locale, school_zone),
             ),
             t(locale, "email.invitation.ignore"),
         ),
