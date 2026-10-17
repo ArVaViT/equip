@@ -25,6 +25,7 @@ from app.services.course_service import (
     get_module,
     get_teacher_courses,
 )
+from app.services.deleted_person import shown_avatar, shown_name
 from app.services.memberships import active_memberships
 from app.services.reading_time import course_reading_minutes
 from app.services.translation.resolve_for_display import (
@@ -255,7 +256,7 @@ def get_course_author(
     for either.
     """
     course = _course_a_reader_may_see(db, course_id, current_user)
-    author = db.query(User.full_name, User.avatar_url).filter(User.id == course.created_by).first()
+    author = db.query(User.full_name, User.avatar_url, User.deleted_at).filter(User.id == course.created_by).first()
     organization = None
     if course.organization_id is not None:
         organization = (
@@ -264,8 +265,10 @@ def get_course_author(
             .first()
         )
     return CourseAuthor(
-        name=author.full_name if author else None,
-        avatar_url=author.avatar_url if author else None,
+        # A teacher who deleted their account leaves the course with the
+        # school, and the tab says «Deleted user» with no face.
+        name=shown_name(author.full_name, author.deleted_at) if author else None,
+        avatar_url=shown_avatar(author.avatar_url, author.deleted_at) if author else None,
         school=organization.public_name if organization else None,
         organization_slug=organization.slug if organization else None,
         organization_logo_url=organization.logo_url if organization else None,

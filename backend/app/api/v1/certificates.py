@@ -23,6 +23,7 @@ from app.schemas.locale import LocaleCode, normalize_locale
 from app.services import certificate_service
 from app.services.certificate_readiness import certificate_blockers
 from app.services.certificate_service import CERTIFICATE_LOCALE
+from app.services.deleted_person import shown_email, shown_name
 from app.services.my_grade_service import latest_enrollment
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
@@ -302,10 +303,15 @@ def _enrich_pending_certs(
     course_ids = {str(c.course_id) for c in certs if c.course_id}
     user_meta: dict[str, tuple[str | None, str]] = {}
     if student_ids or approver_ids:
-        for uid, full_name, email in (
-            db.query(User.id, User.full_name, User.email).filter(User.id.in_(student_ids | approver_ids)).all()
+        for uid, full_name, email, deleted_at in (
+            db.query(User.id, User.full_name, User.email, User.deleted_at)
+            .filter(User.id.in_(student_ids | approver_ids))
+            .all()
         ):
-            user_meta[str(uid)] = (full_name, email)
+            # «Deleted user» for an account its owner deleted. What an issued
+            # certificate itself carries (``cert.student_name``) is frozen and
+            # is not this — see ``app.services.deleted_person``.
+            user_meta[str(uid)] = (shown_name(full_name, deleted_at), shown_email(email, deleted_at))
     course_titles = fetch_course_titles_by_id(db, sorted(course_ids), display_locale=display_locale)
     blockers_by_cert = _blockers_for(db, certs)
 
@@ -564,7 +570,7 @@ def verify_certificate(
     return CertificateVerifyResponse(
         valid=True,
         certificate_number=cert.certificate_number,
-        user_name=frozen_name or (user.full_name if user else None),
+        user_name=frozen_name or (shown_name(user.full_name, user.deleted_at) if user else None),
         course_title=course_title,
         issued_at=cert.issued_at,
     )

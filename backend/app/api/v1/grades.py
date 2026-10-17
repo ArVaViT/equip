@@ -69,6 +69,7 @@ from app.services.certificate_readiness import (
     certificate_blockers,
     retake_would_help,
 )
+from app.services.deleted_person import shown_email, shown_name
 from app.services.grade_calculator import (
     calculate_all_student_grades,
     calculate_student_grade_for_course,
@@ -681,8 +682,8 @@ def get_calculated_grade(
 
     return StudentCalculatedGrade(
         student_id=str(student_id),
-        student_name=user.full_name,
-        student_email=user.email,
+        student_name=shown_name(user.full_name, user.deleted_at),
+        student_email=shown_email(user.email, user.deleted_at),
         breakdown=breakdown,
         manual_grade=manual,
     )
@@ -1071,7 +1072,7 @@ def get_grade_history(
     student_uuid = as_uuid(student_id)
 
     rows = (
-        db.query(AuditLog, User.full_name)
+        db.query(AuditLog, User.full_name, User.deleted_at)
         .outerjoin(User, User.id == AuditLog.user_id)
         .filter(
             or_(
@@ -1101,7 +1102,8 @@ def get_grade_history(
     )
 
     out: list[dict[str, Any]] = []
-    for row, actor_name in rows:
+    for row, full_name, deleted_at in rows:
+        actor_name = shown_name(full_name, deleted_at)
         details = row.details or {}
         out.append(
             {

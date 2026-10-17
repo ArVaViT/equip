@@ -1,6 +1,6 @@
 # Datenschutzerklärung
 
-**Fassung 2.0 · in Kraft ab 17. September 2026**
+**Fassung 2.1 · in Kraft ab 15. Dezember 2026**
 
 Equip ist eine Plattform für Bibelschulen. Dieses Dokument legt dar, was die
 Plattform speichert, warum, wer es sehen kann, wie lange es aufbewahrt wird und
@@ -243,7 +243,7 @@ wenn wir es dürfen.
 | Was | Wo es liegt | Wie lange |
 |---|---|---|
 | Konto und Profil — Name, E-Mail, Foto, Sprache | Supabase | Solange das Konto besteht |
-| Kursarbeit — Fortschritt, Quizantworten, eingereichte Arbeiten, Noten, Rückmeldungen | Supabase | Solange das Konto besteht; wird mit ihm gelöscht |
+| Kursarbeit — Fortschritt, Quizantworten, eingereichte Arbeiten, Noten, Rückmeldungen | Supabase | Solange das Konto besteht — auch ein im Profil gelöschtes; wird mit ihm getilgt, wenn Sie die Tilgung verlangen |
 | Ausgestellte Zertifikate und die Notenblätter, die sie festhalten | Supabase | **Bleibt nach der Löschung des Kontos** — siehe unten |
 | Nachweis der Annahme eines Dokuments wie dieses (Fassung, Prüfsumme, Sprache, Zeit, IP) | Supabase | Solange das Konto besteht — dann **ohne Sie darin aufbewahrt**, unbefristet (siehe unten) |
 | Erklärung zu einer eingereichten Arbeit (Aussage, KI-Nutzung, Zeit, IP) | Supabase | Solange die eingereichte Arbeit besteht |
@@ -262,7 +262,8 @@ einer läuft, ändert sich diese Tabelle, und die Änderung wird mitgeteilt stat
 neu unterschrieben, weil eine kürzere Speicherdauer für Sie kein schlechteres
 Geschäft ist.
 
-**Was Ihr Konto überdauert.** Zwei Dinge, und nur zwei.
+**Was Ihr Konto überdauert.** Wird ein Konto getilgt, bleiben zwei Dinge, und
+nur zwei.
 
 Ein ausgestelltes Zertifikat und das Notenblatt, das es festhält, bleiben. Eine
 Schule kann nicht rückwirkend unbezeugt machen, was sie bereits bezeugt hat,
@@ -270,7 +271,7 @@ und genau deshalb sind diese Dokumente als Momentaufnahme zum Zeitpunkt ihrer
 Ausstellung eingefroren.
 
 Auch der Nachweis, dass Sie ein Dokument wie dieses angenommen haben, bleibt,
-**ohne Sie darin**. In dem Moment, in dem Ihr Konto gelöscht wird, wird die
+**ohne Sie darin**. In dem Moment, in dem Ihr Konto getilgt wird, wird die
 Kontokennung auf diesem Nachweis durch eine Einweg-Prüfsumme davon ersetzt, und
 die IP-Adresse wird gelöscht. Übrig bleibt: welches Dokument, welche Fassung, in
 welcher Sprache und wann — und eine Prüfsumme, die sich nicht in Ihren Namen,
@@ -280,6 +281,12 @@ eine Frage nicht beantworten kann, für die er aufbewahrt wird.
 
 Alles andere geht.
 
+**Löschen ist nicht Tilgen.** Der Knopf **Konto löschen** in Ihrem Profil
+schließt das Konto und nimmt Sie aus dem Blick aller anderen, tilgt aber nichts
+— damit die Schule ihren Nachweis über Ihr Studium behält und Sie zurückkommen
+können. Was er genau tut, steht unter **Was Sie tun können**. Die Tilgung bleibt
+eine E-Mail entfernt, vor dem Knopfdruck und danach.
+
 ## Was Sie tun können
 
 - **Ihre Daten einsehen und ändern** — in Ihrem Profil, für das, was das Profil
@@ -287,14 +294,22 @@ Alles andere geht.
 - **Eine Kopie von allem bekommen, was über Sie gehalten wird** — schreiben Sie
   an supportequip@gmail.com, und wir stellen es zusammen und senden es. Einen
   Export-Knopf zur Selbstbedienung gibt es noch nicht.
-- **Ihr Konto und Ihre Kursarbeiten löschen** — schreiben Sie an
-  supportequip@gmail.com mit der Betreffzeile **Delete my account**. Es gibt
-  keinen Löschknopf im Profil und keinen Weg zur Selbstbedienung: Wir machen es
-  von Hand, und **innerhalb von 30 Tagen** nach Ihrer Bitte. Wir bestätigen,
-  wenn es getan ist, und sagen Ihnen, was geblieben ist. Geblieben sind die
-  drei oben genannten Dinge und sonst nichts: bereits ausgestellte Zertifikate,
-  die Notenblätter, die sie festhalten, und der Nachweis, dass Sie diese
-  Dokumente angenommen haben, ohne Sie darin.
+- **Ihr Konto selbst löschen** — mit dem Knopf **Konto löschen** unten in Ihrem
+  Profil. Er wirkt sofort: Sie werden auf allen Geräten abgemeldet, das Konto
+  lässt sich nicht mehr nutzen, und alle anderen auf der Plattform sehen
+  „Gelöschter Nutzer“ statt Ihres Namens, ohne E-Mail-Adresse und ohne Foto.
+  Getilgt wird nichts: Ihre Antworten, eingereichten Arbeiten, Noten,
+  Einschreibungen und Zertifikate bleiben bei der Schule als ihr Nachweis über
+  Ihr Studium. Um zurückzukommen, melden Sie sich wieder an — die Plattform
+  bietet an, das Konto wiederherzustellen.
+- **Ihr Konto und Ihre Kursarbeiten tilgen** — schreiben Sie an
+  supportequip@gmail.com mit der Betreffzeile **Delete my account**. Wir machen
+  es von Hand, und **innerhalb von 30 Tagen** nach Ihrer Bitte — ob Sie den
+  Knopf oben gedrückt haben oder nicht. Wir bestätigen, wenn es getan ist, und
+  sagen Ihnen, was geblieben ist. Geblieben sind die drei oben genannten Dinge
+  und sonst nichts: bereits ausgestellte Zertifikate, die Notenblätter, die sie
+  festhalten, und der Nachweis, dass Sie diese Dokumente angenommen haben, ohne
+  Sie darin.
 - **Etwas berichtigen, das falsch ist** — sagen Sie es uns, und wir bringen es
   in Ordnung.
 - **Der Sitzungsaufzeichnung widersprechen** — wir können sie heute nicht für

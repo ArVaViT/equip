@@ -143,6 +143,20 @@ EXEMPT_PREFIXES: tuple[str, ...] = (
     "/api/v1/invitations/register",
 )
 
+#: Paths exempt exactly, not as a prefix.
+#:
+#: ``/api/v1/users/me`` — ``DELETE`` is deleting your own account. The
+#: privacy policy calls that the way to withdraw consent, so it cannot wait
+#: for consent: a person who will not accept a new version must be able to
+#: leave instead. Exact, because as a prefix it would open every
+#: ``/users/me/...`` write as well.
+EXEMPT_PATHS: frozenset[str] = frozenset({"/api/v1/users/me"})
+
+
+def is_exempt(path: str) -> bool:
+    """Whether this gate has nothing to say about ``path``."""
+    return path in EXEMPT_PATHS or any(path.startswith(prefix) for prefix in EXEMPT_PREFIXES)
+
 
 def outstanding_slugs(role: str, accepted: set[tuple[str, str]]) -> tuple[str, ...]:
     """What this person still owes, as slugs, newest rule first.
@@ -198,7 +212,7 @@ def consent_subject(
     """
     if request.method not in MUTATING_METHODS:
         return None
-    if any(request.url.path.startswith(prefix) for prefix in EXEMPT_PREFIXES):
+    if is_exempt(request.url.path):
         return None
     return resolve_optional_user(credentials.credentials if credentials is not None else None, db)
 
@@ -219,8 +233,7 @@ def require_legal_consent(
         return
     if current_user is None:
         return
-    path = request.url.path
-    if any(path.startswith(prefix) for prefix in EXEMPT_PREFIXES):
+    if is_exempt(request.url.path):
         return
 
     owed = user_owes_consent(db, current_user)
@@ -236,9 +249,11 @@ def require_legal_consent(
 
 
 __all__ = [
+    "EXEMPT_PATHS",
     "EXEMPT_PREFIXES",
     "MUTATING_METHODS",
     "consent_subject",
+    "is_exempt",
     "outstanding_slugs",
     "require_legal_consent",
     "user_owes_consent",

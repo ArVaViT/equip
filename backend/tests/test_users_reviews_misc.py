@@ -221,16 +221,10 @@ class TestGetMyCourses:
 # ===================================================================
 
 
-class TestSelfDeleteIsGone:
-    """The ``DELETE /users/me`` route was removed (see commit history).
-
-    Exercising it here guarantees that no regression re-introduces a
-    self-destruct button on the public API surface.
-    """
-
-    def test_self_delete_route_is_404(self, student_client: TestClient):
-        resp = student_client.request("DELETE", "/api/v1/users/me", json={"confirm": "DELETE"})
-        assert resp.status_code in (404, 405)
+# ``DELETE /users/me`` came back on 2026-10-16 as a soft deletion — nothing
+# is purged, and the owner can restore it. Its tests live in
+# ``test_an_account_can_be_deleted_by_its_owner.py``. (The route removed in
+# April was a hard delete that walked every foreign key.)
 
 
 # ===================================================================

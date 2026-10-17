@@ -440,6 +440,10 @@ BEGIN
   IF current_user <> 'authenticated' THEN
     RETURN NEW;
   END IF;
+  IF OLD.deactivated_at IS NOT NULL THEN
+    RAISE EXCEPTION 'a deactivated account cannot be edited'
+      USING ERRCODE = 'check_violation';
+  END IF;
   IF NEW.id IS DISTINCT FROM OLD.id THEN
     RAISE EXCEPTION 'profiles.id is immutable from client writes'
       USING ERRCODE = 'check_violation';
@@ -462,6 +466,10 @@ BEGIN
   END IF;
   IF NEW.deactivated_at IS DISTINCT FROM OLD.deactivated_at THEN
     RAISE EXCEPTION 'profiles.deactivated_at can only be changed by an administrator'
+      USING ERRCODE = 'check_violation';
+  END IF;
+  IF NEW.deleted_at IS DISTINCT FROM OLD.deleted_at THEN
+    RAISE EXCEPTION 'profiles.deleted_at is recorded by the server'
       USING ERRCODE = 'check_violation';
   END IF;
   IF NEW.onboarding_completed_at IS DISTINCT FROM OLD.onboarding_completed_at THEN
@@ -1286,9 +1294,11 @@ CREATE TABLE public.profiles (
     city text,
     church text,
     email_off jsonb DEFAULT '[]'::jsonb NOT NULL,
+    deleted_at timestamp with time zone,
     CONSTRAINT chk_profiles_role CHECK ((role = ANY (ARRAY['admin'::text, 'director'::text, 'teacher'::text, 'student'::text]))),
     CONSTRAINT profiles_birth_date_floor_check CHECK (((birth_date IS NULL) OR (birth_date >= '1900-01-01'::date))),
     CONSTRAINT profiles_country_code_check CHECK (((country_code IS NULL) OR (country_code ~ '^[A-Z]{2}$'::text))),
+    CONSTRAINT profiles_deleted_is_deactivated_check CHECK (((deleted_at IS NULL) OR (deactivated_at IS NOT NULL))),
     CONSTRAINT profiles_email_off_check CHECK (((jsonb_typeof(email_off) = 'array'::text) AND (email_off <@ '["work_returned", "certificate_decided", "session_starting", "deadline_moved", "announcement"]'::jsonb))),
     CONSTRAINT profiles_locale_source_check CHECK ((locale_source = ANY (ARRAY['default'::text, 'detected'::text, 'chosen'::text]))),
     CONSTRAINT profiles_personal_text_lengths_check CHECK ((((time_zone IS NULL) OR ((char_length(time_zone) >= 1) AND (char_length(time_zone) <= 64))) AND ((phone IS NULL) OR ((char_length(phone) >= 4) AND (char_length(phone) <= 32))) AND ((region IS NULL) OR ((char_length(region) >= 1) AND (char_length(region) <= 100))) AND ((city IS NULL) OR ((char_length(city) >= 1) AND (char_length(city) <= 100))) AND ((church IS NULL) OR ((char_length(church) >= 1) AND (char_length(church) <= 200))))),
@@ -1310,6 +1320,13 @@ COMMENT ON COLUMN public.profiles.role IS 'The most this account may do anywhere
 --
 
 COMMENT ON COLUMN public.profiles.organization_id IS 'Deprecated 2026-10-03: membership lives in organization_members. Still written (when empty) by the phase-2 backend so the previous release keeps working on rollback; dropped in phase 4 of the same plan.';
+
+
+--
+-- Name: COLUMN profiles.deleted_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.profiles.deleted_at IS 'Set when the owner deleted the account themselves (DELETE /users/me); always together with deactivated_at. Others are shown «Deleted user» with no email or photo; the owner may restore by signing in again. See 20261016130000.';
 
 
 --

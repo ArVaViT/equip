@@ -138,6 +138,13 @@ LEGAL_REGISTRY: tuple[DocumentSpec, ...] = (
             Revision("1.0", date(2026, 8, 13), consent=True),
             Revision("1.1", date(2026, 9, 12), consent=True),
             Revision("2.0", date(2026, 9, 17), consent=True),
+            # Notice only. Deleting an account from the profile became a
+            # button (``DELETE /users/me``) and the text now says what it does
+            # — closes and hides, erases nothing — beside the erasure on
+            # request, which is unchanged. A new right, and nothing taken from
+            # the old ones: by the document's own rule that is notified, not
+            # re-signed, and takes effect 60 days after publication.
+            Revision("2.1", date(2026, 12, 15), consent=False),
         ),
     ),
     DocumentSpec(
@@ -147,6 +154,13 @@ LEGAL_REGISTRY: tuple[DocumentSpec, ...] = (
             Revision("1.0", date(2026, 8, 13), consent=True),
             Revision("1.1", date(2026, 9, 12), consent=True),
             Revision("2.0", date(2026, 9, 17), consent=True),
+            # Notice only. Deleting an account from the profile became a
+            # button (``DELETE /users/me``) and the text now says what it does
+            # — closes and hides, erases nothing — beside the erasure on
+            # request, which is unchanged. A new right, and nothing taken from
+            # the old ones: by the document's own rule that is notified, not
+            # re-signed, and takes effect 60 days after publication.
+            Revision("2.1", date(2026, 12, 15), consent=False),
         ),
     ),
     DocumentSpec(
@@ -238,6 +252,16 @@ LEGAL_DOCUMENT_FINGERPRINTS: dict[tuple[str, str, str], str] = {
     ("terms", "2.0", "ru"): "81f0314fbf09dc4a46d28b640f6e44face12c02ca1db6505b53b7b8fdea0d014",
     ("terms", "2.0", "de"): "0f9f3a28012cd03f27a13210604dacfd63918956f08f972075064ed6f2afa26d",
     ("terms", "2.0", "uk"): "8396ef699222cce5c3141f381b715febcdc63160973b6b3e9744c8bc8bc5b9fe",
+    # 2026-10-16: deleting an account from the profile, described beside the
+    # erasure on request it does not replace. Notice-only, see the registry.
+    ("privacy", "2.1", "en"): "1b4d7f6cfea53df56ebddd6b1a49cd015992de9c502746c3c13449c4df236009",
+    ("privacy", "2.1", "ru"): "bb85509bf92754c41a3ba928529f5023804e52441539e7dddc26de82ae02df45",
+    ("privacy", "2.1", "de"): "fc48e76af0de7d6871b49f47997c79637dfccf05c5ac8d80047d0ef991e10c95",
+    ("privacy", "2.1", "uk"): "f857be7c6e2928d29e58e938366d1c6a4c1464bc0bc37fe1abed17a6eba47498",
+    ("terms", "2.1", "en"): "cf9666e6f1bb3ff28a4a46cac07f2c20adfede694cbfc84bbe04e2438ccbc02c",
+    ("terms", "2.1", "ru"): "6ce871b28d860b4a1b720264676f4fbb222d167b9755a82a00ff39f733c72cdc",
+    ("terms", "2.1", "de"): "07bb51bdf7ad80a1b4e0343a22ac91ff5fc9a7b0a942231174d24e36a5f506bc",
+    ("terms", "2.1", "uk"): "7f1242ea1a9d58d815626295093f2463ebf8a7daaebd127d2134f9b6ef5780b2",
     ("teacher-terms", "1.0", "en"): "53292c0b7d076bb6bf7957adb125331c5f17e1afcec80978b3a87e93d8dc7b60",
     ("teacher-terms", "1.0", "ru"): "79b0b55f071d0255b7412183f2d7531b9e871d0383c04e122b99dc8debf14bef",
     ("teacher-terms", "1.0", "de"): "cba6237c2e38fbe292efb7324b4e80d91c2b491b912f8f7a6e14d4dd5242dbcc",

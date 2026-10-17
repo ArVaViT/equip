@@ -20,7 +20,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from app.legal import LEGAL_DOCUMENTS, LEGAL_REGISTRY, DocumentSpec, Revision, document_spec
+from app.legal import (
+    LEGAL_DOCUMENT_FINGERPRINTS,
+    LEGAL_DOCUMENTS,
+    LEGAL_REGISTRY,
+    DocumentSpec,
+    Revision,
+    document_spec,
+)
 from app.models.legal_acceptance import LegalAcceptance
 from app.models.legal_notice_seen import LegalNoticeSeen
 
@@ -37,17 +44,17 @@ MINE = "/api/v1/legal/acceptances/me"
 SEEN = "/api/v1/legal/notices/seen"
 
 
-CORRECTION = "2.1"
+CORRECTION = "2.2"
 
 
 @pytest.fixture
 def publish_a_correction(monkeypatch: pytest.MonkeyPatch) -> Callable[[], str]:
-    """Publish a notice-only 2.1 of the privacy policy, for this test only.
+    """Publish a notice-only 2.2 of the privacy policy, for this test only.
 
     Returned as a function rather than applied by the fixture, because the
-    order is the scenario: somebody accepts 2.0, and *then* a correction ships
+    order is the scenario: somebody accepts 2.1, and *then* a correction ships
     under them. Applying it first would mean they never accepted anything —
-    the acceptance route would refuse 2.0 as a version it no longer serves,
+    the acceptance route would refuse 2.1 as a version it no longer serves,
     which it should.
 
     A real correction would come with four edited files and four new
@@ -61,7 +68,7 @@ def publish_a_correction(monkeypatch: pytest.MonkeyPatch) -> Callable[[], str]:
         privacy = document_spec("privacy")
         patched = dataclasses.replace(
             privacy,
-            revisions=(*privacy.revisions, Revision(CORRECTION, date(2026, 10, 1), consent=False)),
+            revisions=(*privacy.revisions, Revision(CORRECTION, date(2027, 1, 1), consent=False)),
         )
         doctored: tuple[DocumentSpec, ...] = tuple(s if s.slug != "privacy" else patched for s in LEGAL_REGISTRY)
         monkeypatch.setattr(module, "LEGAL_REGISTRY", doctored)
@@ -155,3 +162,57 @@ def test_the_notice_record_keeps_no_address(student_client: TestClient, db: Sess
     row = db.query(LegalNoticeSeen).one()
     assert not hasattr(row, "ip")
     assert not hasattr(row, "user_agent")
+
+
+# ── The real 2.1, not a doctored one ───────────────────────────────────
+
+
+def test_the_account_deletion_edit_does_not_bring_anybody_back_to_the_gate(
+    student_client: TestClient, db: Session
+) -> None:
+    """Everybody who signed 2.0 is told about 2.1 and asked for nothing.
+
+    2026-10-16: the privacy policy and the terms were rewritten to describe
+    the delete button on the profile — it closes and hides, erases nothing —
+    beside the erasure on request, which did not change. Production has
+    every active account on 2.0. Had either revision been marked
+    ``consent=True``, or had the version simply been bumped as it used to
+    be, each of them would have met a blocking consent screen the next time
+    they opened the app. This is that person, on the registry as shipped.
+
+    The acceptance rows name 2.0 and a fingerprint of the 2.0 text: the
+    gate decides by version index, never by comparing hashes with the text
+    served now, and this would fail if it started to.
+    """
+    assert LEGAL_DOCUMENTS["privacy"] == "2.1"
+    assert LEGAL_DOCUMENTS["terms"] == "2.1"
+
+    db.query(LegalAcceptance).filter(LegalAcceptance.user_id == STUDENT_ID).delete()
+    for slug in ("privacy", "terms"):
+        db.add(
+            LegalAcceptance(
+                user_id=STUDENT_ID,
+                document_slug=slug,
+                version="2.0",
+                locale="ru",
+                content_sha256=LEGAL_DOCUMENT_FINGERPRINTS[(slug, "2.0", "ru")],
+            )
+        )
+    db.commit()
+
+    status = student_client.get(MINE).json()
+    assert status["outstanding"] == []
+    assert sorted((n["slug"], n["version"], n["requires_consent"]) for n in status["notices"]) == [
+        ("privacy", "2.1", False),
+        ("terms", "2.1", False),
+    ]
+
+    # And the gate itself, not only the status it reports: a write goes through.
+    assert student_client.post("/api/v1/users/me/onboarding/complete").status_code == 200
+
+
+def test_both_documents_published_on_2026_10_16_are_notices() -> None:
+    for slug in ("privacy", "terms"):
+        current = document_spec(slug).current
+        assert current.version == "2.1"
+        assert current.consent is False

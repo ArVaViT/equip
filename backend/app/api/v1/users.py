@@ -7,15 +7,16 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, require_admin
+from app.api.dependencies import Caller, get_caller_even_if_closed, get_current_user, refuse_if_closed, require_admin
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.enrollment import Enrollment
-from app.models.organization import Organization, OrganizationMember
+from app.models.organization import MembershipRole, MembershipStatus, Organization, OrganizationMember
 from app.models.user import User, UserRole
 from app.schemas.course import CourseDashboardSummary, EnrollmentSummaryResponse
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.schemas.user import PreferredLocaleUpdate, UserResponse
+from app.services import auth_admin
 from app.services.audit_service import log_action
 from app.services.course_service import get_user_courses, reading_progress_by_course
 from app.services.memberships import active_memberships, mirror_role
@@ -234,6 +235,181 @@ def complete_my_onboarding(
     return current_user
 
 
+def _organizations_left_without_a_director(db: Session, user: User) -> list[Organization]:
+    """Organizations ``user`` directs where nobody else active does.
+
+    Deleting such an account would leave a school whose cohorts, invitations
+    and certificates nobody may run. A teacher's courses do not have this
+    problem — they stay with the school, and its director can still manage
+    them — so only directing is checked.
+    """
+    directed = [m.organization_id for m in active_memberships(db, user.id) if m.role == MembershipRole.DIRECTOR.value]
+    if not directed:
+        return []
+    others = {
+        organization_id
+        for (organization_id,) in db.query(OrganizationMember.organization_id)
+        .join(User, User.id == OrganizationMember.user_id)
+        .filter(
+            OrganizationMember.organization_id.in_(directed),
+            OrganizationMember.user_id != user.id,
+            OrganizationMember.role == MembershipRole.DIRECTOR.value,
+            OrganizationMember.status == MembershipStatus.ACTIVE.value,
+            User.deactivated_at.is_(None),
+        )
+        .all()
+    }
+    alone = [organization_id for organization_id in directed if organization_id not in others]
+    if not alone:
+        return []
+    return db.query(Organization).filter(Organization.id.in_(alone)).order_by(Organization.public_name).all()
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT, summary="Delete the caller's own account")
+def delete_my_account(
+    caller: Caller = Depends(get_caller_even_if_closed),
+    db: Session = Depends(get_db),
+) -> Response:
+    """The delete button on the profile page.
+
+    A soft deletion, the one the admin route has always made, plus the
+    owner's mark (``profiles.deleted_at``):
+
+    * ``deactivated_at`` is set, so every guard that already reads it
+      applies — the API answers 403, course mail and reminders skip the
+      account, rosters and the calendar feed leave it out;
+    * other people see «Deleted user» with no email or photo
+      (``app.services.deleted_person``);
+    * nothing is removed. Marks, submissions, certificates, enrolments and
+      courses stay with the school, as the privacy policy says;
+    * every session ends (``auth_admin.sign_out_everywhere``).
+
+    The owner can come back by signing in again (``restore_my_account``).
+
+    Twice is not an error: a second request — a double click, a second tab
+    — finds the account already deleted and answers 204 again. An account an
+    administrator switched off cannot be "deleted" over the top of that; it
+    answers what every other route answers it.
+
+    Refused for platform staff, as the admin route refuses an admin deleting
+    themselves, and for the only director of an organization.
+    """
+    user = caller.user
+    if user.deleted_at is not None:
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+    refuse_if_closed(user)
+
+    if user.role == UserRole.ADMIN.value:
+        raise equip_error(
+            ErrorCode.ACCOUNT_CANNOT_DELETE,
+            status_code=status.HTTP_409_CONFLICT,
+            message="Platform staff cannot delete their own account; another administrator can.",
+            context={"reason": "platform_staff"},
+        )
+    alone = _organizations_left_without_a_director(db, user)
+    if alone:
+        raise equip_error(
+            ErrorCode.ACCOUNT_CANNOT_DELETE,
+            status_code=status.HTTP_409_CONFLICT,
+            message="You are the only director of an organization. Appoint another director first.",
+            context={
+                "reason": "only_director",
+                "organizations": [o.public_name for o in alone],
+            },
+        )
+
+    now = datetime.now(UTC)
+    user.deleted_at = now
+    user.deactivated_at = now
+    # No address in the record: the row is about an account, and the
+    # account id already says whose.
+    log_action(db, user.id, "delete", "user", str(user.id), details={"mode": "self", "role": user.role})
+    db.commit()
+
+    if not auth_admin.sign_out_everywhere(caller.token):
+        # The account is closed either way — the API refuses every token —
+        # and a restore needs a sign-in made after this moment.
+        logger.warning("account %s deleted, but Supabase did not confirm ending its sessions", user.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _signed_in_at(claims: dict[str, object]) -> datetime | None:
+    """When the person behind this token last proved who they are.
+
+    Supabase writes ``amr`` — the methods used and *when* — into every
+    access token and carries it unchanged through refreshes, which is the
+    point: ``iat`` moves every hour, the moment of sign-in does not.
+    """
+    amr = claims.get("amr")
+    if not isinstance(amr, list):
+        return None
+    stamps = [
+        entry["timestamp"]
+        for entry in amr
+        if isinstance(entry, dict) and isinstance(entry.get("timestamp"), int | float)
+    ]
+    if not stamps:
+        return None
+    return datetime.fromtimestamp(max(stamps), UTC)
+
+
+@router.post("/me/restore", status_code=status.HTTP_204_NO_CONTENT, summary="Restore an account its owner deleted")
+def restore_my_account(
+    caller: Caller = Depends(get_caller_even_if_closed),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Undo ``delete_my_account`` — for the owner, after signing in again.
+
+    Signing in is the proof: a password, a link sent to the address, or the
+    Google account it belongs to. So the sign-in must have happened *after*
+    the deletion. A session that was already open — the laptop at church
+    nobody closed, a token refreshed before Supabase revoked it — is refused
+    with ``account.restore_needs_sign_in``, and the client asks for a fresh
+    sign-in.
+
+    This is also how somebody who deleted their account and later "signs up
+    again" with the same address gets it back. Supabase never creates a
+    second account for an address it holds; the sign-in reaches the old one,
+    the API answers ``account.deleted``, and the client offers this. Nothing
+    here tells a stranger whether an address was ever registered: only a
+    person who has just proved the address reaches the question.
+
+    Only the owner's deletion can be undone here. An account an
+    administrator switched off answers ``account.deactivated`` as before.
+    """
+    user = caller.user
+    if user.deleted_at is None:
+        refuse_if_closed(user)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    signed_in_at = _signed_in_at(caller.claims)
+    if signed_in_at is None or signed_in_at <= _aware(user.deleted_at):
+        raise equip_error(
+            ErrorCode.ACCOUNT_RESTORE_NEEDS_SIGN_IN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="Sign in again to restore this account",
+        )
+
+    deleted_at = user.deleted_at
+    user.deleted_at = None
+    user.deactivated_at = None
+    log_action(
+        db,
+        user.id,
+        "restore",
+        "user",
+        str(user.id),
+        details={"mode": "self", "deleted_at": _aware(deleted_at).isoformat()},
+    )
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _aware(moment: datetime) -> datetime:
+    """SQLite hands back naive datetimes; Postgres does not. Both are UTC."""
+    return moment if moment.tzinfo is not None else moment.replace(tzinfo=UTC)
+
+
 class AdminUserMembership(BaseModel):
     """One organization a person is in, as the admin's user list shows it."""
 
@@ -256,6 +432,9 @@ class AdminUserRow(BaseModel):
     # Non-null when the account is soft-deleted; the admin panel surfaces this
     # so a deactivated user can be told apart and restored.
     deactivated_at: datetime | None
+    #: Non-null when the owner deleted the account themselves — always with
+    #: ``deactivated_at``. Restoring clears both.
+    deleted_at: datetime | None = None
     memberships: list[AdminUserMembership] = []
 
 
@@ -296,6 +475,7 @@ def list_all_users(
             avatar_url=u.avatar_url,
             created_at=u.created_at,
             deactivated_at=u.deactivated_at,
+            deleted_at=u.deleted_at,
             memberships=memberships.get(u.id, []),
         )
         for u in users
@@ -531,7 +711,10 @@ def admin_restore_user(
     """Reactivate a soft-deleted account (clears ``deactivated_at``).
 
     The user's data was preserved on deactivation, so restoring re-enables
-    login and returns the account exactly as it was.
+    login and returns the account exactly as it was. An account its owner
+    deleted (``deleted_at``) is restored the same way — both columns are
+    cleared, and the name is shown to others again. Supabase was never told
+    to ban the account, so there is nothing there to undo.
     """
     uid = _parse_user_uuid(user_id)
 
@@ -547,9 +730,10 @@ def admin_restore_user(
         "restore",
         "user",
         str(uid),
-        details={"email": target.email, "role": target.role},
+        details={"email": target.email, "role": target.role, "self_deleted": target.deleted_at is not None},
     )
 
     target.deactivated_at = None
+    target.deleted_at = None
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

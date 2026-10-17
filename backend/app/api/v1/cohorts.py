@@ -58,6 +58,7 @@ from app.schemas.locale import normalize_locale
 from app.services.audit_service import log_action
 from app.services.cohort_capacity import assert_cohort_has_capacity
 from app.services.content_versions import record_human_version
+from app.services.deleted_person import shown_email, shown_name
 from app.services.language_detection import detect_locale
 from app.services.memberships import belongs_to, directs, grant_student_memberships
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
@@ -676,7 +677,7 @@ def list_cohort_students(
     if not page_user_ids:
         return []
     rows = (
-        db.query(Enrollment, User.full_name, User.email)
+        db.query(Enrollment, User.full_name, User.email, User.deleted_at)
         .join(User, Enrollment.user_id == User.id)
         .filter(
             Enrollment.cohort_id == cohort.id,
@@ -686,14 +687,14 @@ def list_cohort_students(
         .all()
     )
     by_user: dict[str, dict] = {}
-    for e, full_name, email in rows:
+    for e, full_name, email, deleted_at in rows:
         key = str(e.user_id)
         by_user.setdefault(
             key,
             {
                 "user_id": key,
-                "full_name": full_name,
-                "email": email,
+                "full_name": shown_name(full_name, deleted_at),
+                "email": shown_email(email, deleted_at),
                 "per_course": {},
             },
         )
