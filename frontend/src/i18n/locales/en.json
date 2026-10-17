@@ -729,7 +729,7 @@
       "signInToContinue": "Sign in to open this page.",
       "sectionUnavailable": "This section is not available to you.",
       "signInToAcceptInvite": "Sign in to accept the invitation.",
-      "accountDeleted": "Your account has been deleted. Changed your mind? Sign in again and we will email you a link to restore it."
+      "accountDeleted": "Your account has been deleted. Changed your mind? Sign in again and press “Restore account”: we will email you a link."
     },
     "forgotPassword": {
       "heading": "Reset password",
@@ -3399,7 +3399,7 @@
         "signedOut": "You are signed out on every device.",
         "hidden": "Others will see “Deleted user” instead of your name, with no email or photo.",
         "kept": "Your coursework, marks and certificates stay with the school.",
-        "restore": "To come back, sign in again — we will email you a link to restore it."
+        "restore": "To come back, sign in again and press “Restore account” — we will email you a link."
       },
       "confirm": "Delete account",
       "failed": "Could not delete the account. Please try again.",

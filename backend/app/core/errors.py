@@ -86,6 +86,12 @@ class ErrorCode(enum.StrEnum):
     and a session alive before the deletion — a laptop left open — proves
     nothing about who is holding it now. The client sends the link."""
 
+    ACCOUNT_RESTORE_REFUSED = "account.restore_refused"
+    """The account's address was changed (or a change was asked for) after
+    it was deleted, so a link opened at the current address proves nothing
+    about the owner. Only an administrator can restore it now
+    (``POST /users/admin/users/{id}/restore``)."""
+
     ACCOUNT_CANNOT_DELETE = "account.cannot_delete"
     """This account cannot delete itself here: platform staff (the admin
     route's rule), or the only director of an organization, which would be

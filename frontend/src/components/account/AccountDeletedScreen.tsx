@@ -116,7 +116,9 @@ export function AccountDeletedScreen() {
   useEffect(() => {
     if (tried.current || !userId || !wasRestoreRequested(userId)) return
     tried.current = true
-    setPhase("sent")
+    // Not "sent": nothing was mailed by this page load, and a password
+    // sign-in within the day lands here too. Success navigates away;
+    // otherwise the screen stays as it is.
     void restore(true)
   }, [restore, userId])
 

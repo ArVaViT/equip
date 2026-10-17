@@ -203,7 +203,8 @@ class User(Base):
     #: always together with ``deactivated_at``. It changes two things an
     #: administrator's deactivation does not: other people are shown «Deleted
     #: user» with no email or photo (``app.services.deleted_person``), and the
-    #: owner may restore it by signing in again (``POST /users/me/restore``).
+    #: owner may restore it through a link emailed to the account's address
+    #: (``POST /users/me/restore``).
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # When this person finished the first-run flow — picked a course, opened
     # the catalogue instead, or said "maybe later". NULL means they have not,

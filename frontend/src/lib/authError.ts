@@ -177,6 +177,9 @@ export function emailSendErrorMessage(err: unknown): string {
       : i18n.t("auth.errors.emailCooldownMinutes", { minutes: Math.ceil(seconds / 60) })
   }
   if (e.code === "over_email_send_rate_limit") return i18n.t("auth.errors.emailQuota")
-  if (e.status === 429 || e.code === "over_request_rate_limit") return i18n.t("auth.errors.emailAlreadySent")
+  // Too many requests from this connection: no email may have left at all,
+  // so "check your inbox" would send the reader looking for nothing.
+  if (e.code === "over_request_rate_limit") return i18n.t("auth.errors.rateLimited")
+  if (e.status === 429) return i18n.t("auth.errors.emailAlreadySent")
   return i18n.t("auth.errors.emailSendFailed")
 }

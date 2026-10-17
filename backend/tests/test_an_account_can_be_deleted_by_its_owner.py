@@ -44,6 +44,17 @@ RESTORE = "/api/v1/users/me/restore"
 TOKEN = "the-person-s-own-access-token"
 
 
+@pytest.fixture(autouse=True)
+def address_never_moved(monkeypatch: pytest.MonkeyPatch) -> list[datetime | None]:
+    """Supabase's answer to "when did this account ask to change address": never.
+
+    A test sets ``[0]`` to a moment to say otherwise.
+    """
+    answer: list[datetime | None] = [None]
+    monkeypatch.setattr(auth_admin, "email_change_requested_at", lambda _user_id: answer[0])
+    return answer
+
+
 @pytest.fixture()
 def ended_sessions(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     """Record every ``sign_out_everywhere`` instead of calling Supabase."""
@@ -332,6 +343,68 @@ def test_only_the_email_entry_s_time_counts(db: Session, teacher: User, student:
     ]
     for client in _client_as(db, student, amr=fresh_link):
         assert client.post(RESTORE).status_code == 204
+
+
+def test_an_address_moved_after_the_deletion_is_no_proof(
+    db: Session, teacher: User, student: User, address_never_moved: list[datetime | None]
+) -> None:
+    """The password alone could move the address to a mailbox of the holder's and
+    open a link there; that link proves nothing about the owner (review, 2026-10-17)."""
+    deleted = datetime.now(UTC) - timedelta(hours=2)
+    _delete(db, student, at=deleted)
+    address_never_moved[0] = deleted + timedelta(minutes=30)
+
+    for client in _client_as(db, student, signed_in_at=datetime.now(UTC), method="otp"):
+        response = client.post(RESTORE)
+        assert response.status_code == 403
+        assert response.json()["detail"]["code"] == ErrorCode.ACCOUNT_RESTORE_REFUSED.value
+    db.refresh(student)
+    assert student.deleted_at is not None
+
+
+def test_an_address_change_from_before_the_deletion_is_no_obstacle(
+    db: Session, teacher: User, student: User, address_never_moved: list[datetime | None]
+) -> None:
+    deleted = datetime.now(UTC) - timedelta(hours=2)
+    _delete(db, student, at=deleted)
+    address_never_moved[0] = deleted - timedelta(days=30)
+    for client in _client_as(db, student, signed_in_at=datetime.now(UTC), method="magiclink"):
+        assert client.post(RESTORE).status_code == 204
+
+
+def test_supabase_not_answering_restores_nothing(
+    db: Session, teacher: User, student: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def down(_user_id: object) -> datetime | None:
+        raise auth_admin._unavailable("timeout")
+
+    monkeypatch.setattr(auth_admin, "email_change_requested_at", down)
+    _delete(db, student, at=datetime.now(UTC) - timedelta(hours=1))
+    for client in _client_as(db, student, signed_in_at=datetime.now(UTC), method="magiclink"):
+        assert client.post(RESTORE).status_code == 503
+    db.refresh(student)
+    assert student.deleted_at is not None
+
+
+def test_reading_when_the_address_moved(monkeypatch: pytest.MonkeyPatch) -> None:
+    """GoTrue's admin user carries ``email_change_sent_at``; absent means never."""
+
+    class Answer:
+        status_code = 200
+
+        def __init__(self, body: dict[str, object]) -> None:
+            self._body = body
+
+        def json(self) -> dict[str, object]:
+            return self._body
+
+    monkeypatch.undo()
+    monkeypatch.setattr(
+        auth_admin, "_call", lambda *_a, **_k: Answer({"email_change_sent_at": "2026-10-17T03:00:00.5Z"})
+    )
+    assert auth_admin.email_change_requested_at(uuid.uuid4()) == datetime(2026, 10, 17, 3, 0, 0, 500000, tzinfo=UTC)
+    monkeypatch.setattr(auth_admin, "_call", lambda *_a, **_k: Answer({"email_change_sent_at": None}))
+    assert auth_admin.email_change_requested_at(uuid.uuid4()) is None
 
 
 def test_a_malformed_amr_is_refused_not_crashed(db: Session, teacher: User, student: User) -> None:

@@ -339,6 +339,11 @@ def delete_my_account(
 #: email (``otp``) and the password-reset link (``recovery``). A password,
 #: Google (``oauth``) or a refreshed token is not on the list. GoTrue names
 #: the method after the email that was verified (``ParseAuthenticationMethod``).
+#: An address-change confirmation also arrives as ``otp`` (``verifyPost``
+#: names every token-hash verification so), which is why the restore also
+#: refuses an account whose address moved after the deletion
+#: (``auth_admin.email_change_requested_at``) — and why production Auth keeps
+#: "Secure email change" on, so a move needs the old mailbox as well.
 EMAIL_PROOF_METHODS = frozenset({"magiclink", "otp", "recovery"})
 
 
@@ -402,6 +407,18 @@ def restore_my_account(
             ErrorCode.ACCOUNT_RESTORE_NEEDS_EMAIL_LINK,
             status_code=status.HTTP_403_FORBIDDEN,
             message="Open the link we email to this account's address to restore it",
+        )
+
+    # The link proves the address it went to. If the address has been moved
+    # since the deletion — the one thing a holder of the password alone
+    # could do to an account we closed — it is no longer the owner's proof.
+    moved_at = auth_admin.email_change_requested_at(user.id)
+    if moved_at is not None and _aware(moved_at) > _aware(user.deleted_at):
+        logger.warning("restore of %s refused: the address was changed after the deletion", user.id)
+        raise equip_error(
+            ErrorCode.ACCOUNT_RESTORE_REFUSED,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="This account's address changed after it was deleted; write to support to restore it",
         )
 
     deleted_at = user.deleted_at

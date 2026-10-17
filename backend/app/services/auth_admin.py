@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -127,6 +128,31 @@ def get_account(user_id: UUID) -> AuthAccount | None:
         raise _refuse(response, "read")
     body = response.json()
     return AuthAccount(id=UUID(body["id"]), confirmed=bool(body.get("email_confirmed_at")))
+
+
+def email_change_requested_at(user_id: UUID) -> datetime | None:
+    """When this account last asked to move to another address, if ever.
+
+    Restoring a deleted account trusts an email we sent to "the account's
+    address" (``users.restore_my_account``). A sign-in link is only proof of
+    the *owner's* address if the address is still the owner's: somebody who
+    knows only the password could otherwise sign in, move the account to a
+    mailbox of theirs (``PUT /auth/v1/user`` is the client's own call, and a
+    deleted account is closed by our API, not banned in GoTrue), open a link
+    there and restore. ``email_change_sent_at`` is when GoTrue mailed the
+    confirmation of such a move — confirmed or not. Unreadable answers
+    raise, so a restore fails closed.
+    """
+    response = _call("GET", f"/admin/users/{user_id}")
+    if response.status_code != status.HTTP_200_OK:
+        raise _refuse(response, "read")
+    raw = response.json().get("email_change_sent_at")
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError:
+        raise _unavailable("unreadable_email_change_sent_at") from None
 
 
 def create_confirmed(email: str, password: str, metadata: dict[str, str]) -> UUID:

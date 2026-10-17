@@ -1343,7 +1343,7 @@ COMMENT ON COLUMN public.profiles.organization_id IS 'Deprecated 2026-10-03: mem
 -- Name: COLUMN profiles.deleted_at; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.profiles.deleted_at IS 'Set when the owner deleted the account themselves (DELETE /users/me); always together with deactivated_at. Others are shown «Deleted user» with no email or photo; the owner may restore by signing in again. See 20261016130000.';
+COMMENT ON COLUMN public.profiles.deleted_at IS 'Set when the owner deleted the account themselves (DELETE /users/me); always together with deactivated_at. Others are shown «Deleted user» with no email or photo; the owner may restore it through a link emailed to the account''s address. See 20261016130000.';
 
 
 --

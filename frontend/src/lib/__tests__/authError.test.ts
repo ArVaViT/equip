@@ -174,6 +174,11 @@ describe("emailSendErrorMessage: every shape of a failed send says something a p
     expect(emailSendErrorMessage(err)).toBe(i18n.t("auth.errors.emailAlreadySent"))
   })
 
+  it("too many requests from this connection is not «already sent»: nothing may have left", () => {
+    const err = goTrueError("Request rate limit reached", { status: 429, code: "over_request_rate_limit" })
+    expect(emailSendErrorMessage(err)).toBe(i18n.t("auth.errors.rateLimited"))
+  })
+
   it("the project's hourly allowance is its own sentence", () => {
     const err = goTrueError("email rate limit exceeded", { status: 429, code: "over_email_send_rate_limit" })
     expect(emailSendErrorMessage(err)).toBe(i18n.t("auth.errors.emailQuota"))

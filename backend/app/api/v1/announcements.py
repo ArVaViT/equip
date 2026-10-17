@@ -101,6 +101,7 @@ def _announcement_to_response(
         fields=list(_TRANSLATABLE_ANNOUNCEMENT_FIELDS),
         display_locale=source_locale,
         source_locale=source_locale,
+        prefer_human=True,
         include_author_edits=True,
     )
     return AnnouncementResponse.model_validate(

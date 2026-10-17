@@ -729,7 +729,7 @@
       "signInToContinue": "Melden Sie sich an, um diese Seite zu öffnen.",
       "sectionUnavailable": "Dieser Bereich steht Ihnen nicht zur Verfügung.",
       "signInToAcceptInvite": "Melden Sie sich an, um die Einladung anzunehmen.",
-      "accountDeleted": "Ihr Konto wurde gelöscht. Sie haben es sich anders überlegt? Melden Sie sich wieder an, und wir schicken Ihnen einen Link zur Wiederherstellung per E-Mail."
+      "accountDeleted": "Ihr Konto wurde gelöscht. Sie haben es sich anders überlegt? Melden Sie sich wieder an und tippen Sie auf „Konto wiederherstellen“: Wir schicken Ihnen einen Link per E-Mail."
     },
     "forgotPassword": {
       "heading": "Passwort zurücksetzen",
@@ -2945,7 +2945,7 @@
   "editor": {
     "toast": {
       "imageUploadFailed": "Bild konnte nicht hochgeladen werden",
-      "pastedImagesSkipped": "Die Bilder aus dem Dokument wurden nicht übernommen – fügen Sie sie einzeln ein oder ziehen Sie die Dateien hinein.",
+      "pastedImagesSkipped": "Die Bilder aus dem Dokument wurden nicht übernommen — fügen Sie sie einzeln ein oder ziehen Sie die Dateien hinein.",
       "audioUrlInvalid": "Die Audio-Adresse muss mit http(s) beginnen",
       "invalidUrl": "Das sieht nicht nach einer gültigen Adresse aus. Nutzen Sie eine vollständige wie https://example.com/seite."
     },
@@ -3399,7 +3399,7 @@
         "signedOut": "Sie werden auf allen Geräten abgemeldet.",
         "hidden": "Andere sehen „Gelöschter Nutzer“ statt Ihres Namens — ohne E-Mail-Adresse und Foto.",
         "kept": "Ihre Arbeiten, Noten und Zertifikate bleiben bei der Schule.",
-        "restore": "Um zurückzukommen, melden Sie sich wieder an — wir schicken Ihnen einen Link zur Wiederherstellung per E-Mail."
+        "restore": "Um zurückzukommen, melden Sie sich wieder an und tippen Sie auf „Konto wiederherstellen“ — wir schicken Ihnen einen Link per E-Mail."
       },
       "confirm": "Konto löschen",
       "failed": "Das Konto konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",

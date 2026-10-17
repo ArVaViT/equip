@@ -17,8 +17,8 @@
 --     photo, wherever the API shows one person to another
 --     (`app.services.deleted_person`). An account switched off by an
 --     administrator keeps its name -- that is a suspension, not a departure;
---   * the owner can come back: signing in again proves the address, and the
---     restore screen it lands on is allowed to clear both columns
+--   * the owner can come back: signing in shows a restore screen, and a link
+--     emailed to the account's address is the proof that may clear both columns
 --     (`POST /api/v1/users/me/restore`). An administrator's deactivation has
 --     no such door.
 --
@@ -45,7 +45,8 @@ $$;
 COMMENT ON COLUMN public.profiles.deleted_at IS
   'Set when the owner deleted the account themselves (DELETE /users/me); always '
   'together with deactivated_at. Others are shown «Deleted user» with no email or '
-  'photo; the owner may restore by signing in again. See 20261016130000.';
+  'photo; the owner may restore it through a link emailed to the account''s '
+  'address. See 20261016130000.';
 
 -- ---------------------------------------------------------------------
 -- A client may not write it, and a closed account may not be edited

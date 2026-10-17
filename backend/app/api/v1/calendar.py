@@ -210,6 +210,7 @@ def _course_event_to_response(db: Session, event: CourseEvent, *, source_locale:
         fields=list(_TRANSLATABLE_COURSE_EVENT_FIELDS),
         display_locale=source_locale,
         source_locale=source_locale,
+        prefer_human=True,
         include_author_edits=True,
     )
     title = texts.get((str(event.id), "title")) or ""
