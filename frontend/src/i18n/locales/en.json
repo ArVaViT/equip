@@ -713,7 +713,10 @@
       "linkExpired": "This link has expired. Request a new one.",
       "serverError": "Something went wrong on our side. Try again in a moment.",
       "passwordRequired": "Enter your password",
-      "emailCooldown": "An email is already on its way. You can ask again in {{seconds}} s.",
+      "emailCooldown": "An email is already on its way — check your inbox, and the spam folder too. You can ask again in {{seconds}} s.",
+      "emailCooldownMinutes": "An email is already on its way — check your inbox, and the spam folder too. You can ask for a new one in {{minutes}} min.",
+      "emailAlreadySent": "An email is already on its way — check your inbox, and the spam folder too.",
+      "emailSendFailed": "We could not send the email. If you asked for one already, check the spam folder — the link in it still works. Or try again in a minute.",
       "emailQuota": "We can't send email right now: the hourly email limit is used up. Try again later, or continue with Google."
     },
     "callback": {
@@ -725,7 +728,8 @@
       "accountDeactivated": "This account has been deactivated. If that is a mistake, contact your administrator.",
       "signInToContinue": "Sign in to open this page.",
       "sectionUnavailable": "This section is not available to you.",
-      "signInToAcceptInvite": "Sign in to accept the invitation."
+      "signInToAcceptInvite": "Sign in to accept the invitation.",
+      "accountDeleted": "Your account has been deleted. Changed your mind? Sign in again and press “Restore account”: we will email you a link."
     },
     "forgotPassword": {
       "heading": "Reset password",
@@ -739,8 +743,7 @@
       "sentBody": "If an account exists for <strong>{{email}}</strong>, you'll receive a reset link shortly. Check your inbox.",
       "errors": {
         "emailRequired": "Please enter your email address",
-        "emailInvalid": "Please enter a valid email address",
-        "sendFailed": "Failed to send reset email. Please try again in a moment."
+        "emailInvalid": "Please enter a valid email address"
       }
     },
     "resetPassword": {
@@ -2659,7 +2662,8 @@
       "changeRoleAria": "Change role for {{name}}",
       "deactivatedBadge": "Deactivated",
       "restoreTooltip": "Restore user",
-      "restoreAriaPrefix": "Restore {{name}}"
+      "restoreAriaPrefix": "Restore {{name}}",
+      "deletedByOwnerBadge": "Deleted by the user"
     },
     "pendingCerts": {
       "title": "Certificate Approvals",
@@ -2928,7 +2932,6 @@
       "resend": "Send the email again",
       "resendIn": "Send again in {{seconds}}s",
       "resent": "Email sent again.",
-      "resendFailed": "Could not send the email. Please try again in a minute.",
       "line": "We sent an email to <strong>{{email}}</strong>. Not in your inbox? Check Spam. Only the latest email works.",
       "repeated": "This address was registered before. The password is the one from the first attempt; if you don't remember it, <reset>set a new one</reset> — that confirms the address too.",
       "changeAddress": "Use a different address"
@@ -2942,6 +2945,7 @@
   "editor": {
     "toast": {
       "imageUploadFailed": "Image upload failed",
+      "pastedImagesSkipped": "The document's pictures didn't come along — add them separately or drag the files in.",
       "audioUrlInvalid": "Audio URL must start with http(s)",
       "invalidUrl": "That doesn't look like a valid URL. Use a full address like https://example.com/page."
     },
@@ -3261,7 +3265,7 @@
       "saveFailed": "Couldn't record your acceptance. Check your connection and try again."
     },
     "notice": {
-      "body": "The {{document}} was updated on {{date}}. Nothing you agreed to has changed, so there is nothing to sign.",
+      "body": "The {{document}} has a new version, in effect from {{date}}. Nothing you agreed to has changed, so there is nothing to sign.",
       "read": "Read what changed",
       "dismiss": "Dismiss"
     },
@@ -3384,6 +3388,33 @@
       "all": "All classes in the series",
       "saveAction": "Save",
       "deleteAction": "Delete"
+    }
+  },
+  "account": {
+    "delete": {
+      "button": "Delete account",
+      "confirmTitle": "Delete your account?",
+      "confirmBody": "Here is what happens:",
+      "whatHappens": {
+        "signedOut": "You are signed out on every device.",
+        "hidden": "Others will see “Deleted user” instead of your name, with no email or photo.",
+        "kept": "Your coursework, marks and certificates stay with the school.",
+        "restore": "To come back, sign in again and press “Restore account” — we will email you a link."
+      },
+      "confirm": "Delete account",
+      "failed": "Could not delete the account. Please try again.",
+      "onlyDirector": "You are the only director of your school. Appoint another director first, or write to supportequip@gmail.com.",
+      "platformStaff": "An administrator's account is closed by another administrator."
+    },
+    "deleted": {
+      "title": "This account has been deleted",
+      "body": "Your coursework and certificates are kept by the school. You can restore the account, and it will come back exactly as it was.",
+      "bodyWithDate": "You deleted it on {{date}}. Your coursework and certificates are kept by the school. You can restore the account, and it will come back exactly as it was.",
+      "restore": "Restore account",
+      "restored": "Welcome back — your account is restored.",
+      "restoreFailed": "Could not restore the account. Please try again.",
+      "restoreRefused": "This account cannot be restored here: its email address changed after it was deleted. Write to supportequip@gmail.com.",
+      "linkSent": "We sent a link to {{email}}. Open it and your account is restored. No email? Check the spam folder."
     }
   }
 }

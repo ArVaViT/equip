@@ -3,8 +3,9 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Literal
 
 from fastapi import status
@@ -31,6 +32,8 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Query, Session
 
     from app.schemas.locale import LocaleCode
+
+logger = logging.getLogger(__name__)
 
 
 #: Why a link admits nobody, as the accept page names it. ``used`` covers
@@ -92,6 +95,30 @@ def issue_token(invitation: Invitation) -> str:
     return token
 
 
+#: How long a resend of an unchanged letter is a repeat rather than a resend.
+RESEND_REPEAT_WINDOW = timedelta(minutes=10)
+
+
+def _mailed_moments_ago(invitation: Invitation) -> bool:
+    """True when this exact letter left inside ``RESEND_REPEAT_WINDOW``.
+
+    "Left": ``mailed_at`` is written only when the provider took the
+    message, so a resend after a failed send always mails. "This exact
+    letter": the link the next send would carry is the one already stored.
+    A row whose hash predates the derivation, or a key rotation, mails a
+    different link — that resend is never a repeat, because the letter in
+    the inbox may no longer open.
+    """
+    mailed_at = invitation.mailed_at
+    if mailed_at is None:
+        return False
+    if invitation.id is None or invitation.token_hash != hash_invitation_token(invitation_token(invitation.id)):
+        return False
+    if mailed_at.tzinfo is None:
+        mailed_at = mailed_at.replace(tzinfo=UTC)
+    return mailed_at > datetime.now(UTC) - RESEND_REPEAT_WINDOW
+
+
 def is_invitation_expired(invitation: Invitation) -> bool:
     expires_at = invitation.expires_at
     if expires_at.tzinfo is None:
@@ -133,14 +160,19 @@ def _inviter_locale(db: Session, invited_by: uuid.UUID | str | None) -> LocaleCo
 def _mail_the_invitation(db: Session, invitation: Invitation, *, token: str, invited_by: UUID) -> None:
     """Send the invitation, in the inviting person's language and name.
 
-    Delivery is deliberately not checked: the row and its token already
-    exist, the link works whether or not the mail got out, and a
-    provider hiccup must not turn "invitation created" into an error on
-    somebody's screen. What a failure does leave is a log line — see
-    ``services/email/send.py``.
+    A failed delivery is not an error on anybody's screen: the row and its
+    token already exist, the link works whether or not the mail got out,
+    and a provider hiccup must not turn "invitation created" into a 500.
+    What delivery does decide is ``mailed_at``: it is stamped *before* the
+    send, so a second click arriving while the provider is still answering
+    sees it and does not mail the same letter again, and put back if the
+    provider refused, so the next press does mail.
     """
     inviter = db.query(User).filter(User.id == invited_by).first()
-    send_invitation_email(
+    previous = invitation.mailed_at
+    invitation.mailed_at = datetime.now(UTC)
+    db.commit()
+    delivery = send_invitation_email(
         db,
         invitation,
         accept_url=_accept_url(token),
@@ -148,6 +180,14 @@ def _mail_the_invitation(db: Session, invitation: Invitation, *, token: str, inv
         inviter_name=inviter.full_name if inviter else None,
         inviter_email=inviter.email if inviter else None,
     )
+    # ``getattr``: tests stand in for the sender with a bare callable.
+    if not getattr(delivery, "sent", False):
+        invitation.mailed_at = previous
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            logger.exception("invitation %s: could not clear mailed_at after a failed send", invitation.id)
 
 
 def course_of_organization(db: Session, course_id: str, organization_id: UUID) -> Course:
@@ -328,6 +368,17 @@ def create_or_resend_invitation(
     ]
 
     standing = next((row for row in live if _subsumes(row, scope=scope, course_id=course_id)), None)
+    if standing is not None and _mailed_moments_ago(standing):
+        # The same letter, with the same link, left minutes ago. Sending it
+        # again is the double-click a filter reads as a bulk sender, and it
+        # tells the person nothing the first copy did not. Whoever clicked
+        # still stands behind the invitation (see below); only the mail and
+        # the fresh seven days are skipped.
+        standing.age_attested_at = datetime.now(UTC)
+        standing.age_attested_by = invited_by
+        db.commit()
+        increment("equip.invitations.created_total", scope=scope, role=role, kind="resend_skipped")
+        return standing, False
     if standing is not None:
         # A resend is a fresh statement about a person's age by whoever
         # clicked it, not an echo of the first one — and it may not be the

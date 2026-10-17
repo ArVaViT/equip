@@ -196,12 +196,17 @@ describe("intakeProxyUrl", () => {
     // Without the rewrite every batch would land on index.html with a 200
     // and RUM would go silent with nothing failing — so pin it here.
     const config = JSON.parse(readFileSync(join(__dirname, "..", "..", "..", "vercel.json"), "utf8")) as {
-      rewrites: { source: string; destination: string }[]
+      routes: { src?: string; dest?: string }[]
     }
-    const index = config.rewrites.findIndex((r) => r.source === "/_e/:path*")
-    const catchAll = config.rewrites.findIndex((r) => r.destination === "/index.html")
+    const index = config.routes.findIndex(
+      (r) => r.dest !== undefined && r.src !== undefined && new RegExp(r.src).test("/_e/api/v2/rum"),
+    )
+    const catchAll = config.routes.findIndex((r) => r.dest === "/index.html")
     expect(index, "no /_e rewrite").toBeGreaterThanOrEqual(0)
     expect(index).toBeLessThan(catchAll)
-    expect(config.rewrites[index]?.destination).toBe("https://browser-intake-us5-datadoghq.com/:path*")
+    const rule = config.routes[index]!
+    expect("/_e/api/v2/rum".replace(new RegExp(rule.src!), rule.dest!)).toBe(
+      "https://browser-intake-us5-datadoghq.com/api/v2/rum",
+    )
   })
 })

@@ -67,6 +67,9 @@ class Message:
     #: Account mail has none — it cannot be turned off.
     unsubscribe_label: str | None = None
     unsubscribe_url: str | None = None
+    #: The reader's language, for ``<html lang>``: a screen reader and a
+    #: filter both read it, and without it Cyrillic is a guess.
+    lang: str = "en"
 
 
 def _lede(message: Message) -> str:
@@ -147,11 +150,22 @@ def _notes(message: Message) -> str:
 
 
 def render(message: Message) -> str:
-    """One message, as the HTML body to hand the provider."""
+    """One message, as the HTML body to hand the provider.
+
+    A whole document, not a ``<body>`` fragment: doctype, ``<html lang>``,
+    a declared charset and a title. A fragment is a shape filters score
+    (no ``<html>`` tag at all), and a client that meets an undeclared body
+    may read UTF-8 Cyrillic as Latin-1.
+    """
     hidden_preview = (
         f'<div style="display:none; max-height:0; overflow:hidden; opacity:0;">{escape(message.preview)}</div>'
     )
     return (
+        "<!doctype html>"
+        f'<html lang="{escape(message.lang, quote=True)}">'
+        '<head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        f"<title>{escape(message.title)}</title></head>"
         f'<body style="margin:0; padding:0; background:{theme.GROUND};">'
         f"{hidden_preview}"
         f'<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
@@ -159,7 +173,7 @@ def render(message: Message) -> str:
         f'<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" '
         f'style="width:600px; max-width:100%; background:{theme.CARD}; border-radius:16px; overflow:hidden;">'
         f"{_lede(message)}{_facts(message)}{_cta(message)}{_notes(message)}"
-        f"</table></td></tr></table></body>"
+        f"</table></td></tr></table></body></html>"
     )
 
 

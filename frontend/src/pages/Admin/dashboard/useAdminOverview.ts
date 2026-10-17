@@ -253,7 +253,7 @@ export function useAdminOverview({ currentUserId, enabled = true, certsOnly = fa
     try {
       await coursesService.restoreUser(target.id)
       setUsers((prev) =>
-        prev.map((u) => (u.id === target.id ? { ...u, deactivated_at: null } : u)),
+        prev.map((u) => (u.id === target.id ? { ...u, deactivated_at: null, deleted_at: null } : u)),
       )
       toast({ title: t("admin.overview.toast.userRestored"), variant: "success" })
     } catch (err) {

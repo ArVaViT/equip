@@ -1,4 +1,6 @@
 import hmac
+from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
 from fastapi import Depends, Header, HTTPException, status
@@ -45,16 +47,61 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise _unauthorized("User not found")
+    refuse_if_closed(user)
+    return user
+
+
+@dataclass(frozen=True)
+class Caller:
+    """The signed-in person, whatever state their account is in, and their token.
+
+    For the two routes an account its owner deleted may still reach —
+    deleting it (twice is not an error) and restoring it — and for nothing
+    else. Everything else goes through ``get_current_user``, which refuses
+    a closed account outright.
+    """
+
+    user: User
+    claims: dict[str, Any]
+    token: str
+
+
+def get_caller_even_if_closed(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> Caller:
+    payload = decode_access_token(credentials.credentials)
+    if payload is None or payload.get("sub") is None:
+        raise _unauthorized("Could not validate credentials")
+    user = db.query(User).filter(User.id == payload["sub"]).first()
+    if user is None:
+        raise _unauthorized("User not found")
+    return Caller(user=user, claims=payload, token=credentials.credentials)
+
+
+def refuse_if_closed(user: User) -> None:
+    """403 for an account that is switched off, saying by whom.
+
+    The auth token may still be valid — Supabase issues one to anybody who
+    proves the address — but every authenticated surface is blocked. Two
+    codes, because the client does two different things with them: an
+    account its owner deleted is offered a way back
+    (``POST /users/me/restore``); one an administrator switched off is
+    signed out with a sentence saying so.
+    """
+    if user.deleted_at is not None:
+        raise equip_error(
+            ErrorCode.ACCOUNT_DELETED,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="This account was deleted by its owner",
+            context={"deleted_at": user.deleted_at.isoformat()},
+        )
     if user.deactivated_at is not None:
-        # Soft-deleted account: the auth token may still be valid, but the
-        # account is deactivated — block every authenticated surface until an
-        # admin restores it. A dedicated code lets the client sign out cleanly.
         raise equip_error(
             ErrorCode.ACCOUNT_DEACTIVATED,
             status_code=status.HTTP_403_FORBIDDEN,
             message="This account has been deactivated",
         )
-    return user
 
 
 def resolve_optional_user(token: str | None, db: Session) -> User | None:

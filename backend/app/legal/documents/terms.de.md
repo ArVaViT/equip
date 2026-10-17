@@ -1,6 +1,6 @@
 # Nutzungsbedingungen
 
-**Fassung 2.0 · in Kraft ab 17. September 2026**
+**Fassung 2.1 · in Kraft ab 15. Dezember 2026**
 
 Diese Bedingungen sind eine Vereinbarung zwischen Ihnen und Equip. Wenn Sie ein
 Konto anlegen oder die Plattform nutzen, nachdem diese Fassung in Kraft
@@ -279,7 +279,13 @@ eine Nummer, die zu nichts passt, zeigt überhaupt nichts.
 
 ## Wenn der Zugang endet
 
-Wenn Sie Ihr Konto schließen oder wir es schließen:
+**Das Löschen Ihres Kontos im Profil** schließt es sofort und verbirgt Ihren
+Namen, Ihre E-Mail-Adresse und Ihr Foto vor allen anderen auf der Plattform. Es
+tilgt nichts — Ihre Kursarbeiten bleiben, wie sie sind, bei der Schule —, und
+Sie können das Konto über einen Link wiederherstellen, den wir an seine Adresse
+senden. Wie ein Konto getilgt wird, beschreibt die Datenschutzerklärung.
+
+Wenn Ihr Konto auf Ihre Bitte getilgt wird oder wir es schließen:
 
 - **Ihre Zertifikate bleiben bestehen.** Ein bereits ausgestelltes Zertifikat
   und das Notenblatt, das es festhält, bleiben — sie sind als Momentaufnahme

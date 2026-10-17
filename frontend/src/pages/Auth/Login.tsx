@@ -8,7 +8,7 @@ import { useAuth } from "@/context/useAuth"
 import { makeLoginSchema, type LoginFormData } from "@/lib/validations/auth"
 import AuthLayout from "@/components/layout/AuthLayout"
 import { Loader2, RefreshCw } from "lucide-react"
-import { authErrorMessage, isEmailNotConfirmed, isRateLimited } from "@/lib/authError"
+import { authErrorMessage, emailSendErrorMessage, isEmailNotConfirmed, isRateLimited } from "@/lib/authError"
 import { GoogleButton, OrDivider } from "@/components/auth/GoogleButton"
 import { authService } from "@/services/auth"
 import { useCooldown } from "@/hooks/useCooldown"
@@ -22,6 +22,8 @@ import { emailFromState, peekReturnPath, rememberReturnPath, returnPathFrom } fr
  *
  * - the session expired mid-work and `api.ts` signed the person out;
  * - the server reported the account deactivated;
+ * - the person deleted their own account, or asked to restore it from a
+ *   session older than the deletion;
  * - `/auth/confirm` waited fifteen seconds for a session that never came and
  *   sent them here with `?error=oauth_timeout`, which nothing read;
  * - `Gate` refused a private page to a guest.
@@ -32,6 +34,7 @@ import { emailFromState, peekReturnPath, rememberReturnPath, returnPathFrom } fr
 function noticeKeyFor(error: string | null, reason: SignOutReason | null, state: unknown): string | null {
   if (reason === "session_expired") return "auth.notice.sessionExpired"
   if (reason === "account_deactivated") return "auth.notice.accountDeactivated"
+  if (reason === "account_deleted") return "auth.notice.accountDeleted"
   if (error === "oauth_timeout") return "auth.callback.timedOut"
   // The same target the public gate will use after sign-in, so the notice
   // promises exactly what happens.
@@ -115,7 +118,7 @@ export default function Login() {
       setResent(true)
       resendCooldown.restart()
     } catch (err) {
-      setServerError(authErrorMessage(err, "authRegister.success.resendFailed"))
+      setServerError(emailSendErrorMessage(err))
     } finally {
       setResending(false)
     }
@@ -143,7 +146,7 @@ export default function Login() {
     } catch (err) {
       if (import.meta.env.DEV) console.error("sendSignInLink failed", err)
       if (isRateLimited(err)) {
-        setServerError(authErrorMessage(err, "auth.errors.serverError"))
+        setServerError(emailSendErrorMessage(err))
         setLinkSending(false)
         return
       }

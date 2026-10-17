@@ -184,8 +184,8 @@ describe("replacing a public image", () => {
 
     const [path, , options] = uploadMock.mock.calls[0] ?? []
     expect(path).toMatch(new RegExp(`^${COURSE_ID}/cover-[0-9a-f]{8}\\.png$`))
-    // No `{ upsert: true }` — that is the call that RLS refuses.
-    expect(options).toBeUndefined()
+    // No `upsert: true` — that is the call that RLS refuses.
+    expect(options).not.toHaveProperty("upsert")
     expect(url).toBe(`/img/course-assets/${path}`)
   })
 
@@ -202,7 +202,21 @@ describe("replacing a public image", () => {
 
     const [path, , options] = uploadMock.mock.calls[0] ?? []
     expect(path).toMatch(new RegExp(`^${userId}/avatar-[0-9a-f]{8}\\.jpg$`))
-    expect(options).toBeUndefined()
+    expect(options).not.toHaveProperty("upsert")
+  })
+
+  it.each([
+    ["a cover", () => storageService.uploadCourseImage(COURSE_ID, new File(["png"], "c.png", { type: "image/png" }))],
+    ["an avatar", () => storageService.uploadAvatar("u", new File(["jpg"], "me.jpg", { type: "image/jpeg" }))],
+    ["a lesson image", () => storageService.uploadContentImage(new File(["webp"], "x.webp", { type: "image/webp" }))],
+  ])("stores %s as cacheable for a year, with its own type", async (_what, upload) => {
+    // Sent as multipart, Storage stored these `no-cache` and no CDN kept a
+    // copy. A plain body is stored with the header exactly as sent.
+    await upload()
+    const [, body, options] = uploadMock.mock.calls[0] ?? []
+    expect(body).toBeInstanceOf(ArrayBuffer)
+    expect(options.headers).toEqual({ "cache-control": "public, max-age=31536000, s-maxage=86400, immutable" })
+    expect(options.contentType).toMatch(/^image\//)
   })
 
   it("removes the object a stored URL points at", async () => {

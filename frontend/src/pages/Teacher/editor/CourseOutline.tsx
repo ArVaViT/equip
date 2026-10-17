@@ -1,38 +1,26 @@
 import { useState, type HTMLAttributes } from "react"
 import { useNavigate } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import {
-  DragDropContext,
-  Draggable,
-  Droppable,
-  type DropResult,
-} from "@hello-pangea/dnd"
+import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { EmptyState } from "@/components/patterns"
 import { BookOpen, ChevronDown, GripVertical, Layers, MoreHorizontal, Settings2, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { AddChapterBar } from "../chapters/AddChapterBar"
 import { ChapterList } from "../chapters/ChapterList"
-import type { ChapterMove } from "../chapters/ChapterRow"
-import { chapterEditHref, type CourseStructure } from "@/lib/courseStructure"
+import { ChapterRow, type ChapterMove } from "../chapters/ChapterRow"
+import { chapterEditHref, outlinePlaces, type CourseStructure } from "@/lib/courseStructure"
 import type { ChapterType } from "@/lib/chapterTypes"
-import type { Chapter, Module } from "@/types"
+import type { Chapter } from "@/types"
 
 interface Props {
   courseId: string
   /** The course read once — the outline to draw and the reading order. */
   structure: CourseStructure
-  /** Modules in order. Empty for a course that groups nothing. */
-  modules: Module[]
-  onModuleDragEnd: (result: DropResult) => void
-  onChapterDragEnd: (result: DropResult) => void
+  /** A drag among the course's places: modules and lessons outside them. */
+  onOutlineDragEnd: (result: DropResult) => void
   onAddModule: () => void
   onAddChapter: (type: ChapterType, moduleId?: string | null) => void
   /** Reorder inside one module, from its expanded list here. */
@@ -45,6 +33,11 @@ interface Props {
   onMoveChapter: (chapterId: string, moduleId: string | null) => void
 }
 
+/** The drop type of the course's places — modules and loose lessons. */
+const OUTLINE = "outline"
+/** Prefix of the drop type of one module's own lessons; the module id follows. */
+const LESSONS_OF = "lessons-of-"
+
 /**
  * What the course is made of, as the teacher sees it.
  *
@@ -53,19 +46,19 @@ interface Props {
  * course is four lessons had to invent a heading to hold them — the first
  * one to try reshaped his course twice and then deleted the lessons.
  *
- * So the list is lessons and modules together, in the order
- * `readCourseStructure` reads them (modules first, then the lessons that
- * are in no module), and the button on it adds a **lesson**, straight into
- * the course. Grouping is still there for a course that wants parts, but
- * it has moved into the overflow menu where an offer belongs — a teacher
- * who never needs a module never has to read the word.
+ * So the list is lessons and modules together, in one sequence — the order
+ * the teacher sets here is the order the student reads (2026-10-16). A
+ * lesson outside modules sits where it was put, between modules if that is
+ * where it went, and drags among the modules like one. The button on the
+ * list adds a **lesson**, straight into the course. Grouping is still there
+ * for a course that wants parts, but it has moved into the overflow menu
+ * where an offer belongs — a teacher who never needs a module never has to
+ * read the word.
  */
 export function CourseOutline({
   courseId,
   structure,
-  modules,
-  onModuleDragEnd,
-  onChapterDragEnd,
+  onOutlineDragEnd,
   onAddModule,
   onAddChapter,
   onModuleChapterDragEnd,
@@ -79,11 +72,17 @@ export function CourseOutline({
   const navigate = useNavigate()
   const { t } = useTranslation()
 
-  // The tail group — the lessons that are in no module. `readCourseStructure`
-  // only appends it when it has something in it, so its absence means every
-  // lesson is grouped.
-  const ungrouped = structure.groups.find((g) => g.moduleId === null)?.chapters ?? []
-  const isEmpty = structure.chapters.length === 0 && modules.length === 0
+  const places = outlinePlaces(structure)
+  const modules = structure.groups.flatMap((g) => (g.module ? [g.module] : []))
+  const isEmpty = places.length === 0
+
+  // One drag context for the whole outline. The places drag among each
+  // other; a module's own lessons drag inside their module's list, kept
+  // there by the list's type.
+  const onDragEnd = (result: DropResult) => {
+    if (result.type === OUTLINE) onOutlineDragEnd(result)
+    else if (result.type.startsWith(LESSONS_OF)) onModuleChapterDragEnd(result.type.slice(LESSONS_OF.length), result)
+  }
 
   /**
    * Where a loose lesson can go. Never `canUngroup` — it is already out of
@@ -97,11 +96,13 @@ export function CourseOutline({
   })
 
   /** A lesson in a module: to any other module, or out into the course. */
-  const moveFromModule = (moduleId: string) => (chapter: Chapter): ChapterMove => ({
-    intoModules: modules.filter((m) => m.id !== moduleId).map((m) => ({ id: m.id, title: m.title })),
-    canUngroup: true,
-    onMove: (target) => onMoveChapter(chapter.id, target),
-  })
+  const moveFromModule =
+    (moduleId: string) =>
+    (chapter: Chapter): ChapterMove => ({
+      intoModules: modules.filter((m) => m.id !== moduleId).map((m) => ({ id: m.id, title: m.title })),
+      canUngroup: true,
+      onMove: (target) => onMoveChapter(chapter.id, target),
+    })
 
   // Modules open on the course page itself. A module used to be a card
   // with a number on it — «4 lessons» — and every lesson in it was a page
@@ -128,11 +129,7 @@ export function CourseOutline({
         </h2>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              aria-label={t("teacherEditor.outlineMenuAria")}
-            >
+            <Button variant="outline" size="sm" aria-label={t("teacherEditor.outlineMenuAria")}>
               <MoreHorizontal className="h-4 w-4" strokeWidth={1.75} />
             </Button>
           </DropdownMenuTrigger>
@@ -155,16 +152,29 @@ export function CourseOutline({
         />
       ) : (
         <>
-          {modules.length > 0 && (
-            <DragDropContext onDragEnd={onModuleDragEnd}>
-              <Droppable droppableId="modules">
-                {(provided) => (
-                  <div
-                    className="space-y-2 mb-3"
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                  >
-                    {modules.map((mod, i) => (
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="outline" type={OUTLINE}>
+              {(provided) => (
+                <div className="mb-3 space-y-2" ref={provided.innerRef} {...provided.droppableProps}>
+                  {places.map((place, i) => {
+                    if (place.kind === "lesson") {
+                      const ch = place.chapter
+                      return (
+                        <ChapterRow
+                          key={ch.id}
+                          chapter={ch}
+                          index={i}
+                          onTitleChange={(title) => onChapterTitleChange(ch.id, title)}
+                          onRename={(title) => onRenameChapter(ch, title)}
+                          onToggleLock={() => onToggleChapterLock(ch)}
+                          onEdit={() => navigate(chapterEditHref(courseId, ch.id))}
+                          onDelete={() => onDeleteChapter(ch.id)}
+                          move={moveFor(ch)}
+                        />
+                      )
+                    }
+                    const mod = place.module
+                    return (
                       <Draggable key={mod.id} draggableId={mod.id} index={i}>
                         {(dragProvided, snapshot) => (
                           <Card
@@ -181,7 +191,9 @@ export function CourseOutline({
                                 className="-ml-2 flex h-11 w-8 shrink-0 cursor-grab items-center justify-center text-ink-muted transition-colors hover:text-ink active:cursor-grabbing sm:h-9"
                                 role="button"
                                 tabIndex={0}
-                                aria-label={t("teacherEditor.dragModuleAria", { title: mod.title })}
+                                aria-label={t("teacherEditor.dragModuleAria", {
+                                  title: mod.title,
+                                })}
                               >
                                 <GripVertical className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                               </div>
@@ -196,7 +208,9 @@ export function CourseOutline({
                                   {/* Two lines on a phone: one showed «Модуль 1…» and no more. */}
                                   <span className="line-clamp-2 font-medium sm:line-clamp-1">{mod.title}</span>
                                   <span className="mt-0.5 block text-xs text-ink-muted">
-                                    {t("teacherEditor.lessonCount", { count: mod.chapters?.length ?? 0 })}
+                                    {t("teacherEditor.lessonCount", {
+                                      count: mod.chapters?.length ?? 0,
+                                    })}
                                   </span>
                                 </span>
                                 <ChevronDown
@@ -213,8 +227,12 @@ export function CourseOutline({
                                 size="sm"
                                 className="h-11 w-9 shrink-0 p-0 text-ink-muted hover:text-ink sm:h-9 sm:w-9"
                                 onClick={() => navigate(`/teacher/courses/${courseId}/modules/${mod.id}/edit`)}
-                                aria-label={t("teacherEditor.openModuleAria", { title: mod.title })}
-                                title={t("teacherEditor.openModuleAria", { title: mod.title })}
+                                aria-label={t("teacherEditor.openModuleAria", {
+                                  title: mod.title,
+                                })}
+                                title={t("teacherEditor.openModuleAria", {
+                                  title: mod.title,
+                                })}
                               >
                                 <Settings2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                               </Button>
@@ -234,6 +252,7 @@ export function CourseOutline({
                                   <ChapterList
                                     chapters={chaptersOf(mod.id)}
                                     droppableId={`module-${mod.id}`}
+                                    nested={{ type: `${LESSONS_OF}${mod.id}` }}
                                     onDragEnd={(result) => onModuleChapterDragEnd(mod.id, result)}
                                     onTitleChange={onChapterTitleChange}
                                     onRename={onRenameChapter}
@@ -249,27 +268,13 @@ export function CourseOutline({
                           </Card>
                         )}
                       </Draggable>
-                    ))}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </DragDropContext>
-          )}
-
-          {ungrouped.length > 0 && (
-            <ChapterList
-              chapters={ungrouped}
-              droppableId="course-chapters"
-              onDragEnd={onChapterDragEnd}
-              onTitleChange={onChapterTitleChange}
-              onRename={onRenameChapter}
-              onToggleLock={onToggleChapterLock}
-              onEdit={(chapterId) => navigate(chapterEditHref(courseId, chapterId))}
-              onDelete={onDeleteChapter}
-              moveFor={moveFor}
-            />
-          )}
+                    )
+                  })}
+                  {provided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
 
           <AddChapterBar onAdd={onAddChapter} variant="compact" />
         </>

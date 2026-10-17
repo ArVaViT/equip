@@ -246,6 +246,20 @@ const courseCrud = {
     return response.data
   },
 
+  /**
+   * Write the whole course order at once: every live module and lesson, in
+   * reading order (`outlinePayload` in `lib/courseStructure`). The server
+   * refuses an outline that does not name exactly its live rows (409) — a
+   * screen gone stale — and writes nothing then.
+   */
+  async saveOutline(
+    courseId: string,
+    places: { module_id: string | null; chapter_ids: string[] }[],
+  ): Promise<void> {
+    await api.put(`/courses/${courseId}/outline`, { places })
+    invalidateCourseScope(courseId)
+  },
+
   async deleteModule(courseId: string, moduleId: string): Promise<void> {
     await api.delete(`/courses/${courseId}/modules/${moduleId}`)
     invalidateModuleScope(courseId, moduleId)

@@ -145,7 +145,16 @@ export function useEventsSection(
     async (scope: SeriesScope) => {
       if (!courseId || !form.title.trim() || !form.event_date) return
       setSaving(true)
-      const isoDate = localInputToIso(form.event_date)
+      // An untouched date goes back as the instant it came as. The field
+      // holds a wall time, and inside the hour a clock change repeats
+      // (01:30 twice in Indiana on November 1) the second 01:30 reads back
+      // as the first: saving only a new title would move the class an hour
+      // and tell every student it was rescheduled.
+      const original = editingId ? events.find((e) => e.id === editingId) : undefined
+      const isoDate =
+        original && form.event_date === isoToLocalInput(original.event_date)
+          ? original.event_date
+          : localInputToIso(form.event_date)
       if (!isoDate) {
         setSaving(false)
         return
@@ -218,7 +227,7 @@ export function useEventsSection(
         setSaving(false)
       }
     },
-    [courseId, form, editingId, resetForm, reload, t],
+    [courseId, form, editingId, events, resetForm, reload, t],
   )
 
   const save = useCallback(async () => {

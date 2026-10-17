@@ -35,7 +35,17 @@ describe("certificate share links", () => {
     expect(url.searchParams.get("organizationName")).toBe("Kyiv Bible School")
   })
 
-  it("gives the month the document prints, in the reader's zone", () => {
+  it("gives the month of the school's day, whatever the reader's zone", () => {
+    // 23:30 UTC on 30 September is 1 October in Kyiv; the school (Indiana)
+    // issued it on 30 September, and that is the month on the document.
+    const cert = { ...CERT, issued_on: "2026-09-30" }
+    for (const zone of ["Europe/Kyiv", "America/Los_Angeles", "Pacific/Kiritimati"]) {
+      const url = new URL(linkedInAddUrl(cert, "https://equipbible.com", zone))
+      expect(url.searchParams.get("issueMonth")).toBe("9")
+    }
+  })
+
+  it("reads the day in the given zone for a certificate from an older server", () => {
     // 23:30 UTC on 30 September is 1 October in Kyiv.
     const url = new URL(linkedInAddUrl(CERT, "https://equipbible.com", "Europe/Kyiv"))
     expect(url.searchParams.get("issueMonth")).toBe("10")

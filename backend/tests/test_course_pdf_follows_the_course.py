@@ -140,17 +140,17 @@ class TestTheThreeShapesOfACourse:
     def test_a_mixed_course_puts_each_lesson_where_its_order_index_says(self, client: TestClient, db: Session) -> None:
         """Grouped and loose lessons in one course.
 
-        The order is the course's own ``order_index``: the module takes
-        the position of its first lesson and keeps its lessons together,
-        and a lesson the course holds directly sits where its own number
-        puts it — before the module here, and after it.
+        The course's one sequence: the module and the lessons the course
+        holds directly take places by their own numbers, and the module
+        keeps its lessons together — a loose lesson before the module
+        here, and one after it.
         """
         course = _course(db, "pdf-shape-mixed")
-        _module(db, module_id="mx-m1", course_id=course.id, title="The Module", order_index=0)
+        _module(db, module_id="mx-m1", course_id=course.id, title="The Module", order_index=1)
         _chapter(db, chapter_id="mx-c0", course_id=course.id, module_id=None, title="Opening", order_index=0)
-        _chapter(db, chapter_id="mx-c1", course_id=course.id, module_id="mx-m1", title="Alpha", order_index=1)
-        _chapter(db, chapter_id="mx-c2", course_id=course.id, module_id="mx-m1", title="Beta", order_index=2)
-        _chapter(db, chapter_id="mx-c3", course_id=course.id, module_id=None, title="Closing", order_index=3)
+        _chapter(db, chapter_id="mx-c1", course_id=course.id, module_id="mx-m1", title="Alpha", order_index=2)
+        _chapter(db, chapter_id="mx-c2", course_id=course.id, module_id="mx-m1", title="Beta", order_index=3)
+        _chapter(db, chapter_id="mx-c3", course_id=course.id, module_id=None, title="Closing", order_index=4)
 
         pdf = _export(client, course.id)
         expected = ["Opening", "The Module", "Alpha", "Beta", "Closing"]

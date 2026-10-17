@@ -51,7 +51,9 @@ describe("the course before enrolling", () => {
     expect(screen.getByText("Как Дух собрал церковь")).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole("tab", { name: "Программа" }))
-    expect(screen.getByRole("heading", { name: /Иерусалим/ })).toBeInTheDocument()
+    // The page's h1 is the course title and nothing sits between it and
+    // the programme, so a module is an h2 — an h3 here skipped a level.
+    expect(screen.getByRole("heading", { level: 2, name: /Иерусалим/ })).toBeInTheDocument()
     expect(screen.getByText("Урок 1. Вознесение")).toBeInTheDocument()
     expect(screen.getByText("Эссе о Пятидесятнице")).toBeInTheDocument()
     // Names, not doors: the lessons open once the reader is enrolled.

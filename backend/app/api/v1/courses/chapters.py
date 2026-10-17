@@ -35,9 +35,11 @@ from app.services.course_service import (
     restore_chapter,
     update_chapter,
 )
+from app.services.course_service._outline import OutlinePlaceError
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 
 from ._router import router
+from .outline import outline_place_conflict
 
 
 def _module_of_course(db: Session, course_id: str, module_id: str) -> Module:
@@ -169,7 +171,10 @@ def update_chapter_of_course(
     _verify_regrouping(db, course_id, data)
     if data.title:
         data.title = sanitize_plain_text(data.title)
-    updated = update_chapter(db, chapter, data)
+    try:
+        updated = update_chapter(db, chapter, data)
+    except OutlinePlaceError as exc:
+        raise outline_place_conflict(exc, course_id) from exc
     reconcile_entity_if_course_published(db, "chapter", updated)
     return updated
 
@@ -254,7 +259,10 @@ def update_existing_chapter(
     _verify_regrouping(db, course_id, data)
     if data.title:
         data.title = sanitize_plain_text(data.title)
-    updated = update_chapter(db, chapter, data)
+    try:
+        updated = update_chapter(db, chapter, data)
+    except OutlinePlaceError as exc:
+        raise outline_place_conflict(exc, course_id) from exc
     reconcile_entity_if_course_published(db, "chapter", updated)
     return updated
 

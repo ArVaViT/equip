@@ -1,32 +1,18 @@
 """One order for the course, read the same way by every surface.
 
-Two rules had grown where there should have been one.
+The rule (``course_structure``, 2026-10-16): a module and a lesson that
+sits in no module each take a place in one sequence, numbered in one
+shared space by their own ``order_index``; a module's lessons run
+consecutively under it, ordered by their own numbers, which are never
+compared with anything outside the module.
 
-The readiness checklist and the teacher's board walked the course by
-``build_spine``: headings by ``module.order_index``, lessons by their own
-number inside each heading, and every lesson with no heading swept into a
-tail after the last module. The PDF export walked ``course.chapters``
-sorted flat by ``order_index``, giving each module the position of the
-first of its lessons it met.
-
-Neither survives contact with the data. Lesson numbers ran *per module*
-in every course in production — each module restarting at zero — so the
-flat sort had nothing to sort by and printed the headings of all three
-published courses out of their authored order. And the tail is not an
-order at all: it is what you do when you have decided not to look at
-where the author put the lesson.
-
-What is left, and what these tests pin down:
-
-* headings run in the order the teacher gave them;
-* a heading's lessons run consecutively under it;
-* a lesson in no module sits where its own number puts it — including
-  between two headings, which is the case the tail rule could not
-  express and the flat rule could not survive.
-
-The last two tests are the ones that made the choice: a loose lesson
-between two headings (the tail rule gets it wrong) and a heading moved
-without its lessons being renumbered (the flat rule gets it wrong).
+History: before 2026-10-16 a loose lesson was placed by comparing its
+number with the number of the first lesson of each module, and modules
+were ordered by a number of their own in a different space. The board,
+the PDF and the checklist read that; the student's and the teacher's
+screens swept loose lessons to the tail. Reordering a module's lessons
+could carry a loose lesson past the module, and an empty module could
+not stand after a loose lesson at all. The tests below pin the one rule.
 """
 
 from __future__ import annotations
@@ -143,12 +129,12 @@ class TestTheThreeShapesOfACourse:
 
     def test_a_mixed_course_keeps_the_heading_whole_and_the_loose_lesson_placed(self) -> None:
         """Some lessons grouped, some held by the course directly."""
-        module = _module_row(title="Middle", order=0)
+        module = _module_row(title="Middle", order=1)
         chapters = [
             _chapter_row(title="opening", order=0),
-            _chapter_row(title="mid-a", order=1, module=module),
-            _chapter_row(title="mid-b", order=2, module=module),
-            _chapter_row(title="closing", order=3),
+            _chapter_row(title="mid-a", order=2, module=module),
+            _chapter_row(title="mid-b", order=3, module=module),
+            _chapter_row(title="closing", order=4),
         ]
 
         spine = build_spine([module], chapters)
@@ -166,29 +152,46 @@ class TestTheThreeShapesOfACourse:
 
 class TestTheCasesThatDecidedTheRule:
     def test_a_loose_lesson_between_two_headings_stays_between_them(self) -> None:
-        """The case the tail rule could not express.
-
-        The teacher numbered this lesson 2, between a heading whose
-        lessons are 0-1 and one whose lessons are 3-4. Sweeping it to the
-        end of the course would be a decision nobody made.
-        """
+        """The teacher put this lesson between two modules. Sweeping it to
+        the end of the course would be a decision nobody made."""
         first = _module_row(title="First", order=0)
-        second = _module_row(title="Second", order=1)
+        second = _module_row(title="Second", order=4)
         chapters = [
-            _chapter_row(title="first-a", order=0, module=first),
-            _chapter_row(title="first-b", order=1, module=first),
-            _chapter_row(title="interlude", order=2),
-            _chapter_row(title="second-a", order=3, module=second),
-            _chapter_row(title="second-b", order=4, module=second),
+            _chapter_row(title="first-a", order=1, module=first),
+            _chapter_row(title="first-b", order=2, module=first),
+            _chapter_row(title="interlude", order=3),
+            _chapter_row(title="second-a", order=5, module=second),
+            _chapter_row(title="second-b", order=6, module=second),
         ]
 
         spine = build_spine([first, second], chapters)
 
         assert _titles(spine) == ["first-a", "first-b", "interlude", "second-a", "second-b"]
-        # And the board can key it to a group that sorts into that gap —
-        # neither module's own number could have said "between us".
+        # And the board can key it to a group that sorts into that gap.
         assert spine.group_ids == ("First", UNGROUPED_GROUP_ID, "Second")
         assert spine.rank_of(UNGROUPED_GROUP_ID) == 1
+
+    def test_renumbering_a_modules_lessons_moves_nothing_outside_it(self) -> None:
+        """The defect this rule replaced: a module's lessons renumbered
+        0..n-1 by a reorder inside it carried the loose lesson after the
+        module in front of it. Inside a module a number orders only that
+        module's lessons."""
+        first = _module_row(title="First", order=0)
+        chapters = [
+            _chapter_row(title="first-a", order=1, module=first),
+            _chapter_row(title="first-b", order=2, module=first),
+            _chapter_row(title="after", order=3),
+        ]
+        assert _titles(build_spine([first], chapters)) == ["first-a", "first-b", "after"]
+
+        # The teacher swaps the two lessons; an old client renumbered from 0.
+        chapters[0].order_index, chapters[1].order_index = 1, 0
+
+        assert _titles(build_spine([first], chapters)) == ["first-b", "first-a", "after"]
+
+        # Even numbers far past the loose lesson keep the lessons in their module.
+        chapters[0].order_index, chapters[1].order_index = 90, 91
+        assert _titles(build_spine([first], chapters)) == ["first-a", "first-b", "after"]
 
     def test_moving_a_heading_moves_its_lessons_with_it(self) -> None:
         """The case the flat rule could not survive.
@@ -235,11 +238,11 @@ class TestTheAwkwardRows:
         with an empty heading is that surface's business — the PDF prints
         no rubric over nothing, the board still lists it."""
         first = _module_row(title="First", order=0)
-        hollow = _module_row(title="Hollow", order=1)
-        last = _module_row(title="Last", order=2)
+        hollow = _module_row(title="Hollow", order=2)
+        last = _module_row(title="Last", order=3)
         chapters = [
-            _chapter_row(title="first-a", order=0, module=first),
-            _chapter_row(title="last-a", order=1, module=last),
+            _chapter_row(title="first-a", order=1, module=first),
+            _chapter_row(title="last-a", order=4, module=last),
         ]
 
         spine = build_spine([first, hollow, last], chapters)
@@ -263,27 +266,50 @@ class TestTheAwkwardRows:
         assert _titles(spine) == ["live-a", "orphan"]
         assert spine.group_of[orphan.id] == UNGROUPED_GROUP_ID
 
-    def test_a_lesson_appended_to_an_early_heading_does_not_drag_the_loose_ones_forward(self) -> None:
-        """``_next_chapter_order`` gives a new lesson the course-wide
-        maximum plus one, so a lesson appended to the *first* heading
-        carries the highest number in the course. A loose lesson is
-        placed against where a heading starts, not where it ends, so that
-        append cannot pull the rest of the course in front of it.
-        """
+    def test_an_empty_heading_can_stand_after_a_loose_lesson(self) -> None:
+        """The previous rule placed an empty module right after the module
+        before it, so a teacher could not put one after a loose lesson."""
+        hollow = _module_row(title="Hollow", order=1)
+        chapters = [_chapter_row(title="intro", order=0), _chapter_row(title="outro", order=2)]
+
+        spine = build_spine([hollow], chapters)
+
+        assert [(r.group_id, [c.title for c in r.chapters]) for r in spine.runs] == [
+            (UNGROUPED_GROUP_ID, ["intro"]),
+            ("Hollow", []),
+            (UNGROUPED_GROUP_ID, ["outro"]),
+        ]
+
+    def test_a_lesson_appended_to_an_early_heading_stays_in_it(self) -> None:
+        """A new lesson takes the course's highest number plus one, so a
+        lesson appended to the *first* heading carries the highest number
+        in the course. It still reads at the end of its own module."""
         first = _module_row(title="First", order=0)
-        second = _module_row(title="Second", order=1)
+        second = _module_row(title="Second", order=4)
         chapters = [
-            _chapter_row(title="first-a", order=0, module=first),
-            _chapter_row(title="first-b", order=1, module=first),
-            _chapter_row(title="interlude", order=2),
-            _chapter_row(title="second-a", order=3, module=second),
+            _chapter_row(title="first-a", order=1, module=first),
+            _chapter_row(title="first-b", order=2, module=first),
+            _chapter_row(title="interlude", order=3),
+            _chapter_row(title="second-a", order=5, module=second),
             # Appended to the first heading, long after the rest existed.
-            _chapter_row(title="first-late", order=4, module=first),
+            _chapter_row(title="first-late", order=6, module=first),
         ]
 
         spine = build_spine([first, second], chapters)
 
         assert _titles(spine) == ["first-a", "first-b", "first-late", "interlude", "second-a"]
+
+    def test_ties_go_module_first_then_by_id(self) -> None:
+        """Only hand-edited or legacy rows tie; every reader breaks the tie
+        the same way (the client mirrors it)."""
+        module = _module_row(title="M", order=1)
+        chapters = [
+            _chapter_row(title="b-loose", order=1),
+            _chapter_row(title="a-loose", order=1),
+            _chapter_row(title="inside", order=0, module=module),
+        ]
+
+        assert _titles(build_spine([module], chapters)) == ["inside", "a-loose", "b-loose"]
 
 
 # ─── One rule, every surface ────────────────────────────────────────────
@@ -295,11 +321,11 @@ class TestEverySurfaceReadsTheSameOrder:
 
     def test_the_document_prints_the_spine(self) -> None:
         first = _module_row(title="First", order=0)
-        second = _module_row(title="Second", order=1)
+        second = _module_row(title="Second", order=3)
         chapters = [
-            _chapter_row(title="first-a", order=0, module=first),
-            _chapter_row(title="interlude", order=1),
-            _chapter_row(title="second-a", order=2, module=second),
+            _chapter_row(title="first-a", order=1, module=first),
+            _chapter_row(title="interlude", order=2),
+            _chapter_row(title="second-a", order=4, module=second),
         ]
         course = _loose_course(modules=[first, second], chapters=chapters)
 
@@ -344,11 +370,11 @@ class TestEverySurfaceReadsTheSameOrder:
             return row
 
         first = module("First", 0)
-        second = module("Second", 1)
+        second = module("Second", 3)
         rows = [
-            chapter("first-a", 0, first),
-            chapter("interlude", 1, None),
-            chapter("second-a", 2, second),
+            chapter("first-a", 1, first),
+            chapter("interlude", 2, None),
+            chapter("second-a", 4, second),
         ]
         db.add(Enrollment(id=str(uuid.uuid4()), user_id=STUDENT_ID, course_id=course.id, progress=0))
         db.commit()
@@ -367,8 +393,7 @@ class TestEverySurfaceReadsTheSameOrder:
         assert detail["chapters"][1]["module_id"] == UNGROUPED_GROUP_ID
 
         # The group list the client sorts by ``order_index`` has to land
-        # the loose stretch between the two headings. The modules' own
-        # numbers cannot say that — 0 and 1 leave no room between them.
+        # the loose stretch between the two headings.
         board = build_course_student_progress(db, course, course.id)
         groups = sorted(board["modules"], key=lambda g: g["order_index"])
         assert [g["id"] for g in groups] == [first.id, UNGROUPED_GROUP_ID, second.id]

@@ -80,15 +80,19 @@ def _accept_the_versions_before_this_one(db: Session, user: User, *, on: datetim
     signed what was current in September, and overnight privacy and terms went
     to 2.0. They owe two signatures and they are standing at the dialog asking
     for them.
+
+    The version before the last one that *needed a signature* — not simply
+    the one before the current: 2.1 (2026-10-16) is a notice, and a 2.0 row
+    owes nothing.
     """
     for spec in LEGAL_REGISTRY:
-        if not spec.signable or len(spec.revisions) < 2:
+        if not spec.signable or spec.consent_index < 1:
             continue
         db.add(
             LegalAcceptance(
                 user_id=user.id,
                 document_slug=spec.slug,
-                version=spec.revisions[-2].version,
+                version=spec.revisions[spec.consent_index - 1].version,
                 locale="en",
                 content_sha256="hash",
                 accepted_at=on,

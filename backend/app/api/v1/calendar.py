@@ -32,18 +32,19 @@ from app.services.content_versions import (
     fetch_cv_entity_texts_with_fallback,
 )
 from app.services.course_notifications import (
-    course_title_for_locale,
+    course_title,
     delete_notifications_about,
     enrolled_recipients_by_locale,
-    entity_title_for_locale,
+    entity_title,
+    stored_params,
 )
 from app.services.event_series import SeriesRejected, WeeklySeries, series_positions, shift_on_wall_clock, zone_or_utc
 from app.services.notification_service import (
     create_notifications_bulk,
     notification_text,
-    resolve_params,
     translatable,
 )
+from app.services.school_clock import school_time_zone
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import localize_course_event_rows
 
@@ -101,11 +102,10 @@ def notify_students_about_event(
     teacher could put an exam on the calendar and nobody would know
     until they happened to open it. Each recipient is written to in the
     language they read in, with the event's title in that language when
-    it has one (see ``entity_title_for_locale`` for when it does not).
+    it has one, read when the bell is opened (see ``entity_title``).
     The kind — deadline, exam — comes from the catalog so the sentence
     is whole in every language.
     """
-    source_locale = normalize_locale(course.source_locale)
     recipients_by_locale = enrolled_recipients_by_locale(
         db, course_id=course.id, exclude_user_id=author.id if author else None
     )
@@ -122,18 +122,12 @@ def notify_students_about_event(
         params: dict[str, Any] = {
             # A catalog key, translated whenever the bell is opened.
             "kind": translatable(f"event_type.{event.event_type}"),
-            "title": entity_title_for_locale(
-                db,
-                entity_type="course_event",
-                entity_id=event.id,
-                locale=locale,
-                source_locale=source_locale,
-                fallback_key="fallback.event",
-            ),
-            "course": course_title_for_locale(db, course, locale),
+            # Read when the bell is opened, from released rows only.
+            "title": entity_title("course_event", event.id, fallback_key="fallback.event"),
+            "course": course_title(course),
         }
         title = t(locale, f"{key}.title")
-        message = t(locale, f"{key}.body", **resolve_params(params, locale))
+        message = t(locale, f"{key}.body", **stored_params(db, params, locale))
         link = _event_link(course.id)
         metadata: dict[str, str] = {"course_id": course.id, "event_id": str(event.id)}
         # The bell is where a student is standing when the session is
@@ -216,6 +210,7 @@ def _course_event_to_response(db: Session, event: CourseEvent, *, source_locale:
         fields=list(_TRANSLATABLE_COURSE_EVENT_FIELDS),
         display_locale=source_locale,
         source_locale=source_locale,
+        prefer_human=True,
         include_author_edits=True,
     )
     title = texts.get((str(event.id), "title")) or ""
@@ -342,11 +337,17 @@ def create_course_event(
         # A deadline is a moment in a course, not a weekly meeting; twelve
         # copies of one is a slip in the form, not a plan.
         raise _series_rejected("not_for_deadline")
+    series_zone: str | None = None
     if data.repeat is None:
         starts = [data.event_date]
         series_id = None
     else:
-        zone = zone_or_utc(data.repeat.time_zone or teacher.time_zone)
+        # The app always names the zone it showed the teacher. A client that
+        # does not, for a teacher whose profile has none (most profiles until
+        # the device reports one), gets the school's clock — not UTC, on
+        # which "19:00" would slide an hour at the next clock change.
+        named = data.repeat.time_zone or teacher.time_zone
+        zone = zone_or_utc(named) if named else school_time_zone(db, course.organization_id)
         try:
             starts = WeeklySeries(
                 first=data.event_date, every_weeks=data.repeat.every_weeks, until=data.repeat.until, zone=zone
@@ -356,6 +357,8 @@ def create_course_event(
         # A "series" of one is an event; do not mark it as a series the
         # editor would then offer "this and following" for.
         series_id = uuid.uuid4() if len(starts) > 1 else None
+        # Remembered, so a later move is measured on the same clock.
+        series_zone = str(zone) if series_id else None
     events: list[CourseEvent] = []
     for start in starts:
         event = CourseEvent(
@@ -368,6 +371,7 @@ def create_course_event(
             recording_url=data.recording_url if not events else None,
             duration_minutes=data.duration_minutes,
             series_id=series_id,
+            time_zone=series_zone,
             created_by=teacher.id,
         )
         db.add(event)
@@ -503,7 +507,15 @@ def update_course_event(
     # Title + description live in cv. Pop them off the patch
     # before the setattr loop and route through dual_write.
     updates = data.model_dump(exclude_unset=True)
-    zone = zone_or_utc(updates.pop("time_zone", None) or teacher.time_zone)
+    # A series moves on its own clock — the zone it was created in — not
+    # the editor's: a teacher in Kyiv moving an Indiana series a day would
+    # otherwise put it an hour off in the week between the two clock
+    # changes. The editor's zone (then the profile's) is for series made
+    # before the zone was stored. Popped either way: it is not a field the
+    # patch may write.
+    editor_zone = updates.pop("time_zone", None)
+    named = event.time_zone or editor_zone or teacher.time_zone
+    zone = zone_or_utc(named) if named else school_time_zone(db, course.organization_id)
     text_patch: dict[str, str | None] = {}
     if "title" in updates:
         v = updates.pop("title")

@@ -14,15 +14,13 @@ it cannot read off the source.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
-from app.core.i18n import t
 from app.models.enrollment import Enrollment
 from app.models.notification import Notification
 from app.models.user import User
 from app.schemas.locale import LocaleCode, normalize_locale
-from app.services.content_versions import fetch_cv_entity_texts_with_fallback
-from app.services.translation.resolve_for_display import fetch_course_titles_by_id
+from app.services.notification_service import content_text, released_texts, resolve_params
 
 if TYPE_CHECKING:
     import uuid
@@ -61,50 +59,42 @@ def enrolled_recipients_by_locale(
     return out
 
 
-def course_title_for_locale(db: Session, course: Course, locale: LocaleCode) -> str:
-    return fetch_course_titles_by_id(db, [course.id], display_locale=locale).get(course.id) or t(
-        locale, "fallback.course"
-    )
+def course_title(course: Course) -> dict[str, Any]:
+    """The course's title, as a notification parameter read at render —
+    in the language the reader is in when they open the bell, and the
+    name the course has then (see ``entity_title``)."""
+    return content_text("course", course.id, "title", fallback_key="fallback.course")
 
 
-def entity_title_for_locale(
-    db: Session,
-    *,
+def entity_title(
     entity_type: Literal["announcement", "course_event"],
     entity_id: uuid.UUID | str,
-    locale: LocaleCode,
-    source_locale: LocaleCode,
+    *,
     fallback_key: str,
-) -> str:
-    """The post's title as this recipient should read it.
+) -> dict[str, Any]:
+    """The post's title, as a notification parameter read at render.
 
-    Three tiers, in order:
+    Not text: a reference the bell resolves each time it is opened, from
+    released rows in the reader's language (``notification_service.
+    content_text``). A text appears to readers only once every language
+    has it — in the author's own language too, so the reader who shares
+    it waits like everyone else. Until then the row names the post by
+    ``fallback_key`` («an announcement», «an event»); from then on, by its
+    title. A held edit to a released title keeps the released wording
+    until the edit is out in every language.
 
-    1. A version in the recipient's language — the MT row the reconcile
-       step wrote a moment ago, when it has already run.
-    2. The author's own text, but only for a recipient who reads the
-       language it was written in. On a published course a new post
-       does not enter ``content_versions`` at all until every language
-       has it (see ``services/staged_edits``); it waits in the staging
-       table, and a same-language reader was being told about «an
-       announcement» while the title sat one table over. Their language
-       is the author's language, so the author's text is the right one.
-    3. ``fallback_key`` — a reader of another language is not handed the
-       author's language. A notification's text is frozen into their
-       bell; a Russian title sent to a German reader stays there for
-       good.
+    It used to be resolved here, once, with the author's held text for a
+    reader of the author's language: an early copy in one language, which
+    the calendar had too until it was reverted (b38d7556).
     """
-    eid = str(entity_id)
-    texts = fetch_cv_entity_texts_with_fallback(
-        db,
-        entity_type=entity_type,
-        entity_ids=[eid],
-        fields=["title"],
-        display_locale=locale,
-        source_locale=source_locale,
-        include_author_edits=locale == source_locale,
-    )
-    return texts.get((eid, "title")) or t(locale, fallback_key)
+    return content_text(entity_type, entity_id, "title", fallback_key=fallback_key)
+
+
+def stored_params(db: Session, params: dict[str, Any], locale: LocaleCode) -> dict[str, Any]:
+    """``params`` filled in as a reader in ``locale`` may read them now —
+    for the row's stored text, which is shown only when its recipe cannot
+    be rendered. Released rows only, like the render itself."""
+    return resolve_params(params, locale, released_texts(db, [params], locale))
 
 
 def delete_notifications_about(

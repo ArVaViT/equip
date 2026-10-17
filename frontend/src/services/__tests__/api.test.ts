@@ -237,6 +237,23 @@ describe("api interceptors", () => {
     expect(takeSignOutReason()).toBe("account_deactivated")
   })
 
+  it("keeps the session of an account its owner deleted, and says so to the app", async () => {
+    // Not a sign-out: the restore screen needs the session to ask the server.
+    getSession.mockResolvedValue({
+      data: { session: { access_token: "tok" } },
+    })
+    signOut.mockResolvedValue({ error: null })
+
+    const api = await freshApi()
+    const { getAccountDeleted } = await import("@/lib/accountDeleted")
+    const mock = new MockAdapter(api)
+    mock.onGet("/me").reply(403, { detail: { code: "account.deleted", message: "Deleted" } })
+
+    await expect(api.get("/me")).rejects.toHaveProperty("response.status", 403)
+    expect(signOut).not.toHaveBeenCalled()
+    expect(getAccountDeleted()).toBe(true)
+  })
+
   it("does not retry a single request more than once on 401", async () => {
     getSession.mockResolvedValue({
       data: { session: { access_token: "old" } },

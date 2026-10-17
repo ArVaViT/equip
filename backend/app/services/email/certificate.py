@@ -62,6 +62,7 @@ def build_certificate_message(
         cta_url=action_url,
         preview=t(locale, f"email.cert.preview.{state}", course=course_title),
         notes=(t(locale, "email.cert.why"),),
+        lang=locale,
     )
 
 

@@ -104,6 +104,25 @@ describe("LegalNoticeBanner", () => {
     )
   })
 
+  it.each([
+    ["en", "October 1, 2026"],
+    ["ru", "1 октября 2026"],
+  ])("prints the day in words in %s, never the ISO string or a doubled full stop", async (locale, day) => {
+    const { legalService } = await import("@/services/legal")
+    vi.mocked(legalService.status).mockResolvedValue(withNotice)
+    await i18n.changeLanguage(locale)
+    render(
+      <Wrapper>
+        <LegalNoticeBanner />
+      </Wrapper>,
+    )
+    const status = await screen.findByRole("status")
+    expect(status).not.toHaveTextContent("2026-10-01")
+    expect(status.textContent ?? "").toMatch(new RegExp(day.replace(/ /g, "\\s")))
+    expect(status.textContent ?? "").not.toMatch(/\.\./)
+    await i18n.changeLanguage("en")
+  })
+
   it("records the dismissal on the server, not in this browser", async () => {
     const { legalService } = await import("@/services/legal")
     vi.mocked(legalService.status).mockResolvedValue(withNotice)

@@ -1,6 +1,6 @@
 # Terms of Use
 
-**Version 2.0 · in force from 17 September 2026**
+**Version 2.1 · in force from 15 December 2026**
 
 These terms are an agreement between you and Equip. By creating an account, or
 by using the platform after this version takes effect, you accept them. If you
@@ -248,7 +248,13 @@ nothing at all.
 
 ## If access ends
 
-If you close your account, or we close it:
+**Deleting your account from your profile** closes it at once and hides your
+name, email address and photo from everybody else on the platform. It erases
+nothing — your coursework stays as it is, with the school — and you can restore
+the account through a link we email to its address. How to have an account
+erased is set out in the Privacy Policy.
+
+If your account is erased at your request, or we close it:
 
 - **Your certificates stand.** A certificate already issued, and the grade sheet
   recording it, remain — they are frozen as a snapshot at the moment of issue.

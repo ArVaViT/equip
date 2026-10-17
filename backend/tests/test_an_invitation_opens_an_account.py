@@ -29,6 +29,7 @@ from app.models.invitation import Invitation, InvitationScope, InvitationStatus
 from app.models.organization import OrganizationMember
 from app.models.user import User, UserRole
 from app.services import invitation_service
+from app.services.email.send import Delivery
 from app.services.invitation_service import create_or_resend_invitation, hash_invitation_token, invitation_token
 from tests.conftest import ADMIN_ID, TEST_ORGANIZATION_ID
 
@@ -444,6 +445,88 @@ class TestTheToken:
         assert again.token_hash == hash_before
         expires = again.expires_at if again.expires_at.tzinfo else again.expires_at.replace(tzinfo=UTC)
         assert expires > datetime.now(UTC) + timedelta(days=6, hours=23)
+
+    def test_a_second_click_minutes_later_does_not_mail_the_same_letter_again(
+        self, db: Session, admin: User, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A teacher pressing «send again» twice, or a page retrying, must not
+        put two identical letters in one inbox: the pattern of a bulk sender."""
+        mailed: list[str] = []
+
+        def sent(*_a: object, accept_url: str, **_k: object) -> Delivery:
+            mailed.append(accept_url)
+            return Delivery(sent=True, provider_id="re_1")
+
+        monkeypatch.setattr(invitation_service, "send_invitation_email", sent)
+        first, _new = create_or_resend_invitation(
+            db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+        )
+        expires_before = first.expires_at
+        for _ in range(3):
+            create_or_resend_invitation(
+                db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+            )
+        assert len(mailed) == 1
+        assert first.expires_at == expires_before
+
+        # Past the window the resend is a resend again.
+        first.mailed_at = datetime.now(UTC) - timedelta(minutes=11)
+        db.commit()
+        create_or_resend_invitation(
+            db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+        )
+        assert len(mailed) == 2
+        assert mailed[1] == mailed[0]
+
+    def test_a_letter_the_provider_refused_is_mailed_again_on_the_next_press(
+        self, db: Session, admin: User, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """«Send again» after an outage must send: only a letter that left counts."""
+        outcomes = iter([Delivery(sent=False, reason="rejected"), Delivery(sent=True, provider_id="re_2")])
+        calls: list[str] = []
+
+        def send(*_a: object, accept_url: str, **_k: object) -> Delivery:
+            calls.append(accept_url)
+            return next(outcomes)
+
+        monkeypatch.setattr(invitation_service, "send_invitation_email", send)
+        first, _new = create_or_resend_invitation(
+            db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+        )
+        assert first.mailed_at is None
+        create_or_resend_invitation(
+            db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+        )
+        assert len(calls) == 2
+        assert first.mailed_at is not None
+
+    def test_a_click_arriving_while_the_provider_answers_does_not_mail_twice(
+        self, db: Session, admin: User, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The stamp goes on before the send: a second request that lands
+        while the first is still waiting on the provider sees it."""
+        calls: list[str] = []
+
+        def send(*_a: object, accept_url: str, **_k: object) -> Delivery:
+            calls.append(accept_url)
+            if len(calls) == 1:
+                # The double click, arriving mid-send.
+                create_or_resend_invitation(
+                    db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+                )
+            return Delivery(sent=True, provider_id="re_3")
+
+        monkeypatch.setattr(invitation_service, "send_invitation_email", send)
+        first, _new = create_or_resend_invitation(
+            db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+        )
+        first.mailed_at = datetime.now(UTC) - timedelta(minutes=11)
+        db.commit()
+        calls.clear()
+        create_or_resend_invitation(
+            db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+        )
+        assert len(calls) == 1
 
     def test_a_link_mailed_before_the_hashing_still_opens(self, anon: TestClient, db: Session) -> None:
         """What the migration's backfill promises: the random tokens already

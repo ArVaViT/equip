@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -31,6 +31,10 @@ class CertificateResponse(BaseModel):
     course_id: str | None = None
     archived_course_title: str | None = None
     issued_at: datetime | None = None
+    #: The day it was issued, on the issuing school's clock
+    #: (``org_settings.time_zone``) — the date every document prints, the
+    #: same for every reader. ``issued_at`` stays for the instant.
+    issued_on: date | None = None
     certificate_number: str | None = None
     status: CertificateStatus = "pending"
     requested_at: datetime | None = None
@@ -76,3 +80,5 @@ class CertificateVerifyResponse(BaseModel):
     user_name: str | None = None
     course_title: str | None = None
     issued_at: datetime | None = None
+    #: The day on the issuing school's clock, as the document prints it.
+    issued_on: date | None = None

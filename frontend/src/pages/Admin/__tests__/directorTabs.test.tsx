@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "@/i18n/config"
 import { coursesService } from "@/services/courses"
 import { adminTranslationsService } from "@/services/adminTranslations"
+import { headingOutline } from "@/test/a11y"
 import { tabsFor } from "../dashboard/constants"
 
 const auth = vi.hoisted(() => ({ role: "director" as string }))
@@ -48,7 +49,7 @@ describe("a director in /admin", () => {
       } as never,
     ])
     const users = vi.spyOn(coursesService, "getAllUsers")
-    render(
+    const { container } = render(
       <Wrapper path="/admin?tab=audit">
         <AdminDashboard />
       </Wrapper>,
@@ -62,6 +63,12 @@ describe("a director in /admin", () => {
     expect(certs).toHaveBeenCalled()
     // The user list is staff-only; a director's page never asks for it.
     expect(users).not.toHaveBeenCalled()
+    // One h1 for the page; the certificates card under it is an h2, not
+    // the h3 every CardTitle used to be (h1 → h3 skipped a level).
+    const { levels, gaps } = headingOutline(container)
+    expect(levels.filter((l) => l === 1)).toHaveLength(1)
+    expect(levels).toContain(2)
+    expect(gaps).toEqual([])
   })
 
   it("is not for a teacher", () => {

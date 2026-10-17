@@ -624,6 +624,41 @@ class TestTrashAndRestore:
         assert survivor.archived_course_title == "Snapshot Me"
         assert survivor.course_id is None  # ON DELETE SET NULL fired
 
+    def test_permanent_delete_snapshots_the_released_title_not_a_held_edit(self, client: TestClient, db: Session):
+        """A title edit held back from readers (``staged_content_versions``)
+        was never on the certificate. The snapshot read the author's view,
+        which lets that edit win, so a verify URL would have named a course
+        title the student never saw."""
+        from app.models.certificate import Certificate
+        from app.models.staged_content_version import StagedContentVersion
+
+        course = _seed_course_direct(db, course_id="snap-held", title="Released Title", deleted=True)
+        db.add(
+            StagedContentVersion(
+                entity_type="course",
+                entity_id=course.id,
+                field="title",
+                locale="en",
+                course_id=course.id,
+                text="Unreleased Title",
+                origin="human",
+                status="ok",
+                source_locale="en",
+            )
+        )
+        cert = Certificate(user_id=STUDENT_ID, course_id=course.id, status="approved")
+        db.add(cert)
+        db.commit()
+        cert_id = cert.id
+
+        resp = client.delete(f"{COURSES_PREFIX}/snap-held/permanent")
+        assert resp.status_code == 204
+        db.expire_all()
+
+        survivor = db.query(Certificate).filter(Certificate.id == cert_id).first()
+        assert survivor is not None
+        assert survivor.archived_course_title == "Released Title"
+
     def test_anon_cannot_access_trash(self, anon_client: TestClient):
         resp = anon_client.get(f"{COURSES_PREFIX}/my/trash")
         assert resp.status_code in (401, 403)

@@ -7,6 +7,7 @@ import PageSpinner from "@/components/ui/PageSpinner"
 import { ErrorState } from "@/components/patterns"
 import { useAuth } from "@/context/useAuth"
 import { useAsyncData } from "@/hooks/useAsyncData"
+import { documentDay, formatDayLong } from "@/i18n/format"
 import { getDisplayTimeZone } from "@/i18n/timeZone"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { coursesService } from "@/services/courses"
@@ -54,6 +55,8 @@ export default function TranscriptPage() {
       year: "numeric",
       timeZone: getDisplayTimeZone(),
     })
+  // Each course on the school's day, as its certificate prints it.
+  const issuedDay = (c: Certificate) => formatDayLong(documentDay(c.issued_on, c.issued_at), undefined, "en-GB")
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-6">
@@ -95,7 +98,7 @@ export default function TranscriptPage() {
                     {c.school_name || "Equip"}
                     <span aria-hidden> · </span>
                     <span className="sr-only">, {t("certificates.transcript.completed")}: </span>
-                    {date(c.issued_at)}
+                    {issuedDay(c)}
                   </p>
                   <p className="mt-1 font-mono text-xs">
                     <span className="sr-only">{t("certificates.transcript.number")} </span>
@@ -118,7 +121,7 @@ export default function TranscriptPage() {
                   <tr key={c.id} className="border-b border-edge align-top">
                     <td className="py-2.5 pr-3 font-medium">{c.course_title ?? c.archived_course_title ?? "—"}</td>
                     <td className="py-2.5 pr-3">{c.school_name || "Equip"}</td>
-                    <td className="whitespace-nowrap py-2.5 pr-3">{date(c.issued_at)}</td>
+                    <td className="whitespace-nowrap py-2.5 pr-3">{issuedDay(c)}</td>
                     <td className="whitespace-nowrap py-2.5 font-mono text-xs">{c.certificate_number}</td>
                   </tr>
                 ))}

@@ -440,6 +440,10 @@ BEGIN
   IF current_user <> 'authenticated' THEN
     RETURN NEW;
   END IF;
+  IF OLD.deactivated_at IS NOT NULL THEN
+    RAISE EXCEPTION 'a deactivated account cannot be edited'
+      USING ERRCODE = 'check_violation';
+  END IF;
   IF NEW.id IS DISTINCT FROM OLD.id THEN
     RAISE EXCEPTION 'profiles.id is immutable from client writes'
       USING ERRCODE = 'check_violation';
@@ -462,6 +466,10 @@ BEGIN
   END IF;
   IF NEW.deactivated_at IS DISTINCT FROM OLD.deactivated_at THEN
     RAISE EXCEPTION 'profiles.deactivated_at can only be changed by an administrator'
+      USING ERRCODE = 'check_violation';
+  END IF;
+  IF NEW.deleted_at IS DISTINCT FROM OLD.deleted_at THEN
+    RAISE EXCEPTION 'profiles.deleted_at is recorded by the server'
       USING ERRCODE = 'check_violation';
   END IF;
   IF NEW.onboarding_completed_at IS DISTINCT FROM OLD.onboarding_completed_at THEN
@@ -712,6 +720,13 @@ CREATE TABLE public.chapters (
 
 
 --
+-- Name: COLUMN chapters.order_index; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.chapters.order_index IS 'For a lesson in no module: its place in the course, in the sequence it shares with modules.order_index. For a lesson in a module: its order among that module''s lessons only. See app/services/course_structure.build_spine.';
+
+
+--
 -- Name: cohort_courses; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -787,6 +802,7 @@ CREATE TABLE public.course_events (
     duration_minutes integer,
     series_id uuid,
     reminded_at timestamp with time zone,
+    time_zone character varying(64),
     CONSTRAINT course_events_duration_minutes_check CHECK (((duration_minutes IS NULL) OR ((duration_minutes >= 1) AND (duration_minutes <= 1440))))
 );
 
@@ -1097,6 +1113,7 @@ CREATE TABLE public.invitations (
     age_attested_at timestamp with time zone,
     age_attested_by uuid,
     token_hash text NOT NULL,
+    mailed_at timestamp with time zone,
     CONSTRAINT chk_invitations_age_attested_together CHECK (((age_attested_at IS NULL) = (age_attested_by IS NULL))),
     CONSTRAINT chk_invitations_course_matches_scope CHECK ((((scope = 'course'::text) AND (course_id IS NOT NULL)) OR ((scope <> 'course'::text) AND (course_id IS NULL)))),
     CONSTRAINT chk_invitations_fulfilled_at_matches_status CHECK (((status = 'fulfilled'::text) = (fulfilled_at IS NOT NULL))),
@@ -1171,6 +1188,13 @@ CREATE TABLE public.modules (
 
 
 --
+-- Name: COLUMN modules.order_index; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.modules.order_index IS 'This module''s place in its course, in the one sequence it shares with the course''s lessons that sit in no module (compared directly with their chapters.order_index). See app/services/course_structure.build_spine.';
+
+
+--
 -- Name: notifications; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1201,6 +1225,7 @@ CREATE TABLE public.org_settings (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_by uuid,
     organization_id uuid NOT NULL,
+    time_zone text,
     CONSTRAINT org_settings_default_grading_scheme_check CHECK ((default_grading_scheme = ANY (ARRAY['pass_fail'::text, 'percent'::text, 'five_point'::text, 'letter'::text]))),
     CONSTRAINT org_settings_default_pass_threshold_check CHECK (((default_pass_threshold >= (0)::numeric) AND (default_pass_threshold <= (100)::numeric)))
 );
@@ -1286,9 +1311,11 @@ CREATE TABLE public.profiles (
     city text,
     church text,
     email_off jsonb DEFAULT '[]'::jsonb NOT NULL,
+    deleted_at timestamp with time zone,
     CONSTRAINT chk_profiles_role CHECK ((role = ANY (ARRAY['admin'::text, 'director'::text, 'teacher'::text, 'student'::text]))),
     CONSTRAINT profiles_birth_date_floor_check CHECK (((birth_date IS NULL) OR (birth_date >= '1900-01-01'::date))),
     CONSTRAINT profiles_country_code_check CHECK (((country_code IS NULL) OR (country_code ~ '^[A-Z]{2}$'::text))),
+    CONSTRAINT profiles_deleted_is_deactivated_check CHECK (((deleted_at IS NULL) OR (deactivated_at IS NOT NULL))),
     CONSTRAINT profiles_email_off_check CHECK (((jsonb_typeof(email_off) = 'array'::text) AND (email_off <@ '["work_returned", "certificate_decided", "session_starting", "deadline_moved", "announcement"]'::jsonb))),
     CONSTRAINT profiles_locale_source_check CHECK ((locale_source = ANY (ARRAY['default'::text, 'detected'::text, 'chosen'::text]))),
     CONSTRAINT profiles_personal_text_lengths_check CHECK ((((time_zone IS NULL) OR ((char_length(time_zone) >= 1) AND (char_length(time_zone) <= 64))) AND ((phone IS NULL) OR ((char_length(phone) >= 4) AND (char_length(phone) <= 32))) AND ((region IS NULL) OR ((char_length(region) >= 1) AND (char_length(region) <= 100))) AND ((city IS NULL) OR ((char_length(city) >= 1) AND (char_length(city) <= 100))) AND ((church IS NULL) OR ((char_length(church) >= 1) AND (char_length(church) <= 200))))),
@@ -1310,6 +1337,13 @@ COMMENT ON COLUMN public.profiles.role IS 'The most this account may do anywhere
 --
 
 COMMENT ON COLUMN public.profiles.organization_id IS 'Deprecated 2026-10-03: membership lives in organization_members. Still written (when empty) by the phase-2 backend so the previous release keeps working on rollback; dropped in phase 4 of the same plan.';
+
+
+--
+-- Name: COLUMN profiles.deleted_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.profiles.deleted_at IS 'Set when the owner deleted the account themselves (DELETE /users/me); always together with deactivated_at. Others are shown «Deleted user» with no email or photo; the owner may restore it through a link emailed to the account''s address. See 20261016130000.';
 
 
 --
@@ -4303,6 +4337,13 @@ CREATE POLICY profiles_service_role_full ON public.profiles TO service_role USIN
 --
 
 CREATE POLICY profiles_update_own_safe_fields ON public.profiles FOR UPDATE TO authenticated USING ((( SELECT auth.uid() AS uid) = id)) WITH CHECK ((( SELECT auth.uid() AS uid) = id));
+
+
+--
+-- Name: POLICY profiles_update_own_safe_fields ON profiles; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON POLICY profiles_update_own_safe_fields ON public.profiles IS 'Self-update is gated on row ownership. Column-level immutability (id / role / email / created_at / organization_id / deactivated_at / deleted_at / onboarding_completed_at / phone), and the rule that a deactivated account edits nothing, are enforced by trg_profiles_protect_immutable_fields, which only fires for the authenticated role so service-mediated writes (FastAPI postgres connection, service_role JWT) can still legitimately change those columns. The safe fields that remain are full_name, avatar_url, preferred_locale, locale_source, time_zone, time_zone_source, birth_date, country_code, region, city, church and email_off.';
 
 
 --

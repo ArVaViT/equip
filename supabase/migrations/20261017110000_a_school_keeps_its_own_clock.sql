@@ -1,0 +1,21 @@
+-- A school keeps its own clock.
+--
+-- The dates a school puts its name to — the last day of an invitation, and
+-- later the day on a certificate or a closed ведомость — are days on the
+-- school's calendar, not on UTC's: a link that dies at 21:00 in Indianapolis
+-- has already died "tomorrow" by UTC. Until now the one school's zone was a
+-- constant in the code (`services/email/invitation._SCHOOL_TIMEZONE`); this is
+-- step 6 of ADR-0012 ("the school owns the clock").
+--
+-- NULL means the school has not said, and the platform keeps its previous
+-- rule: America/Indiana/Indianapolis (`services/school_clock.py`). No row is
+-- written here: the one school there is already gets that zone, and a new
+-- school is not silently put on Indiana's clock by a default it never chose.
+--
+-- Written only by the backend (`PUT /admin/org-settings`, director only),
+-- which accepts an IANA name the server can resolve; the table has no client
+-- write policy.
+--
+-- Must be applied before the backend that reads it is deployed.
+
+ALTER TABLE public.org_settings ADD COLUMN IF NOT EXISTS time_zone text;

@@ -15,6 +15,7 @@ from app.core.config import env_flag, settings
 from app.core.logging import setup_logging, vercel_request_id
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security import SecurityHeadersMiddleware
+from app.services.deleted_person import request_locale, set_request_locale
 
 setup_logging()
 
@@ -201,6 +202,9 @@ async def log_requests(request: Request, call_next):
     # WARNING+ log emitted during this request with the same id.
     request_id = request.headers.get("x-vercel-id") or uuid.uuid4().hex
     token = vercel_request_id.set(request_id)
+    # The language a deleted person's «Deleted user» is printed in, wherever
+    # a roster or a gradebook shows them (``app.services.deleted_person``).
+    locale_token = set_request_locale(request.headers.get("accept-language"))
     try:
         start = time.time()
         response = await call_next(request)
@@ -233,6 +237,7 @@ async def log_requests(request: Request, call_next):
         return response
     finally:
         vercel_request_id.reset(token)
+        request_locale.reset(locale_token)
 
 
 def _extract_course_id(path: str) -> str | None:

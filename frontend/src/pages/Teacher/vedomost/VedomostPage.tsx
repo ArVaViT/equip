@@ -10,20 +10,20 @@ import { toast } from "@/lib/toast"
 import type { GradeSheet } from "@/types"
 import { printedResult } from "./resultLabel"
 import { formatPercent } from "@/i18n/number"
-import { zonedParts } from "@/i18n/timeZone"
+import { documentDay } from "@/i18n/format"
 import { useLatestRequest } from "@/hooks/useLatestRequest"
 import "./print.css"
 
 /**
- * `dd.mm.yyyy` — the form every Russian-language document uses — on the
- * reader's calendar, so the paper carries the day the screens show.
+ * `dd.mm.yyyy` — the form every Russian-language document uses — of the day
+ * the server fixed on the school's clock (`finalized_on`), so the paper and
+ * every screen carry the same day wherever they are read. A sheet from an
+ * older server falls back to the instant's day on the reader's clock.
  */
-function formatDate(iso: string | null): string {
-  if (!iso) return "—"
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return "—"
-  const p = zonedParts(d)
-  return `${String(p.day).padStart(2, "0")}.${String(p.month).padStart(2, "0")}.${p.year}`
+function formatDate(day: string | null | undefined, iso: string | null): string {
+  const d = documentDay(day, iso)
+  if (!d) return "—"
+  return `${d.slice(8, 10)}.${d.slice(5, 7)}.${d.slice(0, 4)}`
 }
 
 /**
@@ -146,7 +146,7 @@ function VedomostPage() {
     <div className="container mx-auto max-w-4xl px-4 py-6">
       <div className="no-print mb-6 flex items-center justify-between gap-3">
         <p className="text-sm text-ink-muted">
-          {t("vedomost.closedOn", { date: formatDate(sheet.finalized_at) })}
+          {t("vedomost.closedOn", { date: formatDate(sheet.finalized_on, sheet.finalized_at) })}
         </p>
         <Button onClick={() => window.print()}>
           <Printer className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
@@ -174,7 +174,7 @@ function VedomostPage() {
             {sheet.cohort_start && (
               <span className="text-ink-muted">
                 {" "}
-                ({formatDate(sheet.cohort_start)} — {formatDate(sheet.cohort_end)})
+                ({formatDate(sheet.cohort_start_on, sheet.cohort_start)} — {formatDate(sheet.cohort_end_on, sheet.cohort_end)})
               </span>
             )}
           </dd>
@@ -241,7 +241,7 @@ function VedomostPage() {
         </div>
 
         <p className="mt-8 text-xs text-ink-muted">
-          {docT("vedomost.closedOn", { date: formatDate(sheet.finalized_at) })}
+          {docT("vedomost.closedOn", { date: formatDate(sheet.finalized_on, sheet.finalized_at) })}
         </p>
       </article>
     </div>

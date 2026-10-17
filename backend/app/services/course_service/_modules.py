@@ -6,11 +6,11 @@ import uuid
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import func
-
 from app.models.course import Chapter, Course, Module
 from app.schemas.locale import normalize_locale
 from app.services.content_versions import dual_write_entity_content
+from app.services.course_service._outline import OutlinePlaceError, live_spine, next_outline_order, write_outline
+from app.services.course_structure import places_of
 from app.services.translation.resolve_for_display import populate_module_texts
 
 if TYPE_CHECKING:
@@ -20,13 +20,14 @@ if TYPE_CHECKING:
 
 
 def _next_module_order(db: Session, course_id: str) -> int:
-    """Return the tail ``order_index`` for a new module on this course."""
-    current_max = (
-        db.query(func.max(Module.order_index))
-        .filter(Module.course_id == course_id, Module.deleted_at.is_(None))
-        .scalar()
-    )
-    return 0 if current_max is None else current_max + 1
+    """Return the tail ``order_index`` for a new module on this course.
+
+    Past the lessons that sit in no module as well as past the other
+    modules: the two share one sequence (``course_structure``), and a new
+    module numbered only past the modules would land in front of a loose
+    lesson the teacher had put at the end.
+    """
+    return next_outline_order(db, course_id)
 
 
 def _course_source_locale(db: Session, course_id: str) -> str | None:
@@ -72,6 +73,13 @@ def create_module(db: Session, course_id: str, data: ModuleCreate) -> Module:
 
 def update_module(db: Session, module: Module, data: ModuleUpdate) -> Module:
     patch = data.model_dump(exclude_unset=True)
+    # A module's place is a place in the course's shared sequence: only the
+    # outline writes it (``OutlinePlaceError``). The number it already has
+    # — a client echoing the row back — or ``null`` changes nothing.
+    if "order_index" in patch:
+        wanted = patch.pop("order_index")
+        if wanted is not None and wanted != module.order_index:
+            raise OutlinePlaceError("A module's place in the course is set through PUT /courses/{id}/outline")
     # Text fields live in cv. Pop them off the patch before
     # setattr-loop on the (now-text-less) ORM row.
     text_patch: dict[str, str | None] = {}
@@ -126,9 +134,23 @@ def delete_module(db: Session, module: Module) -> None:
     old implementation resynced because this call used to delete
     quizzes.
     """
+    # The freed lessons take the module's place in the course, in the
+    # module's order. Their numbers alone cannot say that: inside a module
+    # a number only orders the module's own lessons, and one appended
+    # late carries the course's highest — freed as is, it would jump to
+    # the end of the course.
+    places: list[tuple[str | None, list[str]]] = []
+    for place_module, ids in places_of(live_spine(db, module.course_id)):
+        if place_module == module.id:
+            places.extend((None, [chapter_id]) for chapter_id in ids)
+        else:
+            places.append((place_module, ids))
     module.deleted_at = datetime.now(UTC)
     db.query(Chapter).filter(
         Chapter.module_id == module.id,
         Chapter.deleted_at.is_(None),
     ).update({Chapter.module_id: None}, synchronize_session=False)
+    db.flush()
+    db.expire_all()
+    write_outline(db, module.course_id, places)
     db.commit()

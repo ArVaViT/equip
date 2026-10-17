@@ -23,10 +23,25 @@ from app.schemas.locale import LocaleCode, normalize_locale
 from app.services import certificate_service
 from app.services.certificate_readiness import certificate_blockers
 from app.services.certificate_service import CERTIFICATE_LOCALE
+from app.services.deleted_person import shown_email, shown_name
 from app.services.my_grade_service import latest_enrollment
+from app.services.school_clock import SchoolClocks
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
 router = APIRouter(prefix="/certificates", tags=["certificates"])
+
+
+def _document(db: Session, cert: Certificate, clocks: SchoolClocks | None = None) -> CertificateResponse:
+    """The row as the API answers it, with the day it was issued on the school's clock.
+
+    ``issued_on`` is what every surface prints — the document, the
+    transcript, the list, the verification page, the LinkedIn link. The
+    instant alone made each reader's screen pick the day: a certificate
+    signed at 23:30 in Indianapolis was dated the next day in Kyiv.
+    """
+    clocks = clocks or SchoolClocks(db)
+    base = CertificateResponse.model_validate(cert, from_attributes=True)
+    return base.model_copy(update={"issued_on": clocks.day(cert.organization_id, cert.issued_at)})
 
 
 def _localize_cert_responses(
@@ -53,9 +68,10 @@ def _localize_cert_responses(
         return []
     course_ids = sorted({str(c.course_id) for c in certs if c.course_id})
     title_by_course = fetch_course_titles_by_id(db, course_ids, display_locale=display_locale)
+    clocks = SchoolClocks(db)
     out: list[CertificateResponse] = []
     for cert in certs:
-        base = CertificateResponse.model_validate(cert, from_attributes=True)
+        base = _document(db, cert, clocks)
         title = cert.course_title or (title_by_course.get(str(cert.course_id)) if cert.course_id else None)
         out.append(base.model_copy(update={"course_title": title}) if title else base)
     return out
@@ -104,8 +120,13 @@ def request_certificate(
     course_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Certificate:
-    """Request a certificate (creates a pending request).
+) -> CertificateResponse:
+    """Request a certificate (creates a pending request)."""
+    return _document(db, _request_certificate_row(db, course_id, current_user))
+
+
+def _request_certificate_row(db: Session, course_id: str, current_user: User) -> Certificate:
+    """The request itself.
 
     Re-request after rejection: the cert row carries a ``(user_id,
     course_id)`` unique constraint, so we cannot just INSERT a fresh
@@ -302,18 +323,24 @@ def _enrich_pending_certs(
     course_ids = {str(c.course_id) for c in certs if c.course_id}
     user_meta: dict[str, tuple[str | None, str]] = {}
     if student_ids or approver_ids:
-        for uid, full_name, email in (
-            db.query(User.id, User.full_name, User.email).filter(User.id.in_(student_ids | approver_ids)).all()
+        for uid, full_name, email, deleted_at in (
+            db.query(User.id, User.full_name, User.email, User.deleted_at)
+            .filter(User.id.in_(student_ids | approver_ids))
+            .all()
         ):
-            user_meta[str(uid)] = (full_name, email)
+            # «Deleted user» for an account its owner deleted. What an issued
+            # certificate itself carries (``cert.student_name``) is frozen and
+            # is not this — see ``app.services.deleted_person``.
+            user_meta[str(uid)] = (shown_name(full_name, deleted_at), shown_email(email, deleted_at))
     course_titles = fetch_course_titles_by_id(db, sorted(course_ids), display_locale=display_locale)
     blockers_by_cert = _blockers_for(db, certs)
 
+    clocks = SchoolClocks(db)
     out: list[CertificateResponse] = []
     for cert in certs:
         student = user_meta.get(str(cert.user_id))
         approver = user_meta.get(str(cert.teacher_approved_by)) if cert.teacher_approved_by else None
-        base = CertificateResponse.model_validate(cert, from_attributes=True)
+        base = _document(db, cert, clocks)
         out.append(
             base.model_copy(
                 update={
@@ -429,7 +456,7 @@ def teacher_approve_certificate(
     cert_id: UUID,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
-) -> Certificate:
+) -> CertificateResponse:
     """First step of the two-stage approval workflow.
 
     The teacher who owns the course must confirm the student earned the
@@ -438,7 +465,7 @@ def teacher_approve_certificate(
     certificate row serializes parallel approvers (see
     ``certificate_service._load_cert_or_404``).
     """
-    return certificate_service.teacher_approve(db, cert_id, teacher)
+    return _document(db, certificate_service.teacher_approve(db, cert_id, teacher))
 
 
 @router.put(
@@ -456,12 +483,12 @@ def admin_approve_certificate(
     cert_id: UUID,
     director: User = Depends(require_director),
     db: Session = Depends(get_db),
-) -> Certificate:
+) -> CertificateResponse:
     """Second step. Generates the public ``certificate_number`` and
     fires a ``certificate_approved`` notification to the student. The
     ``FOR UPDATE`` lock prevents double-issuance from concurrent director
     clicks."""
-    return certificate_service.admin_approve(db, cert_id, director)
+    return _document(db, certificate_service.admin_approve(db, cert_id, director))
 
 
 @router.put(
@@ -479,11 +506,11 @@ def reject_certificate(
     cert_id: UUID,
     current_user: User = Depends(require_teacher),
     db: Session = Depends(get_db),
-) -> Certificate:
+) -> CertificateResponse:
     """Either reviewer (teacher or admin) can reject up until issuance.
     Cannot be reversed — a rejected certificate stays rejected and the
     student must re-request."""
-    return certificate_service.reject(db, cert_id, current_user)
+    return _document(db, certificate_service.reject(db, cert_id, current_user))
 
 
 @router.get(
@@ -564,7 +591,8 @@ def verify_certificate(
     return CertificateVerifyResponse(
         valid=True,
         certificate_number=cert.certificate_number,
-        user_name=frozen_name or (user.full_name if user else None),
+        user_name=frozen_name or (shown_name(user.full_name, user.deleted_at) if user else None),
         course_title=course_title,
         issued_at=cert.issued_at,
+        issued_on=SchoolClocks(db).day(cert.organization_id, cert.issued_at),
     )

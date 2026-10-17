@@ -19,7 +19,7 @@ a nested dict is a migration nobody needs.
 
 import logging
 import uuid
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 from sqlalchemy import inspect
@@ -42,19 +42,106 @@ I18N_KEY = "i18n"
 TRANSLATE = "$t"
 
 
+#: A parameter that is a teacher's text — the title of an announcement or
+#: an event — read when the row is shown, from released rows only:
+#: ``{CONTENT: {"type": "announcement", "id": …, "field": "title",
+#: "else": "fallback.announcement"}}``.
+#:
+#: It used to be resolved once, at fan-out, and frozen into the row. On a
+#: live course a new post is not released until every language has it,
+#: and the fan-out handed the reader of the author's language the author's
+#: words from the staging table meanwhile — an early copy in one language,
+#: which is exactly what the release rule forbids (the calendar tried the
+#: same and was reverted, b38d7556). Frozen, the row then kept «an
+#: announcement» for good once the title did come out. Read at render
+#: time, it says «an announcement» until the title is released and the
+#: title from then on, in whatever language the reader is in by then; a
+#: held edit to a released title keeps the released wording until the
+#: edit itself is out.
+CONTENT = "$cv"
+
+#: ``(entity_type, entity_id, field)`` — what a ``CONTENT`` parameter names.
+ContentKey = tuple[str, str, str]
+
+
 def translatable(key: str) -> dict[str, str]:
     """A parameter that is a catalog key, translated at render."""
     return {TRANSLATE: key}
 
 
-def resolve_params(params: dict[str, Any], locale: str) -> dict[str, Any]:
-    """Every ``translatable`` parameter in the reader's language."""
-    return {
-        name: t(locale, value[TRANSLATE])
-        if isinstance(value, dict) and isinstance(value.get(TRANSLATE), str)
-        else value
-        for name, value in params.items()
-    }
+def content_text(entity_type: str, entity_id: uuid.UUID | str, field: str, *, fallback_key: str) -> dict[str, Any]:
+    """A parameter that is a teacher's text, read from released rows at
+    render; ``fallback_key`` names it in the catalog until it is out."""
+    return {CONTENT: {"type": entity_type, "id": str(entity_id), "field": field, "else": fallback_key}}
+
+
+def _content_ref(value: Any) -> tuple[ContentKey, str] | None:
+    ref = value.get(CONTENT) if isinstance(value, dict) else None
+    if not isinstance(ref, dict):
+        return None
+    etype, eid, field, fallback_key = (ref.get("type"), ref.get("id"), ref.get("field"), ref.get("else"))
+    if not (
+        isinstance(etype, str) and isinstance(eid, str) and isinstance(field, str) and isinstance(fallback_key, str)
+    ):
+        return None
+    return (etype, eid, field), fallback_key
+
+
+def released_texts(db: Session, params_list: Iterable[Mapping[str, Any]], locale: str) -> dict[ContentKey, str]:
+    """Every ``content_text`` parameter in ``params_list``, as a reader in
+    ``locale`` may read it now: released rows only, never the staging
+    table. One query per (type, field), however many rows ask.
+
+    Nothing comes back for a text that has no released version in the
+    reader's language — the render says its catalog name instead.
+    """
+    from app.services.content_versions import fetch_cv_entity_texts_with_fallback
+
+    wanted: dict[tuple[str, str], set[str]] = {}
+    for params in params_list:
+        for value in params.values():
+            found = _content_ref(value)
+            if found is not None:
+                (etype, eid, field), _ = found
+                wanted.setdefault((etype, field), set()).add(eid)
+    out: dict[ContentKey, str] = {}
+    for (etype, field), ids in wanted.items():
+        texts = fetch_cv_entity_texts_with_fallback(
+            db,
+            entity_type=etype,
+            entity_ids=sorted(ids),
+            fields=[field],
+            display_locale=locale,
+            # The reader's language is the only one they may be given; on a
+            # deploy that does not translate, ``auto`` serves the one text
+            # there is.
+            source_locale=locale,
+            include_author_edits=False,
+        )
+        for (eid, fld), text in texts.items():
+            if text:
+                out[(etype, eid, fld)] = text
+    return out
+
+
+def resolve_params(
+    params: Mapping[str, Any], locale: str, texts: Mapping[ContentKey, str] | None = None
+) -> dict[str, Any]:
+    """Every ``translatable`` and ``content_text`` parameter in the
+    reader's language. ``texts`` is what ``released_texts`` found; a
+    teacher's text it does not have is named by its catalog fallback."""
+    out: dict[str, Any] = {}
+    for name, value in params.items():
+        if isinstance(value, dict) and isinstance(value.get(TRANSLATE), str):
+            out[name] = t(locale, value[TRANSLATE])
+            continue
+        found = _content_ref(value)
+        if found is not None:
+            key, fallback_key = found
+            out[name] = (texts or {}).get(key) or t(locale, fallback_key)
+            continue
+        out[name] = value
+    return out
 
 
 def notification_text(key: str, **params: Any) -> dict[str, Any]:
@@ -66,20 +153,38 @@ def notification_text(key: str, **params: Any) -> dict[str, Any]:
     return {"key": key, "params": params}
 
 
-def render_notification(notification: Notification, locale: str) -> tuple[str, str]:
+def _recipe(notification: Notification) -> tuple[str, dict[str, Any]] | None:
+    recipe = (notification.meta or {}).get(I18N_KEY) if isinstance(notification.meta, dict) else None
+    if not isinstance(recipe, dict) or not isinstance(recipe.get("key"), str):
+        return None
+    params = recipe.get("params") or {}
+    return recipe["key"], params if isinstance(params, dict) else {}
+
+
+def render_notifications(db: Session, notifications: Iterable[Notification], locale: str) -> list[tuple[str, str]]:
+    """``render_notification`` for a page of rows, with the teachers' texts
+    they name read in one pass."""
+    rows = list(notifications)
+    texts = released_texts(db, [r[1] for r in map(_recipe, rows) if r is not None], locale)
+    return [render_notification(row, locale, texts) for row in rows]
+
+
+def render_notification(
+    notification: Notification, locale: str, texts: Mapping[ContentKey, str] | None = None
+) -> tuple[str, str]:
     """Title and message for this reader, right now.
+
+    ``texts`` carries the released teacher's texts the recipe names (see
+    ``released_texts``); without it they are named by their fallback.
 
     Falls back to the stored text for rows written before notifications
     carried a recipe, and for any key that has since left the catalog.
     """
-    recipe = (notification.meta or {}).get(I18N_KEY) if isinstance(notification.meta, dict) else None
-    if not isinstance(recipe, dict) or not isinstance(recipe.get("key"), str):
+    recipe = _recipe(notification)
+    if recipe is None:
         return notification.title, notification.message
-    key = recipe["key"]
-    params = recipe.get("params") or {}
-    if not isinstance(params, dict):
-        params = {}
-    params = resolve_params(params, locale)
+    key, raw_params = recipe
+    params = resolve_params(raw_params, locale, texts)
     try:
         title = t(locale, f"{key}.title", **params)
         message = t(locale, f"{key}.body", **params)

@@ -3,9 +3,10 @@ from decimal import Decimal
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.schemas._request import RequestModel
+from app.schemas.calendar import _known_time_zone
 
 
 class OrgSettingsResponse(BaseModel):
@@ -24,6 +25,8 @@ class OrgSettingsResponse(BaseModel):
     default_pass_threshold: Decimal
     #: ``{"letter": [[90, "A"], ...], "five_point": [[90, "5"], ...]}``.
     grade_bands: dict[str, Any] = {}
+    #: The school's IANA zone, or ``None`` while it has not chosen one.
+    time_zone: str | None = None
     updated_at: datetime | None = None
     updated_by: UUID | None = None
 
@@ -45,3 +48,8 @@ class OrgSettingsUpdate(RequestModel):
     #: Keyed by scheme. Validated in the route against the scheme it belongs to
     #: and against the pass line being written in the same request.
     grade_bands: dict[str, Any] | None = None
+    #: An IANA name ("Europe/Kyiv"); ``null`` returns the school to the
+    #: platform's default clock. Refused when the server cannot resolve it.
+    time_zone: str | None = Field(None, max_length=64)
+
+    _time_zone = field_validator("time_zone")(_known_time_zone)

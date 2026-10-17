@@ -25,12 +25,14 @@ from app.services.course_service import (
     get_module,
     get_teacher_courses,
 )
+from app.services.deleted_person import shown_avatar, shown_name
 from app.services.memberships import active_memberships
 from app.services.reading_time import course_reading_minutes
 from app.services.translation.resolve_for_display import (
     build_localized_course_response_with_tree,
     build_localized_course_summaries,
     build_localized_module_response,
+    populate_spine_texts,
     should_apply_course_translation_overlay,
 )
 
@@ -184,6 +186,10 @@ def get_course_detail(
                 context={"resource_type": "course", "resource_id": course_id},
             )
         response.headers["Vary"] = "Accept-Language"
+        # The author's own view: each field's source text (the course's
+        # language first, then the newest a person wrote), a held edit included — not the machine's translation of an edit they
+        # wrote in another language, and not an empty name before it lands.
+        populate_spine_texts(db, [course], prefer_human=True)
         return CourseResponse.model_validate(course, from_attributes=True)
     response.headers["Vary"] = "Accept-Language"
     if not should_apply_course_translation_overlay(course=course, current_user=current_user):
@@ -255,7 +261,7 @@ def get_course_author(
     for either.
     """
     course = _course_a_reader_may_see(db, course_id, current_user)
-    author = db.query(User.full_name, User.avatar_url).filter(User.id == course.created_by).first()
+    author = db.query(User.full_name, User.avatar_url, User.deleted_at).filter(User.id == course.created_by).first()
     organization = None
     if course.organization_id is not None:
         organization = (
@@ -264,8 +270,10 @@ def get_course_author(
             .first()
         )
     return CourseAuthor(
-        name=author.full_name if author else None,
-        avatar_url=author.avatar_url if author else None,
+        # A teacher who deleted their account leaves the course with the
+        # school, and the tab says «Deleted user» with no face.
+        name=shown_name(author.full_name, author.deleted_at) if author else None,
+        avatar_url=shown_avatar(author.avatar_url, author.deleted_at) if author else None,
         school=organization.public_name if organization else None,
         organization_slug=organization.slug if organization else None,
         organization_logo_url=organization.logo_url if organization else None,
@@ -327,13 +335,16 @@ def get_module_detail(
                 context={"resource_type": "course", "resource_id": course_id},
             )
         # ``?source=1`` returns the teacher-authored source text regardless
-        # of overlay locale. Read the earliest active human-origin row
-        # per field; fall back to the earliest of any origin so a content
-        # row written by an importer still surfaces.
+        # of overlay locale: the person-written row in the course's language,
+        # else the newest person-written one (the ranking of
+        # ``content_versions.write.field_source_row``) — the earliest, as
+        # this read before, reopened the editor on the wording an edit in
+        # another language had replaced. Falls back to the earliest of any
+        # origin so a content row written by an importer still surfaces.
         from app.models.content_version import ContentVersion, ContentVersionStatus
 
         cv_rows = (
-            db.query(ContentVersion.field, ContentVersion.text, ContentVersion.origin)
+            db.query(ContentVersion.field, ContentVersion.text, ContentVersion.origin, ContentVersion.locale)
             .filter(
                 ContentVersion.entity_type == "module",
                 ContentVersion.entity_id == str(module.id),
@@ -345,11 +356,15 @@ def get_module_detail(
             .all()
         )
         human_by_field: dict[str, str] = {}
+        human_in_course_locale: dict[str, str] = {}
         any_by_field: dict[str, str] = {}
-        for field, text, origin in cv_rows:
+        for field, text, origin, locale in cv_rows:
             any_by_field.setdefault(field, text)
             if origin == "human":
-                human_by_field.setdefault(field, text)
+                # Oldest first, so the last one kept is the newest.
+                human_by_field[field] = text
+                if locale == course_source_locale:
+                    human_in_course_locale[field] = text
         # ``?source=1`` is the editor asking for its own material. An
         # edit held back from readers until its translations land is
         # still this teacher's own text, and it outranks what is
@@ -364,10 +379,15 @@ def get_module_detail(
             fields=["title", "description"],
         )
         module.title = (
-            held.get((str(module.id), "title")) or human_by_field.get("title") or any_by_field.get("title") or ""
+            held.get((str(module.id), "title"))
+            or human_in_course_locale.get("title")
+            or human_by_field.get("title")
+            or any_by_field.get("title")
+            or ""
         )
         module.description = (
             held.get((str(module.id), "description"))
+            or human_in_course_locale.get("description")
             or human_by_field.get("description")
             or any_by_field.get("description")
         )

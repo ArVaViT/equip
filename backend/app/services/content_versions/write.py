@@ -98,10 +98,24 @@ def record_human_version(
     locale: str,
     text: str,
     authored_by: uuid.UUID | None = None,
+    course_locale: str | None = None,
 ) -> ContentVersion:
     """Insert (or supersede + insert) a human-authored version.
 
     Returns the row that's now active for this key.
+
+    ``course_locale`` — the course's declared language — marks this as the
+    author's edit of the field rather than a row written for one locale.
+    An author edits the field they are shown, and they are shown its
+    source text; when they write the new wording in another language
+    (the detector files it by what it is in), the edit replaces that
+    source. Without this the previous wording stayed active in its own
+    locale: the pipeline kept translating outward from it, its readers
+    kept reading it, and the editor reopened on it — the edit looked lost
+    and the source stayed old without the author knowing. See
+    :func:`replaced_source_row`. Hand translations in other locales are
+    left alone, as they are when the source is edited in its own
+    language.
 
     Idempotent: when the active row already has identical text +
     origin ``human``, nothing changes and the existing row is
@@ -128,11 +142,33 @@ def record_human_version(
             db.flush()
         return existing
 
+    # Read before anything is written: once the new row is in, the
+    # ranking below could name it, or a hand translation, instead.
+    replaced = (
+        replaced_source_row(
+            db,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            field=field,
+            edit_locale=locale,
+            course_locale=course_locale,
+        )
+        if course_locale is not None
+        else None
+    )
+    if replaced is not None and replaced.text == text:
+        # The source's own words, merely filed under another language (a
+        # short heading the detector could not place): nothing was edited.
+        return replaced
+
     new_id = uuid.uuid4()
-    if existing is not None:
+    if existing is not None or replaced is not None:
         _defer_fk_if_sqlite(db)
+    if existing is not None:
         existing.superseded_by = new_id
-        db.flush()
+    if replaced is not None:
+        replaced.superseded_by = new_id
+    db.flush()
     new_row = ContentVersion(
         id=new_id,
         entity_type=entity_type,
@@ -147,6 +183,71 @@ def record_human_version(
     db.add(new_row)
     db.flush()
     return new_row
+
+
+def field_source_row(
+    db: Session,
+    *,
+    entity_type: str,
+    entity_id: str,
+    field: str,
+    course_locale: str,
+) -> ContentVersion | None:
+    """The human row the field is translated from.
+
+    The same ranking the pipeline plans by (``registry._authored_texts``):
+    a row in the course's declared language first, then the newest
+    written — the author's latest words, when an edit in another language
+    has replaced the source beside an older hand translation. ``None``
+    when no person has written the field.
+    """
+    rows = (
+        db.query(ContentVersion)
+        .filter(
+            ContentVersion.entity_type == entity_type,
+            ContentVersion.entity_id == entity_id,
+            ContentVersion.field == field,
+            ContentVersion.origin == "human",
+            ContentVersion.status == ContentVersionStatus.OK,
+            ContentVersion.superseded_by.is_(None),
+        )
+        .all()
+    )
+    return pick_field_source(rows, course_locale=course_locale)
+
+
+def pick_field_source(rows: Sequence[ContentVersion], *, course_locale: str) -> ContentVersion | None:
+    """``field_source_row``'s ranking over one field's active human rows,
+    for a caller that read many fields at once."""
+    live = [r for r in rows if r.text and r.text.strip()]
+    if not live:
+        return None
+    in_course_locale = [r for r in live if r.locale == course_locale]
+    if in_course_locale:
+        return in_course_locale[0]
+    return max(live, key=lambda r: r.created_at)
+
+
+def replaced_source_row(
+    db: Session,
+    *,
+    entity_type: str,
+    entity_id: str,
+    field: str,
+    edit_locale: str,
+    course_locale: str,
+) -> ContentVersion | None:
+    """The source row an author's edit written in ``edit_locale`` replaces.
+
+    ``None`` when the edit is in the source's own language — then the
+    ordinary same-locale supersession is the whole story.
+    """
+    source = field_source_row(
+        db, entity_type=entity_type, entity_id=entity_id, field=field, course_locale=course_locale
+    )
+    if source is None or source.locale == edit_locale:
+        return None
+    return source
 
 
 def record_mt_version(

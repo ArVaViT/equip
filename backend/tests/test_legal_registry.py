@@ -178,11 +178,11 @@ def test_a_notice_only_revision_is_announced_and_not_signed(monkeypatch) -> None
     privacy = document_spec("privacy")
     patched = dataclasses.replace(
         privacy,
-        revisions=(*privacy.revisions, Revision("2.1", date(2026, 10, 1), consent=False)),
+        revisions=(*privacy.revisions, Revision("2.2", date(2027, 1, 1), consent=False)),
     )
     _rebind(monkeypatch, _registry_with(patched))
 
-    accepted = {("privacy", "2.0"), ("terms", "2.0")}
+    accepted = {("privacy", "2.1"), ("terms", "2.1")}
     assert outstanding_for("student", accepted) == ()
     assert [spec.slug for spec in notices_for("student", accepted)] == ["privacy"]
 
@@ -194,11 +194,11 @@ def test_the_same_revision_marked_material_does_cost_a_signature(monkeypatch) ->
     privacy = document_spec("privacy")
     patched = dataclasses.replace(
         privacy,
-        revisions=(*privacy.revisions, Revision("2.1", date(2026, 10, 1), consent=True)),
+        revisions=(*privacy.revisions, Revision("2.2", date(2027, 1, 1), consent=True)),
     )
     _rebind(monkeypatch, _registry_with(patched))
 
-    accepted = {("privacy", "2.0"), ("terms", "2.0")}
+    accepted = {("privacy", "2.1"), ("terms", "2.1")}
     assert [spec.slug for spec in outstanding_for("student", accepted)] == ["privacy"]
     assert notices_for("student", accepted) == ()
 

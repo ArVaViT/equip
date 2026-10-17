@@ -69,6 +69,7 @@ from app.services.certificate_readiness import (
     certificate_blockers,
     retake_would_help,
 )
+from app.services.deleted_person import shown_email, shown_name
 from app.services.grade_calculator import (
     calculate_all_student_grades,
     calculate_student_grade_for_course,
@@ -87,6 +88,7 @@ from app.services.grading_queue import assignment_work, pending_summary, waiting
 from app.services.grading_scheme import effective_bands, get_org_settings, validate_scheme_threshold
 from app.services.my_grade_service import build_my_course_grade, latest_enrollment
 from app.services.notification_service import create_notification, notification_text
+from app.services.school_clock import day_on, school_time_zone
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id, populate_spine_texts
 from app.services.user_locale import preferred_locale_of
 
@@ -348,7 +350,11 @@ def _sheet_response(db: Session, sheet: GradeSheet) -> GradeSheetResponse:
     renamed.
     """
     rows = db.query(GradeSheetRow).filter(GradeSheetRow.sheet_id == sheet.id).all()
+    school_zone = school_time_zone(db, sheet.organization_id)
     return GradeSheetResponse(
+        finalized_on=day_on(school_zone, sheet.finalized_at),
+        cohort_start_on=day_on(school_zone, sheet.cohort_start),
+        cohort_end_on=day_on(school_zone, sheet.cohort_end),
         **{
             k: getattr(sheet, k)
             for k in (
@@ -681,8 +687,8 @@ def get_calculated_grade(
 
     return StudentCalculatedGrade(
         student_id=str(student_id),
-        student_name=user.full_name,
-        student_email=user.email,
+        student_name=shown_name(user.full_name, user.deleted_at),
+        student_email=shown_email(user.email, user.deleted_at),
         breakdown=breakdown,
         manual_grade=manual,
     )
@@ -1071,7 +1077,7 @@ def get_grade_history(
     student_uuid = as_uuid(student_id)
 
     rows = (
-        db.query(AuditLog, User.full_name)
+        db.query(AuditLog, User.full_name, User.deleted_at)
         .outerjoin(User, User.id == AuditLog.user_id)
         .filter(
             or_(
@@ -1101,7 +1107,8 @@ def get_grade_history(
     )
 
     out: list[dict[str, Any]] = []
-    for row, actor_name in rows:
+    for row, full_name, deleted_at in rows:
+        actor_name = shown_name(full_name, deleted_at)
         details = row.details or {}
         out.append(
             {

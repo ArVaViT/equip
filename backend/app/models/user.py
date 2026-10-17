@@ -98,6 +98,12 @@ class User(Base):
             "birth_date IS NULL OR birth_date >= '1900-01-01'",
             name="profiles_birth_date_floor_check",
         ),
+        # A deleted account is always a deactivated one, so every guard that
+        # reads ``deactivated_at`` covers it without knowing it exists.
+        CheckConstraint(
+            "deleted_at IS NULL OR deactivated_at IS NOT NULL",
+            name="profiles_deleted_is_deactivated_check",
+        ),
         # Not mirrored, like ``organizations.slug``: ``profiles_country_code_check``
         # is a regex (SQLite has no ``~``) and ``profiles_personal_text_lengths_check``
         # uses ``char_length`` (SQLite has ``length``). A constraint the test
@@ -193,6 +199,13 @@ class User(Base):
     # this back to NULL). Avoids the old half-state where data was hard-deleted
     # but the auth identity lingered and resurrected an empty profile.
     deactivated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    #: Set when the owner deleted the account themselves (``DELETE /users/me``),
+    #: always together with ``deactivated_at``. It changes two things an
+    #: administrator's deactivation does not: other people are shown «Deleted
+    #: user» with no email or photo (``app.services.deleted_person``), and the
+    #: owner may restore it through a link emailed to the account's address
+    #: (``POST /users/me/restore``).
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # When this person finished the first-run flow — picked a course, opened
     # the catalogue instead, or said "maybe later". NULL means they have not,
     # and the flow shows again. Until 2026-09 this lived only in the

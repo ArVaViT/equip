@@ -17,10 +17,15 @@ import type { Chapter, Course, Module } from "@/types"
  * here, gives both things a screen actually wants: the outline to render and
  * the flat order to navigate.
  *
- * Order of reading — the same rule the server and the teacher's report use:
- *   1. modules by `order_index`, and
- *   2. chapters inside a module by their own `order_index`,
- *   3. then the chapters that are in no module, as one group at the tail.
+ * Order of reading — one order for everybody, the one the teacher set; the
+ * same rule as `build_spine` in `backend/app/services/course_structure.py`:
+ *   1. a module and a lesson in no module each take a place in one sequence,
+ *      numbered in one shared space by their own `order_index` (ties: the
+ *      module first, then by id);
+ *   2. a module's lessons run under it by their own `order_index`, which is
+ *      never compared with anything outside the module.
+ * So a lesson the teacher put between two modules is read there — by the
+ * student, by "next lesson", and in the teacher's own editor.
  */
 
 /**
@@ -36,11 +41,12 @@ import type { Chapter, Course, Module } from "@/types"
  */
 export const UNGROUPED_GROUP_ID = "__ungrouped__"
 
-/** A heading in the outline: a module, or the tail of ungrouped lessons. */
+/** A stretch of the outline: a module with its lessons, or consecutive
+ *  lessons that sit in no module. */
 export interface CourseOutlineGroup {
-  /** The module's id, or `null` for the ungrouped tail. */
+  /** The module's id, or `null` for a stretch of ungrouped lessons. */
   moduleId: string | null
-  /** The module itself, or `null` for the ungrouped tail — so a caller can
+  /** The module itself, or `null` for ungrouped lessons — so a caller can
    *  reach for `title` / `due_date` without a second lookup. */
   module: Module | null
   /** This group's lessons, in reading order. */
@@ -48,9 +54,10 @@ export interface CourseOutlineGroup {
 }
 
 export interface CourseStructure {
-  /** The outline: modules in order, then the ungrouped tail if it has anything
-   *  in it. A module with no lessons keeps its place — an empty module is a
-   *  thing a teacher can see and fill, not a thing to hide. */
+  /** The outline in reading order. Ungrouped lessons appear where they were
+   *  put, as stretches between modules — so more than one group can have
+   *  `moduleId: null`. A module with no lessons keeps its place — an empty
+   *  module is a thing a teacher can see and fill, not a thing to hide. */
   groups: CourseOutlineGroup[]
   /** Every lesson of the course, flat, in reading order. This is the order
    *  "previous" and "next" walk. */
@@ -58,10 +65,6 @@ export interface CourseStructure {
 }
 
 const EMPTY: CourseStructure = { groups: [], chapters: [] }
-
-function byOrderIndex<T extends { order_index: number }>(a: T, b: T): number {
-  return a.order_index - b.order_index
-}
 
 /** Soft-deleted rows are dropped wherever a payload still carries them: a
  *  deleted lesson must not take up a place in the outline, and must never be
@@ -95,26 +98,55 @@ export function readCourseStructure(course: Course | null | undefined): CourseSt
     flat.push(chapter)
   }
 
-  const modules = (course.modules ?? []).filter(isLive).sort(byOrderIndex)
-  for (const module of modules) {
-    const chapters: Chapter[] = []
-    for (const chapter of [...(module.chapters ?? [])].sort(byOrderIndex)) {
-      push(chapter, chapters)
+  type Place = { order: number; kind: 0 | 1; id: string; module?: Module; chapter?: Chapter }
+  const places: Place[] = []
+  for (const module of (course.modules ?? []).filter(isLive)) {
+    places.push({ order: module.order_index, kind: 0, id: module.id, module })
+  }
+  for (const chapter of course.chapters ?? []) {
+    places.push({ order: chapter.order_index, kind: 1, id: chapter.id, chapter })
+  }
+  places.sort((a, b) => a.order - b.order || a.kind - b.kind || compareIds(a.id, b.id))
+
+  // Grouped lessons first into the `seen` set, so a stale payload holding a
+  // lesson both in its module and at the root shows it in its module.
+  const moduleLessons = new Map<string, Chapter[]>()
+  for (const place of places) {
+    if (!place.module) continue
+    const chapters = [...(place.module.chapters ?? [])].sort(
+      (a, b) => a.order_index - b.order_index || compareIds(a.id, b.id),
+    )
+    moduleLessons.set(place.module.id, chapters)
+  }
+  const grouped = new Set([...moduleLessons.values()].flat().filter(isLive).map((c) => c.id))
+
+  let loose: CourseOutlineGroup | null = null
+  for (const place of places) {
+    if (place.module) {
+      loose = null
+      const chapters: Chapter[] = []
+      for (const chapter of moduleLessons.get(place.module.id) ?? []) push(chapter, chapters)
+      groups.push({ moduleId: place.module.id, module: place.module, chapters })
+      continue
     }
-    groups.push({ moduleId: module.id, module, chapters })
+    const chapter = place.chapter!
+    if (grouped.has(chapter.id)) continue
+    if (!loose) {
+      loose = { moduleId: null, module: null, chapters: [] }
+      groups.push(loose)
+    }
+    push(chapter, loose.chapters)
   }
 
-  const ungrouped: Chapter[] = []
-  for (const chapter of [...(course.chapters ?? [])].sort(byOrderIndex)) {
-    push(chapter, ungrouped)
-  }
-  // No empty tail: a course whose every lesson sits in a module should not
-  // grow a nameless heading with nothing under it.
-  if (ungrouped.length > 0) {
-    groups.push({ moduleId: null, module: null, chapters: ungrouped })
-  }
+  // No empty stretch: a soft-deleted loose lesson must not leave a nameless
+  // group with nothing in it.
+  return { groups: groups.filter((g) => g.module !== null || g.chapters.length > 0), chapters: flat }
+}
 
-  return { groups, chapters: flat }
+/** Code-point order, as Python compares strings — the server breaks ties
+ *  the same way, so both read one order. */
+function compareIds(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0
 }
 
 /**
@@ -189,19 +221,11 @@ export function chapterEditHref(courseId: string, chapterId: string): string {
 
 /**
  * New `order_index` values for a list of lessons the teacher has just
- * reordered: the numbers the lessons already had, handed out again in the
- * new order.
- *
- * The number is course-wide, and it does more than order a list: a lesson
- * outside modules is placed among the modules by comparing its number with
- * where each module starts (`build_spine`). Renumbering a reordered list
- * from 0 moved those starting points, so sorting one module's lessons could
- * carry a loose lesson past a module the teacher never touched. Reusing the
- * same set of numbers keeps every other lesson where it was. Ties are
- * pulled apart so the new order is the only one the numbers can mean;
- * that can hand out a number another lesson holds, so with ties the
- * guarantee is only "no worse than before" (production had no ties,
- * 2026-09-29).
+ * reordered inside one module: the numbers the lessons already had, handed
+ * out again in the new order. Inside a module a number only orders that
+ * module's lessons, so any distinct ascending numbers would do; reusing the
+ * same ones keeps the request count down to the rows that moved. Ties are
+ * pulled apart so the new order is the only one the numbers can mean.
  */
 export function reuseOrderNumbers<T extends { order_index: number }>(before: T[], after: T[]): T[] {
   const numbers = before.map((c) => c.order_index).sort((a, b) => a - b)
@@ -211,4 +235,114 @@ export function reuseOrderNumbers<T extends { order_index: number }>(before: T[]
     last = n
     return { ...c, order_index: n }
   })
+}
+
+/**
+ * The course as the teacher's editor arranges it: one list of places, each a
+ * module (with its lessons) or a single lesson that sits in no module. This
+ * is the list the editor drags, and the shape `PUT /courses/{id}/outline`
+ * takes.
+ */
+export type OutlinePlace =
+  | { kind: "module"; module: Module; chapters: Chapter[] }
+  | { kind: "lesson"; chapter: Chapter }
+
+/** The places of a course, in reading order. */
+export function outlinePlaces(structure: CourseStructure): OutlinePlace[] {
+  const places: OutlinePlace[] = []
+  for (const group of structure.groups) {
+    if (group.module) places.push({ kind: "module", module: group.module, chapters: group.chapters })
+    else for (const chapter of group.chapters) places.push({ kind: "lesson", chapter })
+  }
+  return places
+}
+
+/** Move one place — a module with its lessons, or a loose lesson. */
+export function movePlace(places: OutlinePlace[], from: number, to: number): OutlinePlace[] {
+  const next = [...places]
+  const [moved] = next.splice(from, 1)
+  if (!moved) return places
+  next.splice(to, 0, moved)
+  return next
+}
+
+/** Reorder the lessons inside one module. Nothing outside it moves. */
+export function moveInModule(places: OutlinePlace[], moduleId: string, from: number, to: number): OutlinePlace[] {
+  return places.map((p) => {
+    if (p.kind !== "module" || p.module.id !== moduleId) return p
+    const chapters = [...p.chapters]
+    const [moved] = chapters.splice(from, 1)
+    if (!moved) return p
+    chapters.splice(to, 0, moved)
+    return { ...p, chapters }
+  })
+}
+
+/**
+ * File a lesson under a module, at that module's end — or, with `null`, take
+ * it out of its module, where it stays right after the module it left
+ * rather than jumping to the end of the course.
+ */
+export function fileLesson(places: OutlinePlace[], chapterId: string, moduleId: string | null): OutlinePlace[] {
+  let lesson: Chapter | undefined
+  let leftModule: string | null = null
+  const without: OutlinePlace[] = []
+  for (const p of places) {
+    if (p.kind === "lesson") {
+      if (p.chapter.id === chapterId) lesson = p.chapter
+      else without.push(p)
+      continue
+    }
+    const found = p.chapters.find((c) => c.id === chapterId)
+    if (found) {
+      lesson = found
+      leftModule = p.module.id
+      without.push({ ...p, chapters: p.chapters.filter((c) => c.id !== chapterId) })
+    } else {
+      without.push(p)
+    }
+  }
+  if (!lesson || leftModule === moduleId) return places
+  if (moduleId === null) {
+    const at = without.findIndex((p) => p.kind === "module" && p.module.id === leftModule)
+    without.splice(at + 1, 0, { kind: "lesson", chapter: { ...lesson, module_id: null } })
+    return without
+  }
+  const moved = lesson
+  return without.map((p) =>
+    p.kind === "module" && p.module.id === moduleId
+      ? { ...p, chapters: [...p.chapters, { ...moved, module_id: moduleId }] }
+      : p,
+  )
+}
+
+/** The body of `PUT /courses/{id}/outline`. */
+export function outlinePayload(places: OutlinePlace[]): { module_id: string | null; chapter_ids: string[] }[] {
+  return places.map((p) =>
+    p.kind === "module"
+      ? { module_id: p.module.id, chapter_ids: p.chapters.map((c) => c.id) }
+      : { module_id: null, chapter_ids: [p.chapter.id] },
+  )
+}
+
+/**
+ * The course with `places` written into it, numbered exactly as the server
+ * numbers them (`number_outline`): one counter over the course in reading
+ * order — a module, then its lessons, then the next place. So the screen
+ * holds what the server will hold, without a reload.
+ */
+export function applyOutline(course: Course, places: OutlinePlace[]): Course {
+  let n = 0
+  const modules: Module[] = []
+  const loose: Chapter[] = []
+  for (const p of places) {
+    if (p.kind === "module") {
+      const order = n++
+      const chapters = p.chapters.map((c) => ({ ...c, module_id: p.module.id, order_index: n++ }))
+      modules.push({ ...p.module, order_index: order, chapters })
+    } else {
+      loose.push({ ...p.chapter, module_id: null, order_index: n++ })
+    }
+  }
+  return { ...course, modules, chapters: loose }
 }

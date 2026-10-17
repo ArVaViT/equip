@@ -18,7 +18,7 @@ export function MyOrganizationsCard({ userId }: { userId: string }) {
   return (
     <Card>
       <CardHeader className="space-y-1">
-        <CardTitle>{t("myOrganizations.title")}</CardTitle>
+        <CardTitle as="h2">{t("myOrganizations.title")}</CardTitle>
       </CardHeader>
       <CardContent>
         <ul className="space-y-2">

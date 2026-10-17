@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal
 from uuid import UUID
@@ -488,6 +488,12 @@ class GradeSheetResponse(BaseModel):
     grading_scheme: str
     pass_threshold: Decimal | None = None
     finalized_at: datetime
+    #: The days the document prints, on the school's clock
+    #: (``org_settings.time_zone``) — the same for every reader, on paper and
+    #: on screen. The instants above stay for everything that is not a date.
+    finalized_on: date | None = None
+    cohort_start_on: date | None = None
+    cohort_end_on: date | None = None
     finalized_by: UUID | None = None
     reopened_at: datetime | None = None
     reopen_reason: str | None = None

@@ -7,7 +7,17 @@ import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { makeChapterSchema } from "@/lib/validations/course"
-import { chapterEditHref, readCourseStructure, reuseOrderNumbers } from "@/lib/courseStructure"
+import {
+  applyOutline,
+  chapterEditHref,
+  fileLesson,
+  moveInModule,
+  movePlace,
+  outlinePayload,
+  outlinePlaces,
+  readCourseStructure,
+  type OutlinePlace,
+} from "@/lib/courseStructure"
 import type { ChapterType } from "@/lib/chapterTypes"
 import type { Chapter, Course } from "@/types"
 
@@ -15,8 +25,8 @@ interface Args {
   courseId: string | undefined
   course: Course | null
   setCourse: Dispatch<SetStateAction<Course | null>>
-  /** Re-read the course from the server. A reorder is several requests;
-   *  when some land and some fail, only the server knows the order now. */
+  /** Re-read the course from the server — after a reorder the server
+   *  refused, its order is the one to show. */
   reload?: () => void
 }
 
@@ -28,9 +38,12 @@ export interface CourseChapters {
   renameChapter: (chapter: Chapter, title: string) => Promise<void>
   toggleChapterLock: (chapter: Chapter) => Promise<void>
   deleteChapter: (chapterId: string) => Promise<void>
-  /** `null` takes the lesson out of its module; an id files it under one. */
+  /** `null` takes the lesson out of its module — it stays right after that
+   *  module; an id files it at the end of that module. */
   moveChapter: (chapterId: string, moduleId: string | null) => Promise<void>
-  reorderChapters: (result: DropResult) => Promise<void>
+  /** Drag in the course outline: a module (with its lessons) or a lesson
+   *  outside modules, among each other. */
+  reorderOutline: (result: DropResult) => Promise<void>
   /** Reorder the lessons inside one module, from the course page. */
   reorderModuleChapters: (moduleId: string, result: DropResult) => Promise<void>
 }
@@ -221,133 +234,72 @@ export function useCourseChapters({
     [courseId, setCourse, t],
   )
 
-  const moveChapter = useCallback(
-    async (chapterId: string, moduleId: string | null) => {
-      if (!courseId) return
+  /**
+   * Every change to the course's order goes through here: the whole outline,
+   * in one request, numbered on screen exactly as the server numbers it. It
+   * used to be one request per row in two number spaces — modules and lessons
+   * — that nothing kept in step, and a module moved without its lessons being
+   * renumbered could leave a loose lesson on the wrong side of it.
+   */
+  const savingRef = useRef(false)
+  const saveOutline = useCallback(
+    async (next: (places: OutlinePlace[]) => OutlinePlace[]): Promise<boolean> => {
+      if (!courseId || !course || savingRef.current) return false
+      const before = outlinePlaces(readCourseStructure(course))
+      const after = next(before)
+      if (after === before) return false
+      savingRef.current = true
+      setCourse((prev) => (prev ? applyOutline(prev, after) : prev))
       try {
-        // The server re-seats a regrouped lesson at the tail of its new
-        // group and hands the row back, so the response — not the request
-        // — is what local state must believe about `order_index`.
-        const moved = await coursesService.updateCourseChapter(courseId, chapterId, {
-          module_id: moduleId,
-        })
-        setCourse((prev) => {
-          if (!prev) return prev
-          const without = (list: Chapter[] | undefined) =>
-            (list ?? []).filter((c) => c.id !== chapterId)
-          return {
-            ...prev,
-            chapters: moduleId === null ? [...without(prev.chapters), moved] : without(prev.chapters),
-            modules: prev.modules?.map((m) =>
-              m.id === moduleId
-                ? { ...m, chapters: [...without(m.chapters), moved] }
-                : { ...m, chapters: without(m.chapters) },
-            ),
-          }
-        })
-        const target = moduleId
-          ? (course?.modules ?? []).find((m) => m.id === moduleId)
-          : null
-        toast({
-          title: target
-            ? t("lessons.toast.movedToModule", { title: target.title })
-            : t("lessons.toast.movedToCourse"),
-          variant: "success",
-        })
-      } catch {
-        toast({ title: t("lessons.toast.moveFailed"), variant: "destructive" })
-      }
-    },
-    [course?.modules, courseId, setCourse, t],
-  )
-
-  const reorderingRef = useRef(false)
-  const reorderChapters = useCallback(
-    async (result: DropResult) => {
-      if (!result.destination || !courseId || reorderingRef.current) return
-      const from = result.source.index
-      const to = result.destination.index
-      if (from === to) return
-
-      const sorted = [...(course?.chapters ?? [])].sort((a, b) => a.order_index - b.order_index)
-      const reordered = Array.from(sorted)
-      const [moved] = reordered.splice(from, 1)
-      if (!moved) return
-      reordered.splice(to, 0, moved)
-
-      const renumbered = reuseOrderNumbers(sorted, reordered)
-      setCourse((prev) => (prev ? { ...prev, chapters: renumbered } : prev))
-
-      reorderingRef.current = true
-      try {
-        // Compare against the index the row is *stored* with, not against
-        // where it used to sit in the list. Loose lessons share one course-
-        // global order space with the grouped ones, so their indices are
-        // rarely 0..n-1 to begin with — a positional check would skip rows
-        // whose place did not move but whose number still has to.
-        await Promise.all(
-          renumbered
-            .map((c, i) =>
-              c.order_index !== reordered[i]!.order_index
-                ? coursesService.updateCourseChapter(courseId, c.id, { order_index: c.order_index })
-                : null,
-            )
-            .filter(Boolean),
-        )
+        await coursesService.saveOutline(courseId, outlinePayload(after))
+        return true
       } catch {
         toast({ title: t("lessons.toast.reorderFailed"), variant: "destructive" })
-        // The requests that did land stay landed: putting the old order back
-        // on screen showed an order the server no longer had.
+        // Refused whole (a stale screen) or lost: the server's order is the
+        // one to show.
         if (reload) reload()
-        else setCourse((prev) => (prev ? { ...prev, chapters: sorted } : prev))
+        else setCourse((prev) => (prev ? applyOutline(prev, before) : prev))
+        return false
       } finally {
-        reorderingRef.current = false
+        savingRef.current = false
       }
     },
-    [course?.chapters, courseId, reload, setCourse, t],
+    [course, courseId, reload, setCourse, t],
+  )
+
+  const moveChapter = useCallback(
+    async (chapterId: string, moduleId: string | null) => {
+      const saved = await saveOutline((places) => fileLesson(places, chapterId, moduleId))
+      if (!saved) return
+      const target = moduleId ? (course?.modules ?? []).find((m) => m.id === moduleId) : null
+      toast({
+        title: target
+          ? t("lessons.toast.movedToModule", { title: target.title })
+          : t("lessons.toast.movedToCourse"),
+        variant: "success",
+      })
+    },
+    [course?.modules, saveOutline, t],
+  )
+
+  const reorderOutline = useCallback(
+    async (result: DropResult) => {
+      if (!result.destination || result.source.index === result.destination.index) return
+      const from = result.source.index
+      const to = result.destination.index
+      await saveOutline((places) => movePlace(places, from, to))
+    },
+    [saveOutline],
   )
 
   const reorderModuleChapters = useCallback(
     async (moduleId: string, result: DropResult) => {
-      if (!result.destination || !courseId || reorderingRef.current) return
+      if (!result.destination || result.source.index === result.destination.index) return
       const from = result.source.index
       const to = result.destination.index
-      if (from === to) return
-      const mod = (course?.modules ?? []).find((m) => m.id === moduleId)
-      const sorted = [...(mod?.chapters ?? [])].sort((a, b) => a.order_index - b.order_index)
-      const reordered = Array.from(sorted)
-      const [moved] = reordered.splice(from, 1)
-      if (!moved) return
-      reordered.splice(to, 0, moved)
-      const renumbered = reuseOrderNumbers(sorted, reordered)
-      setCourse((prev) =>
-        prev
-          ? { ...prev, modules: prev.modules?.map((m) => (m.id === moduleId ? { ...m, chapters: renumbered } : m)) }
-          : prev,
-      )
-      reorderingRef.current = true
-      try {
-        await Promise.all(
-          renumbered
-            .map((c, i) =>
-              c.order_index !== reordered[i]!.order_index
-                ? coursesService.updateCourseChapter(courseId, c.id, { order_index: c.order_index })
-                : null,
-            )
-            .filter(Boolean),
-        )
-      } catch {
-        toast({ title: t("lessons.toast.reorderFailed"), variant: "destructive" })
-        if (reload) reload()
-        else
-          setCourse((prev) =>
-            prev ? { ...prev, modules: prev.modules?.map((m) => (m.id === moduleId ? { ...m, chapters: sorted } : m)) } : prev,
-          )
-      } finally {
-        reorderingRef.current = false
-      }
+      await saveOutline((places) => moveInModule(places, moduleId, from, to))
     },
-    [course, courseId, reload, setCourse, t],
+    [saveOutline],
   )
 
   return {
@@ -358,7 +310,7 @@ export function useCourseChapters({
     toggleChapterLock,
     deleteChapter,
     moveChapter,
-    reorderChapters,
+    reorderOutline,
   }
 }
 

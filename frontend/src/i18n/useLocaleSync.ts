@@ -2,6 +2,7 @@ import { useEffect } from "react"
 import { useTranslation } from "react-i18next"
 
 import { useAuth } from "@/context/useAuth"
+import { getAccountDeleted } from "@/lib/accountDeleted"
 import { preferencesService } from "@/services/preferences"
 
 import { isSupportedLocale, type SupportedLocale } from "./config"
@@ -67,6 +68,9 @@ export function useLocaleSync(): void {
     // tell the server what the browser said. It records it as detected —
     // still yielding to any real choice made later.
     if (user.locale_source === "default") {
+      // A closed account edits nothing (the profile trigger refuses it): the
+      // browser's language stays on screen, and nothing is reported.
+      if (user.deleted_at || user.deactivated_at || getAccountDeleted()) return
       const detected = i18n.resolvedLanguage ?? i18n.language
       if (isSupportedLocale(detected)) {
         void preferencesService.reportDetectedLocale(detected).then(

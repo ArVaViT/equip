@@ -162,7 +162,7 @@ def test_every_mutating_route_under_the_api_carries_the_gate(student_client: Tes
     for path, operations in schema["paths"].items():
         if not path.startswith("/api/v1") or "{" in path:
             continue
-        if any(path.startswith(prefix) for prefix in consent_gate.EXEMPT_PREFIXES):
+        if consent_gate.is_exempt(path):
             continue
         for method in operations:
             if method.upper() not in consent_gate.MUTATING_METHODS:

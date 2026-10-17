@@ -167,7 +167,7 @@ export function InvitationsTab() {
         {/* Title over the button on a phone: side by side, the button pushed
             the card past a 390px screen (2026-10-03). */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-xl">{t("admin.invitations.title")}</CardTitle>
+          <CardTitle as="h2" className="text-xl">{t("admin.invitations.title")}</CardTitle>
           <Button size="sm" onClick={() => setCreateOpen(true)} className="h-9 shrink-0 self-start sm:self-auto">
             <Plus className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
             {t("admin.invitations.inviteButton")}

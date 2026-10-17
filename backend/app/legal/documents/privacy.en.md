@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Version 2.0 · in force from 17 September 2026**
+**Version 2.1 · in force from 15 December 2026**
 
 Equip is a platform for Bible schools. This document sets out what the platform
 stores, why, who can see it, how long it is kept, and how to take it away or
@@ -218,7 +218,7 @@ from an authority — and we will tell you when we are allowed to.
 | What | Where it lives | How long |
 |---|---|---|
 | Account and profile — name, email, photo, language | Supabase | While the account exists |
-| Coursework — progress, quiz answers, submissions, marks, feedback | Supabase | While the account exists; deleted with it |
+| Coursework — progress, quiz answers, submissions, marks, feedback | Supabase | While the account exists — including an account deleted from the profile; erased with it when you ask us to erase it |
 | Issued certificates and the grade sheets recording them | Supabase | **Kept after the account is deleted** — see below |
 | Record of accepting a document like this one (version, fingerprint, language, time, IP) | Supabase | While the account exists — then **kept without you in it**, indefinitely (see below) |
 | Declaration attached to a submission (statement, AI use, time, IP) | Supabase | While the submission exists |
@@ -236,22 +236,29 @@ the platform is young and no purge job runs yet. When one does, this table
 changes and the change is notified rather than re-signed, because a shorter
 retention is not a worse deal for you.
 
-**What outlives your account.** Two things, and only two.
+**What outlives your account.** When an account is erased, two things remain,
+and only two.
 
 An issued certificate, and the grade sheet recording it, remain. A school
 cannot retroactively un-witness what it has already witnessed, which is exactly
 why those documents are frozen as a snapshot at the moment they are issued.
 
 The record that you accepted a document like this one also remains, **with you
-taken out of it**. At the moment your account is deleted, the account
-identifier on that record is replaced by a one-way fingerprint of it and the IP
-address is erased. What is left is which document, which version, in which
-language, and when — and a fingerprint that cannot be turned back into your
-name, your email address or your account. That is kept indefinitely, because a
-consent record that vanishes with the account cannot answer the one question it
-is kept to answer.
+taken out of it**. At the moment your account is erased, the account identifier
+on that record is replaced by a one-way fingerprint of it and the IP address is
+erased. What is left is which document, which version, in which language, and
+when — and a fingerprint that cannot be turned back into your name, your email
+address or your account. That is kept indefinitely, because a consent record
+that vanishes with the account cannot answer the one question it is kept to
+answer.
 
 Everything else goes.
+
+**Deleting is not erasing.** The **Delete account** button in your profile
+closes the account and takes you out of everybody else's sight, and erases
+nothing — so that the school keeps its record of your studies and you can come
+back. What it does is set out under **What you can do**. Erasure stays one email
+away, before you press it and after.
 
 ## What you can do
 
@@ -259,13 +266,21 @@ Everything else goes.
 - **Get a copy of everything held about you** — write to supportequip@gmail.com
   and we will put it together and send it. There is no self-service export
   button yet.
-- **Delete your account and your coursework** — write to
-  supportequip@gmail.com with the subject line **Delete my account**. There is
-  no delete button in the profile and no self-service route: we do it by hand,
-  and **within 30 days** of your asking. We will confirm when it is done and
-  tell you what remained. What remains is the three things named above and
-  nothing else: certificates already issued, the grade sheets recording them,
-  and the record that you accepted these documents with you taken out of it.
+- **Delete your account yourself** — the **Delete account** button at the foot
+  of your profile. It works at once: you are signed out on every device, the
+  account can no longer be used, and everybody else on the platform sees
+  "Deleted user" in place of your name, with no email address and no photo.
+  Nothing is erased: your answers, submissions, marks, enrolments and
+  certificates stay with the school as its record of your studies. To come back,
+  sign in again and ask to restore the account: we email a link to the
+  account's address, and opening it restores the account.
+- **Erase your account and your coursework** — write to supportequip@gmail.com
+  with the subject line **Delete my account**. We do it by hand, **within 30
+  days** of your asking, whether or not you have pressed the button above. We
+  will confirm when it is done and tell you what remained. What remains is the
+  three things named above and nothing else: certificates already issued, the
+  grade sheets recording them, and the record that you accepted these documents
+  with you taken out of it.
 - **Correct something that is wrong** — tell us and we will fix it.
 - **Object to the session recording** — we cannot switch it off for one account
   today. If that is not acceptable to you, deleting the account is the honest

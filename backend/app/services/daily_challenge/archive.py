@@ -2,7 +2,7 @@
 
 Three service entry points back the three archive routes:
 
-* ``list_archive_entries`` — paginated list of past UTC dates with a
+* ``list_archive_entries`` — paginated list of the reader's past dates with a
   scheduled question, annotated with whether the user has attempted
   and (if so) whether they got it right. Drives the calendar grid.
 * ``get_archive_question`` — fetches a single past day's question +

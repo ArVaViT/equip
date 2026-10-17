@@ -119,6 +119,7 @@ export default function RichTextEditor({
         imageUpload.handleDrop(view, event as DragEvent, moved),
       handlePaste: (view, event) =>
         imageUpload.handlePaste(view, event as ClipboardEvent),
+      transformPastedHTML: (html) => imageUpload.transformPastedHTML(html),
     },
   });
 

@@ -151,8 +151,10 @@ def test_the_summary_carries_what_the_gate_needs_to_decide(anon_client: TestClie
     documents = {d["slug"]: d for d in anon_client.get(DOCS).json()}
     assert documents["teacher-terms"]["required_for"] == ["admin", "director", "teacher"]
     assert sorted(documents["privacy"]["required_for"]) == ["admin", "director", "student", "teacher"]
-    assert documents["terms"]["requires_consent"] is True
-    assert documents["terms"]["effective"] == "2026-09-17"
+    # 2.1 is a notice (2026-10-16, account deletion described): published,
+    # announced, effective 60 days on, and signed by nobody who signed 2.0.
+    assert documents["terms"]["requires_consent"] is False
+    assert documents["terms"]["effective"] == "2026-12-15"
     assert "providers" not in documents
 
 

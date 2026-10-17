@@ -713,7 +713,10 @@
       "linkExpired": "Dieser Link ist abgelaufen. Fordern Sie einen neuen an.",
       "serverError": "Bei uns ist etwas schiefgelaufen. Versuchen Sie es gleich noch einmal.",
       "passwordRequired": "Bitte Passwort eingeben",
-      "emailCooldown": "Eine E-Mail ist schon unterwegs. Erneut anfordern können Sie in {{seconds}} s.",
+      "emailCooldown": "Eine E-Mail ist schon unterwegs — sehen Sie im Posteingang und auch im Spam-Ordner nach. Erneut anfordern können Sie in {{seconds}} s.",
+      "emailCooldownMinutes": "Eine E-Mail ist schon unterwegs — sehen Sie im Posteingang und auch im Spam-Ordner nach. Eine neue können Sie in {{minutes}} Min. anfordern.",
+      "emailAlreadySent": "Eine E-Mail ist schon unterwegs — sehen Sie im Posteingang und auch im Spam-Ordner nach.",
+      "emailSendFailed": "Die E-Mail konnte nicht gesendet werden. Wenn Sie schon eine angefordert haben, sehen Sie im Spam-Ordner nach — der Link darin gilt weiter. Oder versuchen Sie es in einer Minute erneut.",
       "emailQuota": "Wir können gerade keine E-Mail senden: Das stündliche Limit ist erschöpft. Versuchen Sie es später oder melden Sie sich mit Google an."
     },
     "callback": {
@@ -725,7 +728,8 @@
       "accountDeactivated": "Dieses Konto wurde deaktiviert. Falls das ein Irrtum ist, wenden Sie sich an Ihre Administration.",
       "signInToContinue": "Melden Sie sich an, um diese Seite zu öffnen.",
       "sectionUnavailable": "Dieser Bereich steht Ihnen nicht zur Verfügung.",
-      "signInToAcceptInvite": "Melden Sie sich an, um die Einladung anzunehmen."
+      "signInToAcceptInvite": "Melden Sie sich an, um die Einladung anzunehmen.",
+      "accountDeleted": "Ihr Konto wurde gelöscht. Sie haben es sich anders überlegt? Melden Sie sich wieder an und klicken Sie auf „Konto wiederherstellen“: Wir schicken Ihnen einen Link per E-Mail."
     },
     "forgotPassword": {
       "heading": "Passwort zurücksetzen",
@@ -739,8 +743,7 @@
       "sentBody": "Falls für <strong>{{email}}</strong> ein Konto besteht, erhalten Sie in Kürze einen Link. Sehen Sie in Ihrem Posteingang nach.",
       "errors": {
         "emailRequired": "Bitte geben Sie Ihre E-Mail-Adresse ein",
-        "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
-        "sendFailed": "Die E-Mail konnte nicht gesendet werden. Bitte gleich noch einmal versuchen."
+        "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein"
       }
     },
     "resetPassword": {
@@ -2659,7 +2662,8 @@
       "changeRoleAria": "Rolle für {{name}} ändern",
       "deactivatedBadge": "Deaktiviert",
       "restoreTooltip": "Konto wiederherstellen",
-      "restoreAriaPrefix": "{{name}} wiederherstellen"
+      "restoreAriaPrefix": "{{name}} wiederherstellen",
+      "deletedByOwnerBadge": "Vom Nutzer gelöscht"
     },
     "pendingCerts": {
       "title": "Zertifikate bestätigen",
@@ -2928,7 +2932,6 @@
       "resend": "E-Mail erneut senden",
       "resendIn": "Erneut senden in {{seconds}} s",
       "resent": "E-Mail erneut gesendet.",
-      "resendFailed": "E-Mail konnte nicht gesendet werden. Bitte in einer Minute erneut versuchen.",
       "line": "Die E-Mail ist an <strong>{{email}}</strong> unterwegs. Nicht im Posteingang? Sehen Sie im Spam nach. Nur die letzte E-Mail funktioniert.",
       "repeated": "Diese Adresse wurde schon einmal registriert. Es gilt das Passwort vom ersten Versuch; wenn Sie es nicht mehr wissen, <reset>legen Sie ein neues fest</reset> — das bestätigt zugleich die Adresse.",
       "changeAddress": "Andere Adresse verwenden"
@@ -2942,6 +2945,7 @@
   "editor": {
     "toast": {
       "imageUploadFailed": "Bild konnte nicht hochgeladen werden",
+      "pastedImagesSkipped": "Die Bilder aus dem Dokument wurden nicht übernommen — fügen Sie sie einzeln ein oder ziehen Sie die Dateien hinein.",
       "audioUrlInvalid": "Die Audio-Adresse muss mit http(s) beginnen",
       "invalidUrl": "Das sieht nicht nach einer gültigen Adresse aus. Nutzen Sie eine vollständige wie https://example.com/seite."
     },
@@ -3261,7 +3265,7 @@
       "saveFailed": "Ihre Zustimmung konnte nicht gespeichert werden. Prüfen Sie die Verbindung und versuchen Sie es erneut."
     },
     "notice": {
-      "body": "Das Dokument „{{document}}“ wurde am {{date}} aktualisiert. An dem, dem Sie zugestimmt haben, hat sich nichts geändert — es ist nichts zu unterschreiben.",
+      "body": "Für das Dokument „{{document}}“ gilt ab dem {{date}} eine neue Fassung. An dem, dem Sie zugestimmt haben, hat sich nichts geändert — es ist nichts zu unterschreiben.",
       "read": "Nachlesen, was sich geändert hat",
       "dismiss": "Schließen"
     },
@@ -3384,6 +3388,33 @@
       "all": "Alle Termine der Serie",
       "saveAction": "Speichern",
       "deleteAction": "Löschen"
+    }
+  },
+  "account": {
+    "delete": {
+      "button": "Konto löschen",
+      "confirmTitle": "Ihr Konto löschen?",
+      "confirmBody": "Das passiert:",
+      "whatHappens": {
+        "signedOut": "Sie werden auf allen Geräten abgemeldet.",
+        "hidden": "Andere sehen „Gelöschter Nutzer“ statt Ihres Namens — ohne E-Mail-Adresse und Foto.",
+        "kept": "Ihre Arbeiten, Noten und Zertifikate bleiben bei der Schule.",
+        "restore": "Um zurückzukommen, melden Sie sich wieder an und klicken Sie auf „Konto wiederherstellen“ — wir schicken Ihnen einen Link per E-Mail."
+      },
+      "confirm": "Konto löschen",
+      "failed": "Das Konto konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",
+      "onlyDirector": "Sie sind die einzige Leitung Ihrer Schule. Ernennen Sie zuerst eine weitere Leitung oder schreiben Sie an supportequip@gmail.com.",
+      "platformStaff": "Ein Administratorkonto wird von einer anderen Administration geschlossen."
+    },
+    "deleted": {
+      "title": "Dieses Konto wurde gelöscht",
+      "body": "Ihre Arbeiten und Zertifikate bewahrt die Schule auf. Sie können das Konto wiederherstellen, und es kommt genau so zurück, wie es war.",
+      "bodyWithDate": "Sie haben es am {{date}} gelöscht. Ihre Arbeiten und Zertifikate bewahrt die Schule auf. Sie können das Konto wiederherstellen, und es kommt genau so zurück, wie es war.",
+      "restore": "Konto wiederherstellen",
+      "restored": "Willkommen zurück — Ihr Konto ist wiederhergestellt.",
+      "restoreFailed": "Das Konto konnte nicht wiederhergestellt werden. Bitte versuchen Sie es erneut.",
+      "restoreRefused": "Dieses Konto lässt sich hier nicht wiederherstellen: Seine E-Mail-Adresse wurde nach dem Löschen geändert. Schreiben Sie an supportequip@gmail.com.",
+      "linkSent": "Wir haben einen Link an {{email}} geschickt. Öffnen Sie ihn, und Ihr Konto ist wiederhergestellt. Keine E-Mail? Sehen Sie im Spam-Ordner nach."
     }
   }
 }

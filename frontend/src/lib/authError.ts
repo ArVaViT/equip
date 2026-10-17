@@ -98,10 +98,15 @@ export function isDuplicateEmail(err: unknown): boolean {
  * exceeded». The first wants a short wait; the second is an hour away, and
  * telling that person to «wait a minute» is a lie they act on. Only the
  * message tells them apart.
+ *
+ * The send-email hook refuses a repeat of the same email for five minutes
+ * (`supabase/functions/send-email/copy.ts::repeatWaitSeconds`) in GoTrue's
+ * own words, but GoTrue relays a hook's refusal as a bare 429 without this
+ * code — so a 429 carrying the sentence counts too.
  */
 export function emailCooldownSeconds(err: unknown): number | null {
   const e = asAuthError(err)
-  if (e.code !== "over_email_send_rate_limit") return null
+  if (e.code !== "over_email_send_rate_limit" && e.status !== 429) return null
   const match = /after (\d+) second/.exec(e.message ?? "")
   return match ? Number(match[1]) : null
 }
@@ -131,10 +136,50 @@ export function authErrorMessage(err: unknown, fallbackKey: string): string {
   if (import.meta.env.DEV) {
     console.error("[auth]", e.code ?? e.status ?? "unknown", e.message ?? err)
   }
-  if (e.code === "over_email_send_rate_limit") {
-    const seconds = emailCooldownSeconds(err)
-    return seconds === null ? i18n.t("auth.errors.emailQuota") : i18n.t("auth.errors.emailCooldown", { seconds })
+  const seconds = emailCooldownSeconds(err)
+  if (seconds !== null) {
+    // «через 287 с» is arithmetic left to the reader; past a minute, minutes.
+    return seconds < 60
+      ? i18n.t("auth.errors.emailCooldown", { seconds })
+      : i18n.t("auth.errors.emailCooldownMinutes", { minutes: Math.ceil(seconds / 60) })
   }
+  if (e.code === "over_email_send_rate_limit") return i18n.t("auth.errors.emailQuota")
   const key = (e.code ? KEY_BY_CODE[e.code] : undefined) ?? keyByStatus(e.status) ?? fallbackKey
   return i18n.t(key)
+}
+
+/**
+ * The sentence for a failed «send me the email» — a confirmation, a sign-in
+ * or restore link, a password reset — whatever shape the failure took.
+ *
+ * Read from GoTrue's source (`internal/hooks/hookserrors`, 2026-10-17): the
+ * send-email hook's refusal of a repeat, `{error: {http_code: 429, message}}`,
+ * reaches the browser as a 429 whose code is `unknown` and whose message is
+ * the hook's own («…after N seconds»). That is the case `emailCooldownSeconds`
+ * reads. But the hook can fail in other ways too — a timeout
+ * (`hook_timeout_after_retry`, 422), a 5xx, a dropped connection — and each
+ * of those used to land on «something went wrong on our side», which reads
+ * as «the site is down» to somebody whose email is in fact sitting in the
+ * spam folder. The token GoTrue had issued before stays valid when the hook
+ * fails (it is rolled back, not replaced), so the honest sentence for every
+ * failure is the same: the earlier email still works; look for it, then try
+ * again.
+ */
+export function emailSendErrorMessage(err: unknown): string {
+  const e = asAuthError(err)
+  if (import.meta.env.DEV) {
+    console.error("[auth:email]", e.code ?? e.status ?? "unknown", e.message ?? err)
+  }
+  const seconds = emailCooldownSeconds(err)
+  if (seconds !== null) {
+    return seconds < 60
+      ? i18n.t("auth.errors.emailCooldown", { seconds })
+      : i18n.t("auth.errors.emailCooldownMinutes", { minutes: Math.ceil(seconds / 60) })
+  }
+  if (e.code === "over_email_send_rate_limit") return i18n.t("auth.errors.emailQuota")
+  // Too many requests from this connection: no email may have left at all,
+  // so "check your inbox" would send the reader looking for nothing.
+  if (e.code === "over_request_rate_limit") return i18n.t("auth.errors.rateLimited")
+  if (e.status === 429) return i18n.t("auth.errors.emailAlreadySent")
+  return i18n.t("auth.errors.emailSendFailed")
 }

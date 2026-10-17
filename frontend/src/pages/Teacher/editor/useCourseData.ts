@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import type { DropResult } from "@hello-pangea/dnd"
 import { coursesService } from "@/services/courses"
 import { storageService } from "@/services/storage"
 import { toast } from "@/lib/toast"
@@ -45,13 +44,12 @@ interface CourseData extends CourseChapters {
   togglePublish: () => Promise<void>
   addModule: () => Promise<void>
   removeModule: (id: string) => Promise<void>
-  reorderModules: (result: DropResult) => Promise<void>
 }
 
 /**
  * Loads a course and exposes every mutation a teacher can make to the
  * course itself (title, description, cover, publish status, enrollment
- * window) and to its modules (create, delete, drag-to-reorder).
+ * window) and to its modules (create, delete).
  *
  * Lessons are the other half, and they live in `useCourseChapters` — the
  * course editor can now write one straight into the course, which is what
@@ -73,7 +71,6 @@ export function useCourseData(
   const [enrollStart, setEnrollStart] = useState("")
   const [enrollEnd, setEnrollEnd] = useState("")
   const [savingEnrollment, setSavingEnrollment] = useState(false)
-  const [reordering, setReordering] = useState(false)
 
   const loadCourse = useCallback(
     async (signal: { cancelled: boolean }) => {
@@ -229,12 +226,9 @@ export function useCourseData(
   const addingModuleRef = useRef(false)
   const addModule = useCallback(async () => {
     if (!courseId) return
-    // Lock: double-clicks before the optimistic ``setCourse`` lands used
-    // to compute the same ``order_index`` from the stale
-    // ``course?.modules?.length`` and the server then accepted two
-    // modules at the same ``order_index``, breaking the sortedModules
-    // contract until a page reload. The ref + early-return guarantees
-    // we never have two in-flight ``createModule`` calls.
+    // Lock: a double-click before the optimistic ``setCourse`` lands would
+    // create two modules with the same seeded title. The ref + early-return
+    // guarantees we never have two in-flight ``createModule`` calls.
     if (addingModuleRef.current) return
     addingModuleRef.current = true
     const order = course?.modules?.length ?? 0
@@ -245,7 +239,9 @@ export function useCourseData(
         // rename every freshly-added module or live with an English
         // word in their course tree.
         title: t("teacherEditor.defaults.moduleTitle", { n: order + 1 }),
-        order_index: order,
+        // No `order_index`: the server puts the module past everything the
+        // course holds, loose lessons included — a count of modules is not
+        // a place in the course.
       })
       setCourse((p) =>
         p ? { ...p, modules: [...(p.modules ?? []), { ...m, chapters: [] }] } : p,
@@ -316,45 +312,6 @@ export function useCourseData(
   }, [courseId])
   const chapters = useCourseChapters({ courseId, course, setCourse, reload: reloadCourse })
 
-  const reorderModules = useCallback(
-    async (result: DropResult) => {
-      if (!result.destination || !courseId || reordering) return
-      const from = result.source.index
-      const to = result.destination.index
-      if (from === to) return
-
-      const reordered = Array.from(sortedModules)
-      const [moved] = reordered.splice(from, 1)
-      if (!moved) return
-      reordered.splice(to, 0, moved)
-
-      setCourse((prev) =>
-        prev
-          ? { ...prev, modules: reordered.map((m, i) => ({ ...m, order_index: i })) }
-          : prev,
-      )
-
-      setReordering(true)
-      try {
-        await Promise.all(
-          reordered
-            .map((m, i) =>
-              m.order_index !== i
-                ? coursesService.updateModule(courseId, m.id, { order_index: i })
-                : null,
-            )
-            .filter(Boolean),
-        )
-      } catch {
-        toast({ title: t("teacherEditor.toast.moduleOrderFailed"), variant: "destructive" })
-        void loadCourse({ cancelled: false })
-      } finally {
-        setReordering(false)
-      }
-    },
-    [sortedModules, courseId, loadCourse, reordering, t],
-  )
-
   return {
     ...chapters,
     course,
@@ -377,6 +334,5 @@ export function useCourseData(
     togglePublish,
     addModule,
     removeModule,
-    reorderModules,
   }
 }

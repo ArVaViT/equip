@@ -804,12 +804,12 @@ def authored_texts_for_entities(
             )
 
         best: dict[tuple[str, str], tuple[str, LocaleCode]] = {}
-        ranked: dict[tuple[str, str], tuple[int, datetime]] = {}
+        ranked: dict[tuple[str, str], tuple[int, float]] = {}
         for entity_id, field, locale, text, created_at in rows:
             if not text or not str(text).strip():
                 continue
             key = (entity_id, field)
-            rank = (0 if locale == preferred_locale else 1, created_at)
+            rank = _source_rank(locale, created_at, preferred_locale)
             if key not in ranked or rank < ranked[key]:
                 ranked[key] = rank
                 best[key] = (text, normalize_locale(locale))
@@ -817,6 +817,21 @@ def authored_texts_for_entities(
         for entity_id in ids:
             result[(entity_type, entity_id)] = {name: best.get((entity_id, name)) for name in field_names}
     return result
+
+
+def _source_rank(locale: str, created_at: datetime | None, preferred_locale: str) -> tuple[int, float]:
+    """Smaller is the field's source: the course's language first, then
+    the newest a person wrote.
+
+    Newest, not earliest (2026-10-17): an author's edit written in
+    another language replaces the source (``record_human_version`` with
+    ``course_locale``), and an older hand translation beside it must not
+    become the text everything is translated from. Same ranking as
+    ``content_versions.write.field_source_row`` and the author's own view
+    in ``content_versions.read``.
+    """
+    stamp = created_at.timestamp() if created_at is not None else 0.0
+    return (0 if locale == preferred_locale else 1, -stamp)
 
 
 def _authored_texts(
@@ -837,10 +852,9 @@ def _authored_texts(
 
     Where a field has human rows in more than one locale — a hand
     translation alongside the original — the course's declared locale
-    wins, then the earliest written. Both tie-breaks are arbitrary in
-    isolation and matter only in that they are stable: the same field
-    must not be planned from Russian on one tick and from English on the
-    next.
+    wins, then the newest written (``_source_rank``). Both are stable: the
+    same field must not be planned from Russian on one tick and from
+    English on the next.
     """
     from app.models.content_version import ContentVersion, ContentVersionStatus
 
@@ -862,11 +876,11 @@ def _authored_texts(
         .all()
     )
     best: dict[str, tuple[str, LocaleCode]] = {}
-    ranked: dict[str, tuple[int, datetime]] = {}
+    ranked: dict[str, tuple[int, float]] = {}
     for field, locale, text, created_at in rows:
         if not text or not str(text).strip():
             continue
-        rank = (0 if locale == preferred_locale else 1, created_at)
+        rank = _source_rank(locale, created_at, preferred_locale)
         if field not in ranked or rank < ranked[field]:
             ranked[field] = rank
             best[field] = (text, normalize_locale(locale))

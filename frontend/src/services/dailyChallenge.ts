@@ -102,7 +102,8 @@ export interface DailyChallengeArchiveAttemptResponse {
 }
 
 /**
- * One question per UTC day for every user; platform-wide schedule.
+ * One question per day, platform-wide; "today" is the reader's own day,
+ * from the profile's time zone (`reader_today` on the server, 2026-10-03).
  * The dashboard card hides itself on 404 (the
  * ``daily_challenge.not_scheduled`` error envelope) so an off-schedule
  * day doesn't show a broken-feeling empty rectangle.

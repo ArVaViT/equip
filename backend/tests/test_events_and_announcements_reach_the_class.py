@@ -11,8 +11,9 @@ Everything here was found on the live course, not imagined:
   ``content_versions`` and came back empty — a blank card in the editor
   the moment after «Опубликовать».
 * The notification written for a Russian reader of a Russian course
-  said «объявление — в „Карта в кармане“»: the title was one table
-  over, and the fan-out did not look there.
+  said «объявление — в „Карта в кармане“» for good: the title was frozen
+  into the row before it was out. It is read when the bell is opened now,
+  from released rows — never early, in the author's language either.
 * An event put on the calendar told nobody. Announcements had a
   fan-out from the start; events had none.
 * The teacher's own calendar was empty. They are not enrolled in the
@@ -92,9 +93,11 @@ class TestTheTeacherSeesWhatTheyJustPosted:
 
 
 class TestTheBellCarriesTheTitle:
-    def test_a_reader_of_the_authors_language_gets_the_title_even_while_it_is_staged(
-        self, client: TestClient, db: Session, student: User
-    ) -> None:
+    def test_the_title_is_not_frozen_into_the_row(self, client: TestClient, db: Session, student: User) -> None:
+        """The title is read when the bell is opened, from released rows
+        (``test_the_bell_waits_for_every_language``). Until then the row —
+        its stored text included — names the post by its kind, for the
+        reader of the author's language too."""
         course_id = _published_course_with_student(db, student, locale="ru")
         client.post(
             ANNOUNCEMENTS,
@@ -102,8 +105,8 @@ class TestTheBellCarriesTheTitle:
         )
         rows = _notifications(db, "new_announcement")
         assert len(rows) == 1
-        assert rows[0].message == "Завтра занятия не будет — в «Карта в кармане»"
-        assert rows[0].meta["i18n"]["params"]["title"] == "Завтра занятия не будет"
+        assert rows[0].message == "объявление — в «Карта в кармане»"
+        assert "Завтра" not in str(rows[0].meta)
 
     def test_a_reader_of_another_language_is_not_handed_the_authors_language(
         self, client: TestClient, db: Session, student: User
@@ -137,7 +140,9 @@ class TestAnEventTellsTheClass:
         assert [str(n.user_id) for n in everyone] == [str(STUDENT_ID)]
         row = everyone[0]
         assert row.title == "Новое событие в курсе"
-        assert row.message == "Экзамен: Итоговый зачёт — в «Карта в кармане». Дата и время — в вашем календаре."
+        # The title is not out in every language yet: the stored text names
+        # the event by its kind (the bell reads the title once it is).
+        assert row.message == "Экзамен: событие — в «Карта в кармане». Дата и время — в вашем календаре."
         # The link opens the calendar on this course, where the date is
         # shown in the reader's own zone — the text itself names no time.
         assert row.link == f"/calendar?course={course_id}"
@@ -163,7 +168,7 @@ class TestAnEventTellsTheClass:
         moved = _notifications(db, "event_rescheduled")
         assert len(moved) == 1
         assert moved[0].title == "Событие перенесено"
-        assert moved[0].message.startswith("Экзамен: Зачёт по Деяниям — в «Карта в кармане». Новая дата")
+        assert moved[0].message.startswith("Экзамен: событие — в «Карта в кармане». Новая дата")
 
     def test_deleting_an_event_takes_its_notifications_with_it(
         self, client: TestClient, db: Session, student: User

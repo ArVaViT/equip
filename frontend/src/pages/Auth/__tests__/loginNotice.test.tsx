@@ -64,6 +64,12 @@ describe("the sign-in form explains itself", () => {
     expect(screen.getByRole("status")).toHaveTextContent(i18n.t("auth.notice.accountDeactivated"))
   })
 
+  it("confirms a deletion the person just made, and says how to undo it", () => {
+    rememberSignOutReason("account_deleted")
+    renderAt("/login")
+    expect(screen.getByRole("status")).toHaveTextContent(i18n.t("auth.notice.accountDeleted"))
+  })
+
   it("reads the error /auth/confirm sends it, instead of a blank form", () => {
     renderAt("/login?error=oauth_timeout")
     expect(screen.getByRole("status")).toHaveTextContent(i18n.t("auth.callback.timedOut"))

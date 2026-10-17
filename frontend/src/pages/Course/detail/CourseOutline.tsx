@@ -42,8 +42,9 @@ import { orNotTranslated } from "@/lib/untranslated"
  * a grouping a course may simply not use.
  *
  * So the outline draws `CourseStructure.groups`: a module keeps its card, and
- * the lessons no module holds are rows of their own at the tail. A course of
- * four lessons is four rows and the word «module» appears nowhere on it.
+ * the lessons no module holds are rows of their own, where the teacher put
+ * them — between modules too. A course of four lessons is four rows and the
+ * word «module» appears nowhere on it.
  *
  * ## What locks
  *
@@ -55,10 +56,11 @@ import { orNotTranslated } from "@/lib/untranslated"
  *
  * The rule is one rule now, and it is the reading order: a lesson is locked
  * while the lesson before it **in the course** is an unfinished assessment.
- * A module row still locks behind the module before it, which is what makes
- * a course with sections look exactly as it did — and cannot contradict the
- * flat rule, because a module row is only unlocked once every assessment
- * before it is done, which is strictly more than the flat rule asks.
+ * A module row still locks behind the group before it — the module before
+ * it, or the lessons outside modules just before it — which is what makes a
+ * course with sections look exactly as it did, and cannot contradict the
+ * flat rule: a module row is only unlocked once every assessment in the
+ * group before it is done, which is more than the flat rule asks.
  */
 
 interface Props {
@@ -99,9 +101,7 @@ function buildRows(structure: CourseStructure, completed: Set<string> | null): O
     if (group.module) {
       ordinal += 1
       const previous = structure.groups[groupIdx - 1]
-      const locked =
-        previous?.module != null &&
-        isModuleLocked(completed, gradableIds(previous.chapters))
+      const locked = previous != null && isModuleLocked(completed, gradableIds(previous.chapters))
       rows.push({
         kind: "module",
         key: group.module.id,

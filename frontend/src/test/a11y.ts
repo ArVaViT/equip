@@ -44,3 +44,25 @@ export const axe = configureAxe({
     "page-has-heading-one": { enabled: false },
   },
 });
+
+/**
+ * The page's headings as levels, in document order, and every place the
+ * outline skips a level going down (h1 → h3) — axe's `heading-order` in a
+ * form a test can name. Going back up any distance is fine; going down
+ * more than one step is not. The first heading is the baseline, so a
+ * component rendered alone (a quiz whose h2 sits under the lesson's h1)
+ * can be checked too; a page test asserts its one h1 separately.
+ */
+export function headingOutline(container: HTMLElement): { levels: number[]; gaps: string[] } {
+  const headings = Array.from(container.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6"))
+  const levels = headings.map((h) => Number(h.tagName[1]))
+  const gaps: string[] = []
+  for (let i = 1; i < headings.length; i++) {
+    const previous = levels[i - 1] ?? 0
+    const level = levels[i] ?? 0
+    if (level > previous + 1) {
+      gaps.push(`h${previous} → h${level} «${headings[i]?.textContent?.trim() ?? ""}»`)
+    }
+  }
+  return { levels, gaps }
+}

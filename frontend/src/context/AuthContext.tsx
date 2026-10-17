@@ -9,6 +9,7 @@ import { cacheClear } from "@/lib/cache"
 import { takeReturnPath } from "@/lib/authRedirect"
 import { setDisplayTimeZone } from "@/i18n/timeZone"
 import { hasStoredSupabaseSession } from "@/lib/storedSession"
+import { publishAccountDeleted } from "@/lib/accountDeleted"
 
 // ``reconcileFreshOAuthLocale`` lived here previously — a silent
 // post-signup PATCH that fired whenever ``profile.preferred_locale``
@@ -102,6 +103,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             city: data.city ?? null,
             church: data.church ?? null,
             email_off: data.email_off ?? [],
+            // Deleted by its owner: `App` shows the restore screen instead
+            // of the application (`AccountDeletedScreen`).
+            deleted_at: data.deleted_at ?? null,
           }
           // Before the first render with this user: every formatter reads
           // the zone at render time. A zone the person chose wins; anything
@@ -191,6 +195,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (event === "SIGNED_OUT") {
           activeUserId.current = null
+          publishAccountDeleted(false)
           setDisplayTimeZone(null)
           setUser(null)
           clearDatadogUser()

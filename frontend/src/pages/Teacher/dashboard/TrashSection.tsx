@@ -108,7 +108,7 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
                 <Card key={course.id} className="opacity-70 border-dashed">
                   <div className="flex items-center gap-4 p-4">
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium truncate">{course.title}</h4>
+                      <h2 className="text-sm font-medium truncate">{course.title}</h2>
                       {course.deleted_at && (
                         <p className="text-xs text-ink-muted">
                           {t("teacherDashboard.trash.deletedAt", {

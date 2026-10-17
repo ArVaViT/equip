@@ -294,6 +294,7 @@ def populate_spine_texts(
     display_locale: LocaleCode | None = None,
     hydrate_modules: bool = True,
     fallback: Literal["auto", "none", "source_then_any"] = "auto",
+    prefer_human: bool = False,
 ) -> None:
     """``courses.title|description`` and ``modules.title|description``
     columns dropped. Hydrate each course (and every loaded module/chapter
@@ -322,6 +323,9 @@ def populate_spine_texts(
     reader's: the first pass had already filled in Russian, and the
     second had nothing to overwrite it with.
 
+    ``prefer_human`` is the author's own view (``?source=1``): their
+    words for each field, a held edit included — see the cv reader.
+
     ``fallback`` is the cv reader's: a teacher reading their own course in
     another interface language passes ``"source_then_any"`` — under
     ``"auto"`` with translation on, a course with no row in that language
@@ -349,6 +353,7 @@ def populate_spine_texts(
                 display_locale=display_locale or src_locale,
                 source_locale=src_locale,
                 fallback=fallback,
+                prefer_human=prefer_human,
             )
         )
     for c in courses:
@@ -394,6 +399,7 @@ def populate_spine_texts(
             display_locale=display_locale or src_locale,
             source_locale=src_locale,
             fallback=fallback,
+            prefer_human=prefer_human,
         )
         for m in mods:
             cv_t = bulk.get((str(m.id), "title"))
@@ -434,6 +440,9 @@ def populate_module_texts(
         display_locale=source_locale,
         source_locale=source_locale,
         include_author_edits=for_author,
+        # The author's words, even when their last edit was in another
+        # language than the course — see the cv reader.
+        prefer_human=for_author,
     )
     for m in modules:
         # Same rule as ``populate_spine_texts``: this function is always
@@ -1128,11 +1137,17 @@ def localize_chapter_block_rows(
     by_block_locale: dict[tuple[str, str], str] = {}
     any_by_block: dict[str, str] = {}
     human_by_block: dict[str, str] = {}
+    human_in_source: dict[str, str] = {}
+    newest_human: dict[str, str] = {}
     for eid, locale, text, origin in rows:
         by_block_locale.setdefault((eid, locale), text)
         any_by_block.setdefault(eid, text)
         if origin == "human":
             human_by_block.setdefault(eid, text)
+            if text and locale == source_locale:
+                human_in_source[eid] = text
+            if text:
+                newest_human[eid] = text  # oldest first: the last is the newest
     held: dict[tuple[str, str], str] = {}
     if prefer_human:
         from app.services.staged_edits.read import author_texts_bulk
@@ -1141,7 +1156,17 @@ def localize_chapter_block_rows(
     out: list[BlockResponse] = []
     for b in blocks:
         bid = str(b.id)
-        content = held.get((bid, "content")) or by_block_locale.get((bid, display_locale))
+        # The author's source view reads the block's source — the person-
+        # written row in the course's language, else the newest one — like
+        # ``fetch_cv_entity_texts_with_fallback``: after an edit written in
+        # another language the display locale holds the machine's
+        # translation of it, and an autosave of that would make it the source.
+        authored = (
+            human_in_source.get(bid) or newest_human.get(bid)
+            if prefer_human and display_locale == source_locale
+            else None
+        )
+        content = held.get((bid, "content")) or authored or by_block_locale.get((bid, display_locale))
         if content is None and fallback == "source_then_any":
             any_tier = human_by_block.get(bid) or any_by_block.get(bid) if prefer_human else any_by_block.get(bid)
             content = by_block_locale.get((bid, source_locale)) or any_tier

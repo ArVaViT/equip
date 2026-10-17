@@ -13,7 +13,12 @@
  */
 const KEY = "equip.auth.sign-out-reason"
 
-export const SIGN_OUT_REASONS = ["session_expired", "account_deactivated"] as const
+export const SIGN_OUT_REASONS = [
+  "session_expired",
+  "account_deactivated",
+  // The person deleted their own account a moment ago (`DeleteAccountSetting`).
+  "account_deleted",
+] as const
 export type SignOutReason = (typeof SIGN_OUT_REASONS)[number]
 
 export function rememberSignOutReason(reason: SignOutReason): void {

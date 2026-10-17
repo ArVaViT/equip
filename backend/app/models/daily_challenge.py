@@ -209,9 +209,10 @@ class DailyChallengeOption(Base):
 
 
 class DailyChallengeSchedule(Base):
-    """Maps a UTC date to the question scheduled for that date.
+    """Maps a calendar date to the question scheduled for that date.
 
-    PK is ``challenge_date`` — at most one question per UTC day.
+    PK is ``challenge_date`` — at most one question per calendar date. Which
+    date is "today" is the reader's (``schedule.reader_today``).
     A Postgres trigger (``dc_schedule_assert_publishable``) enforces
     that ``question_id`` references a row with ``status='published'``,
     ``rejected=false``, and ``published_at IS NOT NULL``.

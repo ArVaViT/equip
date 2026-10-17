@@ -191,7 +191,7 @@ export function SchoolSettingsTab({ organizationId, embedded = false }: Props = 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-serif text-lg">{t("admin.school.title")}</CardTitle>
+        <CardTitle as="h2" className="font-serif text-lg">{t("admin.school.title")}</CardTitle>
         <p className="text-sm text-ink-muted">{t("admin.school.description")}</p>
       </CardHeader>
       <CardContent>{fields}</CardContent>

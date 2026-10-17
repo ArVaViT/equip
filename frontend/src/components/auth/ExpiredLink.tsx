@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { makeEmailSchema } from "@/lib/validations/auth"
-import { authErrorMessage, isRateLimited } from "@/lib/authError"
+import { emailSendErrorMessage, isRateLimited } from "@/lib/authError"
 
 interface Props {
   /** Mails a fresh link to the address. */
@@ -42,7 +42,7 @@ export function ExpiredLink({ send }: Props) {
       await send(parsed.data.email)
       setSent(true)
     } catch (err) {
-      if (isRateLimited(err)) setError(authErrorMessage(err, "auth.errors.serverError"))
+      if (isRateLimited(err)) setError(emailSendErrorMessage(err))
       else setSent(true)
     } finally {
       setSending(false)

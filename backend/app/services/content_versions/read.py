@@ -104,14 +104,16 @@ def fetch_cv_entity_texts_with_fallback(
     The old behaviour was ``"source_then_any"`` everywhere, unconditionally,
     which is how a Ukrainian student ended up reading Russian.
 
-    When ``prefer_human`` is set, the any-locale tier prefers
-    human-authored rows (``origin='human'``) over MT ones. The
-    display-locale and source-locale tiers ignore the flag — the
-    overlay system intentionally serves MT text in those locales
-    when that's what's authoritative. The flag matters only for the
-    ``?source=1`` editor view, where a teacher wants to see THEIR
-    typed text in its source language even if an MT row at that
-    locale was created earlier.
+    ``prefer_human`` marks the author's own view — the ``?source=1``
+    editor routes and the responses to a save — where a teacher must see
+    THEIR typed text. Asked for the source language, the field's source —
+    what a person wrote in the course's language, else the newest thing a
+    person wrote for it — comes first, then the tiers above. When the
+    teacher's last edit was written in another language than the course,
+    the locale they are asked about holds the machine's translation of it
+    (or, before the pipeline runs, nothing), and showing that instead
+    read as a lost edit. With one person-written row per field — the
+    common case — this is the same answer as before.
 
     Entities whose source columns are dropped need
     one indexed lookup per request to materialise responses; this is
@@ -142,14 +144,30 @@ def fetch_cv_entity_texts_with_fallback(
     by_locale: dict[tuple[str, str, str], str] = {}
     any_for_pair: dict[tuple[str, str], str] = {}
     human_for_pair: dict[tuple[str, str], str] = {}
+    human_in_source: dict[tuple[str, str], str] = {}
+    newest_human: dict[tuple[str, str], str] = {}
     for eid, field, locale, text, origin in rows:
         by_locale.setdefault((eid, field, locale), text)
         any_for_pair.setdefault((eid, field), text)
         if origin == "human":
             human_for_pair.setdefault((eid, field), text)
+            if text and locale == source_locale:
+                human_in_source[(eid, field)] = text
+            if text:
+                # Rows come oldest first, so the last one seen is the newest.
+                newest_human[(eid, field)] = text
+    # Only where the author is asking for their own source text: the owner
+    # exporting a German PDF still gets German. The field's source is the
+    # ranking ``content_versions.write.field_source_row`` uses: the
+    # person-written row in the course's language, else the newest one.
+    authors_source_view = prefer_human and display_locale == source_locale
     resolved: dict[tuple[str, str], str | None] = {}
     for eid in entity_ids:
         for field in fields:
+            authored = human_in_source.get((eid, field)) or newest_human.get((eid, field))
+            if authors_source_view and authored is not None:
+                resolved[(eid, field)] = authored
+                continue
             wanted = by_locale.get((eid, field, display_locale))
             if wanted is not None or fallback == "none":
                 resolved[(eid, field)] = wanted

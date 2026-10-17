@@ -6,7 +6,7 @@ its link, and nothing else in the system knew: ``GET
 chapter itself to anybody who typed its id into the URL. A lock only the
 client honours is a suggestion.
 
-The rule, in reading order within the course:
+The rule, in reading order within the course (``course_structure``):
 
 * A chapter without ``is_locked`` is open. Most are.
 * A locked chapter opens once the reader has completed the chapter
@@ -27,7 +27,8 @@ from typing import TYPE_CHECKING
 
 from app.constants import GRADABLE_CHAPTER_TYPES
 from app.models.chapter_progress import ChapterProgress
-from app.models.course import Chapter
+from app.models.course import Chapter, Module
+from app.services.course_structure import build_spine
 from app.services.staged_edits.visibility import chapter_awaits_first_release
 
 if TYPE_CHECKING:
@@ -39,25 +40,29 @@ if TYPE_CHECKING:
 def _predecessor(db: Session, chapter: Chapter) -> Chapter | None:
     """The chapter a reader meets just before this one.
 
-    Reading order is ``order_index`` across the whole course. Modules
-    group chapters for display; they do not restart the count, and a
-    chapter in no module is still in the order.
+    Reading order is the course's one sequence (``course_structure``):
+    modules and the lessons outside them in the places the teacher gave
+    them, a module's lessons consecutive under it. It used to be the
+    lesson numbers alone, which only agreed with what the student sees
+    while nobody had moved anything.
 
     A chapter held for its first release is not in the reader's order
     yet: a quiz nobody can open cannot be the thing a locked lesson waits
     on (2026-10-03).
     """
-    return (
+    modules = db.query(Module).filter(Module.course_id == chapter.course_id, Module.deleted_at.is_(None)).all()
+    chapters = (
         db.query(Chapter)
         .filter(
             Chapter.course_id == chapter.course_id,
             Chapter.deleted_at.is_(None),
             ~chapter_awaits_first_release(),
-            Chapter.order_index < chapter.order_index,
         )
-        .order_by(Chapter.order_index.desc())
-        .first()
+        .all()
     )
+    if all(c.id != chapter.id for c in chapters):
+        chapters.append(chapter)
+    return build_spine(modules, chapters).predecessor_of(chapter.id)
 
 
 def chapter_is_open_to(db: Session, chapter: Chapter, user_id: uuid.UUID) -> bool:

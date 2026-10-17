@@ -45,6 +45,8 @@ from app.services.translation.version import TRANSLATOR_VERSION
 
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import Iterable
+    from datetime import datetime
 
     from sqlalchemy.orm import Session
 
@@ -356,6 +358,93 @@ class StagedStore:
 
     def __init__(self, course_id: str) -> None:
         self.course_id = course_id
+        self._course_locale: str | None = None
+
+    def _replaced_source_locale(self, db: Session, *, entity_type: str, entity_id: str, field: str) -> str | None:
+        """The locale whose person-written text this field's held edit
+        replaces on release, if the edit is in another language.
+
+        That row does not bind the machine the way a hand translation
+        does: it is the old source, it goes when the edit goes out
+        (``record_human_version`` with ``course_locale``), and its locale
+        needs a translation of the new words like every other.
+        """
+        key = (entity_type, entity_id, field)
+        return self._replaced_source_locales(db, [key]).get(key)
+
+    def _replaced_source_locales(
+        self, db: Session, fields: Iterable[tuple[str, str, str]]
+    ) -> dict[tuple[str, str, str], str]:
+        """``_replaced_source_locale`` for many fields in two reads.
+
+        ``active_rows`` used to ask field by field: two or three round
+        trips for every field with a live human row, which is every
+        field (its source is one). Fields whose edit replaces nothing
+        are absent from the answer.
+        """
+        from app.models.course import Course
+        from app.services.content_versions.write import pick_field_source
+
+        wanted = list(dict.fromkeys(fields))
+        if not wanted:
+            return {}
+        chunk = 500
+        # The newest person-written held edit of each field: its locale.
+        edit_locale: dict[tuple[str, str, str], str] = {}
+        newest: dict[tuple[str, str, str], datetime] = {}
+        for start in range(0, len(wanted), chunk):
+            window = wanted[start : start + chunk]
+            rows = (
+                db.query(
+                    StagedContentVersion.entity_type,
+                    StagedContentVersion.entity_id,
+                    StagedContentVersion.field,
+                    StagedContentVersion.locale,
+                    StagedContentVersion.created_at,
+                )
+                .filter(
+                    tuple_(
+                        StagedContentVersion.entity_type,
+                        StagedContentVersion.entity_id,
+                        StagedContentVersion.field,
+                    ).in_(window),
+                    StagedContentVersion.origin == "human",
+                )
+                .all()
+            )
+            for entity_type, entity_id, field, locale, created_at in rows:
+                key = (entity_type, entity_id, field)
+                if key not in newest or created_at > newest[key]:
+                    newest[key] = created_at
+                    edit_locale[key] = locale
+        if not edit_locale:
+            return {}
+        if self._course_locale is None:
+            self._course_locale = db.query(Course.source_locale).filter(Course.id == self.course_id).scalar() or "en"
+
+        # The source each of those fields is translated from now.
+        edited = list(edit_locale)
+        live_by_field: dict[tuple[str, str, str], list[ContentVersion]] = {}
+        for start in range(0, len(edited), chunk):
+            window = edited[start : start + chunk]
+            for row in (
+                db.query(ContentVersion)
+                .filter(
+                    tuple_(ContentVersion.entity_type, ContentVersion.entity_id, ContentVersion.field).in_(window),
+                    ContentVersion.origin == "human",
+                    ContentVersion.status == ContentVersionStatus.OK,
+                    ContentVersion.superseded_by.is_(None),
+                )
+                .all()
+            ):
+                live_by_field.setdefault((row.entity_type, row.entity_id, row.field), []).append(row)
+
+        replaced: dict[tuple[str, str, str], str] = {}
+        for key, locale in edit_locale.items():
+            source = pick_field_source(live_by_field.get(key, []), course_locale=self._course_locale)
+            if source is not None and source.locale != locale:
+                replaced[key] = source.locale
+        return replaced
 
     def active_row(
         self,
@@ -383,7 +472,11 @@ class StagedStore:
         # (A live *machine* row says nothing: it translates the text
         # this edit replaces, which is precisely what we are redoing.)
         live = _live_active(db, entity_type=entity_type, entity_id=entity_id, field=field, locale=locale)
-        if live is not None and live.origin == "human":
+        if (
+            live is not None
+            and live.origin == "human"
+            and self._replaced_source_locale(db, entity_type=entity_type, entity_id=entity_id, field=field) != locale
+        ):
             # A human translation is authoritative regardless of which
             # pipeline generation is current — it was never made by one.
             return ActiveRow(
@@ -449,6 +542,7 @@ class StagedStore:
         # says nothing here, because it translates the text this edit
         # replaces. A live human row does — it is never overwritten.
         remaining = [key for key in keys if key not in found]
+        replaced = self._replaced_source_locales(db, (key[:3] for key in remaining))
         for start in range(0, len(remaining), chunk):
             window = remaining[start : start + chunk]
             live_rows = (
@@ -474,6 +568,8 @@ class StagedStore:
                 .all()
             )
             for entity_type, entity_id, field, locale, status, source_hash, text in live_rows:
+                if replaced.get((entity_type, entity_id, field)) == locale:
+                    continue
                 found[(entity_type, entity_id, field, locale)] = ActiveRow(
                     origin="human",
                     status=status,

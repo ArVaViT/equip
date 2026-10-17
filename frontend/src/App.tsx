@@ -26,6 +26,7 @@ import { canDirect, canTeach, isPlatformStaff } from "@/lib/roles"
 import { DeniedRedirect } from "@/components/auth/DeniedRedirect"
 import { getTeacherAgreementOwed, subscribeTeacherAgreement } from "@/components/legal/useTeacherAgreement"
 import { hasStoredSupabaseSession } from "@/lib/storedSession"
+import { getAccountDeleted, subscribeAccountDeleted } from "@/lib/accountDeleted"
 
 // Lazy: FirstRunFlow renders null until a brand-new user's privacy/setup gate
 // activates, so it never needs to be on the critical path — its component code
@@ -48,6 +49,9 @@ const LegalNoticeBanner = lazyRoute(() =>
 )
 
 const NotFound = lazyRoute(() => import("./pages/NotFound"))
+const AccountDeletedScreen = lazyRoute(() =>
+  import("@/components/account/AccountDeletedScreen").then((m) => ({ default: m.AccountDeletedScreen })),
+)
 
 const Login = lazyRoute(() => import("./pages/Auth/Login"))
 const Register = lazyRoute(() => import("./pages/Auth/Register"))
@@ -211,9 +215,21 @@ function AppRoutes() {
   // on userId so a logged-out render is a no-op. Don't mount it on
   // auth pages — the user isn't signed in there.
   useGrandTour()
+  const accountDeleted = useSyncExternalStore(subscribeAccountDeleted, getAccountDeleted, getAccountDeleted)
 
   if (loading) {
     return <PageSpinner variant="screen" label={t("common.loading")} />
+  }
+
+  // An account its owner deleted: one screen, restore or sign out, in place
+  // of the whole application — the profile says so when it loads, the API
+  // says so to a tab that loaded the profile before the deletion.
+  if (user && (user.deleted_at || accountDeleted)) {
+    return (
+      <Suspense fallback={<PageSpinner variant="screen" label={t("common.loading")} />}>
+        <AccountDeletedScreen />
+      </Suspense>
+    )
   }
 
   if (isAuthPage) {

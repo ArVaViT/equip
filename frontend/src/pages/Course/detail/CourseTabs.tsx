@@ -145,9 +145,9 @@ function Program({
           {group.module && (
             // No number of ours: teachers write it into the title («Module 1.
             // Introduction…»), and «1. Module 1.» said it twice.
-            <h3 className="mb-2 font-serif text-base font-semibold tracking-tight text-wrap-safe">
+            <h2 className="mb-2 font-serif text-base font-semibold tracking-tight text-wrap-safe">
               {orNotTranslated(t, group.module.title)}
-            </h3>
+            </h2>
           )}
           <ul className="divide-y divide-edge rounded-card border border-edge bg-card dark:border-transparent">
             {group.chapters.map((chapter) => {

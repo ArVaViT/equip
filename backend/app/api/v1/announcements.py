@@ -1,4 +1,5 @@
 import uuid
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Response, status
@@ -30,10 +31,11 @@ from app.services.content_versions import (
     fetch_cv_entity_texts_with_fallback,
 )
 from app.services.course_notifications import (
-    course_title_for_locale,
+    course_title,
     delete_notifications_about,
     enrolled_recipients_by_locale,
-    entity_title_for_locale,
+    entity_title,
+    stored_params,
 )
 from app.services.notification_service import create_notifications_bulk, notification_text
 from app.services.staged_edits import awaiting_first_release
@@ -99,6 +101,7 @@ def _announcement_to_response(
         fields=list(_TRANSLATABLE_ANNOUNCEMENT_FIELDS),
         display_locale=source_locale,
         source_locale=source_locale,
+        prefer_human=True,
         include_author_edits=True,
     )
     return AnnouncementResponse.model_validate(
@@ -392,42 +395,23 @@ def create_announcement(
         reconcile_entity_if_course_published(db, "announcement", announcement)
 
     if data.course_id and course is not None:
-        # Each recipient is written to in the language they read in,
-        # with the announcement's title in that language when it has
-        # one. ``entity_title_for_locale`` says what happens when it
-        # does not — in short: a same-language reader gets the author's
-        # text, anyone else gets «an announcement» rather than a
-        # language they did not choose.
-        #
-        # Sent now, not at release. On a live course the post itself is
-        # hidden from readers until every language has it (see
-        # ``list_announcements``), so for a short while the bell points
-        # at a course page that does not list it yet. That is harmless:
-        # the bell names the course, not the post, carries no language
-        # the reader did not choose, and the gap is the worker's one
-        # pass. Deferring the fan-out to promotion would need the
-        # per-field promoter to know what an announcement is and when
-        # both of its fields are out — a second notification path for a
-        # minute of latency (decision 2026-10-03).
+        # Each recipient is written to in the language they read in. The
+        # announcement's title is not written into the row: it is read
+        # when the bell is opened, from released rows only
+        # (``entity_title``). Sent now, not at release — but on a live
+        # course the post is hidden from readers until every language has
+        # it (see ``list_announcements``), and so is the notice about it:
+        # the bell leaves it out until then (``notifications.py``) and
+        # shows it, in its place by date, with its title once it is out.
+        # The author's own language waits too — no early copy in one.
         recipients_by_locale = enrolled_recipients_by_locale(db, course_id=course.id, exclude_user_id=teacher.id)
-        ann_source_locale = normalize_locale(course.source_locale)
         for locale, recipients in recipients_by_locale.items():
-            title_for_locale = course_title_for_locale(db, course, locale)
-            ann_title_for_locale = entity_title_for_locale(
-                db,
-                entity_type="announcement",
-                entity_id=announcement.id,
-                locale=locale,
-                source_locale=ann_source_locale,
-                fallback_key="fallback.announcement",
-            )
+            params: dict[str, Any] = {
+                "title": entity_title("announcement", announcement.id, fallback_key="fallback.announcement"),
+                "course": course_title(course),
+            }
             notif_title = t(locale, "notif.new_announcement.title")
-            notif_message = t(
-                locale,
-                "notif.new_announcement.body",
-                title=ann_title_for_locale,
-                course=title_for_locale,
-            )
+            notif_message = t(locale, "notif.new_announcement.body", **stored_params(db, params, locale))
             create_notifications_bulk(
                 db,
                 recipients,
@@ -439,11 +423,7 @@ def create_announcement(
                 # markdown in notifications" feature would silently inherit
                 # any unsanitised payload that lived in the message column.
                 message=notif_message,
-                i18n=notification_text(
-                    "notif.new_announcement",
-                    title=ann_title_for_locale,
-                    course=title_for_locale,
-                ),
+                i18n=notification_text("notif.new_announcement", **params),
                 link=f"/courses/{data.course_id}",
                 metadata={"course_id": data.course_id, "announcement_id": str(announcement.id)},
             )

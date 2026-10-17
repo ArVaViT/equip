@@ -10,7 +10,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import i18n, { SUPPORTED_LOCALES } from "@/i18n/config"
-import { authErrorMessage, isDuplicateEmail } from "../authError"
+import { authErrorMessage, emailSendErrorMessage, isDuplicateEmail } from "../authError"
 
 /** What supabase-js throws: an Error subclass carrying `status` + `code`. */
 function goTrueError(message: string, extra: { status?: number; code?: string } = {}) {
@@ -119,5 +119,88 @@ describe("the two email limits behind one code", () => {
     const message = authErrorMessage(err, "auth.loginFailed")
     expect(message).toBe(i18n.t("auth.errors.emailQuota"))
     expect(message).not.toMatch(/minute/i)
+  })
+
+  it("reads the send-email hook's five-minute refusal, which GoTrue relays as a bare 429", () => {
+    // `supabase/functions/send-email/copy.ts::repeatRefusal`; no `code` survives the relay.
+    const err = Object.assign(new Error("For security purposes, you can only request this after 240 seconds."), {
+      status: 429,
+    })
+    expect(authErrorMessage(err, "auth.loginFailed")).toBe(i18n.t("auth.errors.emailCooldownMinutes", { minutes: 4 }))
+  })
+
+  it("rounds a wait over a minute up to whole minutes", () => {
+    const err = Object.assign(new Error("For security purposes, you can only request this after 61 seconds."), {
+      code: "over_email_send_rate_limit",
+      status: 429,
+    })
+    expect(authErrorMessage(err, "auth.loginFailed")).toBe(i18n.t("auth.errors.emailCooldownMinutes", { minutes: 2 }))
+  })
+
+  it("leaves a 429 without the sentence to the generic «too many attempts»", () => {
+    const err = Object.assign(new Error("Request rate limit reached"), { status: 429 })
+    expect(authErrorMessage(err, "auth.loginFailed")).toBe(i18n.t("auth.errors.rateLimited"))
+  })
+})
+
+describe("emailSendErrorMessage: every shape of a failed send says something a person can act on", () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("ru")
+  })
+
+  it("reads the send-email hook's refusal exactly as GoTrue relays it: 429, code `unknown`", () => {
+    // internal/hooks/hookserrors: {error:{http_code:429,message}} -> HTTPError
+    // without an error code -> 2024-01-01 response {code:"unknown", message}.
+    const err = goTrueError("For security purposes, you can only request this after 97 seconds.", {
+      status: 429,
+      code: "unknown",
+    })
+    const text = emailSendErrorMessage(err)
+    expect(text).toBe(i18n.t("auth.errors.emailCooldownMinutes", { minutes: 2 }))
+    expect(text).toContain("Спам")
+  })
+
+  it("names the spam folder under a minute too", () => {
+    const err = goTrueError("For security purposes, you can only request this after 42 seconds.", {
+      status: 429,
+      code: "over_email_send_rate_limit",
+    })
+    expect(emailSendErrorMessage(err)).toContain("Спам")
+    expect(emailSendErrorMessage(err)).toContain("42")
+  })
+
+  it("a 429 with words we do not know is still «already sent», not «server down»", () => {
+    const err = goTrueError("Too many", { status: 429, code: "unknown" })
+    expect(emailSendErrorMessage(err)).toBe(i18n.t("auth.errors.emailAlreadySent"))
+  })
+
+  it("too many requests from this connection is not «already sent»: nothing may have left", () => {
+    const err = goTrueError("Request rate limit reached", { status: 429, code: "over_request_rate_limit" })
+    expect(emailSendErrorMessage(err)).toBe(i18n.t("auth.errors.rateLimited"))
+  })
+
+  it("the project's hourly allowance is its own sentence", () => {
+    const err = goTrueError("email rate limit exceeded", { status: 429, code: "over_email_send_rate_limit" })
+    expect(emailSendErrorMessage(err)).toBe(i18n.t("auth.errors.emailQuota"))
+  })
+
+  it.each([
+    ["a hook timeout", { status: 422, code: "hook_timeout_after_retry" }],
+    ["a 500 from the hook", { status: 500, code: "unexpected_failure" }],
+    ["a dropped connection", { status: 0 }],
+    ["nothing at all", {}],
+  ])("%s points at the earlier email and a retry", (_label, extra) => {
+    const text = emailSendErrorMessage(goTrueError("Error sending magic link email", extra))
+    expect(text).toBe(i18n.t("auth.errors.emailSendFailed"))
+    expect(text).toContain("Спам")
+    expect(text).not.toContain("Error sending")
+  })
+
+  it("has the sentences in every language", () => {
+    for (const locale of SUPPORTED_LOCALES) {
+      for (const key of ["auth.errors.emailSendFailed", "auth.errors.emailAlreadySent"]) {
+        expect(i18n.exists(key, { lng: locale })).toBe(true)
+      }
+    }
   })
 })

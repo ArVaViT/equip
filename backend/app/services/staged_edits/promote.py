@@ -149,15 +149,19 @@ def _promote_one_field(
     # Every language, in the words now staged — or nothing is written. This
     # said so above and went ahead anyway: the human row landed with whatever
     # translations matched, and readers in the others kept the old text.
-    exempt = _human_translation_locales(db, {(entity_type, entity_id, field)}).get(
-        (entity_type, entity_id, field), set()
-    )
+    course_locale = _course_locale(db, course_id)
+    exempt = _human_translation_locales(
+        db, {(entity_type, entity_id, field): human.locale}, course_locale=course_locale
+    ).get((entity_type, entity_id, field), set())
     needed = {loc for loc in LOCALE_CODES if loc != human.locale and loc not in exempt}
     if not needed <= {r.locale for r in translations}:
         return False
 
     # The human text lands first so the translations recorded below can
-    # point their provenance at it.
+    # point their provenance at it. Written in another language than the
+    # source, it replaces the source — before the translations, so the
+    # source's own locale takes the new translation instead of the machine
+    # politely declining to overwrite a person's (old) words.
     record_human_version(
         db,
         entity_type=entity_type,
@@ -166,6 +170,7 @@ def _promote_one_field(
         locale=human.locale,
         text=human.text,
         authored_by=human.authored_by,
+        course_locale=course_locale,
     )
     for row in translations:
         record_mt_version(
@@ -212,6 +217,7 @@ def promote_staged_entity_unconditionally(db: Session, *, course_id: str) -> int
     if not rows:
         return 0
 
+    course_locale = _course_locale(db, course_id)
     by_field: dict[tuple[str, str, str], list[StagedContentVersion]] = {}
     for row in rows:
         by_field.setdefault((row.entity_type, row.entity_id, row.field), []).append(row)
@@ -229,6 +235,7 @@ def promote_staged_entity_unconditionally(db: Session, *, course_id: str) -> int
             locale=human.locale,
             text=human.text,
             authored_by=human.authored_by,
+            course_locale=course_locale,
         )
         expected_hash = compute_source_hash(human.text, locale=human.locale)
         for row in group:
@@ -254,6 +261,14 @@ def promote_staged_entity_unconditionally(db: Session, *, course_id: str) -> int
     if any(entity_type == "chapter" for entity_type, _, _ in by_field):
         _recount_progress(db, course_id)
     return released
+
+
+def _course_locale(db: Session, course_id: str) -> str:
+    """The course's declared language — which locale a field's source is
+    looked for in first."""
+    from app.models.course import Course
+
+    return db.query(Course.source_locale).filter(Course.id == course_id).scalar() or "en"
 
 
 def _recount_progress(db: Session, course_id: str) -> None:

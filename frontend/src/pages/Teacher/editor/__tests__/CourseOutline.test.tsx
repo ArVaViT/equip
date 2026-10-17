@@ -82,14 +82,11 @@ function Wrapper({ children }: { children: ReactNode }) {
 }
 
 function renderOutline(c: Course, onAddChapter = vi.fn()) {
-  const modules = [...(c.modules ?? [])].sort((a, b) => a.order_index - b.order_index)
   return render(
     <CourseOutline
       courseId={c.id}
       structure={readCourseStructure(c)}
-      modules={modules}
-      onModuleDragEnd={vi.fn()}
-      onChapterDragEnd={vi.fn()}
+      onOutlineDragEnd={vi.fn()}
       onAddModule={vi.fn()}
       onAddChapter={onAddChapter}
       onModuleChapterDragEnd={vi.fn()}
@@ -189,6 +186,29 @@ describe("CourseOutline — a course that groups its lessons", () => {
     // …and the lesson that is in no module is right there beside it,
     // editable, rather than hidden behind a heading it does not have.
     expect(screen.getByText("Послесловие")).toBeInTheDocument()
+  })
+
+  it("shows a lesson outside modules where the teacher put it, between two modules", async () => {
+    // One order for everybody (2026-10-16): no separate list of loose
+    // lessons — the teacher sees the sequence the student reads.
+    await i18n.changeLanguage("ru")
+    renderOutline(
+      course({
+        modules: [
+          module_({ id: "m-1", title: "Часть первая", order_index: 0 }),
+          module_({ id: "m-2", title: "Часть вторая", order_index: 2 }),
+        ],
+        chapters: [chapter({ id: "ch-mid", title: "Интерлюдия", order_index: 1 })],
+      }),
+    )
+
+    const first = screen.getByText("Часть первая")
+    const loose = screen.getByText("Интерлюдия")
+    const second = screen.getByText("Часть вторая")
+    expect(first.compareDocumentPosition(loose) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(loose.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // One draggable list, not a list of modules and another of lessons.
+    expect(document.querySelectorAll("[data-rfd-droppable-id]")).toHaveLength(1)
   })
 
   it("offers to file a loose lesson under a module once one exists", async () => {

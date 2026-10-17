@@ -71,6 +71,12 @@ class OrgSettings(Base):
     # consistent with the threshold). Teachers never see this surface.
     grade_bands: Mapped[dict] = mapped_column(JSONVariant, default=dict, server_default="{}")
 
+    # The IANA zone the school's own days are counted in — the day printed on
+    # its certificates and ведомости, the last day of an invitation it sends.
+    # NULL until the school says; ``school_clock`` then answers with the
+    # platform's previous rule (Indianapolis).
+    time_zone: Mapped[str | None] = mapped_column()
+
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

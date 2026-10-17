@@ -1,4 +1,4 @@
-"""The three things the backend asks of Supabase Auth's admin API.
+"""What the backend asks of Supabase Auth.
 
 Until 2026-10-15 the backend never wrote to Supabase Auth: an invited
 person signed up like anybody else, waited for a confirmation email, came
@@ -14,6 +14,10 @@ in ``invitation_service``), and these are the calls it needs:
 * read an account — is it confirmed;
 * create one already confirmed;
 * confirm one that exists unconfirmed, with the password chosen now.
+
+And one call made with the person's own token rather than the admin key:
+ending every session of an account its owner has just deleted
+(``sign_out_everywhere``, 2026-10-16).
 
 Nothing here decides *whether* to do any of that. The service does; this
 module only speaks GoTrue's protocol and turns its answers into ours.
@@ -125,6 +129,41 @@ def get_account(user_id: UUID) -> AuthAccount | None:
     return AuthAccount(id=UUID(body["id"]), confirmed=bool(body.get("email_confirmed_at")))
 
 
+@dataclass(frozen=True)
+class AddressState:
+    """Where an account's emails go now, as Supabase Auth holds it."""
+
+    email: str
+    #: A phone on the account. Equip signs nobody in by phone; a phone
+    #: verified by SMS would also arrive as amr ``otp``.
+    has_phone: bool
+
+
+def address_state(user_id: UUID) -> AddressState:
+    """The account's current address (and whether it carries a phone).
+
+    Restoring a deleted account trusts a link we emailed to "the account's
+    address" (``users.restore_my_account``). That proves the owner only if
+    the address is still the one the account had when it was deleted:
+    somebody who knows just the password can sign in (a deleted account is
+    closed by our API, not banned in GoTrue), move the address to a mailbox
+    of theirs and open a link there. Compared with the snapshot taken at the
+    deletion, so neither a confirmed move nor a later password change (which
+    clears GoTrue's ``email_change_sent_at``) gets past it. Unreadable
+    answers raise, so a restore fails closed.
+    """
+    response = _call("GET", f"/admin/users/{user_id}")
+    if response.status_code != status.HTTP_200_OK:
+        raise _refuse(response, "read")
+    try:
+        body = response.json()
+        email = str(body.get("email") or "")
+        phone = str(body.get("phone") or "")
+    except (ValueError, AttributeError):
+        raise _unavailable("unreadable_user") from None
+    return AddressState(email=email, has_phone=bool(phone))
+
+
 def create_confirmed(email: str, password: str, metadata: dict[str, str]) -> UUID:
     """A new account whose address counts as proven from the start.
 
@@ -158,3 +197,47 @@ def confirm_with_password(user_id: UUID, password: str, metadata: dict[str, str]
     )
     if response.status_code != status.HTTP_200_OK:
         raise _refuse(response, "confirm")
+
+
+def sign_out_everywhere(access_token: str) -> bool:
+    """End every session of the account this token belongs to.
+
+    ``POST /logout?scope=global`` with the person's own token revokes all of
+    their refresh tokens, so every other device — the phone, the laptop at
+    church — loses its session at the next refresh instead of living on. An
+    access token already issued stays valid until it expires (an hour at
+    most); ``get_current_user`` refuses it for the whole of that hour,
+    because the account is deactivated before this is called.
+
+    Best effort, and says so: ``False`` when Supabase did not confirm. The
+    deletion it follows has already happened and must not be undone because
+    a network call failed — the API is closed either way, and a restore asks
+    for an email link opened after the deletion (``users.restore_my_account``), so
+    a session that survived proves nothing.
+
+    Not a ban. ``ban_duration`` would make Supabase itself refuse a sign-in,
+    but GoTrue checks the ban *before* the password and answers
+    ``user_banned`` — so anybody could type an address with any password and
+    learn that it belongs to a deleted Equip account. A deleted account still
+    signs in at Supabase; it is our API that answers, and only to whoever
+    proved the address.
+    """
+    base = settings.SUPABASE_URL
+    key = settings.SUPABASE_SERVICE_ROLE_KEY
+    if not base or not key:
+        logger.warning("sign out everywhere skipped: auth is not configured")
+        return False
+    try:
+        response = httpx.post(
+            f"{base.rstrip('/')}/auth/v1/logout",
+            params={"scope": "global"},
+            headers={"apikey": key, "Authorization": f"Bearer {access_token}"},
+            timeout=_TIMEOUT_SECONDS,
+        )
+    except httpx.HTTPError as exc:
+        logger.warning("sign out everywhere failed: %s", type(exc).__name__)
+        return False
+    if response.status_code not in (status.HTTP_200_OK, status.HTTP_204_NO_CONTENT):
+        logger.warning("sign out everywhere refused: %s %s", response.status_code, _error_code(response))
+        return False
+    return True

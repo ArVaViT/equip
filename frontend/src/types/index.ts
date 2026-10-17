@@ -92,6 +92,12 @@ export interface User {
   // shape doesn't always carry it.
   deactivated_at?: string | null
   /**
+   * When the person deleted the account themselves (`DELETE /users/me`).
+   * Set, the application is replaced by the restore screen. Optional for
+   * the same reason as `deactivated_at`.
+   */
+  deleted_at?: string | null
+  /**
    * When the first-run flow was finished, on any device. `null` means it has
    * not been and the flow shows; the browser's own flag is a cache of this.
    * Optional because an older cached profile shape may not carry it — absent
@@ -466,6 +472,8 @@ export interface Certificate {
   course_id: string | null
   archived_course_title?: string | null
   issued_at: string | null
+  /** `YYYY-MM-DD` on the issuing school's clock — the date every surface prints. */
+  issued_on?: string | null
   certificate_number: string | null
   status: 'pending' | 'teacher_approved' | 'approved' | 'rejected'
   requested_at: string | null
@@ -705,8 +713,8 @@ export interface CalendarEvent {
  *
  * The stand-in has `id === UNGROUPED_GROUP_ID` (see `lib/courseStructure`),
  * an empty `title` — the screen supplies the wording — and an `order_index`
- * past the last real module, so it sorts to the tail. It appears only when
- * the course actually has a loose lesson.
+ * that is its rank in the course's reading order (where its first lesson
+ * stands). It appears only when the course actually has a loose lesson.
  */
 export interface CourseGroupInfo {
   id: string
@@ -1155,6 +1163,10 @@ export interface GradeSheet {
   grading_scheme: string
   pass_threshold: string | null
   finalized_at: string
+  /** The document's days, `YYYY-MM-DD` on the school's clock. */
+  finalized_on?: string | null
+  cohort_start_on?: string | null
+  cohort_end_on?: string | null
   finalized_by: string | null
   reopened_at: string | null
   reopen_reason: string | null

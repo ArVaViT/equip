@@ -138,6 +138,9 @@ export interface ProfileRow {
   // Non-null when the account is soft-deleted (deactivated). The admin table
   // shows a badge + a Restore action instead of Delete.
   deactivated_at: string | null
+  /** Set when the owner deleted the account themselves — always with
+   *  `deactivated_at`; the badge says who closed it, Restore clears both. */
+  deleted_at?: string | null
 }
 
 export interface AdminStats {

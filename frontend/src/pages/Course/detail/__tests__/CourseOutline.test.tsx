@@ -319,3 +319,44 @@ describe("how long each part takes to read", () => {
     expect(container.textContent).not.toMatch(/\d min/)
   })
 })
+
+describe("a lesson the teacher put between two modules", () => {
+  // One order for everybody (2026-10-16): the student reads the sequence the
+  // teacher arranged, not modules first and loose lessons at the tail.
+  const BETWEEN = course({
+    modules: [
+      module_({
+        id: "m1",
+        title: "Beginnings",
+        order_index: 0,
+        chapters: [chapter({ id: "a1", module_id: "m1", title: "Pentecost", order_index: 1 })],
+      }),
+      module_({
+        id: "m2",
+        title: "The road out",
+        order_index: 3,
+        chapters: [chapter({ id: "b1", module_id: "m2", title: "Antioch", order_index: 4 })],
+      }),
+    ],
+    chapters: [chapter({ id: "q", title: "Midterm quiz", order_index: 2, chapter_type: "quiz" })],
+  })
+
+  it("is shown between them", () => {
+    show(BETWEEN)
+
+    const first = screen.getByText("Beginnings")
+    const loose = screen.getByText("Midterm quiz")
+    const second = screen.getByText("The road out")
+    expect(first.compareDocumentPosition(loose) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(loose.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it("holds back the module after it until it is done", () => {
+    const { unmount } = show(BETWEEN, new Set())
+    expect(screen.getByText(i18n.t("courseDetail.moduleLocked"))).toBeInTheDocument()
+    unmount()
+
+    show(BETWEEN, new Set(["q"]))
+    expect(screen.queryByText(i18n.t("courseDetail.moduleLocked"))).not.toBeInTheDocument()
+  })
+})

@@ -13,7 +13,7 @@
  *
  * These tests pin the three properties that make it a statement rather than a
  * formality: the box is not ticked on arrival, the button will not send until
- * it is, and the box does not stay ticked for the next person.
+ * it is (and says so when pressed), and the box does not stay ticked for the next person.
  */
 import type { ReactNode } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -67,13 +67,31 @@ describe("the age statement on the invite form", () => {
     ).toBeInTheDocument();
   });
 
-  it("will not send an invitation until it is made", async () => {
+  it("will not send an invitation until it is made, and points at the box when pressed", async () => {
     const user = userEvent.setup();
     open();
 
     await user.type(screen.getByPlaceholderText(/@/), "pupil@example.com");
+    // Not disabled: a disabled button swallowed four presses in RUM, silently.
+    expect(sendButton()).toBeEnabled();
+    await user.click(sendButton());
 
-    expect(sendButton()).toBeDisabled();
+    expect(createInvitation).not.toHaveBeenCalled();
+    expect(statement()).toHaveAttribute("aria-invalid", "true");
+    expect(statement()).toHaveFocus();
+  });
+
+  it("names a mistyped address instead of ignoring the press", async () => {
+    const user = userEvent.setup();
+    open();
+
+    await user.type(screen.getByPlaceholderText(/@/), "pupil@example");
+    await user.click(statement());
+    await user.click(sendButton());
+
+    expect(createInvitation).not.toHaveBeenCalled();
+    expect(screen.getByText(i18n.t("authRegister.errors.emailInvalid"))).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/@/)).toHaveFocus();
   });
 
   it("sends once it is made, and says so to the server", async () => {

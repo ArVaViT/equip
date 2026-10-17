@@ -95,6 +95,18 @@ def _validate_via_supabase(token: str) -> dict | None:
         "aud": data.get("aud"),
         "role": data.get("role"),
     }
+    # When and how the person signed in. ``/auth/v1/user`` does not say, but
+    # the token does, and Supabase has just vouched for the token — so its
+    # own claims are read without a second signature check. Restoring a
+    # deleted account asks for an email-link sign-in made after the deletion
+    # (``users.restore_my_account``) and must be able to ask on either path.
+    try:
+        claims = jwt.decode(token, options={"verify_signature": False})
+    except jwt.PyJWTError:
+        claims = {}
+    for claim in ("iat", "amr"):
+        if claim in claims:
+            payload[claim] = claims[claim]
     _cache_put(token, payload)
     return payload
 

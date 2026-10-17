@@ -73,6 +73,30 @@ class ErrorCode(enum.StrEnum):
     Distinct from AUTH_FORBIDDEN so the client can sign the user out cleanly
     rather than showing a generic permission error."""
 
+    ACCOUNT_DELETED = "account.deleted"
+    """The owner deleted this account themselves (``profiles.deleted_at``).
+    Every authenticated surface answers this instead of
+    ``account.deactivated``, so the client can offer the one thing an owner
+    may still do: restore it (``POST /users/me/restore``)."""
+
+    ACCOUNT_RESTORE_NEEDS_EMAIL_LINK = "account.restore_needs_email_link"
+    """Restoring a deleted account needs the link we email to its address,
+    opened after the deletion. A password or a Google sign-in reaches the
+    restore screen but does not restore: the address is the owner's proof,
+    and a session alive before the deletion — a laptop left open — proves
+    nothing about who is holding it now. The client sends the link."""
+
+    ACCOUNT_RESTORE_REFUSED = "account.restore_refused"
+    """The account's address was changed (or a change was asked for) after
+    it was deleted, so a link opened at the current address proves nothing
+    about the owner. Only an administrator can restore it now
+    (``POST /users/admin/users/{id}/restore``)."""
+
+    ACCOUNT_CANNOT_DELETE = "account.cannot_delete"
+    """This account cannot delete itself here: platform staff (the admin
+    route's rule), or the only director of an organization, which would be
+    left with nobody to run it. ``context.reason`` says which."""
+
     # ── Generic resource lookups ────────────────────────────────────────
     RESOURCE_NOT_FOUND = "resource.not_found"
     """A specific entity was not located. ``context.resource_type`` +

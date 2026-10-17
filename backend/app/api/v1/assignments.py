@@ -94,6 +94,7 @@ def _assignment_to_response(db: Session, assignment: Assignment, *, source_local
         fields=list(_TRANSLATABLE_ASSIGNMENT_FIELDS),
         display_locale=source_locale,
         source_locale=source_locale,
+        prefer_human=True,
         include_author_edits=True,
     )
     title = texts.get((str(assignment.id), "title")) or ""

@@ -1862,6 +1862,21 @@
     "body": true
   },
   {
+    "method": "PUT",
+    "path": "/api/v1/courses/{course_id}/outline",
+    "params": [
+      [
+        "course_id",
+        "path"
+      ]
+    ],
+    "responses": [
+      "204",
+      "422"
+    ],
+    "body": true
+  },
+  {
     "method": "DELETE",
     "path": "/api/v1/courses/{course_id}/permanent",
     "params": [
@@ -3806,6 +3821,15 @@
     "body": false
   },
   {
+    "method": "DELETE",
+    "path": "/api/v1/users/me",
+    "params": [],
+    "responses": [
+      "204"
+    ],
+    "body": false
+  },
+  {
     "method": "GET",
     "path": "/api/v1/users/me/courses",
     "params": [
@@ -3855,6 +3879,15 @@
       "422"
     ],
     "body": true
+  },
+  {
+    "method": "POST",
+    "path": "/api/v1/users/me/restore",
+    "params": [],
+    "responses": [
+      "204"
+    ],
+    "body": false
   },
   {
     "method": "GET",

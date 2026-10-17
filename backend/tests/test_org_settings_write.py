@@ -236,3 +236,26 @@ def test_an_issued_certificate_keeps_its_grade(admin_client, db: Session) -> Non
 
     db.refresh(cert)
     assert cert.official_code == "B"
+
+
+# ---------------------------------------------------------------------------
+# The school's clock (ADR-0012, step 6)
+
+
+def test_a_school_names_its_own_clock_and_can_hand_it_back(admin_client, db: Session) -> None:
+    """NULL until the school says — the platform's default clock then applies."""
+    assert admin_client.get(URL).json()["time_zone"] is None
+
+    response = admin_client.put(URL, json={"time_zone": "Europe/Kyiv"})
+    assert response.status_code == 200, response.text
+    assert response.json()["time_zone"] == "Europe/Kyiv"
+
+    assert admin_client.put(URL, json={"time_zone": None}).json()["time_zone"] is None
+
+
+def test_a_clock_the_server_cannot_read_is_refused(admin_client, db: Session) -> None:
+    """Refused, not stored: a misspelt zone would put every date an hour or a day off, quietly."""
+    response = admin_client.put(URL, json={"time_zone": "Europe/Kiyv"})
+
+    assert response.status_code == 422
+    assert get_org_settings(db, TEST_ORGANIZATION_ID).time_zone is None

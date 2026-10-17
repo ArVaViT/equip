@@ -165,7 +165,63 @@ class TestWhatItSays:
 
         assert when.astimezone(ZoneInfo("America/Indiana/Indianapolis")).strftime("%H:%M") in session_row.value
         assert when.astimezone(ZoneInfo("America/Los_Angeles")).strftime("%H:%M") in session_row.value
-        assert "восточному" in session_row.value
+        # Named so nobody in Kyiv reads "Eastern" as their own Eastern European time.
+        assert "по времени Индианы (США)" in session_row.value
+        assert "по тихоокеанскому времени США" in session_row.value
+
+    @pytest.mark.parametrize(
+        ("locale", "zone_words", "pacific_words"),
+        [
+            ("en", "Eastern Time (Indiana, US)", "Pacific"),
+            ("ru", "по времени Индианы (США)", "по тихоокеанскому времени США"),
+            ("de", "Ostküstenzeit (Indiana, USA)", "Pazifikzeit"),
+            ("uk", "за часом Індіани (США)", "за тихоокеанським часом США"),
+        ],
+    )
+    def test_the_school_s_clock_is_named_in_every_language(
+        self, db: Session, admin: User, locale: str, zone_words: str, pacific_words: str
+    ) -> None:
+        _school(db)
+        _course_with_title(db, locale=locale)
+        when = (datetime.now(UTC) + timedelta(days=30)).replace(hour=23, minute=0, second=0, microsecond=0)
+        _session(db, when=when)
+        invitation = _invitation(db, scope=InvitationScope.COURSE.value, course_id=COURSE_ID)
+
+        message = build_invitation_message(db, invitation, accept_url=ACCEPT_URL, locale=locale, inviter_name="Д")
+        session_row = message.facts[0]
+
+        indiana = when.astimezone(ZoneInfo("America/Indiana/Indianapolis"))
+        assert f"{indiana.strftime('%H:%M')} {zone_words}" in session_row.value
+        assert when.astimezone(ZoneInfo("America/Los_Angeles")).strftime("%H:%M") in session_row.value
+        assert pacific_words in session_row.value
+
+    @pytest.mark.parametrize(
+        ("zone", "locale", "expected"),
+        [
+            ("Europe/Kyiv", "uk", "за київським часом"),
+            ("Europe/Kyiv", "ru", "по киевскому времени"),
+            ("Europe/Berlin", "de", "Zeit der Schule (UTC+"),
+        ],
+    )
+    def test_a_school_elsewhere_gives_its_own_clock_and_no_pacific(
+        self, db: Session, admin: User, zone: str, locale: str, expected: str
+    ) -> None:
+        from app.services.grading_scheme import get_org_settings
+
+        _school(db)
+        get_org_settings(db, TEST_ORGANIZATION_ID).time_zone = zone
+        _course_with_title(db, locale=locale)
+        when = (datetime.now(UTC) + timedelta(days=30)).replace(hour=16, minute=0, second=0, microsecond=0)
+        _session(db, when=when)
+        invitation = _invitation(db, scope=InvitationScope.COURSE.value, course_id=COURSE_ID)
+
+        message = build_invitation_message(db, invitation, accept_url=ACCEPT_URL, locale=locale, inviter_name="Д")
+        session_row = message.facts[0]
+
+        local = when.astimezone(ZoneInfo(zone))
+        assert f"{local.strftime('%H:%M')} {expected}" in session_row.value
+        assert local.strftime("%d.%m.%Y") in session_row.value
+        assert "(" + when.astimezone(ZoneInfo("America/Los_Angeles")).strftime("%H:%M") not in session_row.value
 
     def test_a_session_that_has_passed_is_not_advertised(self, db: Session, admin: User) -> None:
         _school(db)
@@ -228,6 +284,21 @@ class TestHowItLooks:
 
         assert "<img" not in html
         assert "background-image" not in html
+
+    @pytest.mark.parametrize("locale", ["ru", "en", "de", "uk"])
+    def test_the_html_is_a_whole_document_in_the_readers_language(self, db: Session, admin: User, locale: str) -> None:
+        """A bare ``<body>`` fragment is a shape filters score, and without
+        ``lang`` a screen reader guesses the language of Cyrillic."""
+        _school(db)
+        _course_with_title(db)
+        invitation = _invitation(db, scope=InvitationScope.COURSE.value, course_id=COURSE_ID)
+
+        html = render(build_invitation_message(db, invitation, accept_url=ACCEPT_URL, locale=locale, inviter_name="Д"))
+
+        assert html.startswith("<!doctype html>")
+        assert f'<html lang="{locale}">' in html
+        assert '<meta charset="utf-8">' in html
+        assert html.endswith("</body></html>")
 
     def test_nothing_a_person_typed_reaches_the_html_raw(self, db: Session, admin: User) -> None:
         """Course titles and names are typed by people.
@@ -308,3 +379,18 @@ class TestTheTextAlternative:
 
         assert any("07.10.2026" in note for note in message.notes)
         assert not any("08.10.2026" in note for note in message.notes)
+
+    def test_a_school_on_another_clock_counts_the_last_day_on_its_own(self, db: Session, admin: User) -> None:
+        # The same link, from a school in Kyiv: 01:00 UTC on the 8th is 04:00
+        # there, already the 8th. Without a zone of its own a school keeps
+        # Indianapolis, as the test above shows.
+        from app.services.grading_scheme import get_org_settings
+
+        get_org_settings(db, TEST_ORGANIZATION_ID).time_zone = "Europe/Kyiv"
+        invitation = _invitation(db)
+        invitation.expires_at = datetime(2026, 10, 8, 1, 0, tzinfo=UTC)
+        db.commit()
+
+        message = build_invitation_message(db, invitation, accept_url=ACCEPT_URL, locale="ru", inviter_name=None)
+
+        assert any("08.10.2026" in note for note in message.notes)

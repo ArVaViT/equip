@@ -99,7 +99,7 @@ export function PersonalDetailsCard() {
   return (
     <Card>
       <CardHeader className="space-y-1">
-        <CardTitle>{t("profile.personal.title")}</CardTitle>
+        <CardTitle as="h2">{t("profile.personal.title")}</CardTitle>
         <CardDescription>{t("profile.personal.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
