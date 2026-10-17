@@ -1,3 +1,4 @@
+import { zonedDayKey } from "@/i18n/timeZone"
 import type { Certificate } from "@/types"
 
 /** The public page that confirms the certificate — what a share should point at. */
@@ -12,9 +13,13 @@ export function verifyUrl(cert: Pick<Certificate, "certificate_number">, origin:
  * and saves it on LinkedIn; nothing is posted for them.
  */
 export function linkedInAddUrl(
-  cert: Pick<Certificate, "certificate_number" | "issued_at" | "course_title" | "archived_course_title" | "school_name">,
+  cert: Pick<
+    Certificate,
+    "certificate_number" | "issued_at" | "issued_on" | "course_title" | "archived_course_title" | "school_name"
+  >,
   origin: string,
-  /** The zone the document prints its date in, so both say the same month. */
+  /** Only for a certificate without `issued_on` (an older server): the zone
+   *  its day is read in. The school's day, when there is one, wins. */
   timeZone: string,
 ): string {
   const params = new URLSearchParams({
@@ -24,12 +29,11 @@ export function linkedInAddUrl(
     certUrl: verifyUrl(cert, origin),
     certId: cert.certificate_number ?? "",
   })
-  if (cert.issued_at) {
-    const parts = new Intl.DateTimeFormat("en-GB", { timeZone, year: "numeric", month: "numeric" }).formatToParts(
-      new Date(cert.issued_at),
-    )
-    params.set("issueYear", parts.find((p) => p.type === "year")!.value)
-    params.set("issueMonth", String(Number(parts.find((p) => p.type === "month")!.value)))
+  // The month the document prints: the school's day, as the server fixed it.
+  const day = cert.issued_on ?? (cert.issued_at ? zonedDayKey(new Date(cert.issued_at), timeZone) : null)
+  if (day) {
+    params.set("issueYear", day.slice(0, 4))
+    params.set("issueMonth", String(Number(day.slice(5, 7))))
   }
   return `https://www.linkedin.com/profile/add?${params.toString()}`
 }

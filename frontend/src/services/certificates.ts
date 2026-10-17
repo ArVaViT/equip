@@ -9,6 +9,8 @@ export interface CertificateVerification {
   user_name: string | null
   course_title: string | null
   issued_at: string | null
+  /** `YYYY-MM-DD` on the issuing school's clock. */
+  issued_on?: string | null
 }
 
 export const certificatesService = {

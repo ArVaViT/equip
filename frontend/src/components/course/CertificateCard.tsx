@@ -7,7 +7,7 @@ import { useAuth } from "@/context/useAuth"
 import { toast } from "@/lib/toast"
 import type { Certificate } from "@/types"
 import { Award, Copy, CheckCircle, Sparkles, Clock, XCircle, RefreshCw, Star } from "lucide-react"
-import { formatDateLong } from "@/i18n/format"
+import { documentDay, formatDayLong } from "@/i18n/format"
 
 interface Props {
   courseId: string
@@ -212,9 +212,8 @@ export default function CertificateCard({ courseId, progress, blocked = false, c
                     {t("certificates.card.issueDate")}
                   </p>
                   <p className="text-sm font-medium">
-                    {certificate.issued_at
-                      ? formatDateLong(certificate.issued_at)
-                      : t("certificates.card.issuePending")}
+                    {formatDayLong(documentDay(certificate.issued_on, certificate.issued_at)) ||
+                      t("certificates.card.issuePending")}
                   </p>
                 </div>
               </div>

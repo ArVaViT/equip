@@ -37,6 +37,30 @@ function renderPage() {
   )
 }
 
+const SHEET: GradeSheet = {
+  id: "s1",
+  course_id: "c1",
+  course_title: "Деяния",
+  locale: "ru",
+  cohort_id: "k1",
+  cohort_name: "Осень",
+  cohort_start: "2026-09-30T20:00:00Z",
+  cohort_end: "2026-12-14T20:00:00Z",
+  school_name: null,
+  school_city: null,
+  teacher_name: null,
+  academic_hours: null,
+  grading_scheme: "pass_fail",
+  pass_threshold: null,
+  finalized_at: "2026-09-30T20:00:00Z",
+  finalized_by: null,
+  reopened_at: null,
+  reopen_reason: null,
+  corrects_sheet_id: null,
+  correction_reason: null,
+  rows: [],
+}
+
 describe("VedomostPage", () => {
   beforeEach(async () => {
     vi.restoreAllMocks()
@@ -63,38 +87,30 @@ describe("VedomostPage", () => {
   describe("the dates on the paper", () => {
     afterEach(() => setDisplayTimeZone(null))
 
-    it("are the reader's days, not the browser's", async () => {
+    it("without the school's days (an older server), are the reader's days, not the browser's", async () => {
       // 20:00 UTC on the 30th is already the 1st in Tokyo; whatever zone the
       // test machine is in (UTC, Indiana), its own clock still says the 30th.
       setDisplayTimeZone("Asia/Tokyo")
-      const sheet: GradeSheet = {
-        id: "s1",
-        course_id: "c1",
-        course_title: "Деяния",
-        locale: "ru",
-        cohort_id: "k1",
-        cohort_name: "Осень",
-        cohort_start: "2026-09-30T20:00:00Z",
-        cohort_end: "2026-12-14T20:00:00Z",
-        school_name: null,
-        school_city: null,
-        teacher_name: null,
-        academic_hours: null,
-        grading_scheme: "pass_fail",
-        pass_threshold: null,
-        finalized_at: "2026-09-30T20:00:00Z",
-        finalized_by: null,
-        reopened_at: null,
-        reopen_reason: null,
-        corrects_sheet_id: null,
-        correction_reason: null,
-        rows: [],
-      }
-      vi.spyOn(gradesService, "getGradeSheet").mockResolvedValue(sheet)
+      vi.spyOn(gradesService, "getGradeSheet").mockResolvedValue(SHEET)
       renderPage()
       expect((await screen.findAllByText(/01\.10\.2026/)).length).toBeGreaterThan(0)
       expect(screen.getAllByText(/15\.12\.2026/).length).toBeGreaterThan(0)
       expect(screen.queryAllByText(/30\.09\.2026/)).toHaveLength(0)
+    })
+
+    it("are the school's days when the server sends them, wherever they are read", async () => {
+      // Closed at 16:00 in Indiana on the 30th — already the 1st in Tokyo.
+      setDisplayTimeZone("Asia/Tokyo")
+      vi.spyOn(gradesService, "getGradeSheet").mockResolvedValue({
+        ...SHEET,
+        finalized_on: "2026-09-30",
+        cohort_start_on: "2026-09-30",
+        cohort_end_on: "2026-12-14",
+      })
+      renderPage()
+      expect((await screen.findAllByText(/30\.09\.2026/)).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/14\.12\.2026/).length).toBeGreaterThan(0)
+      expect(screen.queryAllByText(/01\.10\.2026/)).toHaveLength(0)
     })
   })
 })

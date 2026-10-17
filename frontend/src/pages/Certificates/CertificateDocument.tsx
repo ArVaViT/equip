@@ -7,7 +7,7 @@ import { ErrorState } from "@/components/patterns"
 import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { useAsyncData } from "@/hooks/useAsyncData"
-import { getDisplayTimeZone } from "@/i18n/timeZone"
+import { documentDay, formatDayLong } from "@/i18n/format"
 import type { Certificate } from "@/types"
 import { CertificateShare } from "./CertificateShare"
 import "./certificate-print.css"
@@ -88,17 +88,10 @@ export default function CertificateDocument() {
     )
   }
 
-  const issued = cert.issued_at ? new Date(cert.issued_at) : null
-  // The reader's zone, as on the certificate list — the paper must not
-  // carry the next day's date because the laptop is abroad.
-  const issuedLong = issued
-    ? issued.toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        timeZone: getDisplayTimeZone(),
-      })
-    : "—"
+  // The school's day (`issued_on`), the same on every screen and on paper:
+  // signed at 23:30 in Indiana, it is not dated the next day in Kyiv. In
+  // English, like every word on the certificate.
+  const issuedLong = formatDayLong(documentDay(cert.issued_on, cert.issued_at), undefined, "en-GB") || "—"
 
   return (
     <div className="container mx-auto max-w-4xl px-4 py-6">

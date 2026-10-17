@@ -472,6 +472,8 @@ export interface Certificate {
   course_id: string | null
   archived_course_title?: string | null
   issued_at: string | null
+  /** `YYYY-MM-DD` on the issuing school's clock — the date every surface prints. */
+  issued_on?: string | null
   certificate_number: string | null
   status: 'pending' | 'teacher_approved' | 'approved' | 'rejected'
   requested_at: string | null
@@ -1161,6 +1163,10 @@ export interface GradeSheet {
   grading_scheme: string
   pass_threshold: string | null
   finalized_at: string
+  /** The document's days, `YYYY-MM-DD` on the school's clock. */
+  finalized_on?: string | null
+  cohort_start_on?: string | null
+  cohort_end_on?: string | null
   finalized_by: string | null
   reopened_at: string | null
   reopen_reason: string | null

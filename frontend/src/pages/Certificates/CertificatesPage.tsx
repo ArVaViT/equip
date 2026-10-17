@@ -8,7 +8,7 @@ import { countAwarded } from "@/lib/certificates"
 import type { Certificate, Enrollment } from "@/types"
 import { Award, ArrowLeft, RefreshCw, ScrollText } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { formatDateLong } from "@/i18n/format"
+import { documentDay, formatDayLong } from "@/i18n/format"
 import { useUserTour } from "@/hooks/useUserTour"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import { certificatesSteps } from "@/lib/tourSteps"
@@ -142,7 +142,7 @@ export default function CertificatesPage() {
           {certificates.map((cert) => {
             const isApproved = cert.status === "approved"
             const statusLabel = isApproved && cert.issued_at
-              ? formatDateLong(cert.issued_at, { month: "short" })
+              ? formatDayLong(documentDay(cert.issued_on, cert.issued_at), { month: "short" })
               : cert.status === "pending"
                 ? t("certificates.pendingApproval")
                 : cert.status === "teacher_approved"

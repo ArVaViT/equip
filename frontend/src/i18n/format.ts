@@ -214,3 +214,44 @@ export function formatDateTimeZoned(date: Date | string | number | null | undefi
   const locale = activeIntlTag(i18n.resolvedLanguage ?? i18n.language)
   return `${p.year}-${pad(p.month)}-${pad(p.day)} ${pad(p.hour)}:${pad(p.minute)} ${timeZoneLabel(locale, getDisplayTimeZone(), d)}`
 }
+
+const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/
+
+/**
+ * The day a document is dated, as `YYYY-MM-DD`: the one the server fixed on
+ * the school's clock (`issued_on`, `finalized_on`), the same for every
+ * reader. Without it — a response from before the field existed — the
+ * instant's day on the reader's clock, which is what every screen did then.
+ */
+export function documentDay(day: string | null | undefined, instant?: string | null): string | null {
+  if (day && ISO_DAY.test(day)) return day
+  if (!instant) return null
+  const d = toDate(instant)
+  if (!d) return null
+  const p = zonedParts(d)
+  return `${p.year}-${pad(p.month)}-${pad(p.day)}`
+}
+
+/**
+ * A `YYYY-MM-DD` day in long form — «24 октября 2026 г.», "24 October 2026"
+ * — with no zone applied: the day is already decided, and projecting it
+ * into the reader's zone would print the 23rd west of Greenwich. Formatted
+ * at noon UTC, read in UTC. `locale` overrides the interface language (a
+ * certificate is always English).
+ */
+export function formatDayLong(
+  day: string | null | undefined,
+  options?: Intl.DateTimeFormatOptions,
+  locale?: string,
+): string {
+  const m = day ? ISO_DAY.exec(day) : null
+  if (!m) return ""
+  const at = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12))
+  return at.toLocaleDateString(locale ?? activeIntlTag(i18n.resolvedLanguage ?? i18n.language), {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    ...options,
+    timeZone: "UTC",
+  })
+}

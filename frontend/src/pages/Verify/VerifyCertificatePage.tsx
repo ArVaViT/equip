@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ErrorState, PageHeader } from "@/components/patterns"
 import { certificatesService, type CertificateVerification } from "@/services/certificates"
-import { formatDateLong } from "@/i18n/format"
+import { documentDay, formatDayLong } from "@/i18n/format"
 
 /**
  * Checking a certificate by the number printed on it.
@@ -145,7 +145,9 @@ export default function VerifyCertificatePage() {
                     <dt className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                       {t("verify.issuedAt")}
                     </dt>
-                    <dd className="mt-1 text-ink">{formatDateLong(result.issued_at)}</dd>
+                    <dd className="mt-1 text-ink">
+                      {formatDayLong(documentDay(result.issued_on, result.issued_at))}
+                    </dd>
                   </div>
                 )}
                 <div>
