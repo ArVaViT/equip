@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase"
+import api from "./api"
 import type { MailKind, Profile } from "@/types"
 
 export interface ProfileUpdate {
@@ -81,5 +82,18 @@ export const usersService = {
 
     if (error) throw error
     return (profile as Profile | null) ?? null
+  },
+
+  /**
+   * Delete the account (`DELETE /users/me`): closed and hidden at once,
+   * nothing erased, every session ended. The caller signs out afterwards.
+   */
+  async deleteMyAccount(): Promise<void> {
+    await api.delete("/users/me")
+  },
+
+  /** Undo it — only from a sign-in made after the deletion. */
+  async restoreMyAccount(): Promise<void> {
+    await api.post("/users/me/restore")
   },
 }

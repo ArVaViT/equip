@@ -22,6 +22,8 @@ import { emailFromState, peekReturnPath, rememberReturnPath, returnPathFrom } fr
  *
  * - the session expired mid-work and `api.ts` signed the person out;
  * - the server reported the account deactivated;
+ * - the person deleted their own account, or asked to restore it from a
+ *   session older than the deletion;
  * - `/auth/confirm` waited fifteen seconds for a session that never came and
  *   sent them here with `?error=oauth_timeout`, which nothing read;
  * - `Gate` refused a private page to a guest.
@@ -32,6 +34,8 @@ import { emailFromState, peekReturnPath, rememberReturnPath, returnPathFrom } fr
 function noticeKeyFor(error: string | null, reason: SignOutReason | null, state: unknown): string | null {
   if (reason === "session_expired") return "auth.notice.sessionExpired"
   if (reason === "account_deactivated") return "auth.notice.accountDeactivated"
+  if (reason === "account_deleted") return "auth.notice.accountDeleted"
+  if (reason === "restore_needs_sign_in") return "auth.notice.restoreNeedsSignIn"
   if (error === "oauth_timeout") return "auth.callback.timedOut"
   // The same target the public gate will use after sign-in, so the notice
   // promises exactly what happens.

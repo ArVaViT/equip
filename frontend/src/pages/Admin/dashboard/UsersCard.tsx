@@ -476,7 +476,7 @@ function UserCard({
             {user.full_name?.trim() || t("admin.users.missingName")}
           </p>
           {deactivated && (
-            <Badge variant="muted" className="mt-0.5">{t("admin.users.deactivatedBadge")}</Badge>
+            <Badge variant="muted" className="mt-0.5">{t(user.deleted_at ? "admin.users.deletedByOwnerBadge" : "admin.users.deactivatedBadge")}</Badge>
           )}
           <p className="truncate text-xs text-ink-muted">{user.email}</p>
           <p className="mt-1 text-xs text-ink-muted">
@@ -575,7 +575,7 @@ function UserRow({
             {user.full_name?.trim() || t("admin.users.missingName")}
           </span>
           {deactivated && (
-            <Badge variant="muted" className="shrink-0">{t("admin.users.deactivatedBadge")}</Badge>
+            <Badge variant="muted" className="shrink-0">{t(user.deleted_at ? "admin.users.deletedByOwnerBadge" : "admin.users.deactivatedBadge")}</Badge>
           )}
         </div>
       </td>

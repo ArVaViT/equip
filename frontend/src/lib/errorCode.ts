@@ -35,6 +35,9 @@ export type ErrorCode =
   | "auth.required"
   | "auth.forbidden"
   | "account.deactivated"
+  | "account.deleted"
+  | "account.restore_needs_sign_in"
+  | "account.cannot_delete"
   // generic resource lookups
   | "resource.not_found"
   // course lifecycle

@@ -92,6 +92,12 @@ export interface User {
   // shape doesn't always carry it.
   deactivated_at?: string | null
   /**
+   * When the person deleted the account themselves (`DELETE /users/me`).
+   * Set, the application is replaced by the restore screen. Optional for
+   * the same reason as `deactivated_at`.
+   */
+  deleted_at?: string | null
+  /**
    * When the first-run flow was finished, on any device. `null` means it has
    * not been and the flow shows; the browser's own flag is a cache of this.
    * Optional because an older cached profile shape may not carry it — absent

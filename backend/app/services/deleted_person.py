@@ -50,9 +50,9 @@ from app.schemas.locale import DEFAULT_LOCALE, normalize_locale
 if TYPE_CHECKING:
     from datetime import datetime
 
-#: «Deleted user», in every language the interface speaks. The frontend has
-#: the same words under ``people.deletedUser`` for the screens it draws
-#: itself; these are for names the API hands it ready to print.
+#: «Deleted user», in every language the interface speaks. Printed by the
+#: API rather than by the web app because the name arrives ready to print, in
+#: a dozen response shapes that would otherwise each need a flag.
 LABELS: dict[str, str] = {
     "en": "Deleted user",
     "ru": "Удалённый пользователь",

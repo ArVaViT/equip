@@ -31,6 +31,7 @@ import { initialsOf } from "@/lib/names"
 import { PersonalDetailsCard } from "./PersonalDetailsCard"
 import { TimeZoneSetting } from "./TimeZoneSetting"
 import { EmailSetting } from "./EmailSetting"
+import { DeleteAccountSetting } from "./DeleteAccountSetting"
 
 function useCountUp(target: number, durationMs = 800) {
   const prefersReducedMotion = usePrefersReducedMotion()
@@ -464,6 +465,8 @@ export default function ProfilePage() {
             {t("common.signOut")}
           </Button>
         </div>
+
+        <DeleteAccountSetting />
       </div>
     </div>
   )

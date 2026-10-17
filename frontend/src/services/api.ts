@@ -2,6 +2,7 @@ import axios, { isAxiosError } from "axios"
 import type { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from "axios"
 import i18n, { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import { supabase } from "@/lib/supabase"
+import { publishAccountDeleted } from "@/lib/accountDeleted"
 import { rememberSignOutReason } from "@/lib/signOutReason"
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
@@ -166,14 +167,21 @@ function refreshAccessTokenOnce(): Promise<string | null> {
 api.interceptors.response.use(
   (response) => response,
   async (error: unknown) => {
-    // A soft-deleted account returns 403 ``account.deactivated`` on every
-    // authenticated call. Eject the user cleanly to the auth screens instead
+    // An account an administrator switched off returns 403
+    // ``account.deactivated`` on every authenticated call. Eject the user cleanly to the auth screens instead
     // of leaving them on a wall of generic permission errors.
     if (isAxiosError(error) && error.response?.status === 403) {
       const code = (error.response.data as { detail?: { code?: string } } | undefined)?.detail?.code
       if (code === "account.deactivated") {
         rememberSignOutReason("account_deactivated")
         await supabase.auth.signOut()
+        return Promise.reject(error)
+      }
+      // Deleted by its owner: not a sign-out. The owner may restore it,
+      // and the restore screen needs the session to ask — `App` swaps the
+      // whole application for it as soon as this is published.
+      if (code === "account.deleted") {
+        publishAccountDeleted(true)
         return Promise.reject(error)
       }
     }

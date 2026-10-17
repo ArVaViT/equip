@@ -726,7 +726,9 @@
       "accountDeactivated": "Dieses Konto wurde deaktiviert. Falls das ein Irrtum ist, wenden Sie sich an Ihre Administration.",
       "signInToContinue": "Melden Sie sich an, um diese Seite zu öffnen.",
       "sectionUnavailable": "Dieser Bereich steht Ihnen nicht zur Verfügung.",
-      "signInToAcceptInvite": "Melden Sie sich an, um die Einladung anzunehmen."
+      "signInToAcceptInvite": "Melden Sie sich an, um die Einladung anzunehmen.",
+      "accountDeleted": "Ihr Konto wurde gelöscht. Sie haben es sich anders überlegt? Melden Sie sich wieder an, dann wird Ihnen angeboten, es wiederherzustellen.",
+      "restoreNeedsSignIn": "Um Ihr Konto wiederherzustellen, melden Sie sich erneut an."
     },
     "forgotPassword": {
       "heading": "Passwort zurücksetzen",
@@ -2660,7 +2662,8 @@
       "changeRoleAria": "Rolle für {{name}} ändern",
       "deactivatedBadge": "Deaktiviert",
       "restoreTooltip": "Konto wiederherstellen",
-      "restoreAriaPrefix": "{{name}} wiederherstellen"
+      "restoreAriaPrefix": "{{name}} wiederherstellen",
+      "deletedByOwnerBadge": "Vom Nutzer gelöscht"
     },
     "pendingCerts": {
       "title": "Zertifikate bestätigen",
@@ -3385,6 +3388,31 @@
       "all": "Alle Termine der Serie",
       "saveAction": "Speichern",
       "deleteAction": "Löschen"
+    }
+  },
+  "account": {
+    "delete": {
+      "button": "Konto löschen",
+      "confirmTitle": "Ihr Konto löschen?",
+      "confirmBody": "Das passiert:",
+      "whatHappens": {
+        "signedOut": "Sie werden auf allen Geräten abgemeldet.",
+        "hidden": "Andere sehen „Gelöschter Nutzer“ statt Ihres Namens — ohne E-Mail-Adresse und Foto.",
+        "kept": "Ihre Arbeiten, Noten und Zertifikate bleiben bei der Schule.",
+        "restore": "Um zurückzukommen, melden Sie sich wieder an — Ihnen wird angeboten, das Konto wiederherzustellen."
+      },
+      "confirm": "Konto löschen",
+      "failed": "Das Konto konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.",
+      "onlyDirector": "Sie sind die einzige Leitung Ihrer Schule. Ernennen Sie zuerst eine weitere Leitung oder schreiben Sie an supportequip@gmail.com.",
+      "platformStaff": "Ein Administratorkonto wird von einer anderen Administration geschlossen."
+    },
+    "deleted": {
+      "title": "Dieses Konto wurde gelöscht",
+      "body": "Ihre Arbeiten und Zertifikate bewahrt die Schule auf. Sie können das Konto wiederherstellen, und es kommt genau so zurück, wie es war.",
+      "bodyWithDate": "Sie haben es am {{date}} gelöscht. Ihre Arbeiten und Zertifikate bewahrt die Schule auf. Sie können das Konto wiederherstellen, und es kommt genau so zurück, wie es war.",
+      "restore": "Konto wiederherstellen",
+      "restored": "Willkommen zurück — Ihr Konto ist wiederhergestellt.",
+      "restoreFailed": "Das Konto konnte nicht wiederhergestellt werden. Bitte versuchen Sie es erneut."
     }
   }
 }

@@ -18,6 +18,8 @@ interface ProfileRow {
   created_at: string
   avatar_url: string | null
   deactivated_at: string | null
+  /** Set when the owner deleted the account themselves; restore clears both. */
+  deleted_at?: string | null
 }
 
 interface VirtualAdminUsersProps {
@@ -84,7 +86,7 @@ function UserRow({
         </span>
         {deactivated && (
           <Badge variant="muted" className="shrink-0">
-            {t("admin.users.deactivatedBadge")}
+            {t(u.deleted_at ? "admin.users.deletedByOwnerBadge" : "admin.users.deactivatedBadge")}
           </Badge>
         )}
       </div>
