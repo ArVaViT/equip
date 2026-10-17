@@ -80,6 +80,7 @@ def _client_as(
     signed_in_at: datetime | None = None,
     method: str = "magiclink",
     amr: list[dict[str, object]] | None = None,
+    claims_extra: dict[str, object] | None = None,
 ) -> Iterator[TestClient]:
     """A client whose token names ``user`` — whatever state the account is in.
 
@@ -94,7 +95,7 @@ def _client_as(
 
     def _caller() -> Caller:
         db.refresh(user)
-        return Caller(user=user, claims={"sub": str(user.id), "amr": amr}, token=TOKEN)
+        return Caller(user=user, claims={"sub": str(user.id), "amr": amr, **(claims_extra or {})}, token=TOKEN)
 
     def _current() -> User:
         db.refresh(user)
@@ -416,6 +417,17 @@ def test_the_route_records_the_fingerprint_it_will_check(
     assert row.details["address_sha256"] == address_fingerprint("student@example.com")
     # A fingerprint, not the address.
     assert "student@example.com" not in str(row.details)
+
+
+def test_the_fingerprint_is_of_the_address_supabase_holds_not_the_first_one(
+    db: Session, teacher: User, student: User, ended_sessions: list[str]
+) -> None:
+    """``profiles.email`` is written at sign-up only; the token says where mail goes now."""
+    for client in _client_as(db, student, claims_extra={"email": "moved-before@example.org"}):
+        assert client.delete(ME).status_code == 204
+    row = db.query(AuditLog).filter(AuditLog.action == "delete").one()
+    assert row.details is not None
+    assert row.details["address_sha256"] == address_fingerprint("moved-before@example.org")
 
 
 def test_supabase_not_answering_restores_nothing(

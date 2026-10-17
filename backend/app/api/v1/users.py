@@ -333,7 +333,7 @@ def delete_my_account(
         "delete",
         "user",
         str(user.id),
-        details={"mode": "self", "role": user.role, "address_sha256": address_fingerprint(user.email)},
+        details={"mode": "self", "role": user.role, "address_sha256": address_fingerprint(_current_address(caller))},
     )
     db.commit()
 
@@ -352,8 +352,12 @@ def delete_my_account(
 #: An address-change confirmation also arrives as ``otp`` (``verifyPost``
 #: names every token-hash verification so), which is why the restore also
 #: refuses an account whose address is not the one it was deleted with
-#: (``_still_the_owners_address``). Production Auth should also keep "Secure
-#: email change" on and the phone provider off.
+#: (``_still_the_owners_address``). That guard leans on three production Auth
+#: settings, all as required on 2026-10-16 (read from the Management API):
+#: "Secure email change" on, email autoconfirm off, phone provider off. With
+#: autoconfirm on, an address could be moved away and back without a mail;
+#: with a phone provider and manual identity linking, a phone could be
+#: verified by SMS (also "otp") and unlinked again.
 EMAIL_PROOF_METHODS = frozenset({"magiclink", "otp", "recovery"})
 
 
@@ -445,6 +449,17 @@ def restore_my_account(
     )
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def _current_address(caller: Caller) -> str:
+    """The address Supabase holds for this account now, as its token says.
+
+    ``profiles.email`` is written once, when the account is created; the
+    token's ``email`` follows a later change, and it is what the restore
+    compares with. The profile is the fallback for a token without it.
+    """
+    claimed = caller.claims.get("email")
+    return claimed if isinstance(claimed, str) and claimed else caller.user.email
 
 
 def address_fingerprint(email: str) -> str:
