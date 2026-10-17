@@ -4,8 +4,19 @@
     {
       "src": "^/img(?:/(.*))$",
       "headers": {
-        "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800"
+        "Cache-Control": "public, max-age=86400, stale-while-revalidate=604800",
+        "Vercel-CDN-Cache-Control": "max-age=31536000",
+        "x-vercel-enable-rewrite-caching": "1"
       },
+      "transforms": [
+        {
+          "type": "response.headers",
+          "op": "delete",
+          "target": {
+            "key": "set-cookie"
+          }
+        }
+      ],
       "continue": true
     },
     {

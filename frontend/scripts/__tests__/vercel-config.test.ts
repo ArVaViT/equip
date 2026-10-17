@@ -42,6 +42,7 @@ interface SrcRoute {
   dest?: string;
   status?: number;
   headers?: Record<string, string>;
+  transforms?: { type: string; op: string; target: { key: string } }[];
   continue?: boolean;
   check?: boolean;
 }
@@ -223,6 +224,41 @@ describe("frontend/vercel.json", () => {
       const videoRule = hit.find((r) => matches(r, "/video/intro.mp4"));
       expect(videoRule).toBeDefined();
       expect(videoRule!.headers!["Cache-Control"]).toMatch(/max-age=604800\b/);
+    });
+  });
+
+  describe("proxied images are cached on Vercel's CDN", () => {
+    // Supabase storage answers `cache-control: no-cache` and a Cloudflare
+    // `set-cookie`, either of which keeps Vercel's CDN from storing the
+    // response (`x-vercel-cache: MISS` on every request, 2026-10-17). The
+    // project predates 2026-04-06, so external rewrites are not cached
+    // until `x-vercel-enable-rewrite-caching` opts in; the Vercel-only
+    // header then overrides the upstream policy, and the transform drops
+    // the cookie. Object keys are unique and written once, so a year is
+    // safe. The browser policy (`Cache-Control`) stays as it was.
+    const imgRule = main.find((r) => matches(r, "/img/course-assets/x/cover-ab12.png"));
+
+    it("exists before the filesystem check and applies to both buckets", () => {
+      expect(imgRule).toBeDefined();
+      expect(imgRule!.continue).toBe(true);
+      expect(matches(imgRule!, "/img/avatars/avatar-ab12.png")).toBe(true);
+      expect(matches(imgRule!, "/images/anything.png")).toBe(false);
+    });
+
+    it("opts the external rewrite into CDN caching for a year, Vercel-side only", () => {
+      expect(imgRule!.headers!["x-vercel-enable-rewrite-caching"]).toBe("1");
+      const edge = imgRule!.headers!["Vercel-CDN-Cache-Control"];
+      expect(edge).toMatch(/max-age=31536000\b/);
+      expect(edge).not.toMatch(/\b(no-cache|no-store|private)\b/);
+      expect(imgRule!.headers!["Cache-Control"]).toMatch(/\bmax-age=86400\b/);
+    });
+
+    it("strips the upstream set-cookie so the response is cacheable", () => {
+      expect(imgRule!.transforms).toContainEqual({
+        type: "response.headers",
+        op: "delete",
+        target: { key: "set-cookie" },
+      });
     });
   });
 
