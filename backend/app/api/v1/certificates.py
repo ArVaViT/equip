@@ -178,7 +178,17 @@ def _request_certificate_row(db: Session, course_id: str, current_user: User) ->
 
     _enforce_gate(db, course, enrollment, current_user.id)
 
-    cert = Certificate(user_id=current_user.id, course_id=course_id, status=CertificateStatus.PENDING)
+    # The organization is the course's, written at request time. Nobody
+    # wrote it from 2026-08-27 (the column arrived) until now: a request
+    # without one was in no director's queue (``/admin/pending`` filters
+    # on it), and its issuance was gated by nobody
+    # (``certificate_service._assert_same_organization``).
+    cert = Certificate(
+        user_id=current_user.id,
+        course_id=course_id,
+        organization_id=course.organization_id,
+        status=CertificateStatus.PENDING,
+    )
     db.add(cert)
     try:
         db.commit()

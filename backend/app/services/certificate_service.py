@@ -138,6 +138,17 @@ def _load_active_course_or_403(
     return course
 
 
+def _organization_of(db: Session, cert: Certificate) -> UUID | None:
+    """The organization the certificate is issued under: its own column,
+    or its course's for a row requested before the column was written
+    (migration ``20261017171930`` fills those in)."""
+    if cert.organization_id is not None:
+        return cert.organization_id
+    if cert.course_id is None:
+        return None
+    return db.query(Course.organization_id).filter(Course.id == cert.course_id).scalar()
+
+
 def _assert_same_organization(db: Session, cert: Certificate, reviewer: User) -> None:
     """A director issues their own organization's certificates only.
 
@@ -150,15 +161,19 @@ def _assert_same_organization(db: Session, cert: Certificate, reviewer: User) ->
     "Their own" is a membership: ``directs`` — the reviewer holds the
     director role in the certificate's organization. A director of one
     school who also teaches in another is not that other school's
-    signatory. Platform staff pass: they administer every organization,
-    and a certificate with no organization at all (issued before the
-    column existed) is nobody's to gate.
+    signatory. Platform staff pass: they administer every organization.
+
+    A certificate with no organization is the course's. The request path
+    did not write the column until 2026-10-17, and this check used to let
+    such a row through — so for a year's worth of requests any director
+    could sign any school's diploma. A row whose course is gone too (hard
+    deleted, ``course_id`` SET NULL) has nobody left to vouch for it and
+    stays with platform staff.
     """
     if reviewer.role == UserRole.ADMIN.value:
         return
-    if cert.organization_id is None:
-        return
-    if not directs(db, reviewer, cert.organization_id):
+    organization_id = _organization_of(db, cert)
+    if organization_id is None or not directs(db, reviewer, organization_id):
         raise equip_error(
             ErrorCode.RESOURCE_NOT_FOUND,
             status_code=status.HTTP_404_NOT_FOUND,
