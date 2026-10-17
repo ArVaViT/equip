@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from app.models.course import Chapter, Module
 from app.services.content_versions import dual_write_entity_content
-from app.services.course_service._outline import live_spine, next_outline_order, write_outline
+from app.services.course_service._outline import OutlinePlaceError, live_spine, next_outline_order, write_outline
 from app.services.course_structure import places_of
 from app.services.domain_access import course_source_locale_for_chapter
 
@@ -134,6 +134,20 @@ def update_chapter(db: Session, chapter: Chapter, data: ChapterUpdate) -> Chapte
     # the route; nothing here can change which course a chapter is in.
     regrouped = "module_id" in patch and patch["module_id"] != chapter.module_id
     leaving_module = chapter.module_id if regrouped and patch["module_id"] is None else None
+    if "order_index" in patch:
+        wanted = patch["order_index"]
+        home = patch.get("module_id", chapter.module_id)
+        if wanted is None or (home is None and not regrouped and wanted == chapter.order_index):
+            # ``null`` (the column is NOT NULL) or the number it already has.
+            del patch["order_index"]
+        elif home is None:
+            # Outside a module the number is a place in the course's shared
+            # sequence; only the outline writes those (``OutlinePlaceError``).
+            # Inside one it orders the module's lessons, which is what the
+            # module editor's reorder sends.
+            raise OutlinePlaceError(
+                "A lesson outside a module takes its place in the course through PUT /courses/{id}/outline"
+            )
     for field, value in patch.items():
         setattr(chapter, field, value)
     if regrouped and "order_index" not in patch:

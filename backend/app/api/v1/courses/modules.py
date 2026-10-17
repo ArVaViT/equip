@@ -16,9 +16,11 @@ from app.services.course_service import (
     get_module,
     update_module,
 )
+from app.services.course_service._outline import OutlinePlaceError
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 
 from ._router import router
+from .outline import outline_place_conflict
 
 
 @router.post(
@@ -59,7 +61,10 @@ def update_existing_module(
         )
     if data.title:
         data.title = sanitize_plain_text(data.title)
-    updated = update_module(db, module, data)
+    try:
+        updated = update_module(db, module, data)
+    except OutlinePlaceError as exc:
+        raise outline_place_conflict(exc, course_id) from exc
     reconcile_entity_if_course_published(db, "module", updated)
     return updated
 

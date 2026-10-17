@@ -26,6 +26,24 @@ class OutlineMismatchError(ValueError):
     and lessons — a stale screen, or ids from another course."""
 
 
+class OutlinePlaceError(ValueError):
+    """A place in the course's shared sequence asked for through a route
+    that writes one row.
+
+    ``PUT .../modules/{id}`` and ``PUT .../chapters/{id}`` set a row's
+    ``order_index`` and nothing else. Inside a module that is all a number
+    does — it orders the module's own lessons — so a lesson in a module may
+    still be renumbered there. But a module and a loose lesson share one
+    sequence (``course_structure``): one number written alone lands among
+    numbers it was never compared with, or ties with another place. Before
+    the shared sequence the editor reordered modules by sending each its
+    index among the modules (0, 1, 2…), and a tab opened before the deploy
+    still does — those numbers mean something else now. The whole order
+    goes through ``PUT /courses/{id}/outline``; these routes refuse rather
+    than guess.
+    """
+
+
 def next_outline_order(db: Session, course_id: str) -> int:
     """The number of the place after everything the course holds.
 

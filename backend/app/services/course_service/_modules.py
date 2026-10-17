@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from app.models.course import Chapter, Course, Module
 from app.schemas.locale import normalize_locale
 from app.services.content_versions import dual_write_entity_content
-from app.services.course_service._outline import live_spine, next_outline_order, write_outline
+from app.services.course_service._outline import OutlinePlaceError, live_spine, next_outline_order, write_outline
 from app.services.course_structure import places_of
 from app.services.translation.resolve_for_display import populate_module_texts
 
@@ -73,6 +73,13 @@ def create_module(db: Session, course_id: str, data: ModuleCreate) -> Module:
 
 def update_module(db: Session, module: Module, data: ModuleUpdate) -> Module:
     patch = data.model_dump(exclude_unset=True)
+    # A module's place is a place in the course's shared sequence: only the
+    # outline writes it (``OutlinePlaceError``). The number it already has
+    # — a client echoing the row back — or ``null`` changes nothing.
+    if "order_index" in patch:
+        wanted = patch.pop("order_index")
+        if wanted is not None and wanted != module.order_index:
+            raise OutlinePlaceError("A module's place in the course is set through PUT /courses/{id}/outline")
     # Text fields live in cv. Pop them off the patch before
     # setattr-loop on the (now-text-less) ORM row.
     text_patch: dict[str, str | None] = {}

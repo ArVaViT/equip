@@ -17,7 +17,7 @@ Structure only: no text changes, so nothing here has a translation to
 reconcile.
 """
 
-from fastapi import Depends, status
+from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_teacher, verify_course_owner
@@ -25,9 +25,21 @@ from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.models.user import User
 from app.schemas.course import CourseOutlineUpdate
-from app.services.course_service._outline import OutlineMismatchError, write_outline
+from app.services.course_service._outline import OutlineMismatchError, OutlinePlaceError, write_outline
 
 from ._router import router
+
+
+def outline_place_conflict(exc: OutlinePlaceError, course_id: str) -> HTTPException:
+    """409 for a place in the shared sequence sent to a one-row route
+    (see ``OutlinePlaceError``). Nothing was written: the services raise
+    before touching the row. A client that gets it reloads the course."""
+    return equip_error(
+        ErrorCode.VALIDATION_FAILED,
+        status_code=status.HTTP_409_CONFLICT,
+        message=str(exc),
+        context={"course_id": course_id},
+    )
 
 
 @router.put("/{course_id}/outline", status_code=status.HTTP_204_NO_CONTENT)
