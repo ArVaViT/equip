@@ -20,8 +20,6 @@ from app.services.language_detection import detect_locale
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-    from app.models.course import Course
-
 
 def dual_write_entity_content(
     db: Session,
@@ -63,10 +61,16 @@ def dual_write_entity_content(
     #
     # Decided once per save rather than per field: one indexed lookup
     # for the course, not one per field of the entity.
-    from app.services.staged_edits import stage_human_edit
+    from app.models.course import CourseStatus
+    from app.services.staged_edits import course_of_entity, stage_human_edit
 
-    course = _course_for_staging(db, entity_type, entity_id)
-    stage_edits = course is not None
+    course = course_of_entity(db, entity_type, entity_id)
+    stage_edits = course is not None and course.status == CourseStatus.PUBLISHED
+    # The course's declared language: an edit written in another one
+    # replaces the field's source rather than sitting beside it as a
+    # translation (``record_human_version``). A staged edit does the same
+    # when it is released (``staged_edits.promote``).
+    course_locale = course.source_locale if course is not None else None
 
     for field, raw in target.items():
         if not raw or not str(raw).strip():
@@ -97,25 +101,8 @@ def dual_write_entity_content(
             locale=locale,
             text=text_str,
             authored_by=author_uuid,
+            course_locale=course_locale,
         )
-
-
-def _course_for_staging(db: Session, entity_type: str, entity_id: str) -> Course | None:
-    """The published course this entity belongs to, if any.
-
-    ``None`` covers three different situations that all mean "write
-    straight through": no course (a platform-wide Daily Challenge),
-    a draft, and a course in ``publishing`` — which has no students
-    reading it either, and whose content the pipeline is currently
-    racing to complete.
-    """
-    from app.models.course import CourseStatus
-    from app.services.staged_edits import course_of_entity
-
-    course = course_of_entity(db, entity_type, entity_id)
-    if course is None or course.status != CourseStatus.PUBLISHED:
-        return None
-    return course
 
 
 def _locale_of_existing_text(db: Session, entity_type: str, entity_id: str, field: str) -> str | None:
@@ -132,6 +119,10 @@ def _locale_of_existing_text(db: Session, entity_type: str, entity_id: str, fiel
     nothing. That could not happen while the platform served one
     language per script; it can now.
     """
+    # The newest: a field can hold a person's text in two locales (a hand
+    # translation, or an edit filed in another language before such an
+    # edit replaced the source), and ``.scalar()`` raised on two rows —
+    # a 500 on the next save of a heading too short to classify.
     return (
         db.query(ContentVersion.locale)
         .filter(
@@ -141,6 +132,8 @@ def _locale_of_existing_text(db: Session, entity_type: str, entity_id: str, fiel
             ContentVersion.origin == "human",
             ContentVersion.superseded_by.is_(None),
         )
+        .order_by(ContentVersion.created_at.desc())
+        .limit(1)
         .scalar()
     )
 

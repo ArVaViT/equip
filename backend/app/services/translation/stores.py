@@ -356,6 +356,45 @@ class StagedStore:
 
     def __init__(self, course_id: str) -> None:
         self.course_id = course_id
+        self._course_locale: str | None = None
+
+    def _replaced_source_locale(self, db: Session, *, entity_type: str, entity_id: str, field: str) -> str | None:
+        """The locale whose person-written text this field's held edit
+        replaces on release, if the edit is in another language.
+
+        That row does not bind the machine the way a hand translation
+        does: it is the old source, it goes when the edit goes out
+        (``record_human_version`` with ``course_locale``), and its locale
+        needs a translation of the new words like every other.
+        """
+        from app.models.course import Course
+        from app.services.content_versions.write import replaced_source_row
+
+        edit_locale = (
+            db.query(StagedContentVersion.locale)
+            .filter(
+                StagedContentVersion.entity_type == entity_type,
+                StagedContentVersion.entity_id == entity_id,
+                StagedContentVersion.field == field,
+                StagedContentVersion.origin == "human",
+            )
+            .order_by(StagedContentVersion.created_at.desc())
+            .limit(1)
+            .scalar()
+        )
+        if edit_locale is None:
+            return None
+        if self._course_locale is None:
+            self._course_locale = db.query(Course.source_locale).filter(Course.id == self.course_id).scalar() or "en"
+        replaced = replaced_source_row(
+            db,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            field=field,
+            edit_locale=edit_locale,
+            course_locale=self._course_locale,
+        )
+        return replaced.locale if replaced is not None else None
 
     def active_row(
         self,
@@ -383,7 +422,11 @@ class StagedStore:
         # (A live *machine* row says nothing: it translates the text
         # this edit replaces, which is precisely what we are redoing.)
         live = _live_active(db, entity_type=entity_type, entity_id=entity_id, field=field, locale=locale)
-        if live is not None and live.origin == "human":
+        if (
+            live is not None
+            and live.origin == "human"
+            and self._replaced_source_locale(db, entity_type=entity_type, entity_id=entity_id, field=field) != locale
+        ):
             # A human translation is authoritative regardless of which
             # pipeline generation is current — it was never made by one.
             return ActiveRow(
@@ -474,6 +517,11 @@ class StagedStore:
                 .all()
             )
             for entity_type, entity_id, field, locale, status, source_hash, text in live_rows:
+                if (
+                    self._replaced_source_locale(db, entity_type=entity_type, entity_id=entity_id, field=field)
+                    == locale
+                ):
+                    continue
                 found[(entity_type, entity_id, field, locale)] = ActiveRow(
                     origin="human",
                     status=status,

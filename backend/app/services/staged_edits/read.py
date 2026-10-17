@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.staged_content_version import StagedContentVersion
@@ -87,9 +87,13 @@ def staged_field_specs(db: Session, course_id: str) -> list[tuple[str, str, str,
 
 def _human_translation_locales(
     db: Session,
-    keys: set[tuple[str, str, str]],
+    edits: dict[tuple[str, str, str], str],
+    *,
+    course_locale: str,
 ) -> dict[tuple[str, str, str], set[str]]:
     """Locales where a person — not the machine — wrote the translation.
+
+    ``edits`` maps each held field to the language its edit is in.
 
     Those rows are never regenerated (the pipeline refuses to overwrite
     human text), so waiting for a fresh machine translation of them
@@ -98,8 +102,14 @@ def _human_translation_locales(
     where an edit lands with one language's wording predating it, and
     the alternative — a field frozen until somebody re-translates by
     hand — serves nobody.
+
+    Except the field's source. An edit written in another language than
+    the source replaces it on release (``record_human_version`` with
+    ``course_locale``), so the source's locale needs a translation of the
+    new words like any other — counted as satisfied, it went out with the
+    old source text still standing in its own language.
     """
-    if not keys:
+    if not edits:
         return {}
     rows = (
         db.query(
@@ -107,21 +117,33 @@ def _human_translation_locales(
             ContentVersion.entity_id,
             ContentVersion.field,
             ContentVersion.locale,
+            ContentVersion.text,
+            ContentVersion.created_at,
         )
         .filter(
             ContentVersion.superseded_by.is_(None),
             ContentVersion.origin == "human",
             ContentVersion.status == ContentVersionStatus.OK,
-            ContentVersion.entity_id.in_({eid for _, eid, _ in keys}),
+            ContentVersion.entity_id.in_({eid for _, eid, _ in edits}),
         )
         .all()
     )
-    out: dict[tuple[str, str, str], set[str]] = defaultdict(set)
-    for entity_type, entity_id, field, locale in rows:
+    by_key: dict[tuple[str, str, str], list[tuple[str, Any]]] = defaultdict(list)
+    for entity_type, entity_id, field, locale, text, created_at in rows:
         key = (entity_type, entity_id, field)
-        if key in keys:
-            out[key].add(locale)
-    return dict(out)
+        if key in edits and text and str(text).strip():
+            by_key[key].append((locale, created_at))
+    out: dict[tuple[str, str, str], set[str]] = {}
+    for key, found in by_key.items():
+        # The same ranking ``content_versions.write.field_source_row`` uses.
+        source_locale = (
+            course_locale if any(loc == course_locale for loc, _ in found) else max(found, key=lambda r: r[1])[0]
+        )
+        locales = {locale for locale, _ in found}
+        if source_locale != edits[key]:
+            locales.discard(source_locale)
+        out[key] = locales
+    return out
 
 
 def staged_status_for_course(db: Session, course: Course) -> list[StagedFieldStatus]:
@@ -143,8 +165,11 @@ def staged_status_for_course(db: Session, course: Course) -> list[StagedFieldSta
     for row in staged_translation_rows(db, str(course.id)):
         staged_by_key[(row.entity_type, row.entity_id, row.field)][row.locale] = row
 
-    keys = {(h.entity_type, h.entity_id, h.field) for h in humans}
-    hand_translated = _human_translation_locales(db, keys)
+    hand_translated = _human_translation_locales(
+        db,
+        {(h.entity_type, h.entity_id, h.field): h.locale for h in humans},
+        course_locale=course.source_locale,
+    )
 
     out: list[StagedFieldStatus] = []
     for human in humans:

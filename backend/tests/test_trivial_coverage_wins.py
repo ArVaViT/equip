@@ -119,7 +119,8 @@ class TestDualWriteShortCircuits:
         # …and the field has no existing human row to inherit a language
         # from either. That lookup is the second of the three answers
         # ``dual_write`` tries before giving up.
-        db.query.return_value.filter.return_value.scalar.return_value = None
+        # (Newest first, should a field hold a person's text in two locales.)
+        db.query.return_value.filter.return_value.order_by.return_value.limit.return_value.scalar.return_value = None
         dual_write_entity_content(
             db,
             entity_type="course",

@@ -294,6 +294,7 @@ def populate_spine_texts(
     display_locale: LocaleCode | None = None,
     hydrate_modules: bool = True,
     fallback: Literal["auto", "none", "source_then_any"] = "auto",
+    prefer_human: bool = False,
 ) -> None:
     """``courses.title|description`` and ``modules.title|description``
     columns dropped. Hydrate each course (and every loaded module/chapter
@@ -322,6 +323,9 @@ def populate_spine_texts(
     reader's: the first pass had already filled in Russian, and the
     second had nothing to overwrite it with.
 
+    ``prefer_human`` is the author's own view (``?source=1``): their
+    words for each field, a held edit included — see the cv reader.
+
     ``fallback`` is the cv reader's: a teacher reading their own course in
     another interface language passes ``"source_then_any"`` — under
     ``"auto"`` with translation on, a course with no row in that language
@@ -349,6 +353,7 @@ def populate_spine_texts(
                 display_locale=display_locale or src_locale,
                 source_locale=src_locale,
                 fallback=fallback,
+                prefer_human=prefer_human,
             )
         )
     for c in courses:
@@ -394,6 +399,7 @@ def populate_spine_texts(
             display_locale=display_locale or src_locale,
             source_locale=src_locale,
             fallback=fallback,
+            prefer_human=prefer_human,
         )
         for m in mods:
             cv_t = bulk.get((str(m.id), "title"))
@@ -434,6 +440,9 @@ def populate_module_texts(
         display_locale=source_locale,
         source_locale=source_locale,
         include_author_edits=for_author,
+        # The author's words, even when their last edit was in another
+        # language than the course — see the cv reader.
+        prefer_human=for_author,
     )
     for m in modules:
         # Same rule as ``populate_spine_texts``: this function is always
