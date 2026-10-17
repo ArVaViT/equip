@@ -795,6 +795,7 @@ CREATE TABLE public.course_events (
     duration_minutes integer,
     series_id uuid,
     reminded_at timestamp with time zone,
+    time_zone character varying(64),
     CONSTRAINT course_events_duration_minutes_check CHECK (((duration_minutes IS NULL) OR ((duration_minutes >= 1) AND (duration_minutes <= 1440))))
 );
 

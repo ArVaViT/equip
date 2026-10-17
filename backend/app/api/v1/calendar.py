@@ -335,6 +335,7 @@ def create_course_event(
         # A deadline is a moment in a course, not a weekly meeting; twelve
         # copies of one is a slip in the form, not a plan.
         raise _series_rejected("not_for_deadline")
+    series_zone: str | None = None
     if data.repeat is None:
         starts = [data.event_date]
         series_id = None
@@ -349,6 +350,8 @@ def create_course_event(
         # A "series" of one is an event; do not mark it as a series the
         # editor would then offer "this and following" for.
         series_id = uuid.uuid4() if len(starts) > 1 else None
+        # Remembered, so a later move is measured on the same clock.
+        series_zone = str(zone) if series_id else None
     events: list[CourseEvent] = []
     for start in starts:
         event = CourseEvent(
@@ -361,6 +364,7 @@ def create_course_event(
             recording_url=data.recording_url if not events else None,
             duration_minutes=data.duration_minutes,
             series_id=series_id,
+            time_zone=series_zone,
             created_by=teacher.id,
         )
         db.add(event)
@@ -496,7 +500,14 @@ def update_course_event(
     # Title + description live in cv. Pop them off the patch
     # before the setattr loop and route through dual_write.
     updates = data.model_dump(exclude_unset=True)
-    zone = zone_or_utc(updates.pop("time_zone", None) or teacher.time_zone)
+    # A series moves on its own clock — the zone it was created in — not
+    # the editor's: a teacher in Kyiv moving an Indiana series a day would
+    # otherwise put it an hour off in the week between the two clock
+    # changes. The editor's zone (then the profile's) is for series made
+    # before the zone was stored. Popped either way: it is not a field the
+    # patch may write.
+    editor_zone = updates.pop("time_zone", None)
+    zone = zone_or_utc(event.time_zone or editor_zone or teacher.time_zone)
     text_patch: dict[str, str | None] = {}
     if "title" in updates:
         v = updates.pop("title")

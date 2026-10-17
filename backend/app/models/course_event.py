@@ -61,5 +61,12 @@ class CourseEvent(Base):
     # When the hour-before reminder went out — at most once per event.
     # Moving the event clears it, so the new time is announced again.
     reminded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The IANA zone a weekly series keeps its hour in — "19:00 in
+    # Indianapolis" — written when the series is created. A later "this and
+    # the following" move is measured on this clock, not on the editor's:
+    # a teacher in Kyiv moving an Indiana series must not shift it by the
+    # hour between the two countries' clock changes. NULL for a single
+    # event and for series made before the column (the editor's zone then).
+    time_zone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_by: Mapped[uuid.UUID] = mapped_column()
     created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
