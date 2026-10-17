@@ -1,4 +1,4 @@
-import { useId, useState } from "react"
+import { useId, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Modal } from "@/components/patterns"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,7 @@ import {
 import { invitationsService } from "@/services/invitations"
 import { toast } from "@/lib/toast"
 import { getErrorDetail } from "@/lib/errorDetail"
+import { cn } from "@/lib/utils"
 import type { InvitationRole } from "@/types"
 
 interface Props {
@@ -49,12 +50,21 @@ export function CreateInvitationDialog({ open, onClose, onCreated }: Props) {
   // follows, and for the same reason.
   const [ageAttested, setAgeAttested] = useState(false)
   const [saving, setSaving] = useState(false)
+  // Set by a press on «Send» while something is missing. The button used to
+  // be disabled instead, and a disabled button says nothing: RUM caught four
+  // dead clicks on it in a row (2026-10-15) from somebody who had typed the
+  // address and not seen the box. Now the press names what is missing.
+  const [attempted, setAttempted] = useState(false)
   const ageCheckboxId = useId()
+  const emailErrorId = useId()
+  const emailRef = useRef<HTMLInputElement>(null)
+  const ageRef = useRef<HTMLButtonElement>(null)
 
   const reset = () => {
     setEmail("")
     setRole("student")
     setAgeAttested(false)
+    setAttempted(false)
   }
 
   const handleClose = () => {
@@ -67,7 +77,12 @@ export function CreateInvitationDialog({ open, onClose, onCreated }: Props) {
   const isValid = emailLooksRight && ageAttested
 
   const submit = async () => {
-    if (!isValid) return
+    if (!isValid) {
+      setAttempted(true)
+      if (!emailLooksRight) emailRef.current?.focus()
+      else ageRef.current?.focus()
+      return
+    }
     setSaving(true)
     try {
       await invitationsService.createInvitation(email.trim(), role, ageAttested)
@@ -96,7 +111,15 @@ export function CreateInvitationDialog({ open, onClose, onCreated }: Props) {
             maxLength={EMAIL_MAX_LENGTH}
             placeholder={t("admin.invitations.emailPlaceholder")}
             autoFocus
+            ref={emailRef}
+            aria-invalid={attempted && !emailLooksRight}
+            aria-describedby={attempted && !emailLooksRight ? emailErrorId : undefined}
           />
+          {attempted && !emailLooksRight && (
+            <p id={emailErrorId} className="text-xs text-destructive-ink">
+              {t("authRegister.errors.emailInvalid")}
+            </p>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">{t("admin.invitations.fieldRole")}</Label>
@@ -113,9 +136,16 @@ export function CreateInvitationDialog({ open, onClose, onCreated }: Props) {
         {/* Directly above the button, with nothing between them: the
             statement being made is the last thing read before the click that
             makes it. */}
-        <div className="flex w-full items-start gap-3 rounded-md bg-muted/20 p-3 text-left">
+        <div
+          className={cn(
+            "flex w-full items-start gap-3 rounded-md bg-muted/20 p-3 text-left ring-1 ring-transparent transition-shadow",
+            attempted && emailLooksRight && !ageAttested && "ring-destructive",
+          )}
+        >
           <Checkbox
             id={ageCheckboxId}
+            ref={ageRef}
+            aria-invalid={attempted && emailLooksRight && !ageAttested}
             checked={ageAttested}
             onCheckedChange={(v) => setAgeAttested(v === true)}
             className="mt-0.5"
@@ -132,7 +162,7 @@ export function CreateInvitationDialog({ open, onClose, onCreated }: Props) {
           <Button variant="outline" onClick={handleClose} disabled={saving}>
             {t("common.cancel")}
           </Button>
-          <Button onClick={submit} disabled={!isValid || saving}>
+          <Button onClick={submit} disabled={saving}>
             {saving ? t("admin.invitations.sending") : t("admin.invitations.send")}
           </Button>
         </div>

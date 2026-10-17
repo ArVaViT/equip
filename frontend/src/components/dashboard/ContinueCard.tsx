@@ -50,7 +50,7 @@ export function ContinueCard() {
   return (
     <section
       aria-labelledby="continue-heading"
-      className="animate-fade-in flex flex-wrap items-center justify-between gap-3 rounded-card border border-edge bg-card p-4 shadow-card dark:border-transparent"
+      className="animate-fade-in relative flex flex-wrap items-center justify-between gap-3 rounded-card border border-edge bg-card p-4 shadow-card dark:border-transparent"
     >
       <div className="min-w-0">
         <p className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
@@ -62,8 +62,14 @@ export function ContinueCard() {
         </h2>
         <p className="truncate text-sm text-ink-muted">{orNotTranslated(t, course.title)}</p>
       </div>
+      {/* The whole card is the way in: RUM saw people tap the lesson's
+          title and nothing happen (2026-10-13). One link, stretched over the
+          card, as on the teacher's course cards — not a second link. */}
       <Button asChild size="sm">
-        <Link to={chapterHref(course.id, chapter.id)}>
+        <Link
+          to={chapterHref(course.id, chapter.id)}
+          className="after:absolute after:inset-0 after:rounded-card focus-visible:after:ring-2 focus-visible:after:ring-brand"
+        >
           {t("dashboard.continue.cta")}
           <ArrowRight className="ml-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
         </Link>
