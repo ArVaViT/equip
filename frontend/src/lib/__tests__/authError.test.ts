@@ -120,4 +120,25 @@ describe("the two email limits behind one code", () => {
     expect(message).toBe(i18n.t("auth.errors.emailQuota"))
     expect(message).not.toMatch(/minute/i)
   })
+
+  it("reads the send-email hook's five-minute refusal, which GoTrue relays as a bare 429", () => {
+    // `supabase/functions/send-email/copy.ts::repeatRefusal`; no `code` survives the relay.
+    const err = Object.assign(new Error("For security purposes, you can only request this after 240 seconds."), {
+      status: 429,
+    })
+    expect(authErrorMessage(err, "auth.loginFailed")).toBe(i18n.t("auth.errors.emailCooldownMinutes", { minutes: 4 }))
+  })
+
+  it("rounds a wait over a minute up to whole minutes", () => {
+    const err = Object.assign(new Error("For security purposes, you can only request this after 61 seconds."), {
+      code: "over_email_send_rate_limit",
+      status: 429,
+    })
+    expect(authErrorMessage(err, "auth.loginFailed")).toBe(i18n.t("auth.errors.emailCooldownMinutes", { minutes: 2 }))
+  })
+
+  it("leaves a 429 without the sentence to the generic «too many attempts»", () => {
+    const err = Object.assign(new Error("Request rate limit reached"), { status: 429 })
+    expect(authErrorMessage(err, "auth.loginFailed")).toBe(i18n.t("auth.errors.rateLimited"))
+  })
 })

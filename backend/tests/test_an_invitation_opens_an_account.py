@@ -445,6 +445,35 @@ class TestTheToken:
         expires = again.expires_at if again.expires_at.tzinfo else again.expires_at.replace(tzinfo=UTC)
         assert expires > datetime.now(UTC) + timedelta(days=6, hours=23)
 
+    def test_a_second_click_minutes_later_does_not_mail_the_same_letter_again(
+        self, db: Session, admin: User, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A teacher pressing «send again» twice, or a page retrying, must not
+        put two identical letters in one inbox: the pattern of a bulk sender."""
+        mailed: list[str] = []
+        monkeypatch.setattr(
+            invitation_service, "send_invitation_email", lambda *_a, accept_url, **_k: mailed.append(accept_url)
+        )
+        first, _new = create_or_resend_invitation(
+            db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+        )
+        expires_before = first.expires_at
+        for _ in range(3):
+            create_or_resend_invitation(
+                db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+            )
+        assert len(mailed) == 1
+        assert first.expires_at == expires_before
+
+        # Past the window the resend is a resend again.
+        first.expires_at = datetime.now(UTC) + invitation_service.INVITATION_LIFETIME - timedelta(minutes=11)
+        db.commit()
+        create_or_resend_invitation(
+            db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+        )
+        assert len(mailed) == 2
+        assert mailed[1] == mailed[0]
+
     def test_a_link_mailed_before_the_hashing_still_opens(self, anon: TestClient, db: Session) -> None:
         """What the migration's backfill promises: the random tokens already
         in inboxes are found by their hash."""

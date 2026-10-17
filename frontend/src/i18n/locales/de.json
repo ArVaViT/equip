@@ -714,6 +714,7 @@
       "serverError": "Bei uns ist etwas schiefgelaufen. Versuchen Sie es gleich noch einmal.",
       "passwordRequired": "Bitte Passwort eingeben",
       "emailCooldown": "Eine E-Mail ist schon unterwegs. Erneut anfordern können Sie in {{seconds}} s.",
+      "emailCooldownMinutes": "Eine E-Mail ist schon unterwegs — sehen Sie im Posteingang und auch im Spam-Ordner nach. Eine neue können Sie in {{minutes}} Min. anfordern.",
       "emailQuota": "Wir können gerade keine E-Mail senden: Das stündliche Limit ist erschöpft. Versuchen Sie es später oder melden Sie sich mit Google an."
     },
     "callback": {

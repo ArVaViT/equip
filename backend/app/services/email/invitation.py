@@ -198,6 +198,7 @@ def build_invitation_message(
             t(locale, "email.invitation.expires", date=_expiry_day(invitation.expires_at, locale)),
             t(locale, "email.invitation.ignore"),
         ),
+        lang=locale,
     )
 
 

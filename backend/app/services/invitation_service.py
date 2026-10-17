@@ -4,7 +4,7 @@ import base64
 import hashlib
 import hmac
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Literal
 
 from fastapi import status
@@ -90,6 +90,28 @@ def issue_token(invitation: Invitation) -> str:
     token = invitation_token(invitation.id)
     invitation.token_hash = hash_invitation_token(token)
     return token
+
+
+#: How long a resend of an unchanged letter is a repeat rather than a resend.
+RESEND_REPEAT_WINDOW = timedelta(minutes=10)
+
+
+def _mailed_moments_ago(invitation: Invitation) -> bool:
+    """True when this exact letter went out inside ``RESEND_REPEAT_WINDOW``.
+
+    Every send starts the seven days over, so ``expires_at`` minus the
+    lifetime is when it was last mailed. "This exact letter": the link
+    the next send would carry is the one already stored. A row whose hash
+    predates the derivation, or a key rotation, mails a different link —
+    that resend is never a repeat, because the letter in the inbox may no
+    longer open.
+    """
+    if invitation.id is None or invitation.token_hash != hash_invitation_token(invitation_token(invitation.id)):
+        return False
+    expires_at = invitation.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    return expires_at - INVITATION_LIFETIME > datetime.now(UTC) - RESEND_REPEAT_WINDOW
 
 
 def is_invitation_expired(invitation: Invitation) -> bool:
@@ -328,6 +350,17 @@ def create_or_resend_invitation(
     ]
 
     standing = next((row for row in live if _subsumes(row, scope=scope, course_id=course_id)), None)
+    if standing is not None and _mailed_moments_ago(standing):
+        # The same letter, with the same link, left minutes ago. Sending it
+        # again is the double-click a filter reads as a bulk sender, and it
+        # tells the person nothing the first copy did not. Whoever clicked
+        # still stands behind the invitation (see below); only the mail and
+        # the fresh seven days are skipped.
+        standing.age_attested_at = datetime.now(UTC)
+        standing.age_attested_by = invited_by
+        db.commit()
+        increment("equip.invitations.created_total", scope=scope, role=role, kind="resend_skipped")
+        return standing, False
     if standing is not None:
         # A resend is a fresh statement about a person's age by whoever
         # clicked it, not an echo of the first one — and it may not be the

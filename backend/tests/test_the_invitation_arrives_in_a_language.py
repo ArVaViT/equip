@@ -229,6 +229,21 @@ class TestHowItLooks:
         assert "<img" not in html
         assert "background-image" not in html
 
+    @pytest.mark.parametrize("locale", ["ru", "en", "de", "uk"])
+    def test_the_html_is_a_whole_document_in_the_readers_language(self, db: Session, admin: User, locale: str) -> None:
+        """A bare ``<body>`` fragment is a shape filters score, and without
+        ``lang`` a screen reader guesses the language of Cyrillic."""
+        _school(db)
+        _course_with_title(db)
+        invitation = _invitation(db, scope=InvitationScope.COURSE.value, course_id=COURSE_ID)
+
+        html = render(build_invitation_message(db, invitation, accept_url=ACCEPT_URL, locale=locale, inviter_name="Д"))
+
+        assert html.startswith("<!doctype html>")
+        assert f'<html lang="{locale}">' in html
+        assert '<meta charset="utf-8">' in html
+        assert html.endswith("</body></html>")
+
     def test_nothing_a_person_typed_reaches_the_html_raw(self, db: Session, admin: User) -> None:
         """Course titles and names are typed by people.
 

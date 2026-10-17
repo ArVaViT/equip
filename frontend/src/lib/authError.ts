@@ -98,10 +98,15 @@ export function isDuplicateEmail(err: unknown): boolean {
  * exceeded». The first wants a short wait; the second is an hour away, and
  * telling that person to «wait a minute» is a lie they act on. Only the
  * message tells them apart.
+ *
+ * The send-email hook refuses a repeat of the same email for five minutes
+ * (`supabase/functions/send-email/copy.ts::repeatWaitSeconds`) in GoTrue's
+ * own words, but GoTrue relays a hook's refusal as a bare 429 without this
+ * code — so a 429 carrying the sentence counts too.
  */
 export function emailCooldownSeconds(err: unknown): number | null {
   const e = asAuthError(err)
-  if (e.code !== "over_email_send_rate_limit") return null
+  if (e.code !== "over_email_send_rate_limit" && e.status !== 429) return null
   const match = /after (\d+) second/.exec(e.message ?? "")
   return match ? Number(match[1]) : null
 }
@@ -131,10 +136,14 @@ export function authErrorMessage(err: unknown, fallbackKey: string): string {
   if (import.meta.env.DEV) {
     console.error("[auth]", e.code ?? e.status ?? "unknown", e.message ?? err)
   }
-  if (e.code === "over_email_send_rate_limit") {
-    const seconds = emailCooldownSeconds(err)
-    return seconds === null ? i18n.t("auth.errors.emailQuota") : i18n.t("auth.errors.emailCooldown", { seconds })
+  const seconds = emailCooldownSeconds(err)
+  if (seconds !== null) {
+    // «через 287 с» is arithmetic left to the reader; past a minute, minutes.
+    return seconds < 60
+      ? i18n.t("auth.errors.emailCooldown", { seconds })
+      : i18n.t("auth.errors.emailCooldownMinutes", { minutes: Math.ceil(seconds / 60) })
   }
+  if (e.code === "over_email_send_rate_limit") return i18n.t("auth.errors.emailQuota")
   const key = (e.code ? KEY_BY_CODE[e.code] : undefined) ?? keyByStatus(e.status) ?? fallbackKey
   return i18n.t(key)
 }

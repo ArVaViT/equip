@@ -1,6 +1,16 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { Webhook } from "https://esm.sh/standardwebhooks@1.0.0";
-import { FROM, confirmationUrl, copyFor, localeFor, renderEmail, renderText, hasCopyFor } from "./copy.ts";
+import {
+  FROM,
+  confirmationUrl,
+  copyFor,
+  localeFor,
+  renderEmail,
+  renderText,
+  hasCopyFor,
+  repeatRefusal,
+  repeatWaitSeconds,
+} from "./copy.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const SEND_EMAIL_HOOK_SECRET = Deno.env.get("SEND_EMAIL_HOOK_SECRET");
@@ -15,10 +25,17 @@ const PROFILE_READ_KEY = Deno.env.get("EQUIP_PROFILE_READ_KEY");
 // `email_data.site_url` — see `confirmationUrl` for what that turned out to
 // be, and what it cost.
 const SITE_URL = Deno.env.get("EQUIP_SITE_URL") ?? "https://equipbible.com";
+// Where a reply goes. `noreply@` has no mailbox (the domain has no MX), so a
+// person answering «is this really you?» bounces. Unset until a real inbox
+// exists on the domain; then set it and replies reach a human.
+const REPLY_TO = Deno.env.get("EQUIP_REPLY_TO");
 
 interface EmailHookPayload {
   user: {
     email: string;
+    /** The previous send of each kind — GoTrue updates them after the hook. */
+    confirmation_sent_at?: string | null;
+    recovery_sent_at?: string | null;
     user_metadata: {
       full_name?: string;
       /** Set by ``authService.register``; absent for a Google signup. */
@@ -106,6 +123,16 @@ Deno.serve(async (req: Request) => {
       await logToDatadog("error", "no copy for email_action_type — not sent", { email_type: emailType });
       return new Response(JSON.stringify({ skipped: emailType }), { status: 200, headers: { "Content-Type": "application/json" } });
     }
+    const wait = repeatWaitSeconds(emailType, user);
+    if (wait !== null) {
+      // Not an error of ours: the earlier email and its link stand.
+      await logToDatadog("info", "repeat email refused", {
+        recipient_domain: user.email.split("@")[1],
+        email_type: emailType,
+        wait_seconds: wait,
+      });
+      return new Response(JSON.stringify(repeatRefusal(wait)), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
     const copy = copyFor(emailType, locale);
     const name = user.user_metadata?.full_name || "";
     const confirmUrl = confirmationUrl({
@@ -128,10 +155,11 @@ Deno.serve(async (req: Request) => {
         from: FROM,
         to: [user.email],
         subject: copy.subject,
-        html: renderEmail(copy, name, confirmUrl),
+        html: renderEmail(copy, name, confirmUrl, locale),
         // Without our own, Resend derives one by stripping tags and the
         // reader gets a wall of words. See `renderText`.
         text: renderText(copy, name, confirmUrl),
+        ...(REPLY_TO ? { reply_to: REPLY_TO } : {}),
       }),
     });
 

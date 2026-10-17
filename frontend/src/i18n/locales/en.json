@@ -714,6 +714,7 @@
       "serverError": "Something went wrong on our side. Try again in a moment.",
       "passwordRequired": "Enter your password",
       "emailCooldown": "An email is already on its way. You can ask again in {{seconds}} s.",
+      "emailCooldownMinutes": "An email is already on its way — check your inbox, and the spam folder too. You can ask for a new one in {{minutes}} min.",
       "emailQuota": "We can't send email right now: the hourly email limit is used up. Try again later, or continue with Google."
     },
     "callback": {

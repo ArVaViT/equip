@@ -275,10 +275,26 @@ export const COPY: Record<string, Record<Locale, Copy>> = {
   },
 };
 
-export function renderEmail(copy: Copy, name: string, url: string): string {
+/**
+ * A whole HTML document, not a fragment.
+ *
+ * The body used to be one bare `<div>`: no doctype, no `<html lang>`, no
+ * charset, no title. Filters score that shape (SpamAssassin's
+ * HTML_MIME_NO_HTML_TAG and friends), a screen reader guesses the language
+ * of Cyrillic text from nothing, and some clients fall back to a Latin-1
+ * reading of an undeclared body. The visible message is unchanged.
+ */
+export function renderEmail(copy: Copy, name: string, url: string, locale: Locale = DEFAULT_LOCALE): string {
   const heading = copy.greeting ? copy.heading : `${copy.heading}${name ? `, ${name}` : ""}`;
   const greeting = copy.greeting ? `<p style="${P_STYLE}">${copy.greeting(name)}</p>` : "";
-  return `
+  return `<!doctype html>
+<html lang="${locale}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${copy.subject}</title>
+  </head>
+  <body style="margin: 0; padding: 0; background: #F8F8F6;">
       <div style="${WRAP_STYLE}">
         <h1 style="${H1_STYLE}">${heading}</h1>
         ${greeting}
@@ -286,7 +302,9 @@ export function renderEmail(copy: Copy, name: string, url: string): string {
         <a href="${url}" style="${BTN_STYLE}">${copy.cta}</a>
         <p style="${SMALL_STYLE}">${copy.footer}</p>
       </div>
-    `;
+  </body>
+</html>
+`;
 }
 
 /**
@@ -401,4 +419,60 @@ export function confirmationUrl(opts: {
     type: opts.emailType,
   });
   return `${site}${landingPathFor(opts.emailType)}#${fragment.toString()}`;
+}
+
+
+/**
+ * How long one address waits before the same email may go to it again.
+ *
+ * Every repeat used to send: GoTrue's own floor (`smtp_max_frequency`) is a
+ * minute, so somebody pressing «register» or «resend» in a loop got a fresh,
+ * identical email each minute — the pattern a filter learns to file as
+ * spam, from a domain whose reputation is its only asset. Worse, every send
+ * minted a new token and killed the link in the email before it: three
+ * presses, and the first email the person opened said «link invalid».
+ *
+ * Refusing here costs nothing. GoTrue writes the new token only after the
+ * hook succeeds (`internal/api/mail.go`: the token is saved after
+ * `sendEmail` returns nil, and restored on error), so the link already in
+ * the inbox stays valid. The refusal travels back as a 429 whose message is
+ * GoTrue's own wording, which the client already parses into «wait N».
+ *
+ * Only the two emails a person asks for again and again. A sign-in link
+ * keeps GoTrue's minute: it is asked for when somebody is standing at the
+ * door. The clock is the previous send of the same kind, which GoTrue hands
+ * the hook in the user object before it updates it.
+ */
+export const REPEAT_WINDOW_SECONDS = 300;
+
+const SENT_AT_FIELD: Record<string, "confirmation_sent_at" | "recovery_sent_at"> = {
+  signup: "confirmation_sent_at",
+  recovery: "recovery_sent_at",
+};
+
+export interface SentTimes {
+  confirmation_sent_at?: string | null;
+  recovery_sent_at?: string | null;
+}
+
+/** Seconds this address must still wait for `emailType`, or `null` to send. */
+export function repeatWaitSeconds(emailType: string, user: SentTimes, now: Date = new Date()): number | null {
+  const field = SENT_AT_FIELD[emailType];
+  if (!field) return null;
+  const last = Date.parse(user[field] ?? "");
+  if (!Number.isFinite(last)) return null;
+  const elapsed = (now.getTime() - last) / 1000;
+  // A clock far ahead of ours is not a reason to refuse for ever.
+  if (elapsed < 0 || elapsed >= REPEAT_WINDOW_SECONDS) return null;
+  return Math.max(1, Math.ceil(REPEAT_WINDOW_SECONDS - elapsed));
+}
+
+/** GoTrue's wording for the same refusal, so one client parser reads both. */
+export function repeatRefusal(seconds: number): { error: { http_code: number; message: string } } {
+  return {
+    error: {
+      http_code: 429,
+      message: `For security purposes, you can only request this after ${seconds} seconds.`,
+    },
+  };
 }
