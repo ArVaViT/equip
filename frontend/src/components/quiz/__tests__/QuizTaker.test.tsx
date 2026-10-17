@@ -132,6 +132,18 @@ describe("QuizTaker", () => {
     expect(screen.getByRole("button", { name: /submit quiz/i })).toBeDisabled()
   })
 
+  it("keeps an h2 for the quiz when its name is already the page's h1", async () => {
+    getChapterQuiz.mockResolvedValue(makeQuiz())
+    getMyQuizAttempts.mockResolvedValue([])
+
+    render(<QuizTaker chapterId="chap-1" pageTitle="Genesis 1 Quiz" />, renderOpts)
+
+    // Not the name again — the page says it — but a section heading, so
+    // the h3s under it do not skip a level.
+    expect(await screen.findByRole("heading", { level: 2, name: "Quiz" })).toBeInTheDocument()
+    expect(screen.queryByRole("heading", { name: "Genesis 1 Quiz" })).not.toBeInTheDocument()
+  })
+
   it("renders nothing when the chapter has no quiz", async () => {
     getChapterQuiz.mockResolvedValue(null)
     const { container } = render(<QuizTaker chapterId="chap-1" />, renderOpts)

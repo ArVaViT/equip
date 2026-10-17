@@ -32,7 +32,10 @@ function discard(prepared: PreparedPaste | null): void {
 
 export function useImageUpload() {
   const { t } = useTranslation();
-  const [uploading, setUploading] = useState(false);
+  // How many uploads are in flight. A paste from Word can start several;
+  // a boolean went false when the first finished while the rest still ran.
+  const [pending, setPending] = useState(0);
+  const uploading = pending > 0;
   /** The most recent upload failure reason — surfaced by
    *  ``useMediaPrompts`` so the URL-fallback dialog can show the
    *  teacher *why* the upload failed (file too large, network
@@ -53,7 +56,7 @@ export function useImageUpload() {
         toast({ title: t("editor.toast.imageUploadFailed"), description: issue.message, variant: "destructive" });
         return null;
       }
-      setUploading(true);
+      setPending((n) => n + 1);
       setLastError(null);
       try {
         const url = await storageService.uploadContentImage(file);
@@ -64,7 +67,7 @@ export function useImageUpload() {
         toast({ title: t("editor.toast.imageUploadFailed"), description: message, variant: "destructive" });
         return null;
       } finally {
-        setUploading(false);
+        setPending((n) => n - 1);
       }
     },
     [t],

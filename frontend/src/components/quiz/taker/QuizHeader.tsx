@@ -46,10 +46,15 @@ export function QuizHeader({
           {typeLabel}
         </p>
       )}
-      {(pageTitle === undefined || !repeatsTitle(pageTitle, orNotTranslated(t, quiz.title))) && (
+      {pageTitle === undefined || !repeatsTitle(pageTitle, orNotTranslated(t, quiz.title)) ? (
         <h2 className="font-serif text-lg font-semibold tracking-tight text-wrap-safe">
           {orNotTranslated(t, quiz.title)}
         </h2>
+      ) : (
+        // The name is the page's h1 already; the section still needs its
+        // h2, or «previous attempts» and the answer review under it (h3)
+        // skip a level for anyone moving by headings.
+        <h2 className="sr-only">{typeLabel}</h2>
       )}
       {quiz.description && (
         <p className="mt-1.5 text-sm leading-relaxed text-ink-muted text-wrap-safe whitespace-pre-line">

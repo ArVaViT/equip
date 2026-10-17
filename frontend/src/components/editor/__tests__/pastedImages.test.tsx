@@ -44,9 +44,9 @@ describe("preparePastedHtml", () => {
   it("drops pictures the browser can never open, and counts them", () => {
     const word =
       '<p class=MsoNormal>Урок 1</p><p><img width=200 src="file:///C:/Users/t/AppData/Local/Temp/msohtmlclip1/01/clip_image001.png"></p>' +
-      '<p><img src="cid:image002.png@01DA"></p><p><img src="webkit-fake-url://abc/image.png"></p><p><img></p>'
+      '<p><img src="cid:image002.png@01DA"></p><p><img src="webkit-fake-url://abc/image.png"></p>'
     const out = preparePastedHtml(word)
-    expect(out.skipped).toBe(4)
+    expect(out.skipped).toBe(3)
     expect(out.files.size).toBe(0)
     expect(out.html).toContain("Урок 1")
     expect(out.html).not.toContain("<img")
@@ -62,6 +62,12 @@ describe("preparePastedHtml", () => {
     expect(file.size).toBe(atob(PNG_B64).length)
     expect(out.html).toContain('src="blob:test/1"')
     expect(out.html).not.toContain("data:")
+  })
+
+  it("drops a picture with no address without counting it", () => {
+    const out = preparePastedHtml("<p>x</p><img><img src=\"  \">")
+    expect(out.skipped).toBe(0)
+    expect(out.html).toBe("<p>x</p>")
   })
 
   it("leaves pictures that load alone, and HTML without pictures untouched", () => {

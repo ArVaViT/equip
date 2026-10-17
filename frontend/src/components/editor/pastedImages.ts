@@ -83,6 +83,11 @@ export function preparePastedHtml(html: string): PreparedPaste {
   doc.querySelectorAll("img").forEach((img) => {
     const src = (img.getAttribute("src") ?? "").trim();
     if (LOADABLE.test(src)) return;
+    if (!src) {
+      // Nothing to show and nothing lost: not worth a message.
+      img.remove();
+      return;
+    }
     if (/^data:/i.test(src)) {
       const file = dataUriToFile(src, files.size);
       if (file) {
