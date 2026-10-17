@@ -88,6 +88,7 @@ from app.services.grading_queue import assignment_work, pending_summary, waiting
 from app.services.grading_scheme import effective_bands, get_org_settings, validate_scheme_threshold
 from app.services.my_grade_service import build_my_course_grade, latest_enrollment
 from app.services.notification_service import create_notification, notification_text
+from app.services.school_clock import day_on, school_time_zone
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id, populate_spine_texts
 from app.services.user_locale import preferred_locale_of
 
@@ -349,7 +350,11 @@ def _sheet_response(db: Session, sheet: GradeSheet) -> GradeSheetResponse:
     renamed.
     """
     rows = db.query(GradeSheetRow).filter(GradeSheetRow.sheet_id == sheet.id).all()
+    school_zone = school_time_zone(db, sheet.organization_id)
     return GradeSheetResponse(
+        finalized_on=day_on(school_zone, sheet.finalized_at),
+        cohort_start_on=day_on(school_zone, sheet.cohort_start),
+        cohort_end_on=day_on(school_zone, sheet.cohort_end),
         **{
             k: getattr(sheet, k)
             for k in (

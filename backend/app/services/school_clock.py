@@ -4,10 +4,16 @@ The days a school puts its name to — the last day of an invitation link —
 are days on the school's calendar. ``org_settings.time_zone`` holds it once
 the school has said; until then the platform keeps the rule it had before
 the column existed, which was the one school's zone written into the code.
+
+The dates on a school's documents are read the same way — the day a
+certificate was issued, the day a ведомость was closed — so a certificate
+signed at 23:30 in Indianapolis is dated that day for everyone who reads it,
+in Kyiv or in California, on paper and on the verification page.
 """
 
 from __future__ import annotations
 
+from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -39,3 +45,32 @@ def school_time_zone(db: Session, organization_id: uuid.UUID | None) -> ZoneInfo
             # unknown falls back to the default, not to UTC.
             pass
     return ZoneInfo(DEFAULT_SCHOOL_TIME_ZONE)
+
+
+def day_on(zone: ZoneInfo, instant: datetime | None) -> date | None:
+    """The calendar day ``instant`` falls on in ``zone`` (a naive value is UTC)."""
+    if instant is None:
+        return None
+    aware = instant if instant.tzinfo is not None else instant.replace(tzinfo=UTC)
+    return aware.astimezone(zone).date()
+
+
+class SchoolClocks:
+    """``school_time_zone`` for a page of rows, one lookup per school.
+
+    A certificate list spans schools only rarely; asking once per row would
+    still be one query per certificate.
+    """
+
+    def __init__(self, db: Session) -> None:
+        self._db = db
+        self._zones: dict[uuid.UUID | None, ZoneInfo] = {}
+
+    def zone(self, organization_id: uuid.UUID | None) -> ZoneInfo:
+        if organization_id not in self._zones:
+            self._zones[organization_id] = school_time_zone(self._db, organization_id)
+        return self._zones[organization_id]
+
+    def day(self, organization_id: uuid.UUID | None, instant: datetime | None) -> date | None:
+        """The school's day for ``instant`` — the date its documents print."""
+        return day_on(self.zone(organization_id), instant)
