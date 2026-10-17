@@ -28,9 +28,19 @@
 
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
 
-ALTER TABLE public.profiles
-  ADD CONSTRAINT profiles_deleted_is_deactivated_check
-  CHECK (deleted_at IS NULL OR deactivated_at IS NOT NULL);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conname = 'profiles_deleted_is_deactivated_check'
+       AND conrelid = 'public.profiles'::regclass
+  ) THEN
+    ALTER TABLE public.profiles
+      ADD CONSTRAINT profiles_deleted_is_deactivated_check
+      CHECK (deleted_at IS NULL OR deactivated_at IS NOT NULL);
+  END IF;
+END
+$$;
 
 COMMENT ON COLUMN public.profiles.deleted_at IS
   'Set when the owner deleted the account themselves (DELETE /users/me); always '
