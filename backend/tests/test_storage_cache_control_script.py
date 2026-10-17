@@ -85,7 +85,7 @@ def test_apply_rewrites_only_the_stale_objects_with_the_same_bytes_and_type() ->
     body, headers = written[("course-assets", "c1/cover-aaaa1111.png")]
     assert body == b"png"
     assert headers["content-type"] == "image/png"
-    assert headers["cache-control"] == "public, max-age=31536000, s-maxage=31536000, immutable"
+    assert headers["cache-control"] == "public, max-age=31536000, s-maxage=86400, immutable"
     assert headers["x-upsert"] == "true"
 
 

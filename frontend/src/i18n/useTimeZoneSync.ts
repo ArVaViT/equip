@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react"
 
 import { useAuth } from "@/context/useAuth"
+import { getAccountDeleted } from "@/lib/accountDeleted"
 import { usersService } from "@/services/users"
 
 import { browserTimeZone, isValidTimeZone } from "./timeZone"
@@ -29,6 +30,9 @@ export function useTimeZoneSync(): void {
 
   useEffect(() => {
     if (!user) return
+    // A closed account edits nothing (the profile trigger refuses it); the
+    // restore screen is all it sees, and a write here is only a failed request.
+    if (user.deleted_at || user.deactivated_at || getAccountDeleted()) return
     if (user.time_zone_source === "chosen") return
     const device = browserTimeZone()
     if (!isValidTimeZone(device) || device === user.time_zone) return

@@ -1105,6 +1105,7 @@ CREATE TABLE public.invitations (
     age_attested_at timestamp with time zone,
     age_attested_by uuid,
     token_hash text NOT NULL,
+    mailed_at timestamp with time zone,
     CONSTRAINT chk_invitations_age_attested_together CHECK (((age_attested_at IS NULL) = (age_attested_by IS NULL))),
     CONSTRAINT chk_invitations_course_matches_scope CHECK ((((scope = 'course'::text) AND (course_id IS NOT NULL)) OR ((scope <> 'course'::text) AND (course_id IS NULL)))),
     CONSTRAINT chk_invitations_fulfilled_at_matches_status CHECK (((status = 'fulfilled'::text) = (fulfilled_at IS NOT NULL))),

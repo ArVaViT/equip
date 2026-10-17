@@ -284,7 +284,22 @@ export const COPY: Record<string, Record<Locale, Copy>> = {
  * of Cyrillic text from nothing, and some clients fall back to a Latin-1
  * reading of an undeclared body. The visible message is unchanged.
  */
-export function renderEmail(copy: Copy, name: string, url: string, locale: Locale = DEFAULT_LOCALE): string {
+/**
+ * A name is typed by whoever signs up — and anybody can sign up with
+ * somebody else's address. Unescaped, `<a href=…>Confirm here</a>` as a
+ * name became a working link in a letter from our own domain.
+ */
+export function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+export function renderEmail(copy: Copy, rawName: string, url: string, locale: Locale = DEFAULT_LOCALE): string {
+  const name = escapeHtml(rawName);
   const heading = copy.greeting ? copy.heading : `${copy.heading}${name ? `, ${name}` : ""}`;
   const greeting = copy.greeting ? `<p style="${P_STYLE}">${copy.greeting(name)}</p>` : "";
   return `<!doctype html>
@@ -438,16 +453,20 @@ export function confirmationUrl(opts: {
  * the inbox stays valid. The refusal travels back as a 429 whose message is
  * GoTrue's own wording, which the client already parses into «wait N».
  *
- * Only the two emails a person asks for again and again. A sign-in link
- * keeps GoTrue's minute: it is asked for when somebody is standing at the
- * door. The clock is the previous send of the same kind, which GoTrue hands
- * the hook in the user object before it updates it.
+ * The emails a person asks for again and again: confirmation, password
+ * reset and sign-in link. The clock is the previous send of the same token,
+ * which GoTrue hands the hook in the user object before it updates it.
  */
 export const REPEAT_WINDOW_SECONDS = 300;
 
+// A sign-in link and a password reset share one token in GoTrue
+// (`recovery_token`, `recovery_sent_at`): either one kills the link of the
+// other. So they share one clock too — otherwise a reset sent a minute ago
+// dies the moment somebody asks for a sign-in link.
 const SENT_AT_FIELD: Record<string, "confirmation_sent_at" | "recovery_sent_at"> = {
   signup: "confirmation_sent_at",
   recovery: "recovery_sent_at",
+  magiclink: "recovery_sent_at",
 };
 
 export interface SentTimes {

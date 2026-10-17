@@ -114,6 +114,10 @@ class Invitation(Base):
     #: When the person arrived without the link (status ``fulfilled``).
     fulfilled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_default_expires_at)
+    #: When the letter last actually left (the provider took it). A second
+    #: "send again" within minutes of it is not mailed twice; a letter the
+    #: provider refused leaves this alone, so the next press does mail.
+    mailed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     #: When the inviter said this person is thirteen or older, and who said it.
     #:
     #: A school administrator can bring somebody in who is too young to sign

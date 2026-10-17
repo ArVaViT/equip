@@ -97,21 +97,23 @@ RESEND_REPEAT_WINDOW = timedelta(minutes=10)
 
 
 def _mailed_moments_ago(invitation: Invitation) -> bool:
-    """True when this exact letter went out inside ``RESEND_REPEAT_WINDOW``.
+    """True when this exact letter left inside ``RESEND_REPEAT_WINDOW``.
 
-    Every send starts the seven days over, so ``expires_at`` minus the
-    lifetime is when it was last mailed. "This exact letter": the link
-    the next send would carry is the one already stored. A row whose hash
-    predates the derivation, or a key rotation, mails a different link —
-    that resend is never a repeat, because the letter in the inbox may no
-    longer open.
+    "Left": ``mailed_at`` is written only when the provider took the
+    message, so a resend after a failed send always mails. "This exact
+    letter": the link the next send would carry is the one already stored.
+    A row whose hash predates the derivation, or a key rotation, mails a
+    different link — that resend is never a repeat, because the letter in
+    the inbox may no longer open.
     """
+    mailed_at = invitation.mailed_at
+    if mailed_at is None:
+        return False
     if invitation.id is None or invitation.token_hash != hash_invitation_token(invitation_token(invitation.id)):
         return False
-    expires_at = invitation.expires_at
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=UTC)
-    return expires_at - INVITATION_LIFETIME > datetime.now(UTC) - RESEND_REPEAT_WINDOW
+    if mailed_at.tzinfo is None:
+        mailed_at = mailed_at.replace(tzinfo=UTC)
+    return mailed_at > datetime.now(UTC) - RESEND_REPEAT_WINDOW
 
 
 def is_invitation_expired(invitation: Invitation) -> bool:
@@ -162,7 +164,7 @@ def _mail_the_invitation(db: Session, invitation: Invitation, *, token: str, inv
     ``services/email/send.py``.
     """
     inviter = db.query(User).filter(User.id == invited_by).first()
-    send_invitation_email(
+    delivery = send_invitation_email(
         db,
         invitation,
         accept_url=_accept_url(token),
@@ -170,6 +172,10 @@ def _mail_the_invitation(db: Session, invitation: Invitation, *, token: str, inv
         inviter_name=inviter.full_name if inviter else None,
         inviter_email=inviter.email if inviter else None,
     )
+    # ``getattr``: tests stand in for the sender with a bare callable.
+    if getattr(delivery, "sent", False):
+        invitation.mailed_at = datetime.now(UTC)
+        db.commit()
 
 
 def course_of_organization(db: Session, course_id: str, organization_id: UUID) -> Course:

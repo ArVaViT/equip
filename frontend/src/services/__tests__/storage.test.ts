@@ -215,7 +215,7 @@ describe("replacing a public image", () => {
     await upload()
     const [, body, options] = uploadMock.mock.calls[0] ?? []
     expect(body).toBeInstanceOf(ArrayBuffer)
-    expect(options.headers).toEqual({ "cache-control": "public, max-age=31536000, s-maxage=31536000, immutable" })
+    expect(options.headers).toEqual({ "cache-control": "public, max-age=31536000, s-maxage=86400, immutable" })
     expect(options.contentType).toMatch(/^image\//)
   })
 

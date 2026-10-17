@@ -4,7 +4,7 @@
 Covers, avatars and lesson images were uploaded as multipart, and Storage
 stored them with ``cache-control: no-cache`` (or an hour, for the oldest):
 every view went through to Storage and no CDN in between kept a copy. New
-uploads carry ``public, max-age=31536000, s-maxage=31536000, immutable`` since the frontend
+uploads carry ``public, max-age=31536000, s-maxage=86400, immutable`` since the frontend
 started sending a plain body (``frontend/src/services/storage.ts``,
 ``PUBLIC_OBJECT_CACHE_CONTROL``). This rewrites the ones from before.
 
@@ -40,7 +40,7 @@ import httpx
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-TARGET = "public, max-age=31536000, s-maxage=31536000, immutable"
+TARGET = "public, max-age=31536000, s-maxage=86400, immutable"
 BUCKETS = ("course-assets", "avatars")
 PAGE = 100
 

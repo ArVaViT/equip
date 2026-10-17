@@ -22,6 +22,7 @@ import {
   localeFor,
   renderEmail,
   renderText,
+  escapeHtml,
   REPEAT_WINDOW_SECONDS,
   repeatRefusal,
   repeatWaitSeconds,
@@ -374,8 +375,8 @@ Deno.test("first sends, sends after the window, and other kinds go through", () 
   assertEquals(repeatWaitSeconds("signup", { confirmation_sent_at: ago(REPEAT_WINDOW_SECONDS) }, NOW), null);
   // A recovery the day after a signup email is not a repeat of it.
   assertEquals(repeatWaitSeconds("recovery", { confirmation_sent_at: ago(10) }, NOW), null);
-  // A sign-in link keeps GoTrue's own minute.
-  assertEquals(repeatWaitSeconds("magiclink", { recovery_sent_at: ago(10) }, NOW), null);
+  // A sign-in link shares the reset's token in GoTrue, so it shares the clock.
+  assertEquals(repeatWaitSeconds("magiclink", { recovery_sent_at: ago(10) }, NOW), REPEAT_WINDOW_SECONDS - 10);
   assertEquals(repeatWaitSeconds("email_change", { confirmation_sent_at: ago(10) }, NOW), null);
   // A timestamp from the future (clock skew) never locks anyone out.
   assertEquals(repeatWaitSeconds("signup", { confirmation_sent_at: ago(-600) }, NOW), null);
@@ -387,4 +388,13 @@ Deno.test("the refusal reads like GoTrue's own, so the client's parser understan
   assertEquals(body.error.http_code, 429);
   // frontend/src/lib/authError.ts::emailCooldownSeconds
   assertEquals(/after (\d+) second/.exec(body.error.message)?.[1], "240");
+});
+
+Deno.test("a name typed at signup cannot put markup into the letter", () => {
+  const evil = '<a href="https://evil.example">Confirm here</a>';
+  for (const type of ["signup", "recovery"] as const) {
+    const html = renderEmail(copyFor(type, "en"), evil, LINK, "en");
+    assert(!html.includes("evil.example\">"), `${type}: raw markup reached the html`);
+    assertStringIncludes(html, escapeHtml(evil));
+  }
 });

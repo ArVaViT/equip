@@ -187,7 +187,7 @@ async function uploadToPublicBucket(
  * a shared cache to. `backend/scripts/storage_cache_control.py` rewrites
  * the objects uploaded before this.
  */
-export const PUBLIC_OBJECT_CACHE_CONTROL = "public, max-age=31536000, s-maxage=31536000, immutable"
+export const PUBLIC_OBJECT_CACHE_CONTROL = "public, max-age=31536000, s-maxage=86400, immutable"
 
 /**
  * Upload the bytes rather than the `File`.

@@ -29,6 +29,7 @@ from app.models.invitation import Invitation, InvitationScope, InvitationStatus
 from app.models.organization import OrganizationMember
 from app.models.user import User, UserRole
 from app.services import invitation_service
+from app.services.email.send import Delivery
 from app.services.invitation_service import create_or_resend_invitation, hash_invitation_token, invitation_token
 from tests.conftest import ADMIN_ID, TEST_ORGANIZATION_ID
 
@@ -451,9 +452,12 @@ class TestTheToken:
         """A teacher pressing «send again» twice, or a page retrying, must not
         put two identical letters in one inbox: the pattern of a bulk sender."""
         mailed: list[str] = []
-        monkeypatch.setattr(
-            invitation_service, "send_invitation_email", lambda *_a, accept_url, **_k: mailed.append(accept_url)
-        )
+
+        def sent(*_a: object, accept_url: str, **_k: object) -> Delivery:
+            mailed.append(accept_url)
+            return Delivery(sent=True, provider_id="re_1")
+
+        monkeypatch.setattr(invitation_service, "send_invitation_email", sent)
         first, _new = create_or_resend_invitation(
             db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
         )
@@ -466,13 +470,35 @@ class TestTheToken:
         assert first.expires_at == expires_before
 
         # Past the window the resend is a resend again.
-        first.expires_at = datetime.now(UTC) + invitation_service.INVITATION_LIFETIME - timedelta(minutes=11)
+        first.mailed_at = datetime.now(UTC) - timedelta(minutes=11)
         db.commit()
         create_or_resend_invitation(
             db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
         )
         assert len(mailed) == 2
         assert mailed[1] == mailed[0]
+
+    def test_a_letter_the_provider_refused_is_mailed_again_on_the_next_press(
+        self, db: Session, admin: User, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """«Send again» after an outage must send: only a letter that left counts."""
+        outcomes = iter([Delivery(sent=False, reason="rejected"), Delivery(sent=True, provider_id="re_2")])
+        calls: list[str] = []
+
+        def send(*_a: object, accept_url: str, **_k: object) -> Delivery:
+            calls.append(accept_url)
+            return next(outcomes)
+
+        monkeypatch.setattr(invitation_service, "send_invitation_email", send)
+        first, _new = create_or_resend_invitation(
+            db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+        )
+        assert first.mailed_at is None
+        create_or_resend_invitation(
+            db, email=EMAIL, role="student", invited_by=ADMIN_ID, organization_id=TEST_ORGANIZATION_ID
+        )
+        assert len(calls) == 2
+        assert first.mailed_at is not None
 
     def test_a_link_mailed_before_the_hashing_still_opens(self, anon: TestClient, db: Session) -> None:
         """What the migration's backfill promises: the random tokens already

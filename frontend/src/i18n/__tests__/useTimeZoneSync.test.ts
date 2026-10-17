@@ -71,4 +71,10 @@ describe("time zone sync", () => {
     renderHook(() => useTimeZoneSync())
     expect(reportDetectedTimeZone).not.toHaveBeenCalled()
   })
+
+  it("writes nothing for a closed account, which the profile trigger would refuse", () => {
+    currentUser = { ...base, time_zone: null, time_zone_source: "default", deleted_at: "2026-10-16T00:00:00Z", deactivated_at: "2026-10-16T00:00:00Z" }
+    renderHook(() => useTimeZoneSync())
+    expect(reportDetectedTimeZone).not.toHaveBeenCalled()
+  })
 })

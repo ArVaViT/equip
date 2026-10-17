@@ -10,7 +10,8 @@
 -- Idempotent: a database that has the constraint is left alone. A database
 -- that lacks it first loses the invitations that already point at nothing
 -- (what ON DELETE CASCADE would have done at the time), then gets the
--- constraint. NOT VALID + VALIDATE keeps the lock on `invitations` short.
+-- constraint. Everything runs in one transaction; at a few hundred rows the
+-- lock it takes on `invitations` is momentary.
 
 DO $$
 BEGIN
@@ -25,8 +26,7 @@ BEGIN
 
     ALTER TABLE public.invitations
       ADD CONSTRAINT invitations_course_id_fkey
-      FOREIGN KEY (course_id) REFERENCES public.courses(id) ON DELETE CASCADE NOT VALID;
-    ALTER TABLE public.invitations VALIDATE CONSTRAINT invitations_course_id_fkey;
+      FOREIGN KEY (course_id) REFERENCES public.courses(id) ON DELETE CASCADE;
   END IF;
 END
 $$;
