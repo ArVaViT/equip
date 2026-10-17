@@ -211,6 +211,10 @@ def permanently_delete_course(db: Session, course: Course) -> None:
     # ``populate_spine_texts`` (admin permanent-delete from a list view)
     # otherwise stamp ``None`` and the certificate loses its title for
     # good once the FK nulls.
+    #
+    # The released title only: ``prefer_human`` would otherwise let a
+    # title edit still held back from readers win, and the certificate
+    # was issued under the title the student saw.
     cv_texts = fetch_cv_entity_texts_with_fallback(
         db,
         entity_type="course",
@@ -219,6 +223,7 @@ def permanently_delete_course(db: Session, course: Course) -> None:
         display_locale=course.source_locale or "en",
         source_locale=course.source_locale or "en",
         prefer_human=True,
+        include_author_edits=False,
     )
     archived_title = cv_texts.get((course.id, "title")) or ""
     db.query(Certificate).filter(
