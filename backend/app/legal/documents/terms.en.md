@@ -251,8 +251,8 @@ nothing at all.
 **Deleting your account from your profile** closes it at once and hides your
 name, email address and photo from everybody else on the platform. It erases
 nothing — your coursework stays as it is, with the school — and you can restore
-the account by signing in again. How to have an account erased is set out in the
-Privacy Policy.
+the account through a link we email to its address. How to have an account
+erased is set out in the Privacy Policy.
 
 If your account is erased at your request, or we close it:
 

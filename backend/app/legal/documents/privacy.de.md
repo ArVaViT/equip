@@ -300,8 +300,9 @@ eine E-Mail entfernt, vor dem Knopfdruck und danach.
   „Gelöschter Nutzer“ statt Ihres Namens, ohne E-Mail-Adresse und ohne Foto.
   Getilgt wird nichts: Ihre Antworten, eingereichten Arbeiten, Noten,
   Einschreibungen und Zertifikate bleiben bei der Schule als ihr Nachweis über
-  Ihr Studium. Um zurückzukommen, melden Sie sich wieder an — die Plattform
-  bietet an, das Konto wiederherzustellen.
+  Ihr Studium. Um zurückzukommen, melden Sie sich wieder an und bitten Sie um
+  die Wiederherstellung: Wir senden einen Link an die Adresse des Kontos, und
+  über diesen Link wird das Konto wiederhergestellt.
 - **Ihr Konto und Ihre Kursarbeiten tilgen** — schreiben Sie an
   supportequip@gmail.com mit der Betreffzeile **Delete my account**. Wir machen
   es von Hand, und **innerhalb von 30 Tagen** nach Ihrer Bitte — ob Sie den

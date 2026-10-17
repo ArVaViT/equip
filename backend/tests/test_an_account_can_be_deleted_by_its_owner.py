@@ -3,7 +3,7 @@
 ``DELETE /users/me`` closes the account (``deleted_at`` + ``deactivated_at``),
 ends every session, and hides the person from everybody else; nothing the
 school keeps is removed. ``POST /users/me/restore`` brings it back, but only
-for somebody who signed in *after* the deletion. These tests pin each half,
+for somebody who opened a link emailed to the address *after* the deletion. These tests pin each half,
 the gate that must not stand in the way of leaving, and the places where
 another person would otherwise still see a name.
 """
@@ -57,13 +57,21 @@ def ended_sessions(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     return calls
 
 
-def _client_as(db: Session, user: User, *, signed_in_at: datetime | None = None) -> Iterator[TestClient]:
+def _client_as(
+    db: Session,
+    user: User,
+    *,
+    signed_in_at: datetime | None = None,
+    method: str = "magiclink",
+    amr: list[dict[str, object]] | None = None,
+) -> Iterator[TestClient]:
     """A client whose token names ``user`` — whatever state the account is in.
 
     ``get_current_user`` is left alone on purpose: it is the guard under test
     for every other route, so it reads the real row.
     """
-    amr = [] if signed_in_at is None else [{"method": "password", "timestamp": int(signed_in_at.timestamp())}]
+    if amr is None:
+        amr = [] if signed_in_at is None else [{"method": method, "timestamp": int(signed_in_at.timestamp())}]
 
     def _db() -> Iterator[Session]:
         yield db
@@ -260,11 +268,14 @@ def _delete(db: Session, user: User, *, at: datetime) -> None:
     db.commit()
 
 
-def test_signing_in_after_the_deletion_restores_the_account(db: Session, teacher: User, student: User) -> None:
+@pytest.mark.parametrize("method", ["magiclink", "otp", "recovery"])
+def test_an_email_link_opened_after_the_deletion_restores_the_account(
+    db: Session, teacher: User, student: User, method: str
+) -> None:
     deleted = datetime.now(UTC) - timedelta(days=3)
     _delete(db, student, at=deleted)
 
-    for client in _client_as(db, student, signed_in_at=deleted + timedelta(days=2)):
+    for client in _client_as(db, student, signed_in_at=deleted + timedelta(days=2), method=method):
         assert client.post(RESTORE).status_code == 204
         db.refresh(student)
         assert student.deleted_at is None
@@ -275,7 +286,23 @@ def test_signing_in_after_the_deletion_restores_the_account(db: Session, teacher
     assert audit.details is not None and audit.details["mode"] == "self"
 
 
-def test_a_session_from_before_the_deletion_cannot_restore_it(db: Session, teacher: User, student: User) -> None:
+@pytest.mark.parametrize("method", ["password", "oauth", "totp", "anonymous"])
+def test_a_password_or_google_sign_in_reaches_the_screen_but_does_not_restore(
+    db: Session, teacher: User, student: User, method: str
+) -> None:
+    """Vadym, 2026-10-17: signing in shows «restore», the restore is by the emailed link."""
+    deleted = datetime.now(UTC) - timedelta(hours=1)
+    _delete(db, student, at=deleted)
+
+    for client in _client_as(db, student, signed_in_at=datetime.now(UTC), method=method):
+        response = client.post(RESTORE)
+        assert response.status_code == 403
+        assert response.json()["detail"]["code"] == ErrorCode.ACCOUNT_RESTORE_NEEDS_EMAIL_LINK.value
+    db.refresh(student)
+    assert student.deleted_at is not None
+
+
+def test_a_link_opened_before_the_deletion_cannot_restore_it(db: Session, teacher: User, student: User) -> None:
     """The laptop at church that nobody closed proves nothing about who holds it now."""
     deleted = datetime.now(UTC) - timedelta(hours=1)
     _delete(db, student, at=deleted)
@@ -283,9 +310,35 @@ def test_a_session_from_before_the_deletion_cannot_restore_it(db: Session, teach
     for client in _client_as(db, student, signed_in_at=deleted - timedelta(minutes=5)):
         response = client.post(RESTORE)
         assert response.status_code == 403
-        assert response.json()["detail"]["code"] == ErrorCode.ACCOUNT_RESTORE_NEEDS_SIGN_IN.value
+        assert response.json()["detail"]["code"] == ErrorCode.ACCOUNT_RESTORE_NEEDS_EMAIL_LINK.value
     db.refresh(student)
     assert student.deleted_at is not None
+
+
+def test_only_the_email_entry_s_time_counts(db: Session, teacher: User, student: User) -> None:
+    """A fresh password step must not lend its timestamp to an old link."""
+    deleted = datetime.now(UTC) - timedelta(hours=1)
+    _delete(db, student, at=deleted)
+    stale_link_fresh_password = [
+        {"method": "magiclink", "timestamp": int((deleted - timedelta(days=1)).timestamp())},
+        {"method": "password", "timestamp": int(datetime.now(UTC).timestamp())},
+    ]
+    for client in _client_as(db, student, amr=stale_link_fresh_password):
+        assert client.post(RESTORE).status_code == 403
+
+    fresh_link = [
+        {"method": "password", "timestamp": int((deleted - timedelta(days=1)).timestamp())},
+        {"method": "otp", "timestamp": int(datetime.now(UTC).timestamp())},
+    ]
+    for client in _client_as(db, student, amr=fresh_link):
+        assert client.post(RESTORE).status_code == 204
+
+
+def test_a_malformed_amr_is_refused_not_crashed(db: Session, teacher: User, student: User) -> None:
+    _delete(db, student, at=datetime.now(UTC) - timedelta(days=1))
+    for amr in ([{"method": "magiclink"}], [{"method": "magiclink", "timestamp": "soon"}], ["magiclink"]):
+        for client in _client_as(db, student, amr=amr):
+            assert client.post(RESTORE).status_code == 403
 
 
 def test_a_token_that_does_not_say_when_it_signed_in_cannot_restore(db: Session, teacher: User, student: User) -> None:

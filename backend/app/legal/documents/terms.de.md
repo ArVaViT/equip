@@ -282,8 +282,8 @@ eine Nummer, die zu nichts passt, zeigt überhaupt nichts.
 **Das Löschen Ihres Kontos im Profil** schließt es sofort und verbirgt Ihren
 Namen, Ihre E-Mail-Adresse und Ihr Foto vor allen anderen auf der Plattform. Es
 tilgt nichts — Ihre Kursarbeiten bleiben, wie sie sind, bei der Schule —, und
-Sie können das Konto wiederherstellen, indem Sie sich wieder anmelden. Wie ein
-Konto getilgt wird, beschreibt die Datenschutzerklärung.
+Sie können das Konto über einen Link wiederherstellen, den wir an seine Adresse
+senden. Wie ein Konto getilgt wird, beschreibt die Datenschutzerklärung.
 
 Wenn Ihr Konto auf Ihre Bitte getilgt wird oder wir es schließen:
 

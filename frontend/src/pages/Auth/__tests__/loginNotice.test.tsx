@@ -70,12 +70,6 @@ describe("the sign-in form explains itself", () => {
     expect(screen.getByRole("status")).toHaveTextContent(i18n.t("auth.notice.accountDeleted"))
   })
 
-  it("asks for a fresh sign-in when a restore came from an old session", () => {
-    rememberSignOutReason("restore_needs_sign_in")
-    renderAt("/login")
-    expect(screen.getByRole("status")).toHaveTextContent(i18n.t("auth.notice.restoreNeedsSignIn"))
-  })
-
   it("reads the error /auth/confirm sends it, instead of a blank form", () => {
     renderAt("/login?error=oauth_timeout")
     expect(screen.getByRole("status")).toHaveTextContent(i18n.t("auth.callback.timedOut"))

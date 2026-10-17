@@ -713,8 +713,10 @@
       "linkExpired": "This link has expired. Request a new one.",
       "serverError": "Something went wrong on our side. Try again in a moment.",
       "passwordRequired": "Enter your password",
-      "emailCooldown": "An email is already on its way. You can ask again in {{seconds}} s.",
+      "emailCooldown": "An email is already on its way — check your inbox, and the spam folder too. You can ask again in {{seconds}} s.",
       "emailCooldownMinutes": "An email is already on its way — check your inbox, and the spam folder too. You can ask for a new one in {{minutes}} min.",
+      "emailAlreadySent": "An email is already on its way — check your inbox, and the spam folder too.",
+      "emailSendFailed": "We could not send the email. If you asked for one already, check the spam folder — the link in it still works. Or try again in a minute.",
       "emailQuota": "We can't send email right now: the hourly email limit is used up. Try again later, or continue with Google."
     },
     "callback": {
@@ -727,8 +729,7 @@
       "signInToContinue": "Sign in to open this page.",
       "sectionUnavailable": "This section is not available to you.",
       "signInToAcceptInvite": "Sign in to accept the invitation.",
-      "accountDeleted": "Your account has been deleted. Changed your mind? Sign in again and you will be offered to restore it.",
-      "restoreNeedsSignIn": "To restore your account, sign in again."
+      "accountDeleted": "Your account has been deleted. Changed your mind? Sign in again and we will email you a link to restore it."
     },
     "forgotPassword": {
       "heading": "Reset password",
@@ -742,8 +743,7 @@
       "sentBody": "If an account exists for <strong>{{email}}</strong>, you'll receive a reset link shortly. Check your inbox.",
       "errors": {
         "emailRequired": "Please enter your email address",
-        "emailInvalid": "Please enter a valid email address",
-        "sendFailed": "Failed to send reset email. Please try again in a moment."
+        "emailInvalid": "Please enter a valid email address"
       }
     },
     "resetPassword": {
@@ -2932,7 +2932,6 @@
       "resend": "Send the email again",
       "resendIn": "Send again in {{seconds}}s",
       "resent": "Email sent again.",
-      "resendFailed": "Could not send the email. Please try again in a minute.",
       "line": "We sent an email to <strong>{{email}}</strong>. Not in your inbox? Check Spam. Only the latest email works.",
       "repeated": "This address was registered before. The password is the one from the first attempt; if you don't remember it, <reset>set a new one</reset> — that confirms the address too.",
       "changeAddress": "Use a different address"
@@ -3399,7 +3398,7 @@
         "signedOut": "You are signed out on every device.",
         "hidden": "Others will see “Deleted user” instead of your name, with no email or photo.",
         "kept": "Your coursework, marks and certificates stay with the school.",
-        "restore": "To come back, sign in again — you will be offered to restore the account."
+        "restore": "To come back, sign in again — we will email you a link to restore it."
       },
       "confirm": "Delete account",
       "failed": "Could not delete the account. Please try again.",
@@ -3412,7 +3411,8 @@
       "bodyWithDate": "You deleted it on {{date}}. Your coursework and certificates are kept by the school. You can restore the account, and it will come back exactly as it was.",
       "restore": "Restore account",
       "restored": "Welcome back — your account is restored.",
-      "restoreFailed": "Could not restore the account. Please try again."
+      "restoreFailed": "Could not restore the account. Please try again.",
+      "linkSent": "We sent a link to {{email}}. Open it and your account is restored. No email? Check the spam folder."
     }
   }
 }

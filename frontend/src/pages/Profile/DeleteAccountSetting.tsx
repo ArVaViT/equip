@@ -16,7 +16,7 @@ import { usersService } from "@/services/users"
  *
  * One confirmation, in the words of what actually happens: the account is
  * closed and hidden, the school keeps the record of the studies, and
- * signing in again brings it back. No typed confirmation — nothing else in
+ * a link emailed to the address brings it back. No typed confirmation — nothing else in
  * the application asks for one, and the deletion is reversible.
  *
  * Afterwards the person is signed out and lands on the sign-in page with a

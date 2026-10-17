@@ -147,3 +147,36 @@ export function authErrorMessage(err: unknown, fallbackKey: string): string {
   const key = (e.code ? KEY_BY_CODE[e.code] : undefined) ?? keyByStatus(e.status) ?? fallbackKey
   return i18n.t(key)
 }
+
+/**
+ * The sentence for a failed «send me the email» — a confirmation, a sign-in
+ * or restore link, a password reset — whatever shape the failure took.
+ *
+ * Read from GoTrue's source (`internal/hooks/hookserrors`, 2026-10-17): the
+ * send-email hook's refusal of a repeat, `{error: {http_code: 429, message}}`,
+ * reaches the browser as a 429 whose code is `unknown` and whose message is
+ * the hook's own («…after N seconds»). That is the case `emailCooldownSeconds`
+ * reads. But the hook can fail in other ways too — a timeout
+ * (`hook_timeout_after_retry`, 422), a 5xx, a dropped connection — and each
+ * of those used to land on «something went wrong on our side», which reads
+ * as «the site is down» to somebody whose email is in fact sitting in the
+ * spam folder. The token GoTrue had issued before stays valid when the hook
+ * fails (it is rolled back, not replaced), so the honest sentence for every
+ * failure is the same: the earlier email still works; look for it, then try
+ * again.
+ */
+export function emailSendErrorMessage(err: unknown): string {
+  const e = asAuthError(err)
+  if (import.meta.env.DEV) {
+    console.error("[auth:email]", e.code ?? e.status ?? "unknown", e.message ?? err)
+  }
+  const seconds = emailCooldownSeconds(err)
+  if (seconds !== null) {
+    return seconds < 60
+      ? i18n.t("auth.errors.emailCooldown", { seconds })
+      : i18n.t("auth.errors.emailCooldownMinutes", { minutes: Math.ceil(seconds / 60) })
+  }
+  if (e.code === "over_email_send_rate_limit") return i18n.t("auth.errors.emailQuota")
+  if (e.status === 429 || e.code === "over_request_rate_limit") return i18n.t("auth.errors.emailAlreadySent")
+  return i18n.t("auth.errors.emailSendFailed")
+}

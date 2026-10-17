@@ -36,7 +36,7 @@ export type ErrorCode =
   | "auth.forbidden"
   | "account.deactivated"
   | "account.deleted"
-  | "account.restore_needs_sign_in"
+  | "account.restore_needs_email_link"
   | "account.cannot_delete"
   // generic resource lookups
   | "resource.not_found"

@@ -79,10 +79,12 @@ class ErrorCode(enum.StrEnum):
     ``account.deactivated``, so the client can offer the one thing an owner
     may still do: restore it (``POST /users/me/restore``)."""
 
-    ACCOUNT_RESTORE_NEEDS_SIGN_IN = "account.restore_needs_sign_in"
-    """Restoring a deleted account needs a sign-in made after the deletion.
-    A session that was alive before it — a laptop left open — proves nothing
-    about who is holding it now; the client signs out and asks again."""
+    ACCOUNT_RESTORE_NEEDS_EMAIL_LINK = "account.restore_needs_email_link"
+    """Restoring a deleted account needs the link we email to its address,
+    opened after the deletion. A password or a Google sign-in reaches the
+    restore screen but does not restore: the address is the owner's proof,
+    and a session alive before the deletion — a laptop left open — proves
+    nothing about who is holding it now. The client sends the link."""
 
     ACCOUNT_CANNOT_DELETE = "account.cannot_delete"
     """This account cannot delete itself here: platform staff (the admin

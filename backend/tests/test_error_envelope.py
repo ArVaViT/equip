@@ -52,7 +52,7 @@ def test_enum_values_are_stable_strings():
         "auth.forbidden",
         "account.deactivated",
         "account.deleted",
-        "account.restore_needs_sign_in",
+        "account.restore_needs_email_link",
         "account.cannot_delete",
         "resource.not_found",
         "course.not_published",

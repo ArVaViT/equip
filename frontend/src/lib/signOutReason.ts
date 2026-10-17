@@ -18,9 +18,6 @@ export const SIGN_OUT_REASONS = [
   "account_deactivated",
   // The person deleted their own account a moment ago (`DeleteAccountSetting`).
   "account_deleted",
-  // They pressed "Restore" in a session older than the deletion; a fresh
-  // sign-in is the proof the server asks for (`POST /users/me/restore`).
-  "restore_needs_sign_in",
 ] as const
 export type SignOutReason = (typeof SIGN_OUT_REASONS)[number]
 

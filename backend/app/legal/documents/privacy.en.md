@@ -272,7 +272,8 @@ away, before you press it and after.
   "Deleted user" in place of your name, with no email address and no photo.
   Nothing is erased: your answers, submissions, marks, enrolments and
   certificates stay with the school as its record of your studies. To come back,
-  sign in again — the platform will offer to restore the account.
+  sign in again and ask to restore the account: we email a link to the
+  account's address, and opening it restores the account.
 - **Erase your account and your coursework** — write to supportequip@gmail.com
   with the subject line **Delete my account**. We do it by hand, **within 30
   days** of your asking, whether or not you have pressed the button above. We

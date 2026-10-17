@@ -5,7 +5,7 @@ import { Trans, useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import AuthLayout from "@/components/layout/AuthLayout"
 import { authService } from "@/services/auth"
-import { authErrorMessage } from "@/lib/authError"
+import { emailSendErrorMessage } from "@/lib/authError"
 import { useCooldown } from "@/hooks/useCooldown"
 
 /** Supabase refuses a second mail to one address inside `smtp_max_frequency` (60s). */
@@ -46,7 +46,7 @@ export function SuccessView({ email, repeated, onChangeAddress }: Props) {
       setResent(true)
       restart()
     } catch (err) {
-      setError(authErrorMessage(err, "authRegister.success.resendFailed"))
+      setError(emailSendErrorMessage(err))
     } finally {
       setSending(false)
     }

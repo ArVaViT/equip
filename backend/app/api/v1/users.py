@@ -284,7 +284,8 @@ def delete_my_account(
       courses stay with the school, as the privacy policy says;
     * every session ends (``auth_admin.sign_out_everywhere``).
 
-    The owner can come back by signing in again (``restore_my_account``).
+    The owner can come back through a link emailed to the address
+    (``restore_my_account``).
 
     Twice is not an error: a second request — a double click, a second tab
     — finds the account already deleted and answers 204 again. An account an
@@ -328,13 +329,21 @@ def delete_my_account(
 
     if not auth_admin.sign_out_everywhere(caller.token):
         # The account is closed either way — the API refuses every token —
-        # and a restore needs a sign-in made after this moment.
+        # and a restore needs an email link opened after this moment.
         logger.warning("account %s deleted, but Supabase did not confirm ending its sessions", user.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-def _signed_in_at(claims: dict[str, object]) -> datetime | None:
-    """When the person behind this token last proved who they are.
+#: The ``amr`` methods that mean "opened something we emailed to the
+#: account's address": the sign-in link (``magiclink``), the code in the same
+#: email (``otp``) and the password-reset link (``recovery``). A password,
+#: Google (``oauth``) or a refreshed token is not on the list. GoTrue names
+#: the method after the email that was verified (``ParseAuthenticationMethod``).
+EMAIL_PROOF_METHODS = frozenset({"magiclink", "otp", "recovery"})
+
+
+def _email_proven_at(claims: dict[str, object]) -> datetime | None:
+    """When the person behind this token last opened an email we sent them.
 
     Supabase writes ``amr`` — the methods used and *when* — into every
     access token and carries it unchanged through refreshes, which is the
@@ -346,7 +355,9 @@ def _signed_in_at(claims: dict[str, object]) -> datetime | None:
     stamps = [
         entry["timestamp"]
         for entry in amr
-        if isinstance(entry, dict) and isinstance(entry.get("timestamp"), int | float)
+        if isinstance(entry, dict)
+        and entry.get("method") in EMAIL_PROOF_METHODS
+        and isinstance(entry.get("timestamp"), int | float)
     ]
     if not stamps:
         return None
@@ -358,21 +369,24 @@ def restore_my_account(
     caller: Caller = Depends(get_caller_even_if_closed),
     db: Session = Depends(get_db),
 ) -> Response:
-    """Undo ``delete_my_account`` — for the owner, after signing in again.
+    """Undo ``delete_my_account`` — for the owner, by a link sent to the address.
 
-    Signing in is the proof: a password, a link sent to the address, or the
-    Google account it belongs to. So the sign-in must have happened *after*
-    the deletion. A session that was already open — the laptop at church
-    nobody closed, a token refreshed before Supabase revoked it — is refused
-    with ``account.restore_needs_sign_in``, and the client asks for a fresh
-    sign-in.
+    Signing in with a password or Google reaches the restore screen; the
+    restore itself needs a sign-in through an email we sent to the account's
+    address after the deletion (``EMAIL_PROOF_METHODS``). The address is
+    what the account belongs to: a password may be shared or guessed, and a
+    session that was already open — the laptop at church nobody closed, a
+    token refreshed before Supabase revoked it — proves nothing about who
+    holds it now. Anything else is refused with
+    ``account.restore_needs_email_link``, and the client sends the link.
 
     This is also how somebody who deleted their account and later "signs up
     again" with the same address gets it back. Supabase never creates a
     second account for an address it holds; the sign-in reaches the old one,
     the API answers ``account.deleted``, and the client offers this. Nothing
     here tells a stranger whether an address was ever registered: only a
-    person who has just proved the address reaches the question.
+    person who has just signed in reaches the question, and only the owner
+    of the address can answer it.
 
     Only the owner's deletion can be undone here. An account an
     administrator switched off answers ``account.deactivated`` as before.
@@ -382,12 +396,12 @@ def restore_my_account(
         refuse_if_closed(user)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-    signed_in_at = _signed_in_at(caller.claims)
-    if signed_in_at is None or signed_in_at <= _aware(user.deleted_at):
+    proven_at = _email_proven_at(caller.claims)
+    if proven_at is None or proven_at <= _aware(user.deleted_at):
         raise equip_error(
-            ErrorCode.ACCOUNT_RESTORE_NEEDS_SIGN_IN,
+            ErrorCode.ACCOUNT_RESTORE_NEEDS_EMAIL_LINK,
             status_code=status.HTTP_403_FORBIDDEN,
-            message="Sign in again to restore this account",
+            message="Open the link we email to this account's address to restore it",
         )
 
     deleted_at = user.deleted_at

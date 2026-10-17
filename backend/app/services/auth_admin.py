@@ -177,7 +177,7 @@ def sign_out_everywhere(access_token: str) -> bool:
     Best effort, and says so: ``False`` when Supabase did not confirm. The
     deletion it follows has already happened and must not be undone because
     a network call failed — the API is closed either way, and a restore asks
-    for a sign-in made after the deletion (``users.restore_my_account``), so
+    for an email link opened after the deletion (``users.restore_my_account``), so
     a session that survived proves nothing.
 
     Not a ban. ``ban_duration`` would make Supabase itself refuse a sign-in,

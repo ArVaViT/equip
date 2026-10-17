@@ -27,3 +27,38 @@ export function publishAccountDeleted(next: boolean): void {
   deleted = next
   for (const cb of listeners) cb()
 }
+
+/**
+ * "This browser asked for a restore link for this account" — so arriving
+ * back from the link restores at once instead of asking a second time. A
+ * day, like the link itself (`mailer_otp_exp`). Storage that throws or is
+ * empty (a private window, an in-app browser) only costs that one click:
+ * the screen's button restores just the same.
+ */
+const RESTORE_REQUESTED_PREFIX = "equip.account.restore-requested"
+const RESTORE_REQUEST_TTL_MS = 24 * 60 * 60 * 1000
+
+export function rememberRestoreRequested(userId: string, now: number = Date.now()): void {
+  try {
+    localStorage.setItem(`${RESTORE_REQUESTED_PREFIX}.${userId}`, String(now))
+  } catch {
+    /* storage unavailable: the button still works */
+  }
+}
+
+export function wasRestoreRequested(userId: string, now: number = Date.now()): boolean {
+  try {
+    const at = Number(localStorage.getItem(`${RESTORE_REQUESTED_PREFIX}.${userId}`))
+    return Number.isFinite(at) && at > 0 && now - at >= 0 && now - at < RESTORE_REQUEST_TTL_MS
+  } catch {
+    return false
+  }
+}
+
+export function forgetRestoreRequested(userId: string): void {
+  try {
+    localStorage.removeItem(`${RESTORE_REQUESTED_PREFIX}.${userId}`)
+  } catch {
+    /* nothing to forget */
+  }
+}

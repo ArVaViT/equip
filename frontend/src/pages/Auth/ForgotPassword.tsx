@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/context/useAuth"
 import AuthLayout from "@/components/layout/AuthLayout"
-import { authErrorMessage } from "@/lib/authError"
+import { emailSendErrorMessage } from "@/lib/authError"
 import { emailFromState } from "@/lib/authRedirect"
 import { ArrowLeft, Loader2, MailCheck } from "lucide-react"
 
@@ -38,13 +38,11 @@ export default function ForgotPassword() {
       await resetPassword(trimmed)
       setSent(true)
     } catch (err: unknown) {
-      // Every other auth screen routes through `authErrorMessage`; this one
-      // said "could not send, try in a minute" for everything. The common
-      // case here is a 429 — the project's hourly email allowance, which is
-      // small enough to hit — and "too many attempts, wait a minute" tells
-      // the reader the one thing they can act on. A generic failure reads as
-      // "the product is broken" and sends them to support instead.
-      setError(authErrorMessage(err, "auth.forgotPassword.errors.sendFailed"))
+      // A refused repeat, the hourly allowance, a hook that failed: each
+      // has its own sentence, and none of them reads as «the site is down»
+      // (`emailSendErrorMessage`). No disclosure either way — GoTrue answers
+      // 200 for an address it does not hold.
+      setError(emailSendErrorMessage(err))
     } finally {
       setLoading(false)
     }

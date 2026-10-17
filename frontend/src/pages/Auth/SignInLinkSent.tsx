@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Loader2, MailCheck, RotateCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { authService } from "@/services/auth"
-import { authErrorMessage, isRateLimited } from "@/lib/authError"
+import { emailSendErrorMessage, isRateLimited } from "@/lib/authError"
 import { useCooldown } from "@/hooks/useCooldown"
 
 // The send-email hook's window for a sign-in link (and a reset, which shares
@@ -39,7 +39,7 @@ export function SignInLinkSent({ email, onUsePassword }: Props) {
       if (import.meta.env.DEV) console.error("sendSignInLink failed", err)
       // Same disclosure rule as the first send: only a rate limit is worth
       // naming, because waiting is the one thing the reader can do about it.
-      if (isRateLimited(err)) setError(authErrorMessage(err, "auth.errors.serverError"))
+      if (isRateLimited(err)) setError(emailSendErrorMessage(err))
       else restart()
     } finally {
       setSending(false)
