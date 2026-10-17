@@ -1211,6 +1211,7 @@ CREATE TABLE public.org_settings (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_by uuid,
     organization_id uuid NOT NULL,
+    time_zone text,
     CONSTRAINT org_settings_default_grading_scheme_check CHECK ((default_grading_scheme = ANY (ARRAY['pass_fail'::text, 'percent'::text, 'five_point'::text, 'letter'::text]))),
     CONSTRAINT org_settings_default_pass_threshold_check CHECK (((default_pass_threshold >= (0)::numeric) AND (default_pass_threshold <= (100)::numeric)))
 );

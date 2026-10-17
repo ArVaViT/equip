@@ -323,3 +323,18 @@ class TestTheTextAlternative:
 
         assert any("07.10.2026" in note for note in message.notes)
         assert not any("08.10.2026" in note for note in message.notes)
+
+    def test_a_school_on_another_clock_counts_the_last_day_on_its_own(self, db: Session, admin: User) -> None:
+        # The same link, from a school in Kyiv: 01:00 UTC on the 8th is 04:00
+        # there, already the 8th. Without a zone of its own a school keeps
+        # Indianapolis, as the test above shows.
+        from app.services.grading_scheme import get_org_settings
+
+        get_org_settings(db, TEST_ORGANIZATION_ID).time_zone = "Europe/Kyiv"
+        invitation = _invitation(db)
+        invitation.expires_at = datetime(2026, 10, 8, 1, 0, tzinfo=UTC)
+        db.commit()
+
+        message = build_invitation_message(db, invitation, accept_url=ACCEPT_URL, locale="ru", inviter_name=None)
+
+        assert any("08.10.2026" in note for note in message.notes)

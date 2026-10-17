@@ -25,6 +25,7 @@ from app.models.invitation import InvitationScope
 from app.models.organization import Organization
 from app.services.email.render import Fact, Message, render, render_text
 from app.services.email.send import Delivery, send_email
+from app.services.school_clock import school_time_zone
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 
 if TYPE_CHECKING:
@@ -72,13 +73,13 @@ def _course_title(db: Session, course_id: str, locale: LocaleCode) -> str | None
     return titles.get(course_id) or None
 
 
-#: Where the school keeps its clock. A time without a zone in an
+#: The two clocks a lesson time is written in. A time without a zone in an
 #: invitation is worse than no time at all: half these students are on
 #: the west coast, and "20:00" has meant two different evenings to two
-#: readers of the same letter. Until org_settings carries a timezone
-#: (ADR-012, step 6) this is the one school we have, and it is written
-#: down here rather than guessed at the call site.
-_SCHOOL_TIMEZONE = ZoneInfo("America/Indiana/Indianapolis")
+#: readers of the same letter. The sentence names them ("Eastern",
+#: "Pacific"), so they are fixed here rather than taken from the school's
+#: clock — that one decides the link's last day (``school_clock``).
+_EASTERN = ZoneInfo("America/Indiana/Indianapolis")
 _ALSO_SHOWN = ZoneInfo("America/Los_Angeles")
 
 
@@ -97,8 +98,8 @@ def _next_session(db: Session, course_id: str) -> datetime | None:
     )
 
 
-def _expiry_day(moment: datetime, locale: LocaleCode) -> str:
-    """The link's last day on the school's clock, like the lesson time beside it.
+def _expiry_day(moment: datetime, locale: LocaleCode, zone: ZoneInfo) -> str:
+    """The link's last day on the school's clock (``org_settings.time_zone``).
 
     ``expires_at`` is UTC; its bare ``.date()`` named the next day for a
     link sent in the evening, so a reader in Indiana was told it lasted
@@ -106,14 +107,14 @@ def _expiry_day(moment: datetime, locale: LocaleCode) -> str:
     """
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=UTC)
-    return _day(moment.astimezone(_SCHOOL_TIMEZONE), locale)
+    return _day(moment.astimezone(zone), locale)
 
 
 def _session_text(moment: datetime, locale: LocaleCode) -> str:
     """ "12 сентября, 20:00 по восточному (17:00 по тихоокеанскому)"."""
     if moment.tzinfo is None:
         moment = moment.replace(tzinfo=UTC)
-    eastern = moment.astimezone(_SCHOOL_TIMEZONE)
+    eastern = moment.astimezone(_EASTERN)
     pacific = moment.astimezone(_ALSO_SHOWN)
     return t(
         locale,
@@ -195,7 +196,11 @@ def build_invitation_message(
         cta_url=accept_url,
         preview=t(locale, "email.invitation.preview", title=title),
         notes=(
-            t(locale, "email.invitation.expires", date=_expiry_day(invitation.expires_at, locale)),
+            t(
+                locale,
+                "email.invitation.expires",
+                date=_expiry_day(invitation.expires_at, locale, school_time_zone(db, invitation.organization_id)),
+            ),
             t(locale, "email.invitation.ignore"),
         ),
         lang=locale,
