@@ -175,35 +175,38 @@ async function uploadToPublicBucket(
 }
 
 /**
- * How a public object may be cached: for a year, by anyone, unchanged.
+ * How long a public object may be cached: a year, by anyone.
  *
  * True by construction — every public key is fresh (`cover-<hex>`,
  * `avatar-<hex>`, `content-images/<ms>-<hex>`) and never written twice, so
  * a cached copy can never be stale. Storage serves whatever `cache-control`
- * the object was stored with, and objects uploaded the old way came back
- * `no-cache`: every view of every cover went through to Storage and no CDN
- * in between kept a copy. `s-maxage` is for the edge in front of `/img/`:
- * Vercel keeps an external rewrite's response only when the origin allows
- * a shared cache to. `backend/scripts/storage_cache_control.py` rewrites
- * the objects uploaded before this.
+ * the object was stored with, and objects uploaded without the field came
+ * back `no-cache`: every view of every cover went through to Storage and no
+ * CDN in between kept a copy. Vercel's edge in front of `/img/` keeps an
+ * external rewrite's response for `max-age` when there is no `s-maxage`.
+ * `backend/scripts/storage_cache_control.py` rewrites the objects uploaded
+ * before this.
  */
-export const PUBLIC_OBJECT_CACHE_CONTROL = "public, max-age=31536000, s-maxage=86400, immutable"
+export const PUBLIC_OBJECT_CACHE_SECONDS = 31536000
+
+/** What Storage answers with for an object stored with the field above. */
+export const PUBLIC_OBJECT_CACHE_CONTROL = `max-age=${PUBLIC_OBJECT_CACHE_SECONDS}`
 
 /**
- * Upload the bytes rather than the `File`.
+ * Upload the `File` as multipart with storage-js's own `cacheControl`.
  *
- * storage-js sends a `File` as multipart, and on that path Storage builds
- * the header itself — `max-age=<cacheControl>`, or `no-cache` when it does
- * not find the field, which is what production objects carry. A plain body
- * is stored with the `cache-control` header exactly as sent (Storage's
- * `uploader.ts`), so the value above is what the object answers with.
- * The content type is then ours to state; `withBucketContentType` has
- * already settled it for the bucket.
+ * On that path Storage composes the header itself — `max-age=<seconds>`
+ * (`uploader.ts`, `fileUploadFromRequest`), or `no-cache` when it does not
+ * find the field, which is what the first production objects carry. The
+ * other path, a plain body with a hand-written `cache-control` header, was
+ * tried on 2026-10-17: Storage echoed the header into the row's metadata
+ * and kept serving `no-cache`, so only the field is trusted here. The
+ * multipart part takes its type from the `File`; `withBucketContentType`
+ * has already settled it for the bucket.
  */
 async function putPublicObject(bucket: string, path: string, file: File): Promise<void> {
-  const { error } = await supabase.storage.from(bucket).upload(path, await file.arrayBuffer(), {
-    contentType: file.type || "application/octet-stream",
-    headers: { "cache-control": PUBLIC_OBJECT_CACHE_CONTROL },
+  const { error } = await supabase.storage.from(bucket).upload(path, file, {
+    cacheControl: String(PUBLIC_OBJECT_CACHE_SECONDS),
   })
   if (error) throw error
 }

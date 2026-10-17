@@ -210,13 +210,15 @@ describe("replacing a public image", () => {
     ["an avatar", () => storageService.uploadAvatar("u", new File(["jpg"], "me.jpg", { type: "image/jpeg" }))],
     ["a lesson image", () => storageService.uploadContentImage(new File(["webp"], "x.webp", { type: "image/webp" }))],
   ])("stores %s as cacheable for a year, with its own type", async (_what, upload) => {
-    // Sent as multipart, Storage stored these `no-cache` and no CDN kept a
-    // copy. A plain body is stored with the header exactly as sent.
+    // Sent as multipart without the field, Storage stored these `no-cache`
+    // and no CDN kept a copy. The `cacheControl` field is the one Storage
+    // composes the header from; a hand-written header on a plain body was
+    // accepted and never served (production, 2026-10-17).
     await upload()
     const [, body, options] = uploadMock.mock.calls[0] ?? []
-    expect(body).toBeInstanceOf(ArrayBuffer)
-    expect(options.headers).toEqual({ "cache-control": "public, max-age=31536000, s-maxage=86400, immutable" })
-    expect(options.contentType).toMatch(/^image\//)
+    expect(body).toBeInstanceOf(File)
+    expect((body as File).type).toMatch(/^image\//)
+    expect(options).toEqual({ cacheControl: "31536000" })
   })
 
   it("removes the object a stored URL points at", async () => {
