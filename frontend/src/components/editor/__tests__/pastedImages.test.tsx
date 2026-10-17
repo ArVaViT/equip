@@ -18,7 +18,14 @@ const toast = vi.hoisted(() => vi.fn())
 vi.mock("@/services/storage", () => ({ storageService: { uploadContentImage } }))
 vi.mock("@/lib/toast", () => ({ toast }))
 
-import { dataUriToFile, htmlHasText, preparePastedHtml } from "../pastedImages"
+import {
+  dataUriToFile,
+  htmlHasText,
+  preparePastedHtml,
+  resetPastedUploads,
+  withUploadedImages,
+  withUploadedImagesNow,
+} from "../pastedImages"
 import { useImageUpload } from "../useImageUpload"
 
 // A 1×1 transparent PNG.
@@ -38,6 +45,7 @@ beforeEach(async () => {
   URL.revokeObjectURL = vi.fn((url: string) => void revoked.push(url))
   uploadContentImage.mockReset()
   toast.mockReset()
+  resetPastedUploads()
 })
 
 describe("preparePastedHtml", () => {
@@ -210,5 +218,50 @@ describe("pasting HTML into the editor", () => {
     expect(uploadContentImage).toHaveBeenCalledWith(shot)
     // The blob: the transform minted for the HTML's copy is let go.
     expect(revoked).toEqual(["blob:test/1"])
+  })
+})
+
+describe("a save while a pasted picture uploads", () => {
+  it("waits for the upload the paste started and saves the stored address", async () => {
+    let finish: (url: string) => void = () => {}
+    uploadContentImage.mockReturnValue(new Promise((resolve) => (finish = resolve)))
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
+    )
+    const { result } = renderHook(() => useImageUpload(), { wrapper })
+    const ed = new Editor({
+      extensions: [StarterKit, Image],
+      content: "<p></p>",
+      editorProps: {
+        handlePaste: (view, event) => result.current.handlePaste(view, event as ClipboardEvent),
+        transformPastedHTML: (html) => result.current.transformPastedHTML(html),
+      },
+    })
+    const html = `<p>Глава</p><img src="${DATA_PNG}">`
+    act(() => {
+      ed.view.pasteHTML(html, {
+        clipboardData: { getData: (t: string) => (t === "text/html" ? html : ""), items: [] },
+        preventDefault: vi.fn(),
+      } as unknown as ClipboardEvent)
+    })
+    const taken = ed.getHTML()
+    expect(taken).toContain('src="blob:test/1"')
+    // The teacher leaves; the editor goes with them.
+    ed.destroy()
+
+    const saving = withUploadedImages(taken)
+    expect(withUploadedImagesNow(taken)).not.toContain("<img")
+    finish("https://store.supabase.co/course-assets/p.png")
+
+    const saved = await saving
+    expect(saved).toContain('src="https://store.supabase.co/course-assets/p.png"')
+    expect(saved).not.toContain("blob:")
+    expect(withUploadedImagesNow(taken)).toBe(saved)
+  })
+
+  it("drops a blob: this page never made, and leaves HTML without one untouched", async () => {
+    expect(await withUploadedImages('<p>x</p><img src="blob:old/9">')).toBe("<p>x</p>")
+    const plain = '<p>x</p><img src="https://example.supabase.co/a.png">'
+    expect(await withUploadedImages(plain)).toBe(plain)
   })
 })

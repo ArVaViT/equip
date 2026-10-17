@@ -7,7 +7,13 @@ import { storageService } from "@/services/storage";
 import { toast } from "@/lib/toast";
 import { describeUploadError, preflightUpload } from "@/lib/uploadError";
 import { COURSE_ASSETS } from "@/lib/uploadLimits";
-import { htmlHasText, preparePastedHtml, replaceImageSrc, type PreparedPaste } from "./pastedImages";
+import {
+  htmlHasText,
+  preparePastedHtml,
+  replaceImageSrc,
+  trackPastedUpload,
+  type PreparedPaste,
+} from "./pastedImages";
 
 /**
  * Image upload state + handlers shared between the RichTextEditor's
@@ -101,7 +107,11 @@ export function useImageUpload() {
         toast({ title: t("editor.toast.pastedImagesSkipped") });
       }
       prepared.files.forEach((file, blobUrl) => {
-        void upload(file)
+        const uploaded = upload(file);
+        // A save that runs before the swap below, or after the editor is
+        // gone, waits for this instead of storing the `blob:` address.
+        trackPastedUpload(blobUrl, uploaded);
+        void uploaded
           .then((url) => replaceImageSrc(view, blobUrl, url))
           .finally(() => URL.revokeObjectURL(blobUrl));
       });

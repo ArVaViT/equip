@@ -126,3 +126,78 @@ export function replaceImageSrc(view: EditorView, from: string, to: string | nul
   tr.setMeta("addToHistory", false);
   view.dispatch(tr);
 }
+
+/**
+ * Uploads of pasted pictures, by the `blob:` URL that stands in for each
+ * while it travels — resolving to the stored address, or null on failure.
+ *
+ * The `blob:` URL is in the editor's HTML from the moment of the paste, so
+ * it is also in whatever the block saves meanwhile. While the editor is
+ * open, the swap in `replaceImageSrc` fixes that on the next save; once the
+ * teacher has left the lesson, there is no editor to swap in, and the block
+ * was saved with an address that dies with the page. A save therefore asks
+ * here first (`withUploadedImages`). Entries are kept after they settle: a
+ * save of text taken before the swap can still come later, and a few short
+ * strings per paste cost nothing.
+ */
+const pastedUploads = new Map<string, Promise<string | null>>();
+const settledUploads = new Map<string, string | null>();
+
+/** Record the upload behind a pasted picture's `blob:` URL. */
+export function trackPastedUpload(blobUrl: string, upload: Promise<string | null>): void {
+  const tracked = upload.then(
+    (url) => {
+      settledUploads.set(blobUrl, url);
+      return url;
+    },
+    () => {
+      settledUploads.set(blobUrl, null);
+      return null;
+    },
+  );
+  pastedUploads.set(blobUrl, tracked);
+}
+
+const BLOB_SRC = /<img\b[^>]*\bsrc="blob:/i;
+
+/** Point or drop each `blob:` picture by what its upload came to. */
+function rewriteBlobImages(html: string, resolve: (blobUrl: string) => string | null): string {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  doc.querySelectorAll('img[src^="blob:"]').forEach((img) => {
+    const url = resolve(img.getAttribute("src") ?? "");
+    if (url) img.setAttribute("src", url);
+    else img.remove();
+  });
+  return doc.body.innerHTML;
+}
+
+/**
+ * The HTML as it may be saved: every pasted picture at its stored address,
+ * waiting for uploads still under way. A picture whose upload failed, or a
+ * `blob:` this page never made (one kept in a draft from an earlier visit),
+ * is dropped — it could never load for anybody.
+ */
+export async function withUploadedImages(html: string): Promise<string> {
+  if (!BLOB_SRC.test(html)) return html;
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const urls = new Set<string>();
+  doc.querySelectorAll('img[src^="blob:"]').forEach((img) => urls.add(img.getAttribute("src") ?? ""));
+  await Promise.all([...urls].map((url) => pastedUploads.get(url)));
+  return rewriteBlobImages(html, (url) => settledUploads.get(url) ?? null);
+}
+
+/**
+ * The same, for a page that is leaving and cannot wait: pictures still
+ * uploading are left out rather than saved under an address that dies
+ * with the page.
+ */
+export function withUploadedImagesNow(html: string): string {
+  if (!BLOB_SRC.test(html)) return html;
+  return rewriteBlobImages(html, (url) => settledUploads.get(url) ?? null);
+}
+
+/** Tests only: forget every tracked upload. */
+export function resetPastedUploads(): void {
+  pastedUploads.clear();
+  settledUploads.clear();
+}

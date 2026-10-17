@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, Check, Loader2, Save } from "lucide-react"
 import RichTextEditor from "../RichTextEditor"
+import { withUploadedImages, withUploadedImagesNow } from "../pastedImages"
 import api from "@/services/api"
 import { coursesService } from "@/services/courses"
 import { useAuth } from "@/context/useAuth"
@@ -126,11 +127,16 @@ export function TextBlockEditor({ block, onSaved, onUnsavedChange }: Props) {
       // first — otherwise ours could be overtaken by older content.
       const previous = inflightByBlock.get(block.id)
       if (previous) await previous
-      const snapshot = contentRef.current
       if (mountedRef.current) setAutoSaveStatus("saving")
       try {
+        // A picture pasted a moment ago is still uploading under a `blob:`
+        // address; the save waits for its stored one. What counts as saved
+        // is the text as it was taken: the editor's own swap of the address
+        // then reads as one more change, and the save after it settles.
+        const taken = contentRef.current
+        const snapshot = await withUploadedImages(taken)
         const updated = await coursesService.updateBlock(block.id, { content: snapshot })
-        savedRef.current = snapshot
+        savedRef.current = taken
         failuresRef.current = 0
         onSavedRef.current(updated)
         if (!mountedRef.current) {
@@ -244,12 +250,19 @@ export function TextBlockEditor({ block, onSaved, onUnsavedChange }: Props) {
       const blockId = block.id
       const snapshot = contentRef.current
       const previous = inflightByBlock.get(blockId) ?? Promise.resolve(null)
+      let landed = snapshot
       const promise: Promise<string | null> = previous
-        .then(() => coursesService.updateBlock(blockId, { content: snapshot }))
+        // Pictures pasted just before the editor closed are still uploading,
+        // and nothing is left to swap their `blob:` addresses: wait for them.
+        .then(() => withUploadedImages(snapshot))
+        .then((html) => {
+          landed = html
+          return coursesService.updateBlock(blockId, { content: html })
+        })
         .then((updated) => {
           onSavedRef.current(updated)
           reportUnsaved(false)
-          return snapshot
+          return landed
         })
         .catch(() => {
           // The draft hook flushed this text to localStorage on the same
@@ -299,7 +312,9 @@ export function TextBlockEditor({ block, onSaved, onUnsavedChange }: Props) {
       void api
         .put(
           `/blocks/${block.id}`,
-          { content: contentRef.current },
+          // No time to wait for a picture still uploading: it is left out
+          // rather than saved under an address that dies with the page.
+          { content: withUploadedImagesNow(contentRef.current) },
           { adapter: "fetch", fetchOptions: { keepalive: true } },
         )
         .catch(() => {

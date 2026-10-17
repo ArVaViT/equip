@@ -6,6 +6,7 @@ import i18n from "@/i18n/config"
 import { toast } from "@/lib/toast"
 import type { ChapterBlock } from "@/types"
 import { TextBlockEditor } from "../TextBlockEditor"
+import { resetPastedUploads, trackPastedUpload } from "../../pastedImages"
 
 // ---------------------------------------------------------------------------
 // Doubles
@@ -322,5 +323,92 @@ describe("TextBlockEditor — pasted text never disappears silently", () => {
       await elapse(2000)
       expect(updateCalls).toEqual([["b-1", { content: PASTED }]])
     })
+  })
+})
+
+describe("TextBlockEditor — a picture still uploading when the block is saved", () => {
+  const STORED = "https://store.supabase.co/course-assets/p.png"
+  const WITH_BLOB = '<p>Глава</p><img src="blob:test/1">'
+
+  function pendingUpload(): (url: string | null) => void {
+    let finish: (url: string | null) => void = () => {}
+    trackPastedUpload("blob:test/1", new Promise((resolve) => (finish = resolve)))
+    return finish
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    updateCalls = []
+    keepalivePuts = []
+    updateImpl = async (id, data) => ({ ...baseBlock, id, content: data.content ?? null })
+    window.localStorage.clear()
+    resetPastedUploads()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("waits for the upload after the block is closed and saves the stored address", async () => {
+    const finish = pendingUpload()
+    const onUnsavedChange = vi.fn()
+    const { unmount } = renderEditor({}, { onUnsavedChange })
+    typeInto(WITH_BLOB)
+
+    // The teacher leaves the lesson while the picture is still on its way.
+    unmount()
+    await elapse(0)
+    expect(updateCalls).toHaveLength(0)
+    expect(onUnsavedChange).not.toHaveBeenCalledWith(false)
+
+    finish(STORED)
+    await elapse(0)
+
+    // Before: the block was saved at once with the `blob:` address, which
+    // dies with the page.
+    expect(updateCalls).toEqual([["b-1", { content: `<p>Глава</p><img src="${STORED}">` }]])
+    expect(onUnsavedChange).toHaveBeenLastCalledWith(false)
+  })
+
+  it("drops the picture whose upload failed rather than save an address nobody can open", async () => {
+    const finish = pendingUpload()
+    const { unmount } = renderEditor()
+    typeInto(WITH_BLOB)
+    unmount()
+    finish(null)
+    await elapse(0)
+
+    expect(updateCalls).toEqual([["b-1", { content: "<p>Глава</p>" }]])
+  })
+
+  it("an autosave while the editor is open waits too, and settles after the editor's own swap", async () => {
+    const finish = pendingUpload()
+    renderEditor()
+    typeInto(WITH_BLOB)
+    await elapse(2000)
+    expect(updateCalls).toHaveLength(0)
+
+    finish(STORED)
+    await elapse(0)
+    expect(updateCalls).toEqual([["b-1", { content: `<p>Глава</p><img src="${STORED}">` }]])
+
+    // The editor swaps the address in its own document (replaceImageSrc):
+    // one more save of the same text, then quiet.
+    typeInto(`<p>Глава</p><img src="${STORED}">`)
+    await elapse(2000)
+    await elapse(10000)
+    expect(updateCalls).toHaveLength(2)
+  })
+
+  it("a page that is leaving sends what it has and leaves a picture still uploading out", async () => {
+    pendingUpload()
+    renderEditor()
+    typeInto(WITH_BLOB)
+
+    await act(async () => {
+      window.dispatchEvent(new Event("pagehide"))
+    })
+
+    expect(keepalivePuts[0]?.[1]).toEqual({ content: "<p>Глава</p>" })
   })
 })
