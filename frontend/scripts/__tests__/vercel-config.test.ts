@@ -2,85 +2,120 @@
  * `frontend/vercel.json` as data.
  *
  * Nothing else in CI exercises this file: the e2e suite serves the built
- * `dist/` with `vite preview` on localhost, so Vercel's own rewrite/header
- * engine never runs against it (see docs/DEPLOYMENT.md, "What CI does not
+ * `dist/` with `vite preview` on localhost, so Vercel's own routing engine
+ * never runs against it (see docs/DEPLOYMENT.md, "What CI does not
  * check"). That is exactly how the catch-all rewrite once answered a request
  * for a deleted asset chunk with `200 text/html` instead of a 404 — a
  * stale-chunk failure that surfaced as
  * `'text/html' is not a valid JavaScript MIME type` instead of the recovery
  * path in `ErrorBoundary.tsx` / `lazyRoute.ts` ever getting a chance to run.
  *
- * `source` strings here aren't plain paths — `:path*` and `(.*)` are
- * path-to-regexp syntax, the same library Vercel's own routing engine
- * (`@vercel/routing-utils`) compiles them with. Asserting on the JSON
- * shape (e.g. "the catch-all source string contains 'assets'") would pass
- * for a subtly wrong pattern that still happens to mention the word. This
- * test instead compiles each `source` into the actual RegExp Vercel would
- * use and runs real request paths through it, so a regression in the
- * pattern itself — not just its text — fails the test.
+ * The file is written in Vercel's `routes` form, not `rewrites` + `headers`.
+ * The short form compiles every `headers` entry into a `continue: true`
+ * route placed BEFORE the filesystem check (`getTransformedRoutes` in
+ * `@vercel/routing-utils`), so a header there lands on a 404 just as much
+ * as on a real file. A year of `immutable` on the 404 of a vanished chunk
+ * means a browser or the CDN keeps answering "not found" for that URL long
+ * after a rollback has brought the file back (2026-10-17). Only the `hit`
+ * phase — routes that run when the filesystem actually served a file — can
+ * tell the two apart, and only `routes` can express phases.
+ *
+ * Each `src` is a full regular expression (Vercel anchors it with `^…$`),
+ * so these tests compile it and run real request paths through it: a
+ * regression in the pattern itself — not just its text — fails the test.
+ * The routes before `handle: filesystem` and the rewrites after it are the
+ * exact output `@vercel/routing-utils` produced for the former short form,
+ * so the move changed nothing but where the two cache rules live.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { pathToRegexp, type Key } from "path-to-regexp";
 
 const VERCEL_JSON_PATH = join(import.meta.dirname, "..", "..", "vercel.json");
 
-interface RewriteRule {
-  source: string;
-  destination: string;
+interface HandleRoute {
+  handle: string;
 }
 
-interface HeaderEntry {
-  key: string;
-  value: string;
+interface SrcRoute {
+  src: string;
+  dest?: string;
+  status?: number;
+  headers?: Record<string, string>;
+  continue?: boolean;
+  check?: boolean;
 }
 
-interface HeaderRule {
-  source: string;
-  headers: HeaderEntry[];
-}
+type Route = HandleRoute | SrcRoute;
 
 interface VercelConfig {
-  rewrites: RewriteRule[];
-  headers: HeaderRule[];
+  routes: Route[];
+  rewrites?: unknown;
+  headers?: unknown;
 }
 
 function readVercelConfig(): VercelConfig {
   return JSON.parse(readFileSync(VERCEL_JSON_PATH, "utf-8")) as VercelConfig;
 }
 
-/**
- * Compiles a `vercel.json` "source" string into the RegExp Vercel's own
- * `@vercel/routing-utils` would match a request path against —
- * `sourceToRegex()` in that package calls `pathToRegexp` with exactly these
- * options (`strict`/`sensitive`/`delimiter: "/"`), on the same major version
- * (`path-to-regexp@6.x`) Vercel pins as its "current" compiler.
- */
-function compileSource(source: string): RegExp {
-  const keys: Key[] = []
-  return pathToRegexp(source, keys, { strict: true, sensitive: true, delimiter: "/" })
+function isHandle(route: Route): route is HandleRoute {
+  return "handle" in route;
+}
+
+/** The routes of one phase: everything after `handle: <name>` up to the next handle. */
+function phase(routes: Route[], name: string | null): SrcRoute[] {
+  const out: SrcRoute[] = [];
+  let current: string | null = null;
+  for (const route of routes) {
+    if (isHandle(route)) {
+      current = route.handle;
+      continue;
+    }
+    if (current === name) out.push(route);
+  }
+  return out;
+}
+
+function matches(route: SrcRoute, path: string): boolean {
+  return new RegExp(route.src).test(path);
 }
 
 describe("frontend/vercel.json", () => {
   const config = readVercelConfig();
+  const main = phase(config.routes, null);
+  const filesystem = phase(config.routes, "filesystem");
+  const hit = phase(config.routes, "hit");
+
+  it("uses `routes` alone — Vercel refuses `routes` mixed with `rewrites`/`headers`", () => {
+    expect(config.rewrites).toBeUndefined();
+    expect(config.headers).toBeUndefined();
+    const handles = config.routes.filter(isHandle).map((r) => r.handle);
+    expect(handles).toEqual(["filesystem", "hit"]);
+  });
+
+  it("every src is a valid, anchored regular expression", () => {
+    for (const route of config.routes) {
+      if (isHandle(route)) continue;
+      expect(() => new RegExp(route.src)).not.toThrow();
+      expect(route.src.startsWith("^")).toBe(true);
+      expect(route.src.endsWith("$")).toBe(true);
+    }
+  });
 
   describe("catch-all SPA rewrite", () => {
     // Identified by behavior (rewrites to the SPA shell), not by index —
     // a reordering of the array shouldn't silently start testing the wrong
     // rule.
-    const catchAll = config.rewrites.find((r) => r.destination === "/index.html");
+    const catchAll = filesystem.find((r) => r.dest === "/index.html");
 
-    it("exists", () => {
+    it("exists after the filesystem check", () => {
       expect(catchAll).toBeDefined();
     });
-
-    const regex = compileSource(catchAll!.source);
 
     it.each(["/", "/courses", "/courses/abc", "/invite/accept"])(
       "rewrites app route %s to the SPA shell",
       (path) => {
-        expect(regex.test(path)).toBe(true);
+        expect(matches(catchAll!, path)).toBe(true);
       },
     );
 
@@ -99,90 +134,111 @@ describe("frontend/vercel.json", () => {
     ])(
       "does NOT rewrite %s — a missing asset or /.well-known/ file must 404, not fall back to index.html",
       (path) => {
-        expect(regex.test(path)).toBe(false);
+        expect(matches(catchAll!, path)).toBe(false);
       },
     );
   });
 
-  describe("Supabase storage proxy rewrites run before the catch-all", () => {
-    const catchAllIndex = config.rewrites.findIndex((r) => r.destination === "/index.html");
-    const courseAssetsIndex = config.rewrites.findIndex((r) =>
-      r.destination.includes("/course-assets/"),
+  describe("proxy rewrites run before the catch-all", () => {
+    const catchAllIndex = filesystem.findIndex((r) => r.dest === "/index.html");
+    const courseAssetsIndex = filesystem.findIndex((r) => r.dest?.includes("/course-assets/"));
+    const avatarsIndex = filesystem.findIndex((r) => r.dest?.includes("/avatars/"));
+    const intakeIndex = filesystem.findIndex((r) =>
+      r.dest?.startsWith("https://browser-intake-us5-datadoghq.com/"),
     );
-    const avatarsIndex = config.rewrites.findIndex((r) => r.destination.includes("/avatars/"));
 
-    it("all three rules are present", () => {
+    it("all four rules are present", () => {
       expect(catchAllIndex).toBeGreaterThanOrEqual(0);
       expect(courseAssetsIndex).toBeGreaterThanOrEqual(0);
       expect(avatarsIndex).toBeGreaterThanOrEqual(0);
+      expect(intakeIndex).toBeGreaterThanOrEqual(0);
     });
 
-    // Vercel evaluates `rewrites` in array order and stops at the first
+    // Vercel evaluates routes in array order and stops at the first
     // match. The catch-all's own pattern already excludes `/assets/` (the
-    // hashed JS bundles), but nothing about its regex excludes `/img/...` —
-    // only being listed AFTER these two keeps the image proxy reachable.
-    it("/img/course-assets/:path* is listed before the catch-all", () => {
+    // hashed JS bundles), but nothing about its regex excludes `/img/...`
+    // or `/_e/...` — only being listed AFTER them keeps them reachable.
+    it("each proxy is listed before the catch-all", () => {
       expect(courseAssetsIndex).toBeLessThan(catchAllIndex);
-    });
-
-    it("/img/avatars/:path* is listed before the catch-all", () => {
       expect(avatarsIndex).toBeLessThan(catchAllIndex);
+      expect(intakeIndex).toBeLessThan(catchAllIndex);
     });
 
-    it("both proxy rules still match the paths they're meant for", () => {
-      expect(compileSource(config.rewrites[courseAssetsIndex].source).test(
-        "/img/course-assets/lesson-1/cover.jpg",
-      )).toBe(true);
-      expect(compileSource(config.rewrites[avatarsIndex].source).test(
-        "/img/avatars/user-123.png",
-      )).toBe(true);
+    it("each proxy matches the paths it is meant for and carries the path over", () => {
+      const course = filesystem[courseAssetsIndex];
+      const path = "/img/course-assets/lesson-1/cover.jpg";
+      expect(matches(course, path)).toBe(true);
+      expect(path.replace(new RegExp(course.src), course.dest!)).toBe(
+        "https://rrisqutxlkamwfhcashl.supabase.co/storage/v1/object/public/course-assets/lesson-1/cover.jpg",
+      );
+      expect(matches(filesystem[avatarsIndex], "/img/avatars/user-123.png")).toBe(true);
+      const intake = filesystem[intakeIndex];
+      expect("/_e/api/v2/rum".replace(new RegExp(intake.src), intake.dest!)).toBe(
+        "https://browser-intake-us5-datadoghq.com/api/v2/rum",
+      );
     });
   });
 
-  describe("/assets/ cache headers", () => {
-    // Identified by which requests it actually matches, not by re-typing
-    // the source string — a rule that matched the wrong prefix but still
-    // had "assets" in its source would slip past a string-equality check.
-    const assetsRule = config.headers.find((h) =>
-      compileSource(h.source).test("/assets/index-ABC12345.js"),
+  describe("long-lived cache headers apply only to files that exist", () => {
+    const allCacheRules = config.routes.filter(
+      (r): r is SrcRoute => !isHandle(r) && r.headers?.["Cache-Control"] !== undefined,
     );
 
-    it("exists and applies to hashed asset requests", () => {
+    // The bug: a rule before the filesystem check also stamps the 404 of a
+    // vanished chunk, and `immutable` tells every cache never to ask again.
+    it("no `immutable` header is set before the filesystem check", () => {
+      for (const route of main) {
+        expect(route.headers?.["Cache-Control"] ?? "").not.toMatch(/\bimmutable\b/);
+      }
+    });
+
+    it("every `immutable` rule sits in the hit phase and only adds headers", () => {
+      const immutable = allCacheRules.filter((r) => /\bimmutable\b/.test(r.headers!["Cache-Control"]));
+      expect(immutable.length).toBeGreaterThan(0);
+      for (const route of immutable) {
+        expect(hit).toContain(route);
+        // The hit phase may not redirect or change the status; Vercel
+        // rejects such a route, and `continue` is mandatory there.
+        expect(route.continue).toBe(true);
+        expect(route.dest).toBeUndefined();
+        expect(route.status).toBeUndefined();
+      }
+    });
+
+    it("hashed assets get a year of `immutable`", () => {
+      const assetsRule = hit.find((r) => matches(r, "/assets/index-ABC12345.js"));
       expect(assetsRule).toBeDefined();
-    });
-
-    it("does not also apply to an ordinary app route", () => {
-      expect(compileSource(assetsRule!.source).test("/courses")).toBe(false);
-    });
-
-    it("sets an immutable, long-lived Cache-Control", () => {
-      const cacheControl = assetsRule!.headers.find((h) => h.key === "Cache-Control");
-      expect(cacheControl).toBeDefined();
-      expect(cacheControl!.value).toMatch(/\bimmutable\b/);
-
-      const maxAgeMatch = cacheControl!.value.match(/max-age=(\d+)/);
-      expect(maxAgeMatch).not.toBeNull();
+      expect(matches(assetsRule!, "/courses")).toBe(false);
+      const cacheControl = assetsRule!.headers!["Cache-Control"];
+      expect(cacheControl).toMatch(/\bimmutable\b/);
       // Vite content-hashes every asset filename, so a cached copy is safe
       // to keep for as long as a browser cares to — a full year is the de
-      // facto ceiling browsers respect. Anything much shorter defeats the
-      // point of hashed filenames; asset requests would keep revalidating
-      // even though the content at that exact URL can never change.
-      const ONE_YEAR_SECONDS = 31_536_000;
-      expect(Number(maxAgeMatch![1])).toBeGreaterThanOrEqual(ONE_YEAR_SECONDS);
+      // facto ceiling browsers respect.
+      const maxAge = cacheControl.match(/max-age=(\d+)/);
+      expect(maxAge).not.toBeNull();
+      expect(Number(maxAge![1])).toBeGreaterThanOrEqual(31_536_000);
+    });
+
+    it("videos keep their week of `immutable`, also only when served", () => {
+      const videoRule = hit.find((r) => matches(r, "/video/intro.mp4"));
+      expect(videoRule).toBeDefined();
+      expect(videoRule!.headers!["Cache-Control"]).toMatch(/max-age=604800\b/);
     });
   });
 
   describe("security headers", () => {
-    const generalRule = config.headers.find((h) => compileSource(h.source).test("/courses"));
+    // Before the filesystem check on purpose: a 404 and a proxied response
+    // need them as much as a page does.
+    const generalRule = main.find((r) => matches(r, "/courses") && r.headers !== undefined);
 
-    it("exists and applies to ordinary app routes", () => {
+    it("exist and apply to app routes and missing assets alike", () => {
       expect(generalRule).toBeDefined();
+      expect(generalRule!.continue).toBe(true);
+      expect(matches(generalRule!, "/assets/gone-ABC.js")).toBe(true);
     });
 
-    it("sets a Content-Security-Policy that denies framing", () => {
-      const csp = generalRule!.headers.find((h) => h.key === "Content-Security-Policy");
-      expect(csp).toBeDefined();
-      expect(csp!.value).toContain("frame-ancestors 'none'");
+    it("set a Content-Security-Policy that denies framing", () => {
+      expect(generalRule!.headers!["Content-Security-Policy"]).toContain("frame-ancestors 'none'");
     });
   });
 });

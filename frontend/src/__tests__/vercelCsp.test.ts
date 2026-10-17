@@ -29,17 +29,18 @@ import fs from "node:fs"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 
-interface VercelHeader {
-  key: string
-  value: string
-}
-interface VercelHeaderRule {
-  source: string
-  headers: VercelHeader[]
+// `vercel.json` is written as `routes` (see scripts/__tests__/vercel-config.test.ts
+// for why); the site-wide security headers are the `continue: true` route
+// that matches every path, before the filesystem check.
+interface VercelRoute {
+  src?: string
+  headers?: Record<string, string>
 }
 interface VercelConfig {
-  headers?: VercelHeaderRule[]
+  routes?: VercelRoute[]
 }
+
+const SITE_WIDE_SRC = "^(?:/(.*))$"
 
 function readVercelJson(): VercelConfig {
   const root = path.resolve(__dirname, "..", "..")
@@ -47,16 +48,14 @@ function readVercelJson(): VercelConfig {
   return JSON.parse(raw) as VercelConfig
 }
 
+function siteWideHeaders(): Record<string, string> | undefined {
+  return readVercelJson().routes?.find((r) => r.src === SITE_WIDE_SRC)?.headers
+}
+
 function findCsp(): string {
-  const cfg = readVercelJson()
-  const headers = cfg.headers ?? []
-  for (const rule of headers) {
-    if (rule.source !== "/(.*)") continue
-    for (const h of rule.headers) {
-      if (h.key === "Content-Security-Policy") return h.value
-    }
-  }
-  throw new Error("Content-Security-Policy header not found in vercel.json")
+  const csp = siteWideHeaders()?.["Content-Security-Policy"]
+  if (csp === undefined) throw new Error("Content-Security-Policy header not found in vercel.json")
+  return csp
 }
 
 // Each entry: a directive token that MUST appear verbatim in the policy.
@@ -114,15 +113,10 @@ describe("CSP header in vercel.json", () => {
     // Report-Only; this asserts we have actually flipped to enforcing
     // and haven't accidentally re-introduced the report-only key
     // (which would silently re-disable every directive in production).
-    const cfg = readVercelJson()
-    const rule = cfg.headers?.find((r) => r.source === "/(.*)")
-    expect(rule).toBeDefined()
-    const enforcing = rule!.headers.find((h) => h.key === "Content-Security-Policy")
-    expect(enforcing).toBeDefined()
-    const reportOnly = rule!.headers.find(
-      (h) => h.key === "Content-Security-Policy-Report-Only",
-    )
-    expect(reportOnly).toBeUndefined()
+    const headers = siteWideHeaders()
+    expect(headers).toBeDefined()
+    expect(headers!["Content-Security-Policy"]).toBeDefined()
+    expect(headers!["Content-Security-Policy-Report-Only"]).toBeUndefined()
   })
 
   it("does not whitelist 'unsafe-eval' anywhere", () => {

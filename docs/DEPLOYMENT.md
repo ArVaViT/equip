@@ -67,7 +67,22 @@ request for a deleted asset chunk with `200 text/html` instead of `404`,
 which is what the browser reported as
 `'text/html' is not a valid JavaScript MIME type`.
 
+The file is written as `routes`, not `rewrites` + `headers`, on purpose.
+The short form compiles every `headers` entry into a route that runs
+before the filesystem check, so a long `immutable` Cache-Control landed on
+the 404 of a vanished chunk too, and a browser or the CDN would keep that
+404 for a year — even after a rollback brought the file back. The two
+`immutable` rules (`/assets/`, `/video/`) now sit in the `hit` phase, which
+runs only when a file was actually served. `scripts/__tests__/vercel-config.test.ts`
+pins this shape; the rest of the routes are what Vercel itself compiled
+from the old short form.
+
 Verify a change to that file on a real preview deployment, not in CI.
+For the cache rules, in the browser's Network tab: an existing
+`/assets/index-*.js` answers with `max-age=31536000, immutable`; a made-up
+`/assets/nope-XXXX.js` answers 404 without `immutable`; `/courses` still
+gets the SPA shell with the CSP header; `/_e/api/v2/rum` still reaches
+Datadog (a 4xx JSON, not HTML).
 Preview URLs sit behind Vercel SSO, so plain `curl` gets a 302 — use a
 browser with a logged-in session, or check the aliased deployment after
 merging.
@@ -449,9 +464,10 @@ batches -- one translation tick is budgeted at
 `TRANSLATION_WORKER_BUDGET_SECONDS`, 180 s by default) have headroom over
 the platform default.
 
-`frontend/vercel.json` adds SPA fallback rewrites, the
-Supabase-storage image rewrite (`/img/<bucket>/<path>`), and the strict
-CSP header set. No custom build command -- Vercel's Vite preset runs
+`frontend/vercel.json` (in the `routes` form — see "What CI does not
+check" above) adds the SPA fallback rewrite, the Supabase-storage image
+rewrite (`/img/<bucket>/<path>`), the Datadog intake proxy (`/_e/`), the
+strict CSP header set and the cache rules. No custom build command -- Vercel's Vite preset runs
 `npm run build`.
 
 ## Rolling back
