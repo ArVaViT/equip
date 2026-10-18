@@ -5,8 +5,9 @@
  * `/auth/callback#access_token=…&refresh_token=…` on every sign-in for as long
  * as the client ran the implicit flow. These hold the two halves of the fix:
  * the URL is emptied before anything can record it, and whatever it carried —
- * a PKCE code, an email link's token hash, or a session from a link mailed
- * before the switch — still signs the person in.
+ * a PKCE code or an email link's token hash — still signs the person in. A
+ * session handed over in the URL itself is wiped and refused: taking it
+ * signed the browser into whichever account the link's author chose.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
@@ -77,12 +78,7 @@ describe("captureAuthLanding", () => {
       "https://equipbible.com/auth/reset-password#access_token=eyJhbGciOi.x.y&expires_at=1&expires_in=3600" +
         "&provider_token=ya29.secret&refresh_token=r1&token_type=bearer&type=recovery",
     )
-    expect(captureAuthLanding(w.win)).toEqual({
-      kind: "legacy_session",
-      accessToken: "eyJhbGciOi.x.y",
-      refreshToken: "r1",
-      type: "recovery",
-    })
+    expect(captureAuthLanding(w.win)).toEqual({ kind: "session_in_url" })
     expect(w.left()).toBe("/auth/reset-password")
     expect(w.left()).not.toMatch(SECRETS)
   })
@@ -104,7 +100,7 @@ describe("captureAuthLanding", () => {
   it("routes a fragment session that fell back to the bare site URL to the callback", () => {
     // GoTrue redirects to `site_url` when `redirect_to` is not allowed.
     const w = fakeWindow("https://equipbible.com/#access_token=eyJ.a.b&refresh_token=r&token_type=bearer")
-    expect(captureAuthLanding(w.win)?.kind).toBe("legacy_session")
+    expect(captureAuthLanding(w.win)?.kind).toBe("session_in_url")
     expect(w.left()).toBe("/auth/callback")
   })
 
@@ -171,11 +167,13 @@ describe("completeAuthLanding", () => {
     expect(exchangeCodeForSession).toHaveBeenCalledWith("c1", { flowId: "flow-7" })
   })
 
-  it("keeps a link mailed before PKCE working", async () => {
+  it("never signs in with a session somebody put in the URL", async () => {
+    // Login CSRF: `equipbible.com/#access_token=<theirs>` would otherwise put
+    // the visitor in the link author's account.
     setSession.mockResolvedValue({ data: { session: {} }, error: null })
-    arrive("https://equipbible.com/auth/confirm#access_token=eyJ.a.b&refresh_token=r1&token_type=bearer&type=magiclink")
-    await expect(completeAuthLanding()).resolves.toEqual({ status: "signed-in", recovery: false })
-    expect(setSession).toHaveBeenCalledWith({ access_token: "eyJ.a.b", refresh_token: "r1" })
+    arrive("https://equipbible.com/#access_token=eyJ.a.b&refresh_token=r1&token_type=bearer&type=magiclink")
+    await expect(completeAuthLanding()).resolves.toEqual({ status: "failed", reason: "expired" })
+    expect(setSession).not.toHaveBeenCalled()
   })
 
   it("says a spent or stale link expired", async () => {

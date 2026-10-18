@@ -432,7 +432,7 @@ $$;
 CREATE FUNCTION public.profiles_protect_immutable_fields() RETURNS trigger
     LANGUAGE plpgsql
     SET search_path TO 'pg_catalog', 'public'
-    AS $$
+    AS $_$
 BEGIN
   -- Only enforce for client-side writes. FastAPI connects as
   -- ``postgres`` and the service_role JWT becomes ``service_role`` --
@@ -482,9 +482,27 @@ BEGIN
     RAISE EXCEPTION 'profiles.phone cannot be set until phone verification exists'
       USING ERRCODE = 'check_violation';
   END IF;
+  -- The iCal rotation floor: lowered, it revives every switched-off link.
+  IF NEW.calendar_ical_min_iat IS DISTINCT FROM OLD.calendar_ical_min_iat THEN
+    RAISE EXCEPTION 'profiles.calendar_ical_min_iat is recorded by the server'
+      USING ERRCODE = 'check_violation';
+  END IF;
+  -- A photo is the person's own upload, or none. The frontend stores the
+  -- same-origin proxy path (`/img/avatars/<id>/<file>`, storage.ts
+  -- getPublicUrl); the full Storage URL is the older shape. One file name,
+  -- no further slash, no leading dot, no percent-escape or backslash: no
+  -- way out of the folder.
+  IF NEW.avatar_url IS DISTINCT FROM OLD.avatar_url
+     AND NEW.avatar_url IS NOT NULL
+     AND NEW.avatar_url !~ ('^/img/avatars/' || NEW.id::text || '/[^/?#%\\.][^/?#%\\]*$')
+     AND NEW.avatar_url !~ ('^https?://[^/?#]+/storage/v1/object/public/avatars/'
+                            || NEW.id::text || '/[^/?#%\\.][^/?#%\\]*$') THEN
+    RAISE EXCEPTION 'profiles.avatar_url must be an upload in the avatars bucket under the account''s own folder'
+      USING ERRCODE = 'check_violation';
+  END IF;
   RETURN NEW;
 END;
-$$;
+$_$;
 
 
 --
@@ -4172,27 +4190,21 @@ CREATE POLICY dc_options_select_via_question ON public.daily_challenge_options F
    FROM public.daily_challenge_questions q
   WHERE ((q.id = daily_challenge_options.question_id) AND (((q.status = 'published'::text) AND (q.rejected = false) AND (EXISTS ( SELECT 1
            FROM public.daily_challenge_schedule s
-          WHERE ((s.question_id = q.id) AND (s.challenge_date <= ((now() AT TIME ZONE 'UTC'::text))::date))))) OR (EXISTS ( SELECT 1
-           FROM public.profiles p
-          WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))))))));
+          WHERE ((s.question_id = q.id) AND (s.challenge_date <= ((now() AT TIME ZONE 'UTC'::text))::date))))) OR public.is_platform_staff())))));
 
 
 --
 -- Name: daily_challenge_question_events dc_q_events_select_editorial; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY dc_q_events_select_editorial ON public.daily_challenge_question_events FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))));
+CREATE POLICY dc_q_events_select_editorial ON public.daily_challenge_question_events FOR SELECT TO authenticated USING (public.is_platform_staff());
 
 
 --
 -- Name: daily_challenge_questions dc_questions_select; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY dc_questions_select ON public.daily_challenge_questions FOR SELECT TO authenticated USING (((EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))) OR ((status = 'published'::text) AND (rejected = false) AND (EXISTS ( SELECT 1
+CREATE POLICY dc_questions_select ON public.daily_challenge_questions FOR SELECT TO authenticated USING ((public.is_platform_staff() OR ((status = 'published'::text) AND (rejected = false) AND (EXISTS ( SELECT 1
    FROM public.daily_challenge_schedule s
   WHERE ((s.question_id = daily_challenge_questions.id) AND (s.challenge_date <= ((now() AT TIME ZONE 'UTC'::text))::date)))))));
 
@@ -4201,9 +4213,7 @@ CREATE POLICY dc_questions_select ON public.daily_challenge_questions FOR SELECT
 -- Name: daily_challenge_schedule dc_schedule_select_visible; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY dc_schedule_select_visible ON public.daily_challenge_schedule FOR SELECT TO authenticated USING (((challenge_date <= ((now() AT TIME ZONE 'UTC'::text))::date) OR (EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text])))))));
+CREATE POLICY dc_schedule_select_visible ON public.daily_challenge_schedule FOR SELECT TO authenticated USING (((challenge_date <= ((now() AT TIME ZONE 'UTC'::text))::date) OR public.is_platform_staff()));
 
 
 --
@@ -4343,7 +4353,7 @@ CREATE POLICY profiles_update_own_safe_fields ON public.profiles FOR UPDATE TO a
 -- Name: POLICY profiles_update_own_safe_fields ON profiles; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON POLICY profiles_update_own_safe_fields ON public.profiles IS 'Self-update is gated on row ownership. Column-level immutability (id / role / email / created_at / organization_id / deactivated_at / deleted_at / onboarding_completed_at / phone), and the rule that a deactivated account edits nothing, are enforced by trg_profiles_protect_immutable_fields, which only fires for the authenticated role so service-mediated writes (FastAPI postgres connection, service_role JWT) can still legitimately change those columns. The safe fields that remain are full_name, avatar_url, preferred_locale, locale_source, time_zone, time_zone_source, birth_date, country_code, region, city, church and email_off.';
+COMMENT ON POLICY profiles_update_own_safe_fields ON public.profiles IS 'Self-update is gated on row ownership. Column-level immutability (id / role / email / created_at / organization_id / deactivated_at / deleted_at / onboarding_completed_at / phone / calendar_ical_min_iat), the shape of a new avatar_url (an upload in the avatars bucket under the account''s own folder), and the rule that a deactivated account edits nothing, are enforced by trg_profiles_protect_immutable_fields, which only fires for the authenticated role so service-mediated writes (FastAPI postgres connection, service_role JWT) can still legitimately change those columns. The safe fields that remain are full_name, avatar_url, preferred_locale, locale_source, time_zone, time_zone_source, birth_date, country_code, region, city, church and email_off.';
 
 
 --
