@@ -514,6 +514,44 @@ END $$;
 
 RESET ROLE;
 
+-- 16) Daily Challenge: the editorial is platform staff's (20261018023000).
+-- A teacher of any school reads what every reader reads -- questions already
+-- shown -- and not tomorrow's schedule or a draft. The API refused them since
+-- #1392; PostgREST did not.
+\set dc_teacher 'dc7eac11-0000-4000-8000-000000000001'
+INSERT INTO auth.users (id, email) VALUES (:'dc_teacher', 'dc-teacher@test.local');
+INSERT INTO public.profiles (id, email, role) VALUES (:'dc_teacher', 'dc-teacher@test.local', 'teacher');
+INSERT INTO public.daily_challenge_questions (id, question_type, status, published_at, bible_book, bible_chapter)
+VALUES ('dc000000-0000-0000-0000-000000000001', 'true_false', 'published', now(), 'GEN', 1),
+       ('dc000000-0000-0000-0000-000000000002', 'true_false', 'published', now(), 'GEN', 2),
+       ('dc000000-0000-0000-0000-000000000003', 'true_false', 'draft', NULL, 'GEN', 3);
+INSERT INTO public.daily_challenge_schedule (challenge_date, question_id)
+VALUES ((now() AT TIME ZONE 'UTC')::date - 1, 'dc000000-0000-0000-0000-000000000001'),
+       ((now() AT TIME ZONE 'UTC')::date + 1, 'dc000000-0000-0000-0000-000000000002');
+
+SET request.jwt.claim.sub = 'dc7eac11-0000-4000-8000-000000000001';
+SET ROLE authenticated;
+
+DO $$
+DECLARE seen_questions int; seen_schedule int;
+BEGIN
+  SELECT count(*) INTO seen_questions FROM public.daily_challenge_questions
+  WHERE id::text LIKE 'dc000000-%';
+  SELECT count(*) INTO seen_schedule FROM public.daily_challenge_schedule
+  WHERE question_id::text LIKE 'dc000000-%';
+  IF seen_questions = 0 OR seen_schedule = 0 THEN
+    RAISE EXCEPTION 'HARNESS BROKEN: a teacher cannot read yesterday''s question (% questions, % schedule rows)',
+      seen_questions, seen_schedule;
+  END IF;
+  IF seen_questions <> 1 OR seen_schedule <> 1 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a teacher reads the editorial (% questions, % schedule rows; expected 1 and 1)',
+      seen_questions, seen_schedule;
+  END IF;
+  RAISE NOTICE 'OK: a teacher reads only questions already shown';
+END $$;
+
+RESET ROLE;
+
 -- Structural guard (2026-10-03): a SELECT policy on student work must not let
 -- a role in by membership alone. «teacher OR admin» once opened every
 -- student's submissions, answers and grades in every school to any teacher
@@ -821,6 +859,22 @@ BEGIN
     RAISE EXCEPTION 'SECURITY HOLE: policies open a table to anyone signed in: %', offenders;
   END IF;
   RAISE NOTICE 'OK: no policy opens a table to anyone signed in';
+END $$;
+
+-- Structural guard (20261018023000): no Daily Challenge policy lets a role in
+-- by name. The card is the platform's; "teacher" means a teacher of any school.
+DO $$
+DECLARE offenders text;
+BEGIN
+  SELECT string_agg(tablename || '.' || policyname, ', ') INTO offenders
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND tablename LIKE 'daily_challenge%'
+    AND (coalesce(qual, '') LIKE '%''teacher''%' OR coalesce(with_check, '') LIKE '%''teacher''%');
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'SECURITY HOLE: Daily Challenge policies still admit teachers: %', offenders;
+  END IF;
+  RAISE NOTICE 'OK: no Daily Challenge policy admits a teacher by role';
 END $$;
 
 SELECT 'RLS policy assertions passed' AS result;

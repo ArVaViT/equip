@@ -4172,27 +4172,21 @@ CREATE POLICY dc_options_select_via_question ON public.daily_challenge_options F
    FROM public.daily_challenge_questions q
   WHERE ((q.id = daily_challenge_options.question_id) AND (((q.status = 'published'::text) AND (q.rejected = false) AND (EXISTS ( SELECT 1
            FROM public.daily_challenge_schedule s
-          WHERE ((s.question_id = q.id) AND (s.challenge_date <= ((now() AT TIME ZONE 'UTC'::text))::date))))) OR (EXISTS ( SELECT 1
-           FROM public.profiles p
-          WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))))))));
+          WHERE ((s.question_id = q.id) AND (s.challenge_date <= ((now() AT TIME ZONE 'UTC'::text))::date))))) OR public.is_platform_staff())))));
 
 
 --
 -- Name: daily_challenge_question_events dc_q_events_select_editorial; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY dc_q_events_select_editorial ON public.daily_challenge_question_events FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))));
+CREATE POLICY dc_q_events_select_editorial ON public.daily_challenge_question_events FOR SELECT TO authenticated USING (public.is_platform_staff());
 
 
 --
 -- Name: daily_challenge_questions dc_questions_select; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY dc_questions_select ON public.daily_challenge_questions FOR SELECT TO authenticated USING (((EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text]))))) OR ((status = 'published'::text) AND (rejected = false) AND (EXISTS ( SELECT 1
+CREATE POLICY dc_questions_select ON public.daily_challenge_questions FOR SELECT TO authenticated USING ((public.is_platform_staff() OR ((status = 'published'::text) AND (rejected = false) AND (EXISTS ( SELECT 1
    FROM public.daily_challenge_schedule s
   WHERE ((s.question_id = daily_challenge_questions.id) AND (s.challenge_date <= ((now() AT TIME ZONE 'UTC'::text))::date)))))));
 
@@ -4201,9 +4195,7 @@ CREATE POLICY dc_questions_select ON public.daily_challenge_questions FOR SELECT
 -- Name: daily_challenge_schedule dc_schedule_select_visible; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY dc_schedule_select_visible ON public.daily_challenge_schedule FOR SELECT TO authenticated USING (((challenge_date <= ((now() AT TIME ZONE 'UTC'::text))::date) OR (EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = ANY (ARRAY['teacher'::text, 'admin'::text])))))));
+CREATE POLICY dc_schedule_select_visible ON public.daily_challenge_schedule FOR SELECT TO authenticated USING (((challenge_date <= ((now() AT TIME ZONE 'UTC'::text))::date) OR public.is_platform_staff()));
 
 
 --
