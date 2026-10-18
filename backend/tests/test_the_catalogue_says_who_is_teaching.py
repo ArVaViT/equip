@@ -134,6 +134,19 @@ class TestTheCatalogueNamesTheSchool:
         assert _card(body, "ucoat-course")["organization_name"] == "UCOAT"
         assert _card(body, "other-course")["organization_name"] == "Other School"
 
+    def test_the_catalogue_does_not_hand_out_the_author_s_account_id(
+        self, stranger_client: TestClient, db: Session, their_teacher: User
+    ):
+        """The card names the school; the account behind the course is
+        not the catalogue's to publish, and it is cached at the edge."""
+        _published_course(db, their_teacher, "ucoat-no-account-id")
+
+        resp = stranger_client.get("/api/v1/courses")
+
+        assert resp.status_code == 200, resp.text
+        assert "created_by" not in _card(resp.json(), "ucoat-no-account-id")
+        assert str(their_teacher.id) not in resp.text
+
 
 class TestTheCoursePageNamesItsAuthor:
     """The «Автор» tab: a visitor reads who is teaching before enrolling."""

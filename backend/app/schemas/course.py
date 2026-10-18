@@ -291,7 +291,11 @@ class CourseSummary(_ReadTitle):
     organization_logo_url: str | None = None
     status: str = "draft"
     access_mode: Literal["public", "institute"] = "public"
-    created_by: UUID | None = None
+    # No ``created_by``. This shape is the public, edge-cached catalogue
+    # (``GET /courses``), and the author's account id is nothing a reader
+    # needs: the card names the school, and the «Автор» tab
+    # (``/courses/{id}/author``) the person. No client read it from a list —
+    # the one ownership check (``CourseDetail``) reads ``CourseResponse``.
     created_at: datetime
     updated_at: datetime | None = None
     deleted_at: datetime | None = None
