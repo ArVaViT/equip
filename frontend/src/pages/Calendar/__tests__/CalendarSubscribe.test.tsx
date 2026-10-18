@@ -56,6 +56,8 @@ describe("calendar subscription", () => {
     // Google refreshes a subscription every few hours: a moved class shows
     // there late, and the student is told so before they rely on it.
     expect(screen.getByText(/Google checks every few hours/)).toBeInTheDocument()
+    // The token sits in those hrefs; Session Replay must not record them.
+    expect(screen.getByRole("dialog")).toHaveAttribute("data-dd-privacy", "mask")
   })
 
   describe("puts the calendar this device keeps first", () => {

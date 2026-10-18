@@ -267,7 +267,10 @@ not affect the metrics.
    content blockers do not drop them; the Session Replay timeline shows clicks, scrolls, network
    calls. Inputs are masked (`mask-user-input`) so quiz answers and
    passwords don't leak into the recording, but the surrounding UI is
-   visible.
+   visible — including attributes. A secret that lives in an `href`
+   (the iCal feed link carries its token) needs `data-dd-privacy="mask"`
+   on the element or a container: that level censors an anchor's `href`
+   along with the text (`CalendarSubscribe.tsx`).
 
 ### "I want to understand a slow page"
 

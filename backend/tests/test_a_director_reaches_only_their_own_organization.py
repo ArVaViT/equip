@@ -20,11 +20,13 @@ from typing import TYPE_CHECKING
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.consent_gate import consent_subject
 from app.api.dependencies import get_current_user, get_optional_user
 from app.core.database import get_db
 from app.main import app
 from app.models.certificate import Certificate, CertificateStatus
 from app.models.cohort import Cohort
+from app.models.enrollment import Enrollment
 from app.models.invitation import Invitation
 from app.models.organization import Organization
 from app.models.user import User, UserRole
@@ -225,6 +227,108 @@ class TestCertificates:
         db.refresh(cert)
         assert cert.status == CertificateStatus.TEACHER_APPROVED
         assert cert.certificate_number is None
+
+    def test_we_cannot_issue_their_certificate_from_before_the_column_was_written(
+        self, our_director_client: TestClient, db: Session, their_director: User
+    ):
+        """The request path wrote no ``organization_id`` from 2026-08-27 to
+        2026-10-17, and the gate let a NULL through. Such a row belongs to
+        its course's organization, not to whoever asks first."""
+        cert = self._their_certificate(db, their_director)
+        db.query(Certificate).filter(Certificate.id == cert.id).update({Certificate.organization_id: None})
+        db.commit()
+
+        resp = our_director_client.put(f"/api/v1/certificates/{cert.id}/admin-approve")
+        assert resp.status_code == 404, resp.text
+
+        db.refresh(cert)
+        assert cert.status == CertificateStatus.TEACHER_APPROVED
+        assert cert.certificate_number is None
+
+    def test_their_director_still_issues_their_certificate_from_before_the_column_was_written(
+        self, our_director_client: TestClient, db: Session, their_director: User
+    ):
+        """Fail-closed must not lock out the school the row belongs to:
+        with the column empty, the course's organization decides, and its
+        own director (not the one who signed as teacher) issues it."""
+        cert = self._their_certificate(db, their_director)
+        db.query(Certificate).filter(Certificate.id == cert.id).update({Certificate.organization_id: None})
+        their_second_director = User(
+            id=uuid.uuid4(),
+            email="their-second-director@example.com",
+            full_name="Their Second Director",
+            role=UserRole.DIRECTOR.value,
+            organization_id=THEIR_ORGANIZATION_ID,
+        )
+        db.add(their_second_director)
+        db.commit()
+
+        _act_as(their_second_director)
+        resp = our_director_client.put(f"/api/v1/certificates/{cert.id}/admin-approve")
+        assert resp.status_code == 200, resp.text
+
+        db.refresh(cert)
+        assert cert.status == CertificateStatus.APPROVED
+        assert cert.certificate_number is not None
+
+    def test_a_certificate_with_no_course_and_no_organization_stays_with_platform_staff(
+        self, our_director_client: TestClient, db: Session, their_director: User
+    ):
+        """A hard-deleted course leaves ``course_id`` NULL: nobody is left
+        to vouch for the row, so no director passes the gate."""
+        cert = self._their_certificate(db, their_director)
+        db.query(Certificate).filter(Certificate.id == cert.id).update(
+            {Certificate.organization_id: None, Certificate.course_id: None}
+        )
+        db.commit()
+
+        resp = our_director_client.put(f"/api/v1/certificates/{cert.id}/admin-approve")
+        assert resp.status_code == 404, resp.text
+        _act_as(their_director)
+        resp = our_director_client.put(f"/api/v1/certificates/{cert.id}/admin-approve")
+        assert resp.status_code == 404, resp.text
+
+        db.refresh(cert)
+        assert cert.status == CertificateStatus.TEACHER_APPROVED
+        assert cert.certificate_number is None
+
+    def test_a_request_is_filed_under_the_course_s_organization(
+        self, our_director_client: TestClient, db: Session, their_director: User
+    ):
+        """Requested through the API, a certificate carries its course's
+        organization from the start — and so is in that director's queue
+        once the teacher has signed, and in nobody else's."""
+        course = _their_course(db, their_director, "their-course-request")
+        student = User(
+            id=uuid.uuid4(),
+            email="their-graduate@example.com",
+            full_name="Their Graduate",
+            role=UserRole.STUDENT.value,
+            organization_id=THEIR_ORGANIZATION_ID,
+        )
+        db.add(student)
+        db.add(Enrollment(id="enr-their-course-request", user_id=student.id, course_id=course.id, progress=100))
+        db.commit()
+
+        _act_as(student)
+        resp = our_director_client.post(f"/api/v1/certificates/course/{course.id}")
+        assert resp.status_code == 201, resp.text
+        cert = db.query(Certificate).filter(Certificate.id == uuid.UUID(resp.json()["id"])).one()
+        assert cert.organization_id == THEIR_ORGANIZATION_ID
+
+        _act_as(their_director)
+        resp = our_director_client.put(f"/api/v1/certificates/{cert.id}/teacher-approve")
+        assert resp.status_code == 200, resp.text
+        resp = our_director_client.get("/api/v1/certificates/admin/pending")
+        assert resp.status_code == 200, resp.text
+        assert str(cert.id) in resp.text
+
+
+def _act_as(user: User) -> None:
+    """Swap who the signed-in client is, consent gate included."""
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_optional_user] = lambda: user
+    app.dependency_overrides[consent_subject] = lambda: user
 
 
 class TestInvitations:
