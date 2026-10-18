@@ -79,14 +79,16 @@ const REQUIRED_TOKENS: ReadonlyArray<string> = [
   "https://*.browser-intake-datadoghq.com",
   "https://browser-intake-us5-datadoghq.com",
   "https://session-replay-us5-datadoghq.com",
-  // Supabase endpoint (auth + REST + realtime websocket). Wildcarded to
-  // ``*.supabase.co`` so the static CSP does not hard-code a project
-  // ref (a local or preview Supabase project has a different one). The
-  // anon key + RLS are the real
-  // boundary; broadening from one Supabase project to "any Supabase
-  // project" is a marginal relaxation, not a script-exec surface.
-  "https://*.supabase.co",
-  "wss://*.supabase.co",
+  // Supabase endpoint (auth + REST + realtime websocket + public
+  // storage images): the one project there is. It used to be
+  // ``*.supabase.co`` "so a local or preview project could differ" --
+  // but local runs and the e2e suite are served by ``vite preview``,
+  // where this header never applies, and Preview deploys are built
+  // against the production project (docs/DEPLOYMENT.md, "Known gaps").
+  // The wildcard only let an injected request reach somebody else's
+  // project. The ref is already hard-coded in the ``/img`` rewrites below.
+  "https://rrisqutxlkamwfhcashl.supabase.co",
+  "wss://rrisqutxlkamwfhcashl.supabase.co",
   // Backend API (production).
   "https://api.equipbible.com",
   // YouTube embeds -- the only iframe origin we whitelist on the SPA.
@@ -127,6 +129,16 @@ describe("CSP header in vercel.json", () => {
     // conscious decision rather than a silent regression.
     const csp = findCsp()
     expect(csp).not.toMatch(/['"]?unsafe-eval['"]?/)
+  })
+
+  it("names the Supabase project instead of every Supabase project", () => {
+    const csp = findCsp()
+    expect(csp).not.toContain("*.supabase.co")
+    for (const directive of ["img-src", "connect-src"]) {
+      const match = csp.match(new RegExp(`${directive}[^;]*`))
+      expect(match).not.toBeNull()
+      expect(match![0]).toContain("https://rrisqutxlkamwfhcashl.supabase.co")
+    }
   })
 
   it("does not whitelist a wildcard host for scripts", () => {
