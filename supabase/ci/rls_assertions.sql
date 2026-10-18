@@ -497,17 +497,57 @@ UPDATE public.profiles SET deactivated_at = NULL
 WHERE id = '33333333-3333-3333-3333-333333333333';
 SET ROLE authenticated;
 
+-- The iCal rotation floor (20261018023100): lowered from the browser, every
+-- feed link the person had switched off would answer again.
+DO $$
+BEGIN
+  UPDATE public.profiles SET calendar_ical_min_iat = 0
+  WHERE id = '33333333-3333-3333-3333-333333333333';
+  RAISE EXCEPTION 'SECURITY HOLE: authenticated moved its own iCal rotation floor';
+EXCEPTION
+  WHEN check_violation THEN RAISE NOTICE 'OK: profiles.calendar_ical_min_iat is not client-writable (trigger)';
+END $$;
+
+-- A photo is the person's own upload (20261018023100): not another member's
+-- folder, not another bucket, not a third-party address.
+DO $$
+DECLARE bad text;
+BEGIN
+  FOREACH bad IN ARRAY ARRAY[
+    'https://x.supabase.co/storage/v1/object/public/avatars/11111111-1111-1111-1111-111111111111/avatar.png',
+    'https://x.supabase.co/storage/v1/object/public/course-assets/33333333-3333-3333-3333-333333333333/a.png',
+    'https://tracker.example/storage/v1/object/public/avatars/33333333-3333-3333-3333-333333333333/a/b.png',
+    'https://tracker.example/pixel.gif'
+  ] LOOP
+    BEGIN
+      UPDATE public.profiles SET avatar_url = bad
+      WHERE id = '33333333-3333-3333-3333-333333333333';
+      RAISE EXCEPTION 'SECURITY HOLE: authenticated set avatar_url to %', bad;
+    EXCEPTION
+      WHEN check_violation THEN NULL;
+    END;
+  END LOOP;
+  RAISE NOTICE 'OK: profiles.avatar_url accepts only the account''s own avatars folder (trigger)';
+END $$;
+
 -- Positive control for this section: the safe fields still move, so the
--- three assertions above are proving a guard rather than a broken write
--- path.
+-- assertions above are proving a guard rather than a broken write
+-- path. Its own upload, and clearing it, are among them.
 DO $$
 DECLARE n int;
 BEGIN
-  UPDATE public.profiles SET full_name = 'Director A', preferred_locale = 'uk'
+  UPDATE public.profiles SET full_name = 'Director A', preferred_locale = 'uk',
+    avatar_url = 'https://x.supabase.co/storage/v1/object/public/avatars/33333333-3333-3333-3333-333333333333/avatar-1a2b3c4d.png'
   WHERE id = '33333333-3333-3333-3333-333333333333';
   GET DIAGNOSTICS n = ROW_COUNT;
   IF n <> 1 THEN
     RAISE EXCEPTION 'HARNESS BROKEN: own-row safe-field update affected % row(s), expected 1', n;
+  END IF;
+  UPDATE public.profiles SET avatar_url = NULL
+  WHERE id = '33333333-3333-3333-3333-333333333333';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'HARNESS BROKEN: clearing the own avatar affected % row(s), expected 1', n;
   END IF;
   RAISE NOTICE 'OK: full_name and preferred_locale remain client-writable (positive control)';
 END $$;
