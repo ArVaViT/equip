@@ -11,8 +11,9 @@
  *   - the link our send-email hook now builds (`/auth/confirm#token_hash=…`),
  *     opened in a browser that never asked for it;
  *   - the same for password recovery, which lands on the new-password form;
- *   - a link mailed before the switch (GoTrue's `/auth/v1/verify`), which
- *     still comes back with a fragment session until it expires;
+ *   - GoTrue's own `/auth/v1/verify` link, which comes back with a session
+ *     in the fragment: wiped and refused, since taking a session from the
+ *     URL lets whoever wrote the URL choose the account (login CSRF);
  *   - a link used twice;
  *   - "Email me a link instead" end to end through Mailpit: the real PKCE
  *     email, followed in the browser that asked (`?code=` exchange) and its
@@ -105,14 +106,11 @@ test.describe("sign-in links", () => {
     expect(await hasStoredSession(page)).toBe(true);
   });
 
-  test("a link mailed before PKCE still signs in, and its session leaves the URL", async ({
-    page,
-    request,
-    baseURL,
-  }) => {
+  test("a session handed over in the URL is wiped and refused", async ({ page, request, baseURL }) => {
     const email = await createUser(request);
-    // The shape every email had until this change: GoTrue's verify endpoint,
-    // which answers 303 to `redirect_to#access_token=…&refresh_token=…`.
+    // The shape every email had until PKCE: GoTrue's verify endpoint, which
+    // answers 303 to `redirect_to#access_token=…&refresh_token=…`. Whoever
+    // writes such a URL chooses the account it signs into.
     const { actionLink } = await generateLink(request, "magiclink", email, `${baseURL}/auth/confirm`);
     expect(actionLink).toContain("/auth/v1/verify");
 
@@ -121,8 +119,12 @@ test.describe("sign-in links", () => {
       if (frame === page.mainFrame()) seen.push(frame.url());
     });
     await page.goto(actionLink);
-    await expectSignedInAndClean(page);
-    // Proves the test walked the legacy path rather than something else.
+    await expect(page.getByRole("alert")).toHaveText("This link has expired. Request a new one.", {
+      timeout: 15_000,
+    });
+    expect(page.url()).not.toMatch(SECRET_IN_URL);
+    expect(await hasStoredSession(page)).toBe(false);
+    // Proves the test walked the fragment-session path rather than something else.
     expect(seen.some((u) => u.includes("access_token="))).toBe(true);
   });
 

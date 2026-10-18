@@ -22,10 +22,14 @@ import { supabase } from "@/lib/supabase"
  *   `?code=`, that works in whichever browser opens the mail — a signup
  *   confirmed on a phone. It sits in the fragment so it never reaches a
  *   server log either.
- * - **Links already in inboxes** from before the switch still go through
- *   `/auth/v1/verify` and come back with the old fragment session. They live
- *   24 hours (`mailer_otp_exp`); they are taken here with `setSession` so they
- *   keep working until they expire, and wiped from the URL like the rest.
+ * - **A session in the fragment** (`#access_token=…&refresh_token=…`) is
+ *   wiped from the URL and refused. It used to be taken with `setSession`, so
+ *   links mailed before the switch kept working through their 24 hours
+ *   (`mailer_otp_exp`). Those expired in September 2026, nothing we send
+ *   produces one any more, and accepting it signed the browser into whatever
+ *   account the URL named: a link to `equipbible.com/#access_token=<mine>`
+ *   put its victim in the sender's account, where anything they typed was
+ *   the sender's to read (login CSRF).
  *
  * `captureAuthLanding` runs in `main.tsx` before Datadog starts, so the first
  * view RUM records is already clean; the client is created with
@@ -70,7 +74,7 @@ export type AuthArrival =
   | { kind: "error"; error: string | null; errorCode: string | null }
   | { kind: "token_hash"; tokenHash: string; type: EmailOtpType }
   | { kind: "code"; code: string; flowId: string | null }
-  | { kind: "legacy_session"; accessToken: string; refreshToken: string; type: string | null }
+  | { kind: "session_in_url" }
   | { kind: "malformed" }
 
 export type AuthLandingResult =
@@ -109,7 +113,7 @@ export function parseAuthArrival(params: URLSearchParams): AuthArrival | null {
   const refreshToken = params.get("refresh_token")
   if (accessToken || refreshToken) {
     if (!accessToken || !refreshToken) return { kind: "malformed" }
-    return { kind: "legacy_session", accessToken, refreshToken, type: params.get("type") }
+    return { kind: "session_in_url" }
   }
   return null
 }
@@ -132,9 +136,9 @@ function stripAuthParams(url: URL): string {
  * Take whatever sign-in the current URL carries, and remove it from the URL.
  *
  * Called once, before anything records the page. On the landing routes every
- * auth parameter is taken. Anywhere else only a fragment session is — GoTrue
- * falls back to the bare site URL when a `redirect_to` is not allowed — and
- * the address becomes `/auth/callback` so the router finishes the job; a
+ * auth parameter is taken. Anywhere else only a fragment session is — it is a
+ * credential in the address bar wherever it lands, so it is wiped, and the
+ * address becomes `/auth/callback`, which says the link did not work; a
  * `?code=` on an ordinary page could be anything, so it is left alone.
  */
 export function captureAuthLanding(win: Pick<Window, "location" | "history"> = window): AuthArrival | null {
@@ -143,7 +147,7 @@ export function captureAuthLanding(win: Pick<Window, "location" | "history"> = w
   const onLanding = (AUTH_LANDING_PATHS as readonly string[]).includes(url.pathname)
   const arrival = parseAuthArrival(params)
   if (!arrival) return null
-  if (!onLanding && arrival.kind !== "legacy_session") return null
+  if (!onLanding && arrival.kind !== "session_in_url") return null
 
   captured = arrival
   pending = null
@@ -176,6 +180,9 @@ async function complete(arrival: AuthArrival | null): Promise<AuthLandingResult>
         }
       case "malformed":
         return { status: "failed", reason: "other" }
+      case "session_in_url":
+        // Never `setSession`: see the note at the top of this file.
+        return { status: "failed", reason: "expired" }
       case "token_hash": {
         const { error } = await supabase.auth.verifyOtp({ token_hash: arrival.tokenHash, type: arrival.type })
         if (error) return { status: "failed", reason: isExpired(error) ? "expired" : "other" }
@@ -191,14 +198,6 @@ async function complete(arrival: AuthArrival | null): Promise<AuthLandingResult>
         // for a PKCE password reset) but missing from the declared type.
         const redirectType = (data as { redirectType?: string | null }).redirectType
         return { status: "signed-in", recovery: redirectType === "recovery" }
-      }
-      case "legacy_session": {
-        const { error } = await supabase.auth.setSession({
-          access_token: arrival.accessToken,
-          refresh_token: arrival.refreshToken,
-        })
-        if (error) return { status: "failed", reason: isExpired(error) ? "expired" : "other" }
-        return { status: "signed-in", recovery: arrival.type === "recovery" }
       }
     }
   } catch {
