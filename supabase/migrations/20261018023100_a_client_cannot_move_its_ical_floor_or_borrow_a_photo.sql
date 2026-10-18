@@ -14,13 +14,14 @@
 --
 -- `avatar_url` is shown to strangers (the course's «Автор» tab, the school
 -- page). A client could store any string there: another member's photo, or a
--- third-party address. A new value written from the browser must now be a
--- public object in the `avatars` bucket under the person's own folder -- the
--- exact shape `storageService.uploadAvatar` produces
--- (`<project>/storage/v1/object/public/avatars/<user id>/<file>`) -- or NULL.
--- The host is not pinned: the database does not know its own public address
--- (a restore, the local e2e stack), and the CSP's `img-src` already refuses
--- foreign hosts in the browser. Only a change is checked, so a value written
+-- third-party address. A new value written from the browser must now be an
+-- object in the `avatars` bucket under the person's own folder, or NULL: the
+-- same-origin proxy path `storageService.uploadAvatar` returns
+-- (`/img/avatars/<user id>/<file>`), or the full Storage URL
+-- (`<host>/storage/v1/object/public/avatars/<user id>/<file>`) an older client
+-- wrote. In the latter the host is not pinned: the database does not know its
+-- own public address (a restore, the local e2e stack), and the CSP's `img-src`
+-- already refuses foreign hosts in the browser. Only a change is checked, so a value written
 -- by the server (a Google sign-up picture) does not lock the row; production
 -- had no avatars at all on 2026-10-17.
 --
@@ -86,11 +87,16 @@ BEGIN
     RAISE EXCEPTION 'profiles.calendar_ical_min_iat is recorded by the server'
       USING ERRCODE = 'check_violation';
   END IF;
-  -- A photo is the person's own upload, or none.
+  -- A photo is the person's own upload, or none. The frontend stores the
+  -- same-origin proxy path (`/img/avatars/<id>/<file>`, storage.ts
+  -- getPublicUrl); the full Storage URL is the older shape. One file name,
+  -- no further slash, no leading dot, no percent-escape or backslash: no
+  -- way out of the folder.
   IF NEW.avatar_url IS DISTINCT FROM OLD.avatar_url
      AND NEW.avatar_url IS NOT NULL
+     AND NEW.avatar_url !~ ('^/img/avatars/' || NEW.id::text || '/[^/?#%\\.][^/?#%\\]*$')
      AND NEW.avatar_url !~ ('^https?://[^/?#]+/storage/v1/object/public/avatars/'
-                            || NEW.id::text || '/[^/?#]+$') THEN
+                            || NEW.id::text || '/[^/?#%\\.][^/?#%\\]*$') THEN
     RAISE EXCEPTION 'profiles.avatar_url must be an upload in the avatars bucket under the account''s own folder'
       USING ERRCODE = 'check_violation';
   END IF;

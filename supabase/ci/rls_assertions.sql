@@ -517,7 +517,14 @@ BEGIN
     'https://x.supabase.co/storage/v1/object/public/avatars/11111111-1111-1111-1111-111111111111/avatar.png',
     'https://x.supabase.co/storage/v1/object/public/course-assets/33333333-3333-3333-3333-333333333333/a.png',
     'https://tracker.example/storage/v1/object/public/avatars/33333333-3333-3333-3333-333333333333/a/b.png',
-    'https://tracker.example/pixel.gif'
+    'https://tracker.example/pixel.gif',
+    '/img/avatars/11111111-1111-1111-1111-111111111111/avatar-abcd1234.jpg',
+    '/img/avatars/33333333-3333-3333-3333-333333333333/../x',
+    '/img/avatars/33333333-3333-3333-3333-333333333333/..',
+    '/img/avatars/33333333-3333-3333-3333-333333333333/%2e%2e%2fx',
+    '/img/avatars/33333333-3333-3333-3333-333333333333/avatar-abcd1234.jpg?x=1',
+    '/img/course-assets/33333333-3333-3333-3333-333333333333/avatar-abcd1234.jpg',
+    'https://tracker.example/img/avatars/33333333-3333-3333-3333-333333333333/avatar-abcd1234.jpg'
   ] LOOP
     BEGIN
       UPDATE public.profiles SET avatar_url = bad
@@ -542,6 +549,13 @@ BEGIN
   GET DIAGNOSTICS n = ROW_COUNT;
   IF n <> 1 THEN
     RAISE EXCEPTION 'HARNESS BROKEN: own-row safe-field update affected % row(s), expected 1', n;
+  END IF;
+  -- What `storageService.uploadAvatar` actually returns: the proxy path.
+  UPDATE public.profiles SET avatar_url = '/img/avatars/33333333-3333-3333-3333-333333333333/avatar-abcd1234.jpg'
+  WHERE id = '33333333-3333-3333-3333-333333333333';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'HARNESS BROKEN: the own proxied avatar affected % row(s), expected 1', n;
   END IF;
   UPDATE public.profiles SET avatar_url = NULL
   WHERE id = '33333333-3333-3333-3333-333333333333';

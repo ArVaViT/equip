@@ -487,11 +487,16 @@ BEGIN
     RAISE EXCEPTION 'profiles.calendar_ical_min_iat is recorded by the server'
       USING ERRCODE = 'check_violation';
   END IF;
-  -- A photo is the person's own upload, or none.
+  -- A photo is the person's own upload, or none. The frontend stores the
+  -- same-origin proxy path (`/img/avatars/<id>/<file>`, storage.ts
+  -- getPublicUrl); the full Storage URL is the older shape. One file name,
+  -- no further slash, no leading dot, no percent-escape or backslash: no
+  -- way out of the folder.
   IF NEW.avatar_url IS DISTINCT FROM OLD.avatar_url
      AND NEW.avatar_url IS NOT NULL
+     AND NEW.avatar_url !~ ('^/img/avatars/' || NEW.id::text || '/[^/?#%\\.][^/?#%\\]*$')
      AND NEW.avatar_url !~ ('^https?://[^/?#]+/storage/v1/object/public/avatars/'
-                            || NEW.id::text || '/[^/?#]+$') THEN
+                            || NEW.id::text || '/[^/?#%\\.][^/?#%\\]*$') THEN
     RAISE EXCEPTION 'profiles.avatar_url must be an upload in the avatars bucket under the account''s own folder'
       USING ERRCODE = 'check_violation';
   END IF;
