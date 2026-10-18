@@ -245,6 +245,53 @@ class TestCertificates:
         assert cert.status == CertificateStatus.TEACHER_APPROVED
         assert cert.certificate_number is None
 
+    def test_their_director_still_issues_their_certificate_from_before_the_column_was_written(
+        self, our_director_client: TestClient, db: Session, their_director: User
+    ):
+        """Fail-closed must not lock out the school the row belongs to:
+        with the column empty, the course's organization decides, and its
+        own director (not the one who signed as teacher) issues it."""
+        cert = self._their_certificate(db, their_director)
+        db.query(Certificate).filter(Certificate.id == cert.id).update({Certificate.organization_id: None})
+        their_second_director = User(
+            id=uuid.uuid4(),
+            email="their-second-director@example.com",
+            full_name="Their Second Director",
+            role=UserRole.DIRECTOR.value,
+            organization_id=THEIR_ORGANIZATION_ID,
+        )
+        db.add(their_second_director)
+        db.commit()
+
+        _act_as(their_second_director)
+        resp = our_director_client.put(f"/api/v1/certificates/{cert.id}/admin-approve")
+        assert resp.status_code == 200, resp.text
+
+        db.refresh(cert)
+        assert cert.status == CertificateStatus.APPROVED
+        assert cert.certificate_number is not None
+
+    def test_a_certificate_with_no_course_and_no_organization_stays_with_platform_staff(
+        self, our_director_client: TestClient, db: Session, their_director: User
+    ):
+        """A hard-deleted course leaves ``course_id`` NULL: nobody is left
+        to vouch for the row, so no director passes the gate."""
+        cert = self._their_certificate(db, their_director)
+        db.query(Certificate).filter(Certificate.id == cert.id).update(
+            {Certificate.organization_id: None, Certificate.course_id: None}
+        )
+        db.commit()
+
+        resp = our_director_client.put(f"/api/v1/certificates/{cert.id}/admin-approve")
+        assert resp.status_code == 404, resp.text
+        _act_as(their_director)
+        resp = our_director_client.put(f"/api/v1/certificates/{cert.id}/admin-approve")
+        assert resp.status_code == 404, resp.text
+
+        db.refresh(cert)
+        assert cert.status == CertificateStatus.TEACHER_APPROVED
+        assert cert.certificate_number is None
+
     def test_a_request_is_filed_under_the_course_s_organization(
         self, our_director_client: TestClient, db: Session, their_director: User
     ):
