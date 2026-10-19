@@ -4021,7 +4021,7 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 -- Name: audit_logs audit_logs_select_admin; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY audit_logs_select_admin ON public.audit_logs FOR SELECT TO authenticated USING (public.is_platform_staff());
+CREATE POLICY audit_logs_select_admin ON public.audit_logs FOR SELECT TO authenticated USING (( SELECT public.is_platform_staff() AS is_platform_staff));
 
 
 --
@@ -4113,7 +4113,7 @@ ALTER TABLE public.course_events ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY course_events_select ON public.course_events FOR SELECT TO authenticated USING (((created_by = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
    FROM public.enrollments e
-  WHERE (((e.course_id)::text = (course_events.course_id)::text) AND (e.user_id = ( SELECT auth.uid() AS uid))))) OR public.is_platform_staff()));
+  WHERE (((e.course_id)::text = (course_events.course_id)::text) AND (e.user_id = ( SELECT auth.uid() AS uid))))) OR ( SELECT public.is_platform_staff() AS is_platform_staff)));
 
 
 --

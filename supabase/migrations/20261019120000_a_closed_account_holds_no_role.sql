@@ -121,8 +121,12 @@ COMMENT ON FUNCTION public.is_member_of(org uuid) IS
 COMMENT ON FUNCTION public.is_staff_of(org uuid) IS
   'Active teacher or director of this organization, with an open account. false for NULL.';
 
+-- `(SELECT ...)`: the helper takes no argument from the row, and wrapped in
+-- a scalar subquery the planner evaluates it once per statement (InitPlan)
+-- instead of once per row -- which is what the inline EXISTS it replaces
+-- already did, and what audit_logs, the largest table here, needs.
 ALTER POLICY audit_logs_select_admin ON public.audit_logs
-  USING (public.is_platform_staff());
+  USING ((SELECT public.is_platform_staff()));
 
 ALTER POLICY course_events_select ON public.course_events
   USING (
@@ -132,5 +136,5 @@ ALTER POLICY course_events_select ON public.course_events
       WHERE e.course_id::text = course_events.course_id::text
         AND e.user_id = (SELECT auth.uid())
     )
-    OR public.is_platform_staff()
+    OR (SELECT public.is_platform_staff())
   );
