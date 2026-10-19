@@ -68,7 +68,9 @@ const BUDGETS_GZIP_KB = {
   ChapterList: 35, // student lesson list route.
   schemas: 20, // zod schemas shared across forms.
   config: 19, // i18next config + bundled namespaces.
-  ChapterView: 14, // student chapter render (DOMPurify + i18n).
+  // 2026-10-19: 14.0 → 14.5 kB with the lesson-note draft and the lost-response
+  // check after a submission (fix/error-paths).
+  ChapterView: 16, // student chapter render (DOMPurify + i18n).
 };
 
 async function gzipSizeKb(path) {
