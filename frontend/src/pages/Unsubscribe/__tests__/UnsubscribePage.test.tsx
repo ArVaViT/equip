@@ -53,7 +53,10 @@ describe("UnsubscribePage", () => {
   })
 
   it("explains a broken link instead of failing silently", async () => {
-    vi.spyOn(emailService, "readUnsubscribe").mockRejectedValue(new Error("400"))
+    // The server's own refusal — a plain network failure is no longer a broken link.
+    vi.spyOn(emailService, "readUnsubscribe").mockRejectedValue(
+      Object.assign(new Error("400"), { isAxiosError: true, response: { status: 400, data: {} } }),
+    )
     renderAt("/unsubscribe?token=bad")
     expect(await screen.findByText(i18n.t("unsubscribe.invalid"))).toBeInTheDocument()
   })
@@ -63,5 +66,26 @@ describe("UnsubscribePage", () => {
     renderAt("/unsubscribe")
     expect(await screen.findByText(i18n.t("unsubscribe.invalid"))).toBeInTheDocument()
     expect(read).not.toHaveBeenCalled()
+  })
+
+  it("does not call a link broken when the server could not be reached, and asks again", async () => {
+    const read = vi
+      .spyOn(emailService, "readUnsubscribe")
+      .mockRejectedValueOnce(Object.assign(new Error("Network Error"), { isAxiosError: true }))
+      .mockResolvedValue({ kind: "work_returned", off: false })
+    renderAt("/unsubscribe?token=t1")
+    expect(await screen.findByText(i18n.t("unsubscribe.unavailable"))).toBeInTheDocument()
+    expect(screen.queryByText(i18n.t("unsubscribe.invalid"))).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("common.tryAgain") }))
+    expect(await screen.findByRole("button", { name: i18n.t("unsubscribe.button") })).toBeInTheDocument()
+    expect(read).toHaveBeenCalledTimes(2)
+  })
+
+  it("still calls a link the server refused broken", async () => {
+    vi.spyOn(emailService, "readUnsubscribe").mockRejectedValue(
+      Object.assign(new Error("Bad Request"), { isAxiosError: true, response: { status: 400, data: {} } }),
+    )
+    renderAt("/unsubscribe?token=bad")
+    expect(await screen.findByText(i18n.t("unsubscribe.invalid"))).toBeInTheDocument()
   })
 })

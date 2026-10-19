@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { CheckCircle2, ChevronRight, FileText, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -13,7 +13,7 @@ import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
 import { isHttpUrl } from "@/lib/url"
-import type { SubmissionRubric, WaitingSubmission } from "@/types"
+import type { RubricMark, SubmissionRubric, WaitingSubmission } from "@/types"
 
 /**
  * One prompt, everyone's answers, one at a time.
@@ -51,6 +51,15 @@ export function MarkOneByOne({
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [rubricFailed, setRubricFailed] = useState(false)
   const [rubricAttempt, setRubricAttempt] = useState(0)
+  // The marks as last chosen here, ahead of the server's answer. `setMarks`
+  // replaces the whole set, and two quick taps on two criteria used to
+  // build the second request from the first's not-yet-answered state — the
+  // second PUT then wrote only its own mark and the first was gone.
+  const marksRef = useRef<RubricMark[]>([])
+  const marksSeq = useRef(0)
+  useEffect(() => {
+    marksRef.current = rubric?.marks ?? []
+  }, [rubric])
 
   useEffect(() => {
     let cancelled = false
@@ -73,13 +82,22 @@ export function MarkOneByOne({
 
   const current = work?.[index]
 
+  // Each piece of work starts clean. Carrying the previous student's note
+  // into the next essay is the one mistake this screen must never make.
+  // Only on a new piece of work, though: this used to run on a rubric retry
+  // too, and «Try again» wiped the note the teacher had typed meanwhile.
+  useEffect(() => {
+    if (!current) return
+    setGrade(null)
+    setFeedback("")
+  }, [current])
+
   useEffect(() => {
     if (!current) return
     let cancelled = false
-    // Each piece of work starts clean. Carrying the previous student's note
-    // into the next essay is the one mistake this screen must never make.
-    setGrade(null)
-    setFeedback("")
+    // A mark still in flight belongs to the previous piece of work; its
+    // answer must not land on this one.
+    marksSeq.current++
     setRubric(null)
     setRubricFailed(false)
     rubricsService
@@ -106,20 +124,28 @@ export function MarkOneByOne({
 
   const chooseLevel = async (criterionId: string, levelId: string) => {
     if (!current || !rubric?.rubric) return
-    const next = [
-      ...rubric.marks.filter((m) => m.criterion_id !== criterionId),
+    const next: RubricMark[] = [
+      ...marksRef.current.filter((m) => m.criterion_id !== criterionId),
       { criterion_id: criterionId, level_id: levelId, points: 0, comment: null },
     ]
+    marksRef.current = next
+    // Shown at once; the points arrive with the server's answer.
+    setRubric((prev) => (prev ? { ...prev, marks: next } : prev))
+    const mine = ++marksSeq.current
     try {
-      setRubric(
-        await rubricsService.setMarks(
-          current.submission_id,
-          next.map((m) => ({ criterion_id: m.criterion_id, level_id: m.level_id })),
-          feedback.trim() || undefined,
-        ),
+      const saved = await rubricsService.setMarks(
+        current.submission_id,
+        next.map((m) => ({ criterion_id: m.criterion_id, level_id: m.level_id })),
+        feedback.trim() || undefined,
       )
+      // A later tap's request carries this mark too; its answer is the one to keep.
+      if (mine !== marksSeq.current) return
+      setRubric(saved)
     } catch (err) {
+      if (mine !== marksSeq.current) return
       toast({ title: getErrorDetail(err, t("rubric.saveFailed")), variant: "destructive" })
+      // Back to what the server holds, not to what the screen hoped.
+      setRubricAttempt((n) => n + 1)
     }
   }
 

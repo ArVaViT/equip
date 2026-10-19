@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { Notification } from "@/types"
 import { coursesService } from "@/services/courses"
+import { getErrorDetail } from "@/lib/errorDetail"
+import { toast } from "@/lib/toast"
 
 /**
  * Polling interval for the unread-count badge. Short enough that a newly
@@ -169,8 +171,10 @@ export function useNotifications(open: boolean) {
       await coursesService.markAllAsRead()
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
       setUnreadCount(0)
-    } catch {
-      // Best effort — badge will correct on the next poll tick.
+    } catch (err) {
+      // Nothing moved on screen, which is right — but a press that does
+      // nothing, silently, reads as a broken button.
+      toast({ title: getErrorDetail(err), variant: "destructive" })
     }
   }, [])
 
@@ -184,8 +188,9 @@ export function useNotifications(open: boolean) {
         }
         return prev.filter((n) => n.id !== id)
       })
-    } catch {
-      // Delete failed — notification stays visible.
+    } catch (err) {
+      // The notification stays; say why.
+      toast({ title: getErrorDetail(err), variant: "destructive" })
     }
   }, [])
 

@@ -100,6 +100,49 @@ describe("DailyChallengeCard", () => {
     expect(await screen.findByText(/no question today/i)).toBeInTheDocument()
   })
 
+  it("shows a failed read in the card, with a retry, instead of an empty body under the header", async () => {
+    const getToday = vi
+      .fn()
+      .mockRejectedValueOnce(new AxiosError("Network Error", "ERR_NETWORK"))
+      .mockResolvedValue(todayPayload())
+    stub({ getToday, getStreak: vi.fn().mockResolvedValue({ current: 0, best: 0 }) })
+    render(<DailyChallengeCard />, { wrapper: Wrapper })
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }))
+
+    expect(await screen.findByText(todayPayload().question_text)).toBeInTheDocument()
+    expect(getToday).toHaveBeenCalledTimes(2)
+  })
+
+  it("moves into its answered state when the server says the day was answered elsewhere", async () => {
+    const getToday = vi
+      .fn()
+      .mockResolvedValueOnce(todayPayload())
+      .mockResolvedValue(
+        todayPayload({
+          already_attempted: true,
+          user_attempt: { id: "a-1", selected_option_id: "o-1", is_correct: true, streak_after: 3, submitted_at: "2026-05-29T12:00:00Z" },
+        }),
+      )
+    const refused = new AxiosError("Conflict", "ERR_BAD_REQUEST")
+    Object.assign(refused, {
+      response: { status: 409, data: { detail: { code: "daily_challenge.already_attempted", message: "done" } } },
+    })
+    stub({
+      getToday,
+      submitAttempt: vi.fn().mockRejectedValue(refused),
+      getStreak: vi.fn().mockResolvedValue({ current_streak: 3, longest_streak: 3, last_engaged_date: "2026-05-29" }),
+    })
+    render(<DailyChallengeCard />, { wrapper: Wrapper })
+
+    await userEvent.click(await screen.findByRole("button", { name: /his only begotten son/i }))
+
+    // The options used to stay clickable, every tap answering the same refusal.
+    await waitFor(() => expect(getToday).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.getByRole("button", { name: /his only begotten son/i })).toBeDisabled())
+  })
+
   it("says the question is not translated yet rather than rendering blanks", async () => {
     // Before the daily challenge was wired into the translation
     // pipeline, a reader in a language the question had not reached got

@@ -6,6 +6,7 @@ import { BookOpen, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { toast } from "@/lib/toast"
+import { getErrorDetail } from "@/lib/errorDetail"
 import { coursesService } from "@/services/courses"
 import { planEnrollment } from "@/pages/Course/detail/enrollPlan"
 import type { BlockType, Cohort, Course } from "@/types"
@@ -81,8 +82,8 @@ function EnrollButton({ offer, courseHref }: { offer?: EnrollOffer; courseHref: 
       // From the wall the next page is this one: replace it, or Back
       // would have to be pressed twice.
       navigate(offer.then, { replace: offer.replace ?? offer.then === `${location.pathname}${location.search}` })
-    } catch {
-      toast({ title: t("toast.enrolledFailed"), variant: "destructive" })
+    } catch (err) {
+      toast({ title: getErrorDetail(err, t("toast.enrolledFailed")), variant: "destructive" })
     } finally {
       setEnrolling(false)
     }

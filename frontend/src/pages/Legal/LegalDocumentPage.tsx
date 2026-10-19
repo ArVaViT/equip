@@ -6,6 +6,7 @@ import { legalService, type LegalDocument } from "@/services/legal"
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import { renderLegalMarkdown } from "@/components/legal/renderLegalMarkdown"
 import PageSpinner from "@/components/ui/PageSpinner"
+import { Button } from "@/components/ui/button"
 
 /** The pages this component can render.
  *
@@ -43,6 +44,7 @@ export default function LegalDocumentPage({ slug }: { slug?: LegalSlug }) {
   const locale = isSupportedLocale(i18n.language) ? i18n.language : DEFAULT_LOCALE
   const [doc, setDoc] = useState<LegalDocument | null>(null)
   const [failed, setFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -61,7 +63,7 @@ export default function LegalDocumentPage({ slug }: { slug?: LegalSlug }) {
     return () => {
       cancelled = true
     }
-  }, [resolved, locale])
+  }, [resolved, locale, attempt])
 
   return (
     <div className="mx-auto w-full max-w-[680px] px-4 py-10 sm:px-6 sm:py-16">
@@ -74,9 +76,14 @@ export default function LegalDocumentPage({ slug }: { slug?: LegalSlug }) {
       </Link>
 
       {failed && (
-        <p className="mt-10 text-sm text-destructive" role="alert">
-          {t("legal.loadFailed")}
-        </p>
+        <div className="mt-10 space-y-3">
+          <p className="text-sm text-destructive" role="alert">
+            {t("legal.loadFailed")}
+          </p>
+          <Button size="sm" variant="outline" onClick={() => setAttempt((n) => n + 1)}>
+            {t("common.tryAgain")}
+          </Button>
+        </div>
       )}
       {!doc && !failed && <PageSpinner variant="section" />}
       {doc && (

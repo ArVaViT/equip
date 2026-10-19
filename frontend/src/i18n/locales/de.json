@@ -6,6 +6,7 @@
     "done": "Erledigt: E-Mails „{{kind}}“ kommen nicht mehr.",
     "again": "Sie können sie im Profil unter „Einstellungen“ wieder einschalten.",
     "invalid": "Dieser Link funktioniert nicht. E-Mails schalten Sie im Profil unter „Einstellungen“ ab.",
+    "unavailable": "Der Link konnte gerade nicht geöffnet werden.",
     "toProfile": "Profil öffnen"
   },
   "guest": {
@@ -189,7 +190,8 @@
       "student": "Mitglied"
     },
     "catalog": "Offener Katalog",
-    "title": "Meine Organisationen"
+    "title": "Meine Organisationen",
+    "loadFailed": "Die Kurse Ihrer Schule konnten nicht geladen werden."
   },
   "header": {
     "home": "Start",
@@ -908,6 +910,7 @@
     },
     "generic": "Etwas ist schiefgelaufen.",
     "network": "Keine Verbindung. Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.",
+    "timeout": "Der Server hat zu lange nicht geantwortet. Versuchen Sie es erneut.",
     "byCode": {
       "auth_required": "Bitte melden Sie sich erneut an.",
       "auth_forbidden": "Sie haben dafür keine Berechtigung.",
@@ -1560,6 +1563,7 @@
       "request": "Zertifikat anfordern",
       "requestSuccess": "Zertifikat angefordert",
       "requestFailed": "Zertifikat konnte nicht angefordert werden",
+      "loadFailed": "Zertifikat konnte nicht geprüft werden.",
       "pendingTitle": "Wartet auf die Bestätigung des Dozenten",
       "pendingDescription": "Ihr Antrag wurde eingereicht. Ihr Dozent prüft ihn in Kürze.",
       "adminPendingTitle": "Wartet auf die Bestätigung der Administration",

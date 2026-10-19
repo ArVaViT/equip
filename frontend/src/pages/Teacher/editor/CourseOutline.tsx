@@ -27,7 +27,7 @@ interface Props {
   onModuleChapterDragEnd: (moduleId: string, result: DropResult) => void
   onRemoveModule: (id: string) => void
   onChapterTitleChange: (chapterId: string, title: string) => void
-  onRenameChapter: (chapter: Chapter, title: string) => void
+  onRenameChapter: (chapter: Chapter, title: string, previous: string) => void
   onToggleChapterLock: (chapter: Chapter) => void
   onDeleteChapter: (chapterId: string) => void
   onMoveChapter: (chapterId: string, moduleId: string | null) => void
@@ -165,7 +165,7 @@ export function CourseOutline({
                           chapter={ch}
                           index={i}
                           onTitleChange={(title) => onChapterTitleChange(ch.id, title)}
-                          onRename={(title) => onRenameChapter(ch, title)}
+                          onRename={(title, previous) => onRenameChapter(ch, title, previous)}
                           onToggleLock={() => onToggleChapterLock(ch)}
                           onEdit={() => navigate(chapterEditHref(courseId, ch.id))}
                           onDelete={() => onDeleteChapter(ch.id)}

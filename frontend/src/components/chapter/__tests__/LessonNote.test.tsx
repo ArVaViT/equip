@@ -3,12 +3,15 @@ import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { I18nextProvider } from "react-i18next"
 import { MemoryRouter } from "react-router-dom"
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 import i18n from "@/i18n/config"
 import api from "@/services/api"
 import { notesService } from "@/services/notes"
+import { noteDraftKey } from "@/lib/storageKeys"
 import { LessonNote } from "../LessonNote"
+
+vi.mock("@/context/useAuth", () => ({ useAuth: () => ({ user: { id: "u1" } }) }))
 
 function show(chapterId = "c1") {
   return render(
@@ -23,6 +26,9 @@ function show(chapterId = "c1") {
 describe("LessonNote", () => {
   beforeAll(async () => {
     await i18n.changeLanguage("ru")
+  })
+  beforeEach(() => {
+    window.localStorage.clear()
   })
   afterEach(() => {
     vi.restoreAllMocks()
@@ -114,5 +120,55 @@ describe("LessonNote", () => {
     await new Promise((r) => setTimeout(r, 0))
     releases.shift()!()
     expect(await screen.findByRole("textbox")).toHaveValue("AB")
+  })
+
+  it("puts back a note that the save on leaving could not deliver, and sends it again", async () => {
+    const user = userEvent.setup()
+    vi.spyOn(notesService, "get").mockResolvedValue({ chapter_id: "c1", body: null, updated_at: null })
+    const save = vi
+      .spyOn(notesService, "save")
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue({ chapter_id: "c1", body: "Спросить про Пятидесятницу", updated_at: null })
+    const first = show()
+    await user.click(await screen.findByRole("button", { name: "Добавить заметку к уроку" }))
+    await user.type(screen.getByRole("textbox"), "Спросить про Пятидесятницу")
+    first.unmount() // the save goes out and is refused; nothing on screen to say so
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1))
+    expect(JSON.parse(window.localStorage.getItem(noteDraftKey("u1", "c1")) ?? "null")).toEqual({
+      text: "Спросить про Пятидесятницу",
+      base: "",
+    })
+
+    show() // the next visit
+    expect(await screen.findByRole("textbox")).toHaveValue("Спросить про Пятидесятницу")
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2), { timeout: 3000 })
+    expect(save).toHaveBeenLastCalledWith("c1", "Спросить про Пятидесятницу")
+    await waitFor(() => expect(window.localStorage.getItem(noteDraftKey("u1", "c1"))).toBeNull())
+  })
+
+  it("leaves a note edited elsewhere since the draft alone: the saved edit wins over the unsaved one", async () => {
+    // Typed here over «Деян 2:42», never delivered; then edited on another
+    // device. Sent anyway, the draft would have written over that edit.
+    window.localStorage.setItem(
+      noteDraftKey("u1", "c1"),
+      JSON.stringify({ text: "Деян 2:42 — черновик с телефона", base: "Деян 2:42" }),
+    )
+    vi.spyOn(notesService, "get").mockResolvedValue({ chapter_id: "c1", body: "Деян 2:42 — правка с ноутбука", updated_at: null })
+    const save = vi.spyOn(notesService, "save")
+    const view = show()
+    expect(await screen.findByRole("textbox")).toHaveValue("Деян 2:42 — правка с ноутбука")
+    expect(window.localStorage.getItem(noteDraftKey("u1", "c1"))).toBeNull()
+    view.unmount()
+    expect(save).not.toHaveBeenCalled()
+  })
+
+  it("does not keep a note the server already holds as a draft", async () => {
+    vi.spyOn(notesService, "get").mockResolvedValue({ chapter_id: "c1", body: "Деян 2:42", updated_at: null })
+    const save = vi.spyOn(notesService, "save")
+    const view = show()
+    expect(await screen.findByRole("textbox")).toHaveValue("Деян 2:42")
+    view.unmount()
+    expect(window.localStorage.getItem(noteDraftKey("u1", "c1"))).toBeNull()
+    expect(save).not.toHaveBeenCalled()
   })
 })

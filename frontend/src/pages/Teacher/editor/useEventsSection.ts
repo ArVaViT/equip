@@ -28,6 +28,9 @@ export interface PendingScope {
 
 interface EventsSection {
   events: CourseEvent[]
+  /** The list could not be read — not the same as an empty list. */
+  loadFailed: boolean
+  reloadList: () => void
   form: EventFormState
   setForm: (v: EventFormState) => void
   editingId: string | null
@@ -86,15 +89,24 @@ export function useEventsSection(
   }, [defaults])
   const [saving, setSaving] = useState(false)
   const [pendingScope, setPendingScope] = useState<PendingScope | null>(null)
+  // See `useAnnouncementsSection`: a failed read shown as «No events yet»
+  // invites the teacher to create the weekly series a second time.
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const reloadList = useCallback(() => setLoadAttempt((n) => n + 1), [])
 
   const reload = useCallback(async (): Promise<CourseEvent[] | null> => {
     if (!courseId) return null
     try {
       const fresh = await coursesService.getCourseEventsForEdit(courseId)
       setEvents(fresh)
+      setLoadFailed(false)
       return fresh
     } catch {
-      // The list stays as it was; the save itself already succeeded.
+      // The save itself already succeeded; the list is what is unknown. Shown
+      // as failed with a retry rather than left as it was — a stale list
+      // under «Created 8 events» invited the series a second time.
+      setLoadFailed(true)
       return null
     }
   }, [courseId])
@@ -104,6 +116,7 @@ export function useEventsSection(
     // linger while this one loads (the calendar's course picker).
     setEvents([])
     setPendingScope(null)
+    setLoadFailed(false)
     if (!courseId) return
     let cancelled = false
     coursesService
@@ -112,12 +125,12 @@ export function useEventsSection(
         if (!cancelled) setEvents(e)
       })
       .catch(() => {
-        if (!cancelled) setEvents([])
+        if (!cancelled) setLoadFailed(true)
       })
     return () => {
       cancelled = true
     }
-  }, [courseId])
+  }, [courseId, loadAttempt])
 
   const resetForm = useCallback(() => {
     setForm(blankForm())
@@ -296,6 +309,8 @@ export function useEventsSection(
 
   return {
     events,
+    loadFailed,
+    reloadList,
     form,
     setForm,
     editingId,

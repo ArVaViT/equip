@@ -1,10 +1,12 @@
 import { useCallback, useContext, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
+import { ErrorState } from "@/components/patterns"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { StaggerChildren } from "@/components/motion"
 import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
+import { answerWasLost, newestUnseen } from "@/lib/lostResponse"
 import { toast } from "@/lib/toast"
 import { countWords } from "@/lib/text"
 import { AuthContext } from "@/context/auth-context"
@@ -51,7 +53,7 @@ export default function QuizTaker(props: QuizTakerProps) {
 
 function OneQuiz({ chapterId, quizId, onSubmitted, pageTitle }: QuizTakerProps) {
   const { t } = useTranslation()
-  const { loading, fetchError, notTranslated, quiz, attempts, setAttempts } = useQuizTaker({
+  const { loading, fetchError, notTranslated, quiz, attempts, setAttempts, reload } = useQuizTaker({
     chapterId,
     quizId,
   })
@@ -88,9 +90,15 @@ function OneQuiz({ chapterId, quizId, onSubmitted, pageTitle }: QuizTakerProps) 
   }
   if (fetchError) {
     return (
-      <p className="text-sm text-destructive py-4 text-center">
-        {t("quiz.failedLoad")}
-      </p>
+      <ErrorState
+        className="py-6"
+        title={t("quiz.failedLoad")}
+        action={
+          <Button size="sm" variant="outline" onClick={reload}>
+            {t("common.tryAgain")}
+          </Button>
+        }
+      />
     )
   }
   if (!quiz || (quiz.questions ?? []).length === 0) return null
@@ -145,13 +153,7 @@ function OneQuiz({ chapterId, quizId, onSubmitted, pageTitle }: QuizTakerProps) 
   const handleSubmit = async () => {
     if (!allAnswered) return
     setSubmitting(true)
-    try {
-      const payload = sortedQuestions.map((q) => ({
-        question_id: q.id,
-        selected_option_id: answers[q.id]?.selected_option_id,
-        text_answer: answers[q.id]?.text_answer,
-      }))
-      const attempt = await coursesService.submitQuiz(quiz.id, payload)
+    const landed = (attempt: QuizAttempt) => {
       // The attempt is in; nothing typed for it is unsent any more.
       draftClears.current.forEach((clear) => clear())
       setResult(attempt)
@@ -162,7 +164,29 @@ function OneQuiz({ chapterId, quizId, onSubmitted, pageTitle }: QuizTakerProps) 
       // refuse (2026-10-03).
       setAttempts((prev) => (prev === null ? null : [attempt, ...prev]))
       onSubmitted?.()
+    }
+    try {
+      const payload = sortedQuestions.map((q) => ({
+        question_id: q.id,
+        selected_option_id: answers[q.id]?.selected_option_id,
+        text_answer: answers[q.id]?.text_answer,
+      }))
+      landed(await coursesService.submitQuiz(quiz.id, payload))
     } catch (error: unknown) {
+      // No answer at all: the attempt may be on the server already, and a
+      // second press would spend another one. Ask before saying it failed.
+      // Only when the history is known — against «could not load» there is
+      // nothing to tell a new attempt from an old one.
+      if (answerWasLost(error) && attempts !== null) {
+        const known = new Set(attempts.map((a) => a.id))
+        const rows = await coursesService.getMyQuizAttempts(quiz.id).catch(() => null)
+        const mine = rows && newestUnseen(rows, known, (a) => a.completed_at ?? a.started_at)
+        if (mine) {
+          landed(mine)
+          setSubmitting(false)
+          return
+        }
+      }
       const detail = getErrorDetail(error)
       toast({
         title:

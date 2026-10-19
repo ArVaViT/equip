@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Megaphone, Save } from "lucide-react"
-import { EmptyState, Modal } from "@/components/patterns"
+import { EmptyState, ErrorState, Modal } from "@/components/patterns"
 import type { Announcement } from "@/types"
 import { AnnouncementPager } from "@/components/announcements/AnnouncementPager"
 
@@ -25,6 +25,9 @@ interface Props {
   onEdit: (a: Announcement) => void
   onCancelEdit: () => void
   onDelete: (id: string) => void
+  /** The list could not be read; shown instead of «no announcements yet». */
+  loadFailed?: boolean
+  onReload?: () => void
 }
 
 export function AnnouncementsModal({
@@ -41,6 +44,8 @@ export function AnnouncementsModal({
   onEdit,
   onCancelEdit,
   onDelete,
+  loadFailed = false,
+  onReload,
 }: Props) {
   const { t } = useTranslation()
   return (
@@ -96,7 +101,18 @@ export function AnnouncementsModal({
             )}
           </div>
         </div>
-        {announcements.length === 0 ? (
+        {loadFailed ? (
+          <ErrorState
+            className="py-6"
+            action={
+              onReload && (
+                <Button size="sm" variant="outline" onClick={onReload}>
+                  {t("common.tryAgain")}
+                </Button>
+              )
+            }
+          />
+        ) : announcements.length === 0 ? (
           <EmptyState
             variant="compact"
             icon={<Megaphone strokeWidth={1.75} aria-hidden />}

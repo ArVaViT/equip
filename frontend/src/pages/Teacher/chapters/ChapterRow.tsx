@@ -39,7 +39,9 @@ interface ChapterRowProps {
   chapter: Chapter;
   index: number;
   onTitleChange: (title: string) => void;
-  onRename: (title: string) => void;
+  /** `previous` is the title as it was when editing began — what a refused
+   *  rename goes back to. The row's `chapter.title` is the typed text. */
+  onRename: (title: string, previous: string) => void;
   onToggleLock: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -137,7 +139,7 @@ export function ChapterRow({
                     if (e.target.value.trim() === focusValueRef.current.trim()) {
                       return;
                     }
-                    onRename(e.target.value);
+                    onRename(e.target.value, focusValueRef.current);
                   }}
                   className="h-9 min-w-0 flex-1 font-medium sm:h-8 sm:text-sm"
                 />

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { ErrorState } from "@/components/patterns"
 import { Loader2 } from "lucide-react"
 import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
@@ -26,6 +28,12 @@ export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
   const { t } = useTranslation()
   const [blocks, setBlocks] = useState<ChapterBlock[]>([])
   const [loading, setLoading] = useState(true)
+  // Why the list could not be read. A failed load used to leave the
+  // «No blocks yet» invitation on screen over a lesson that had plenty, and
+  // the teacher started adding blocks at position 0 of a lesson they could
+  // not see.
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   // Every block open, as a document is. The editor used to be an
   // accordion — every block folded to «Текст #1», one open at a time — so
   // a lesson could not be read through while it was written.
@@ -86,9 +94,11 @@ export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
         const data = await coursesService.getChapterBlocksForEdit(chapterId)
         if (signal?.cancelled) return
         setBlocks(data.sort((a, b) => a.order_index - b.order_index))
+        setLoadError(null)
       } catch (error: unknown) {
         if (signal?.cancelled) return
         const detail = getErrorDetail(error)
+        setLoadError(tRef.current("blockEditor.loadFailed", { detail }))
         if (detail) {
           toast({
             title: tRef.current("blockEditor.loadFailed", { detail }),
@@ -108,7 +118,7 @@ export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
     return () => {
       signal.cancelled = true
     }
-  }, [load])
+  }, [load, loadAttempt])
 
   const addBlock = async (type: BlockType) => {
     setAdding(true)
@@ -200,6 +210,31 @@ export default function ChapterBlockEditor({ courseId, chapterId }: Props) {
       <div className="flex items-center justify-center py-6">
         <Loader2 className="h-5 w-5 animate-spin text-ink-muted" strokeWidth={1.75} />
       </div>
+    )
+  }
+
+  // Nothing is known about this lesson's content: no empty state that reads
+  // as «nothing here», and no way to add a block over what cannot be seen.
+  // With blocks already on screen (a reload after a reorder failed) the
+  // toast above is enough — the list stays as it was.
+  if (loadError && blocks.length === 0) {
+    return (
+      <ErrorState
+        className="py-8"
+        title={loadError}
+        action={
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setLoading(true)
+              setLoadAttempt((n) => n + 1)
+            }}
+          >
+            {t("common.tryAgain")}
+          </Button>
+        }
+      />
     )
   }
 

@@ -31,9 +31,10 @@ let updateImpl: (id: string, data: { content?: string | null }) => Promise<Chapt
   id,
   data,
 ) => ({ ...textBlock, id, content: data.content ?? null })
+let listImpl: () => Promise<ChapterBlock[]> = async () => [textBlock]
 vi.mock("@/services/courses", () => ({
   coursesService: {
-    getChapterBlocksForEdit: async () => [textBlock],
+    getChapterBlocksForEdit: () => listImpl(),
     updateBlock: (id: string, data: { content?: string | null }) => updateImpl(id, data),
   },
 }))
@@ -74,6 +75,7 @@ describe("ChapterBlockEditor — leaving the page with an unsaved block", () => 
     vi.useFakeTimers()
     window.localStorage.clear()
     updateImpl = async (id, data) => ({ ...textBlock, id, content: data.content ?? null })
+    listImpl = async () => [textBlock]
   })
   afterEach(() => {
     vi.useRealTimers()
@@ -121,5 +123,33 @@ describe("ChapterBlockEditor — leaving the page with an unsaved block", () => 
     await elapse(0)
 
     expect(fireBeforeUnload()).toBe(true)
+  })
+})
+
+describe("ChapterBlockEditor — the blocks could not be read", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    listImpl = async () => {
+      throw Object.assign(new Error("Server Error"), { isAxiosError: true, response: { status: 500, data: {} } })
+    }
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    listImpl = async () => [textBlock]
+  })
+
+  it("does not present the lesson as empty, and offers to try again", async () => {
+    render(<ChapterBlockEditor courseId="c-1" chapterId="ch-1" />, { wrapper: Wrapper })
+    await elapse(0)
+    // A lesson that failed to load is not «No blocks yet»: adding a block at
+    // position 0 of a lesson with content was the next thing that happened.
+    expect(screen.queryByText(i18n.t("blockEditor.empty"))).toBeNull()
+    expect(screen.queryByRole("button", { name: i18n.t("blockEditor.addBlock") })).toBeNull()
+    expect(screen.getByRole("alert")).toBeInTheDocument()
+
+    listImpl = async () => [textBlock]
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("common.tryAgain") }))
+    await elapse(0)
+    expect(screen.getByLabelText("content")).toHaveValue("<p>Деяния 1</p>")
   })
 })

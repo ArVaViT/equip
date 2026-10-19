@@ -19,6 +19,8 @@ interface CourseData extends CourseChapters {
   loading: boolean
   /** Why `course` is null after loading, in the reader's language. */
   loadError: string | null
+  /** Ask for the course again after a failed load. */
+  retryLoad: () => void
   sortedModules: NonNullable<Course["modules"]>
   /** The course read once: the outline to draw and the flat reading order. */
   structure: CourseStructure
@@ -68,6 +70,8 @@ export function useCourseData(
   const [course, setCourse] = useState<Course | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const retryLoad = useCallback(() => setLoadAttempt((n) => n + 1), [])
   const [enrollStart, setEnrollStart] = useState("")
   const [enrollEnd, setEnrollEnd] = useState("")
   const [savingEnrollment, setSavingEnrollment] = useState(false)
@@ -110,7 +114,7 @@ export function useCourseData(
     return () => {
       signal.cancelled = true
     }
-  }, [loadCourse])
+  }, [loadCourse, loadAttempt])
 
   const savePatch = useCallback(
     async (patch: CoursePatch) => {
@@ -317,6 +321,7 @@ export function useCourseData(
     course,
     loading,
     loadError,
+    retryLoad,
     sortedModules,
     structure,
     published: course?.status === "published",

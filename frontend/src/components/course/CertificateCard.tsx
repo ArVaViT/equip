@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useId } from "react"
 import { useTranslation } from "react-i18next"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { ErrorState } from "@/components/patterns"
 import { coursesService } from "@/services/courses"
 import { useAuth } from "@/context/useAuth"
 import { toast } from "@/lib/toast"
@@ -17,7 +18,10 @@ interface Props {
    *  server refuses with the same list, so a button here would be a button
    *  whose only outcome is an error. */
   blocked?: boolean
-  certificate: Certificate | null
+  /** `null`: none yet. `undefined`: the request failed — not known, and a
+   *  «Request certificate» button over a certificate that may exist is a
+   *  button whose outcome is a refusal. */
+  certificate: Certificate | null | undefined
   onCertificateUpdate: (cert: Certificate | null) => void
   onReviewSubmitted?: () => void
 }
@@ -26,6 +30,7 @@ export default function CertificateCard({ courseId, progress, blocked = false, c
   const { user } = useAuth()
   const { t } = useTranslation()
   const [requesting, setRequesting] = useState(false)
+  const [reloading, setReloading] = useState(false)
   const [copied, setCopied] = useState(false)
   const copyTimer = useRef<ReturnType<typeof setTimeout>>()
 
@@ -86,6 +91,38 @@ export default function CertificateCard({ courseId, progress, blocked = false, c
   }
 
   if (progress < 100) return null
+
+  if (certificate === undefined) {
+    return (
+      <Card className="border-dashed">
+        <CardContent className="py-6">
+          <ErrorState
+            className="py-0"
+            title={t("certificates.card.loadFailed")}
+            action={
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={reloading}
+                onClick={async () => {
+                  setReloading(true)
+                  try {
+                    onCertificateUpdate(await coursesService.getCourseCertificate(courseId))
+                  } catch {
+                    toast({ title: t("certificates.card.loadFailed"), variant: "destructive" })
+                  } finally {
+                    setReloading(false)
+                  }
+                }}
+              >
+                {t("common.tryAgain")}
+              </Button>
+            }
+          />
+        </CardContent>
+      </Card>
+    )
+  }
 
   if (!certificate) {
     return (

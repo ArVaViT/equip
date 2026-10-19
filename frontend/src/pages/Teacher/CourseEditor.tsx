@@ -212,6 +212,13 @@ export default function CourseEditor() {
           title={t("courseEditor.notFound.title")}
           description={data.loadError ?? t("courseEditor.notFound.description")}
           action={
+            data.loadError ? (
+              <Button size="sm" onClick={data.retryLoad}>
+                {t("common.tryAgain")}
+              </Button>
+            ) : undefined
+          }
+          secondaryAction={
             <Button variant="outline" size="sm" onClick={goBack}>
               {t("courseEditor.notFound.backToCourses")}
             </Button>
@@ -433,6 +440,8 @@ export default function CourseEditor() {
         onEdit={announcements.startEdit}
         onCancelEdit={announcements.resetForm}
         onDelete={announcements.remove}
+        loadFailed={announcements.loadFailed}
+        onReload={announcements.reload}
       />
 
       <MaterialsModal
@@ -454,6 +463,8 @@ export default function CourseEditor() {
           events.resetForm()
         }}
         events={events.events}
+        loadFailed={events.loadFailed}
+        onReload={events.reloadList}
         form={events.form}
         onFormChange={events.setForm}
         editingId={events.editingId}

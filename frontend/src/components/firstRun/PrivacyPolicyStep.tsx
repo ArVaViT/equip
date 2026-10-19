@@ -8,6 +8,7 @@ import { legalService, type LegalDocumentSummary } from "@/services/legal"
 import { useAuth } from "@/context/useAuth"
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import { toast } from "@/lib/toast"
+import { getErrorCode } from "@/lib/errorCode"
 
 interface Props {
   onAccept: () => void
@@ -80,8 +81,19 @@ export function PrivacyPolicyStep({ onAccept, renewal = false, documents }: Prop
       // and recording only one of them would make the record narrower than the
       // sentence the person actually agreed to. Accepting something already
       // accepted is idempotent on the server, so this is safe to repeat.
-      for (const doc of list) {
-        await legalService.accept(doc.slug, doc.version, locale)
+      try {
+        for (const doc of list) {
+          await legalService.accept(doc.slug, doc.version, locale)
+        }
+      } catch (err) {
+        // The document changed while the gate was open (a deploy). The
+        // version on hand is stale, and retrying with it failed every time
+        // under «check your connection» — the only ways out were a reload
+        // or signing out. Ask for the current versions and accept those.
+        if (getErrorCode(err) !== "legal.document_changed") throw err
+        for (const doc of (await legalService.status()).outstanding) {
+          await legalService.accept(doc.slug, doc.version, locale)
+        }
       }
       onAccept()
     } catch {

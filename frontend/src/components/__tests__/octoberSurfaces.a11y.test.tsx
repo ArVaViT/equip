@@ -16,6 +16,8 @@ import { AuthContext } from "@/context/auth-context"
 import { ReadingControls } from "@/components/chapter/ReadingControls"
 import { VerseCard } from "@/components/chapter/VerseCard"
 import { LessonNote } from "@/components/chapter/LessonNote"
+
+vi.mock("@/context/useAuth", () => ({ useAuth: () => ({ user: { id: "u1" } }) }))
 import MyNotesPage from "@/pages/Notes/MyNotesPage"
 import { notesService } from "@/services/notes"
 import { WeeklyReview } from "@/components/review/WeeklyReview"

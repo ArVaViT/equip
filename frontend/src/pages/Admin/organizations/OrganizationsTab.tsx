@@ -32,7 +32,17 @@ export function OrganizationsTab() {
   const reload = () => setVersion((v) => v + 1)
 
   if (loading && !data) return <PageSpinner variant="section" />
-  if (error || !data) return <ErrorState title={t("adminOrgs.loadError")} />
+  if (error || !data)
+    return (
+      <ErrorState
+        title={t("adminOrgs.loadError")}
+        action={
+          <Button size="sm" variant="outline" onClick={reload}>
+            {t("common.tryAgain")}
+          </Button>
+        }
+      />
+    )
 
   return (
     <div className="space-y-6">
@@ -176,14 +186,17 @@ function OrganizationRow({
   const [busy, setBusy] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
-  const run = async (action: () => Promise<unknown>, success: string) => {
+  /** True when the action landed — a refusal is told in a toast and nothing else moves. */
+  const run = async (action: () => Promise<unknown>, success: string): Promise<boolean> => {
     setBusy(true)
     try {
       await action()
       toast({ title: success, variant: "success" })
       onChanged()
+      return true
     } catch (err) {
       toast({ title: getErrorDetail(err, t("adminOrgs.failed")), variant: "destructive" })
+      return false
     } finally {
       setBusy(false)
     }
@@ -246,8 +259,10 @@ function OrganizationRow({
           e.preventDefault()
           const value = email.trim()
           if (!value) return
-          void run(() => organizationsService.adminAppointDirector(org.id, value), t("adminOrgs.directorAppointed", { email: value })).then(() =>
-            setEmail(""),
+          // The address stays in the field when the server says no — a typo
+          // is corrected, not retyped.
+          void run(() => organizationsService.adminAppointDirector(org.id, value), t("adminOrgs.directorAppointed", { email: value })).then(
+            (ok) => ok && setEmail(""),
           )
         }}
       >

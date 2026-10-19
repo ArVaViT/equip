@@ -569,6 +569,11 @@ export default function ChapterView() {
    * out of a chapter they had earned. See `moduleProgress.ts`.
    */
   const [completedIds, setCompletedIds] = useState<Set<string> | null>(null)
+  // Lessons this visit marked as read and the server confirmed, kept apart
+  // from `completedIds` so a progress refresh that fails afterwards cannot
+  // turn a saved «read» back into a button.
+  const [readHere, setReadHere] = useState<ReadonlySet<string>>(() => new Set())
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [chapterBlocks, setChapterBlocks] = useState<ChapterBlock[]>([])
   const [loadingBlocks, setLoadingBlocks] = useState(false)
   const [blocksLoadError, setBlocksLoadError] = useState(false)
@@ -640,7 +645,7 @@ export default function ChapterView() {
     // the next lesson, and re-running this would spend a progress request on
     // every step through it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, user?.id, i18n.language])
+  }, [courseId, user?.id, i18n.language, loadAttempt])
 
   // Only a signed-in reader who is not enrolled yet is offered the button,
   // and only such a reader is sent a preview — so the cohorts are asked for
@@ -844,6 +849,13 @@ export default function ChapterView() {
           icon={<Book strokeWidth={1.75} />}
           title={error ?? t("toast.chapterNotFound")}
           action={
+            course === null && courseId ? (
+              <Button size="sm" onClick={() => setLoadAttempt((n) => n + 1)}>
+                {t("common.tryAgain")}
+              </Button>
+            ) : undefined
+          }
+          secondaryAction={
             // Back to the course, not to a module. A lesson that could not be
             // found may have been in no module, and a lesson that was deleted
             // takes the answer to "which module" with it — the course is the
@@ -892,7 +904,7 @@ export default function ChapterView() {
   }
 
   const locked = isLockedAt(currentIdx)
-  const isCompleted = completedIds !== null && completedIds.has(chapter.id)
+  const isCompleted = (completedIds !== null && completedIds.has(chapter.id)) || readHere.has(chapter.id)
 
   if (locked) {
     return (
@@ -1067,6 +1079,9 @@ export default function ChapterView() {
                 setMarkingRead(true)
                 try {
                   await progressService.markRead(chapter.id)
+                  // Saved. The refresh below may still fail, and a failed
+                  // refresh is not an unread lesson.
+                  setReadHere((prev) => new Set(prev).add(chapter.id))
                   await refreshCompletion()
                 } catch {
                   toast({ title: t("chapter.markReadFailed"), variant: "destructive" })

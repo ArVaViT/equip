@@ -35,7 +35,10 @@ export interface CourseChapters {
   addChapter: (type: ChapterType, moduleId?: string | null) => Promise<void>
   /** Local-only, for the row's controlled input between keystrokes. */
   updateChapterLocal: (chapterId: string, patch: Partial<Chapter>) => void
-  renameChapter: (chapter: Chapter, title: string) => Promise<void>
+  /** `previous`: the title before editing began. The row's `chapter.title`
+   *  is already the typed text, so without it a refused rename «rolled
+   *  back» to what was typed and the old title was never shown again. */
+  renameChapter: (chapter: Chapter, title: string, previous?: string) => Promise<void>
   toggleChapterLock: (chapter: Chapter) => Promise<void>
   deleteChapter: (chapterId: string) => Promise<void>
   /** `null` takes the lesson out of its module — it stays right after that
@@ -145,24 +148,29 @@ export function useCourseChapters({
   )
 
   const renameChapter = useCallback(
-    async (chapter: Chapter, newTitle: string) => {
-      if (!courseId || !newTitle.trim()) return
+    async (chapter: Chapter, newTitle: string, previous: string = chapter.title) => {
+      if (!courseId) return
       const trimmed = newTitle.trim()
+      if (!trimmed) {
+        // An emptied title is not sent, and not kept on screen either.
+        updateChapterLocal(chapter.id, { title: previous })
+        return
+      }
       const check = makeChapterSchema().pick({ title: true }).safeParse({ title: trimmed })
       if (!check.success) {
         toast({
           title: check.error.issues[0]?.message ?? t("lessons.invalidTitle"),
           variant: "destructive",
         })
+        updateChapterLocal(chapter.id, { title: previous })
         return
       }
-      const previous = chapter.title
       updateChapterLocal(chapter.id, { title: trimmed })
       try {
         await coursesService.updateCourseChapter(courseId, chapter.id, { title: trimmed })
-      } catch {
+      } catch (err) {
         updateChapterLocal(chapter.id, { title: previous })
-        toast({ title: t("lessons.toast.renameFailed"), variant: "destructive" })
+        toast({ title: getErrorDetail(err, t("lessons.toast.renameFailed")), variant: "destructive" })
       }
     },
     [courseId, t, updateChapterLocal],

@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { cn } from "@/lib/utils"
 import { EmptyState } from "@/components/patterns/EmptyState"
+import { ErrorState } from "@/components/patterns/ErrorState"
 import { FileText, ChevronLeft, ChevronRight, X } from "lucide-react"
 import type { AuditLogEntry } from "@/types"
 import {
@@ -49,6 +50,9 @@ interface Props {
   onReset: () => void
   onPageChange: (nextPage: number) => void
   onPageSizeChange: (next: AuditPageSize) => void
+  /** The fetch failed: not an empty log, and not the previous page's rows. */
+  error?: boolean
+  onReload?: () => void
 }
 
 /**
@@ -86,6 +90,8 @@ export function AuditLogTab({
   onReset,
   onPageChange,
   onPageSizeChange,
+  error = false,
+  onReload,
 }: Props) {
   const { t } = useTranslation()
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
@@ -181,6 +187,19 @@ export function AuditLogTab({
       <CardContent className="flex min-h-0 flex-1 flex-col p-0">
         {loading ? (
           <AuditTableSkeleton />
+        ) : error ? (
+          <div className="flex flex-1 items-center justify-center px-5 py-10">
+            <ErrorState
+              className="py-0"
+              action={
+                onReload && (
+                  <Button size="sm" variant="outline" onClick={onReload}>
+                    {t("common.tryAgain")}
+                  </Button>
+                )
+              }
+            />
+          </div>
         ) : logs.length === 0 ? (
           <div className="flex flex-1 items-center justify-center px-5 py-10">
             <EmptyState

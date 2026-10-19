@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { CalendarDays, Pencil, Repeat, Save, Trash2 } from "lucide-react"
-import { EmptyState, Modal } from "@/components/patterns"
+import { EmptyState, ErrorState, Modal } from "@/components/patterns"
 import { EventTypeBadge } from "./badges"
 import { DURATION_CHOICES, MAX_SERIES, takesTime, withEventType, type EventFormState } from "./types"
 import type { PendingScope } from "./useEventsSection"
@@ -48,6 +48,9 @@ interface Props {
   pendingScope?: PendingScope | null
   onChooseScope?: (scope: SeriesScope) => void
   onCancelScope?: () => void
+  /** The list could not be read; shown instead of «no events yet». */
+  loadFailed?: boolean
+  onReload?: () => void
   /** Above the form — the calendar puts its course picker here. */
   header?: ReactNode
   /** The hour a freshly picked day starts at — the course's usual class
@@ -74,6 +77,8 @@ export function EventsModal({
   pendingScope = null,
   onChooseScope,
   onCancelScope,
+  loadFailed = false,
+  onReload,
   header,
   defaultTime,
 }: Props) {
@@ -319,7 +324,18 @@ export function EventsModal({
           <p className="text-xs text-ink-muted">{t("teacherEditor.modals.events.notifyHint")}</p>
         </div>
 
-        {events.length === 0 ? (
+        {loadFailed ? (
+          <ErrorState
+            className="py-6"
+            action={
+              onReload && (
+                <Button size="sm" variant="outline" onClick={onReload}>
+                  {t("common.tryAgain")}
+                </Button>
+              )
+            }
+          />
+        ) : events.length === 0 ? (
           <EmptyState
             variant="compact"
             icon={<CalendarDays strokeWidth={1.75} aria-hidden />}

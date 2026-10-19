@@ -334,4 +334,34 @@ describe("api interceptors", () => {
     ])
     expect(hits).toBe(2)
   })
+
+  /**
+   * A request that never answers used to wait forever, and so did every
+   * spinner, «Submitting…» button and queued save that depended on it.
+   */
+  describe("a request that never answers", () => {
+    it("is given up on, as a timeout, so the screen can say so", async () => {
+      getSession.mockResolvedValue({ data: { session: { access_token: "tok" } } })
+      const api = await freshApi()
+      expect(api.defaults.timeout).toBe(30_000)
+      const mock = new MockAdapter(api)
+      mock.onGet("/stalled").timeout()
+
+      const err = await api.get("/stalled").catch((e: unknown) => e)
+      expect(axios.isAxiosError(err)).toBe(true)
+      expect((err as { code?: string }).code).toBe("ECONNABORTED")
+    })
+
+    it("lets a retry go out after one timed out, instead of handing back the dead request", async () => {
+      getSession.mockResolvedValue({ data: { session: { access_token: "tok" } } })
+      const api = await freshApi()
+      const mock = new MockAdapter(api)
+      mock.onGet("/flaky").timeoutOnce()
+      mock.onGet("/flaky").reply(200, { ok: true })
+
+      await expect(api.get("/flaky")).rejects.toBeTruthy()
+      const res = await api.get("/flaky")
+      expect(res.data).toEqual({ ok: true })
+    })
+  })
 })

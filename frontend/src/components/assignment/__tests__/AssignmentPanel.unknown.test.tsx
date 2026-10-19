@@ -115,6 +115,21 @@ describe("AssignmentPanel — a failed lookup is not an empty one", () => {
     expect(fetch).toHaveBeenCalledTimes(2)
   })
 
+  it("offers to ask again when the assignments themselves could not be read", async () => {
+    const list = vi
+      .spyOn(coursesService, "getChapterAssignments")
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValue([ASSIGNMENT])
+    vi.spyOn(coursesService, "getMySubmissions").mockResolvedValue([])
+    show()
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "Повторить" }))
+
+    expect(await screen.findByText("Эссе по Деяниям 2")).toBeInTheDocument()
+    expect(list).toHaveBeenCalledTimes(2)
+  })
+
   it("still shows the form when the student genuinely has not submitted", async () => {
     vi.spyOn(coursesService, "getMySubmissions").mockResolvedValue([])
     show()
@@ -155,5 +170,48 @@ describe("AssignmentPanel — a failed lookup is not an empty one", () => {
     expect(await screen.findByDisplayValue("Половина эссе")).toBeInTheDocument()
     expect(screen.getByText(/Восстановлен черновик/)).toBeInTheDocument()
     window.localStorage.clear()
+  })
+
+  it("finds the work on the server when only the answer was lost, instead of handing it in twice", async () => {
+    vi.spyOn(coursesService, "getMySubmissions").mockResolvedValueOnce([]).mockResolvedValueOnce([SUBMITTED])
+    const submit = vi
+      .spyOn(coursesService, "submitAssignment")
+      .mockRejectedValue(Object.assign(new Error("Network Error"), { isAxiosError: true }))
+    render(<AssignmentPanel chapterId="ch-1" assignmentId="a-1" aiPolicy="ai_open" />, { wrapper: Wrapper })
+
+    await userEvent.type((await screen.findAllByRole("textbox"))[0]!, "Уже сдано")
+    await userEvent.click(screen.getByRole("button", { name: /Отправить/i }))
+
+    expect(await screen.findByText(/Отправлено|На проверке/)).toBeInTheDocument()
+    expect(submit).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole("button", { name: /Отправить/i })).not.toBeInTheDocument()
+  })
+
+  it("does not take an earlier copy in the history for the one just sent, when nothing landed", async () => {
+    // Returned for revision after an earlier, marked copy. The panel shows
+    // only the latest, so the older row is «unseen» — and it is not the
+    // resubmission. The typed text must stay for the retry.
+    const returned: AssignmentSubmission = {
+      ...SUBMITTED,
+      id: "sub-2",
+      status: "returned",
+      submitted_at: "2026-08-14T09:00:00Z",
+    } as AssignmentSubmission
+    const older: AssignmentSubmission = { ...SUBMITTED, id: "sub-1", status: "graded", grade: 70 } as AssignmentSubmission
+    vi.spyOn(coursesService, "getMySubmissions").mockResolvedValue([returned, older])
+    const submit = vi
+      .spyOn(coursesService, "submitAssignment")
+      .mockRejectedValue(Object.assign(new Error("Network Error"), { isAxiosError: true }))
+    render(<AssignmentPanel chapterId="ch-1" assignmentId="a-1" aiPolicy="ai_open" />, { wrapper: Wrapper })
+
+    const box = (await screen.findAllByRole("textbox"))[0]!
+    await userEvent.type(box, "Переделал")
+    await userEvent.click(screen.getByRole("button", { name: /Отправить/i }))
+
+    await waitFor(() => expect(submit).toHaveBeenCalledTimes(1))
+    // Still the returned copy on screen, the text kept, the button offered again.
+    expect(await screen.findByRole("button", { name: /Отправить/i })).toBeEnabled()
+    expect(box).toHaveValue("Переделал")
+    expect(screen.queryByText("70")).not.toBeInTheDocument()
   })
 })

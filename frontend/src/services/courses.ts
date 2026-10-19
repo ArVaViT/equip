@@ -1,4 +1,4 @@
-import api from "./api"
+import api, { LONG_REQUEST_MS } from "./api"
 import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type { Course, Module, Chapter } from "@/types"
 
@@ -132,7 +132,7 @@ const courseCrud = {
   /** The course as a printable PDF, in the reader's language (owner, admin
    *  or enrolled reader). Built on demand on the server. */
   async exportCoursePdf(courseId: string): Promise<Blob> {
-    const response = await api.get(`/courses/${courseId}/export.pdf`, { responseType: "blob" })
+    const response = await api.get(`/courses/${courseId}/export.pdf`, { responseType: "blob", timeout: LONG_REQUEST_MS })
     return response.data as Blob
   },
 

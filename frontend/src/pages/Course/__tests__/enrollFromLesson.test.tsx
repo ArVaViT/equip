@@ -153,4 +153,19 @@ describe("enrolling from the lesson", () => {
     expect(await screen.findByRole("link", { name: "Enroll in the course" })).toHaveAttribute("href", "/courses/c1")
     expect(enrollInCourse).not.toHaveBeenCalled()
   })
+
+  it("tells the reader the server's reason when enrolling is refused", async () => {
+    enrollInCourse.mockRejectedValue(
+      Object.assign(new Error("Conflict"), {
+        isAxiosError: true,
+        response: { status: 409, data: { detail: { code: "course.enrolment_closed", message: "closed" } } },
+      }),
+    )
+    open("/courses/c1/chapters/l2")
+    await userEvent.click(await screen.findByRole("button", { name: "Enroll in the course" }))
+
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith({ title: "Enrolment for this course is closed.", variant: "destructive" }),
+    )
+  })
 })

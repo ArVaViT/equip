@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { getErrorCode } from "@/lib/errorCode"
 import { coursesService } from "@/services/courses"
 import type { Quiz, QuizAttempt } from "@/types"
@@ -17,6 +17,8 @@ interface UseQuizTakerResult {
   /** `null` when the attempts request failed. Not an empty history. */
   attempts: QuizAttempt[] | null
   setAttempts: React.Dispatch<React.SetStateAction<QuizAttempt[] | null>>
+  /** Ask again after a failed load. */
+  reload: () => void
 }
 
 export function useQuizTaker({ chapterId, quizId }: Params): UseQuizTakerResult {
@@ -26,6 +28,8 @@ export function useQuizTaker({ chapterId, quizId }: Params): UseQuizTakerResult 
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState(false)
   const [notTranslated, setNotTranslated] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+  const reload = useCallback(() => setAttempt((n) => n + 1), [])
 
   useEffect(() => {
     let cancelled = false
@@ -71,7 +75,7 @@ export function useQuizTaker({ chapterId, quizId }: Params): UseQuizTakerResult 
     return () => {
       cancelled = true
     }
-  }, [chapterId, quizId])
+  }, [chapterId, quizId, attempt])
 
-  return { loading, fetchError, notTranslated, quiz, attempts, setAttempts }
+  return { loading, fetchError, notTranslated, quiz, attempts, setAttempts, reload }
 }

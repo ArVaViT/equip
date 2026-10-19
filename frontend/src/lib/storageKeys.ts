@@ -32,6 +32,7 @@ const PREFIX_COMPLETION_CELEBRATED = "equip.celebrated"
 const PREFIX_ASSIGNMENT_DRAFT = "equip.draft.assignment"
 const PREFIX_QUIZ_ANSWER_DRAFT = "equip.draft.quiz"
 const PREFIX_BLOCK_DRAFT = "equip.draft.block"
+const PREFIX_NOTE_DRAFT = "equip.draft.note"
 
 /**
  * Privacy Policy acceptance — a **cache** of what the server holds in
@@ -119,4 +120,14 @@ export function quizAnswerDraftKey(userId: string, quizId: string, questionId: s
  */
 export function blockDraftKey(userId: string, blockId: string): string {
   return `${PREFIX_BLOCK_DRAFT}.${userId}.${blockId}`
+}
+
+/**
+ * A lesson note that has not reached the server: typed and still debounced,
+ * or sent on leaving the lesson and refused. The note lived only in the
+ * component's state, and a save that failed after the lesson was left had
+ * nowhere to report to — the text was simply gone.
+ */
+export function noteDraftKey(userId: string, chapterId: string): string {
+  return `${PREFIX_NOTE_DRAFT}.${userId}.${chapterId}`
 }

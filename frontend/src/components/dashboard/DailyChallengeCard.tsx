@@ -7,7 +7,8 @@ import { toast } from "sonner"
 import { getErrorCode } from "@/lib/errorCode"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
-import { EmptyState, Eyebrow } from "@/components/patterns"
+import { EmptyState, ErrorState, Eyebrow } from "@/components/patterns"
+import { Button } from "@/components/ui/button"
 import { OptionButton, RevealPanel } from "@/components/dailyChallenge"
 import {
   dailyChallengeService,
@@ -104,6 +105,11 @@ export function DailyChallengeCard() {
   // it. Saying so is the honest version of what used to render as an
   // empty question with four blank buttons.
   const [notTranslated, setNotTranslated] = useState(false)
+  // The read failed for any other reason. A toast that faded and an empty
+  // card body under the header was what a dropped connection looked like;
+  // and a reload that failed kept the previous language's question — or
+  // yesterday's — answerable.
+  const [loadFailed, setLoadFailed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [streakAfter, setStreakAfter] = useState<number | null>(null)
   const answeredToday = reveal !== null
@@ -120,7 +126,9 @@ export function DailyChallengeCard() {
       // behind «not in your language yet».
       setNotScheduled(false)
       setNotTranslated(false)
+      setLoadFailed(false)
       setReveal(null)
+      setData(null)
       try {
         // The streak alongside the question, answered or not: the chip is
         // on the card in every state now. Its failure costs the chip, not
@@ -157,9 +165,7 @@ export function DailyChallengeCard() {
         } else if (code === "daily_challenge.not_translated") {
           setNotTranslated(true)
         } else {
-          // The card is non-critical surface; log via toast and let
-          // the empty-error state handle the render.
-          toast.error(t("dailyChallenge.loadError"))
+          setLoadFailed(true)
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -192,6 +198,11 @@ export function DailyChallengeCard() {
           toast.error(t("dailyChallenge.toast.invalidOption"))
           // The day has moved on under the card: fetch the question that
           // is today's now rather than leave a card no answer fits.
+          setReloadKey((k) => k + 1)
+        } else if (code === "daily_challenge.already_attempted") {
+          // Answered in another tab or on another device. The options stayed
+          // clickable and every tap read the same refusal; the reload brings
+          // the card into its answered state.
           setReloadKey((k) => k + 1)
         } else {
           toast.error(t("dailyChallenge.toast.submitError"))
@@ -294,6 +305,16 @@ export function DailyChallengeCard() {
             className="py-2"
             title={t("dailyChallenge.notTranslated.title")}
             description={t("dailyChallenge.notTranslated.body")}
+          />
+        ) : loadFailed ? (
+          <ErrorState
+            className="py-2"
+            title={t("dailyChallenge.loadError")}
+            action={
+              <Button size="sm" variant="outline" onClick={() => setReloadKey((k) => k + 1)}>
+                {t("common.tryAgain")}
+              </Button>
+            }
           />
         ) : data ? (
           <>

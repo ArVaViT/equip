@@ -97,6 +97,10 @@ export function getErrorDetail(err: unknown, fallback = ""): string {
     if (i18n.exists(key, options)) return i18n.t(key, options)
   }
   if (isAxiosError(err)) {
+    // A request the client gave up on is not «no connection»: the line may
+    // be fine and the server slow, and telling someone to check their Wi-Fi
+    // sends them looking in the wrong place.
+    if (err.code === "ECONNABORTED" || err.code === "ETIMEDOUT") return i18n.t("errors.timeout")
     if (!err.response) return i18n.t("errors.network")
     const status = err.response.status
     const detail: unknown = err.response.data?.detail

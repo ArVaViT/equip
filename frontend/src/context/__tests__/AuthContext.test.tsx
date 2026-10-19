@@ -465,4 +465,61 @@ describe("AuthContext", () => {
     expect(screen.getByTestId("user").textContent).toBe("b@b.com")
     expect(screen.getByTestId("role").textContent).toBe("student")
   })
+
+  it("loads the profile again on the next sign-in after a read that failed", async () => {
+    const { single } = mockProfileFetch(null, { message: "db down" })
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>,
+    )
+    await act(async () => {
+      authHandler!("SIGNED_IN", makeSession(makeSupabaseUser()))
+    })
+    await waitFor(() => expect(screen.getByTestId("loading").textContent).toBe("false"))
+    expect(screen.getByTestId("user").textContent).toBe("anon")
+
+    // The person signs in again. Before, the account counted as «already
+    // loaded» and this event was ignored: the form re-enabled, nothing else.
+    mockProfileFetch({
+      id: "user-1",
+      email: "a@b.com",
+      full_name: "Teacher Tom",
+      avatar_url: null,
+      role: "teacher",
+      created_at: "2024-01-01T00:00:00Z",
+      updated_at: "2024-01-02T00:00:00Z",
+    })
+    await act(async () => {
+      authHandler!("SIGNED_IN", makeSession(makeSupabaseUser()))
+    })
+    await waitFor(() => expect(screen.getByTestId("user").textContent).toBe("a@b.com"))
+    expect(single).toHaveBeenCalledTimes(1)
+  })
+
+  it("gives up on a profile read that never answers, instead of loading forever", async () => {
+    vi.useFakeTimers()
+    try {
+      const single = vi.fn().mockReturnValue(new Promise(() => {}))
+      const eq = vi.fn().mockReturnValue({ maybeSingle: single })
+      const select = vi.fn().mockReturnValue({ eq })
+      from.mockReturnValue({ select })
+      render(
+        <AuthProvider>
+          <AuthProbe />
+        </AuthProvider>,
+      )
+      await act(async () => {
+        authHandler!("SIGNED_IN", makeSession(makeSupabaseUser()))
+      })
+      expect(screen.getByTestId("loading").textContent).toBe("true")
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000)
+      })
+      expect(screen.getByTestId("loading").textContent).toBe("false")
+      expect(screen.getByTestId("user").textContent).toBe("anon")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

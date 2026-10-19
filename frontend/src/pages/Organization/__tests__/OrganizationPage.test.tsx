@@ -168,4 +168,16 @@ describe("an organization's page", () => {
     renderPage()
     expect(await screen.findByRole("button", { name: "Редактировать страницу" })).toBeInTheDocument()
   })
+
+  it("asks again from a failed load, but not for a page that does not exist", async () => {
+    const read = vi
+      .spyOn(organizationsService, "getPage")
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue(page())
+    renderPage()
+    expect(await screen.findByRole("alert")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "Повторить" }))
+    expect(await screen.findByRole("heading", { level: 1, name: "UCOAT" })).toBeInTheDocument()
+    expect(read).toHaveBeenCalledTimes(2)
+  })
 })

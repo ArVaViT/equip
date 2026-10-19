@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next"
 import { Building2 } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import { OrganizationCards } from "@/components/organization/OrganizationCards"
 import { EmptyState, ErrorState, PageHeader } from "@/components/patterns"
 import { Section } from "@/components/layout/Section"
@@ -16,7 +17,7 @@ import { organizationsService } from "@/services/organizations"
  */
 export default function OrganizationsPage() {
   const { t } = useTranslation()
-  const { data, loading, error } = useAsyncData(() => organizationsService.list(), [])
+  const { data, loading, error, refetch } = useAsyncData(() => organizationsService.list(), [])
 
   return (
     <Section>
@@ -30,7 +31,14 @@ export default function OrganizationsPage() {
         {loading && !data ? (
           <PageSpinner variant="section" />
         ) : error || !data ? (
-          <ErrorState title={t("organization.loadError")} />
+          <ErrorState
+            title={t("organization.loadError")}
+            action={
+              <Button size="sm" variant="outline" onClick={refetch}>
+                {t("common.tryAgain")}
+              </Button>
+            }
+          />
         ) : data.length === 0 ? (
           <EmptyState icon={<Building2 strokeWidth={1.75} aria-hidden />} title={t("organizations.empty")} />
         ) : (

@@ -3,9 +3,8 @@ import { useTranslation } from "react-i18next"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { EmptyState } from "@/components/patterns"
-import {
-  BookOpen, Users, Circle, CheckCircle2,
+import { EmptyState, ErrorState } from "@/components/patterns"
+import { Users, Circle, CheckCircle2,
   ChevronDown, ChevronRight, Award, MessageSquare, Save, Clock,
 } from "lucide-react"
 import type { StudentCalculatedGrade } from "@/types"
@@ -34,6 +33,8 @@ interface Props {
   onUpdateForm: (userId: string, field: keyof GradeForm, value: string) => void
   onSaveGrade: (userId: string) => void
   onToggleExpand: (userId: string) => void
+  /** Ask for the matrix again when it could not be read. */
+  onReload?: () => void
 }
 
 /**
@@ -54,6 +55,7 @@ export function GradeTableTab({
   onUpdateForm,
   onSaveGrade,
   onToggleExpand,
+  onReload,
 }: Props) {
   const { t } = useTranslation()
   const allChapters: ChapterInfo[] = useMemo(
@@ -65,10 +67,16 @@ export function GradeTableTab({
     return (
       <Card>
         <CardContent className="py-10">
-          <EmptyState
-            variant="compact"
-            icon={<BookOpen strokeWidth={1.75} aria-hidden />}
+          <ErrorState
+            className="py-0"
             title={t("gradebook.failedLoad")}
+            action={
+              onReload && (
+                <Button size="sm" variant="outline" onClick={onReload}>
+                  {t("common.tryAgain")}
+                </Button>
+              )
+            }
           />
         </CardContent>
       </Card>

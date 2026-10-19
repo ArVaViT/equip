@@ -6,6 +6,7 @@
     "done": "Done: “{{kind}}” emails will no longer arrive.",
     "again": "You can turn them back on in your profile, under Settings.",
     "invalid": "This link does not work. Turn email off in your profile, under Settings.",
+    "unavailable": "Couldn't open the link right now.",
     "toProfile": "Open profile"
   },
   "guest": {
@@ -189,7 +190,8 @@
       "student": "member"
     },
     "catalog": "Open catalogue",
-    "title": "My organizations"
+    "title": "My organizations",
+    "loadFailed": "Couldn't load your school's courses."
   },
   "header": {
     "home": "Home",
@@ -908,6 +910,7 @@
     },
     "generic": "Something went wrong.",
     "network": "No connection. Check your internet and try again.",
+    "timeout": "The server took too long to answer. Try again.",
     "byCode": {
       "auth_required": "Please sign in again.",
       "auth_forbidden": "You don't have permission for this.",
@@ -1560,6 +1563,7 @@
       "request": "Request Certificate",
       "requestSuccess": "Certificate requested",
       "requestFailed": "Failed to request certificate",
+      "loadFailed": "Couldn't check your certificate.",
       "pendingTitle": "Awaiting teacher approval",
       "pendingDescription": "Your certificate request has been submitted. Your instructor will review it shortly.",
       "adminPendingTitle": "Awaiting admin approval",
