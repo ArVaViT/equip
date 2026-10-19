@@ -37,19 +37,30 @@ export default function DailyChallengeReviewDetailPage() {
   const [saving, setSaving] = useState(false)
   const [promoting, setPromoting] = useState(false)
 
-  const load = useCallback(async () => {
-    if (!questionId) return
-    setLoading(true)
-    setLoadError(false)
-    try {
-      const v = await adminDailyChallengeService.getBilingualView(questionId)
-      setView(v)
-    } catch {
-      setLoadError(true)
-    } finally {
-      setLoading(false)
-    }
-  }, [questionId])
+  /**
+   * `quiet`: a refresh after a save. The skeleton is for a page with nothing
+   * on it; shown here it unmounted every language cell, and the corrections
+   * typed into the other cells went with them.
+   */
+  const load = useCallback(
+    async ({ quiet = false }: { quiet?: boolean } = {}) => {
+      if (!questionId) return
+      if (!quiet) {
+        setLoading(true)
+        setLoadError(false)
+      }
+      try {
+        const v = await adminDailyChallengeService.getBilingualView(questionId)
+        setView(v)
+        setLoadError(false)
+      } catch {
+        if (!quiet) setLoadError(true)
+      } finally {
+        if (!quiet) setLoading(false)
+      }
+    },
+    [questionId],
+  )
 
   useEffect(() => {
     void load()
@@ -67,7 +78,7 @@ export default function DailyChallengeReviewDetailPage() {
       try {
         await adminDailyChallengeService.upsertCv(questionId, params)
         toast.success(t("admin.dailyChallenge.review.toast.saved"))
-        await load()
+        await load({ quiet: true })
       } catch (err) {
         toast.error(getErrorDetail(err) || t("admin.dailyChallenge.review.toast.saveError"))
       } finally {
@@ -151,7 +162,7 @@ export default function DailyChallengeReviewDetailPage() {
           className="mt-6"
           title={t("admin.dailyChallenge.review.loadError")}
           action={
-            <Button size="sm" variant="outline" onClick={load}>
+            <Button size="sm" variant="outline" onClick={() => void load()}>
               {t("common.tryAgain")}
             </Button>
           }
