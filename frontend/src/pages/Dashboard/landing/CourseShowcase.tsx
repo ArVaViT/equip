@@ -211,6 +211,7 @@ export function CourseShowcase() {
   if (!prefersReducedMotion && phone) {
     return (
       <SceneBand label={t("header.courses")} pose="row">
+        <ShelfHeading />
         <div className="mx-auto w-full max-w-5xl px-5">
           <ul data-backdrop-target data-stack="left" className="divide-y divide-line border-y border-line">
             {courses.map((course) => (
@@ -230,6 +231,7 @@ export function CourseShowcase() {
   if (prefersReducedMotion || !pinned) {
     return (
       <SceneBand label={t("header.courses")} pose="row">
+      <ShelfHeading />
       <div className="mx-auto w-full max-w-5xl px-5 sm:px-6">
         {prefersReducedMotion ? (
           <ul className="mt-10 grid gap-6 sm:grid-cols-2">
@@ -265,6 +267,7 @@ export function CourseShowcase() {
       {/* The backdrop lays one sheet behind each cover while the shelf is
           on screen — see `SceneBand` and `LandingBackdrop`. */}
       <SceneBand label={t("header.courses")} pose="row" className="overflow-hidden">
+        <ShelfHeading />
         {/* The row starts at the page's own left margin and runs off the
             right edge — a shelf that continues past the window, rather than
             a set of cards arranged to fit inside it. */}
@@ -284,6 +287,19 @@ export function CourseShowcase() {
       </SceneBand>
     </div>
   )
+}
+
+/**
+ * The shelf's own heading, for the outline only: the band is named by its
+ * `aria-label`, but a heading is what a reader walks, and without one the
+ * course titles (h3) hang under whichever h2 came before — on the first
+ * version of the page, straight under the h1. Nothing is shown: the shelf
+ * is covers, and a visible «Courses» over it would say what they already
+ * say (the organization page does the same for its directors).
+ */
+function ShelfHeading() {
+  const { t } = useTranslation()
+  return <h2 className="sr-only">{t("header.courses")}</h2>
 }
 
 /** The way from the shelf to the whole catalogue, in every layout. */

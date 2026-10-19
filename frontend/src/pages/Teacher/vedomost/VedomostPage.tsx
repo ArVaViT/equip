@@ -124,6 +124,7 @@ function VedomostPage() {
         <EmptyState
           icon={<FileText strokeWidth={1.75} aria-hidden />}
           title={t("vedomost.notClosedTitle")}
+          titleAs="h1"
           description={t("vedomost.notClosedBody")}
           action={
             <Button onClick={close} disabled={closing}>
