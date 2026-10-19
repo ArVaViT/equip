@@ -115,6 +115,21 @@ describe("AssignmentPanel — a failed lookup is not an empty one", () => {
     expect(fetch).toHaveBeenCalledTimes(2)
   })
 
+  it("offers to ask again when the assignments themselves could not be read", async () => {
+    const list = vi
+      .spyOn(coursesService, "getChapterAssignments")
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValue([ASSIGNMENT])
+    vi.spyOn(coursesService, "getMySubmissions").mockResolvedValue([])
+    show()
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "Повторить" }))
+
+    expect(await screen.findByText("Эссе по Деяниям 2")).toBeInTheDocument()
+    expect(list).toHaveBeenCalledTimes(2)
+  })
+
   it("still shows the form when the student genuinely has not submitted", async () => {
     vi.spyOn(coursesService, "getMySubmissions").mockResolvedValue([])
     show()

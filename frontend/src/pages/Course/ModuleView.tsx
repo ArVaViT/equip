@@ -50,7 +50,7 @@ export default function ModuleView() {
   const noted = useNotedChapters()
   const { user } = useAuth()
 
-  const { data, loading, error: fetchError } = useAsyncData<ModuleFetchResult>(
+  const { data, loading, error: fetchError, refetch } = useAsyncData<ModuleFetchResult>(
     async (isCancelled) => {
       if (!courseId || !moduleId) {
         return { module: null, structure: null, completedIds: null, invalidLink: true }
@@ -133,6 +133,13 @@ export default function ModuleView() {
           icon={<Book strokeWidth={1.75} aria-hidden />}
           title={error ?? t("toast.moduleNotFound")}
           action={
+            fetchError ? (
+              <Button size="sm" onClick={refetch}>
+                {t("common.tryAgain")}
+              </Button>
+            ) : undefined
+          }
+          secondaryAction={
             <Link to={courseId ? `/courses/${courseId}` : "/"}>
               <Button variant="outline" size="sm">{t("course.backToCourse")}</Button>
             </Link>

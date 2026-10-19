@@ -13,7 +13,7 @@ import { assignmentDraftKey } from "@/lib/storageKeys"
 import { SubmissionDeclaration, type DeclarationState } from "./SubmissionDeclaration"
 import { declarationStatement } from "./declarationStatement"
 import { RubricGrid } from "@/components/rubric/RubricGrid"
-import { LateBadge } from "@/components/patterns"
+import { ErrorState, LateBadge } from "@/components/patterns"
 import { toast } from "@/lib/toast"
 import { repeatsTitle } from "@/lib/repeatsTitle"
 import type { AiPolicy, Assignment, AssignmentSubmission, SubmissionRubric } from "@/types"
@@ -148,9 +148,19 @@ export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, 
   if (loading) {
     return <PageSpinner variant="section" />
   }
-  if (fetchError) return (
-    <p className="text-sm text-destructive py-4 text-center">{t("assignment.loadFailed")}</p>
-  )
+  if (fetchError) {
+    return (
+      <ErrorState
+        className="py-6"
+        title={t("assignment.loadFailed")}
+        action={
+          <Button size="sm" variant="outline" onClick={() => setReloadKey((k) => k + 1)}>
+            {t("common.tryAgain")}
+          </Button>
+        }
+      />
+    )
+  }
   if (assignments.length === 0) return null
 
   return (

@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { I18nextProvider } from "react-i18next"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -78,5 +79,26 @@ describe("the module page", () => {
       </I18nextProvider>,
     )
     expect(await screen.findByRole("link", { name: /Антиохия/ })).toBeInTheDocument()
+  })
+
+  it("asks again from the error state", async () => {
+    const getModule = vi
+      .spyOn(coursesService, "getModule")
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue(m2 as never)
+    vi.spyOn(coursesService, "getMyChapterProgress").mockResolvedValue(["c1", "c2"])
+    render(
+      <I18nextProvider i18n={i18n}>
+        <MemoryRouter initialEntries={["/courses/k1/modules/m2"]}>
+          <Routes>
+            <Route path="/courses/:courseId/modules/:moduleId" element={<ModuleView />} />
+          </Routes>
+        </MemoryRouter>
+      </I18nextProvider>,
+    )
+    expect(await screen.findByText("Не удалось загрузить модуль. Попробуйте снова.")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "Повторить" }))
+    expect(await screen.findByRole("link", { name: /Антиохия/ })).toBeInTheDocument()
+    expect(getModule).toHaveBeenCalledTimes(2)
   })
 })

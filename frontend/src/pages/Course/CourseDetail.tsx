@@ -37,6 +37,7 @@ export default function CourseDetail() {
   useNamedPageTitle(course && course.id === id ? course.title : null)
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null)
   const [certificate, setCertificate] = useState<Certificate | null>(null)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   /**
    * `null` when the progress request failed. Not an empty set.
    *
@@ -142,7 +143,7 @@ export default function CourseDetail() {
     // without a hard reload. ``t`` is intentionally NOT in the dep
     // list — its reference change is implementation-defined.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, user?.id, i18n.language])
+  }, [id, user?.id, i18n.language, loadAttempt])
 
   // Track this course in the dashboard's "recently viewed" row. Only for
   // signed-in users (anonymous visitors don't have a dashboard) and only
@@ -214,6 +215,13 @@ export default function CourseDetail() {
           icon={<BookOpen strokeWidth={1.75} />}
           title={error ?? t("toast.courseNotFound")}
           action={
+            course === null && error !== t("toast.courseNotFound") ? (
+              <Button size="sm" onClick={() => setLoadAttempt((n) => n + 1)}>
+                {t("common.tryAgain")}
+              </Button>
+            ) : undefined
+          }
+          secondaryAction={
             <Link to="/courses">
               <Button variant="outline" size="sm">
                 {t("course.backToCourses")}

@@ -161,6 +161,18 @@ describe("QuizTaker", () => {
     })
   })
 
+  it("asks again from the error, without a page refresh", async () => {
+    getChapterQuiz.mockRejectedValueOnce(new Error("network")).mockResolvedValue(makeQuiz())
+    getMyQuizAttempts.mockResolvedValue([])
+    render(<QuizTaker chapterId="chap-1" />, renderOpts)
+    await screen.findByText(/failed to load quiz/i)
+
+    await userEvent.click(screen.getByRole("button", { name: /try again/i }))
+
+    expect(await screen.findByText("Genesis 1 Quiz")).toBeInTheDocument()
+    expect(getChapterQuiz).toHaveBeenCalledTimes(2)
+  })
+
   it("enables submit once every question is answered", async () => {
     getChapterQuiz.mockResolvedValue(makeQuiz())
     getMyQuizAttempts.mockResolvedValue([])

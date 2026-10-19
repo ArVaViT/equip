@@ -1,6 +1,7 @@
 import { useCallback, useContext, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
+import { ErrorState } from "@/components/patterns"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { StaggerChildren } from "@/components/motion"
 import { coursesService } from "@/services/courses"
@@ -51,7 +52,7 @@ export default function QuizTaker(props: QuizTakerProps) {
 
 function OneQuiz({ chapterId, quizId, onSubmitted, pageTitle }: QuizTakerProps) {
   const { t } = useTranslation()
-  const { loading, fetchError, notTranslated, quiz, attempts, setAttempts } = useQuizTaker({
+  const { loading, fetchError, notTranslated, quiz, attempts, setAttempts, reload } = useQuizTaker({
     chapterId,
     quizId,
   })
@@ -88,9 +89,15 @@ function OneQuiz({ chapterId, quizId, onSubmitted, pageTitle }: QuizTakerProps) 
   }
   if (fetchError) {
     return (
-      <p className="text-sm text-destructive py-4 text-center">
-        {t("quiz.failedLoad")}
-      </p>
+      <ErrorState
+        className="py-6"
+        title={t("quiz.failedLoad")}
+        action={
+          <Button size="sm" variant="outline" onClick={reload}>
+            {t("common.tryAgain")}
+          </Button>
+        }
+      />
     )
   }
   if (!quiz || (quiz.questions ?? []).length === 0) return null
