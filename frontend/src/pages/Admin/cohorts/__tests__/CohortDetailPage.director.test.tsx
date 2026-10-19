@@ -8,6 +8,9 @@ import { cohortsService } from "@/services/cohorts"
 import { coursesService } from "@/services/courses"
 
 const auth = vi.hoisted(() => ({ role: "director" as string }))
+const toast = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/toast", () => ({ toast: (o: unknown) => toast(o) }))
+vi.mock("@/components/ui/alert-dialog", () => ({ useConfirm: () => async () => true }))
 vi.mock("@/context/useAuth", () => ({
   useAuth: () => ({ user: { id: "d1", role: auth.role, email: "d@example.com" }, loading: false }),
 }))
@@ -137,5 +140,27 @@ describe("a cohort's page", () => {
     await user.tab()
     await waitFor(() => expect(update).toHaveBeenCalledTimes(2))
     expect(update).toHaveBeenLastCalledWith("k1", { name: "Весна 2027" })
+  })
+
+  it("says when the re-read after detaching a course failed, instead of showing last time's lists", async () => {
+    auth.role = "director"
+    toast.mockClear()
+    vi.mocked(cohortsService.getCohort)
+      .mockResolvedValueOnce({
+        id: "k1", name: "Осень 2026", start_date: "2026-10-01", end_date: "2026-12-20", enrollment_start: null,
+        enrollment_end: null, status: "active", max_students: null, created_by: null,
+        created_at: "2026-09-01T00:00:00Z", updated_at: null, course_ids: ["c1"],
+      } as never)
+      .mockRejectedValueOnce(new Error("offline"))
+    vi.spyOn(coursesService, "getCourse").mockResolvedValue({ id: "c1", title: "Деяния", status: "published" } as never)
+    vi.spyOn(cohortsService, "detachCourseFromCohort").mockResolvedValue(undefined as never)
+    const user = userEvent.setup()
+    open()
+    await user.click(await screen.findByRole("button", { name: "Отвязать Деяния" }))
+
+    await waitFor(() => expect(cohortsService.detachCourseFromCohort).toHaveBeenCalledWith("k1", "c1"))
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })))
+    // The page is still there — not swapped for the full error screen.
+    expect(screen.queryByRole("alert")).toBeNull()
   })
 })

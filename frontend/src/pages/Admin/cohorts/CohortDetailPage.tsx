@@ -63,6 +63,8 @@ export default function CohortDetailPage() {
   // the cohort they had just clicked (2026-10-03).
   const isAdmin = canDirect(user?.role)
   const begin = useLatestRequest()
+  /** Whether the page has had a cohort to show — a later failed read is a toast, not a replacement. */
+  const hadCohort = useRef(false)
 
   const load = useCallback(async () => {
     if (!cohortId || !isAdmin) return
@@ -76,6 +78,7 @@ export default function CohortDetailPage() {
       ])
       if (!isCurrent()) return
       setCohort(c)
+      hadCohort.current = true
       setStudents(s)
       if (c.course_ids.length) {
         // Fetch only the cohort's attached courses instead of the
@@ -115,7 +118,12 @@ export default function CohortDetailPage() {
       // else used to fall into the same «may have been deleted» screen once
       // the toast faded; now it stays on screen with the reason and a retry.
       if (status === 404) setNotFound(true)
-      else setLoadError(getErrorDetail(e, t("admin.cohorts.toast.loadFailed")))
+      else if (hadCohort.current) {
+        // A re-read after an action (detach, remove) that failed. The page
+        // keeps what it has — but silently, the lists under a «Detached»
+        // toast were last time's, and the admin reached for the wrong fix.
+        toast({ title: getErrorDetail(e, t("admin.cohorts.toast.loadFailed")), variant: "destructive" })
+      } else setLoadError(getErrorDetail(e, t("admin.cohorts.toast.loadFailed")))
     } finally {
       if (isCurrent()) setLoading(false)
     }
