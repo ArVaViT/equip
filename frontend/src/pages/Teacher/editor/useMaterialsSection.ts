@@ -77,7 +77,6 @@ export function useMaterialsSection(
       setUploading(true)
       try {
         await storageService.uploadCourseMaterial(courseId, file)
-        setMaterials(await storageService.listCourseMaterials(courseId))
       } catch (error: unknown) {
         // This used to be a bare `catch {}` — Storage's reason was thrown
         // away and every failure read "Загрузка не удалась".
@@ -86,6 +85,17 @@ export function useMaterialsSection(
           description: describeUploadError(error, COURSE_MATERIALS),
           variant: "destructive",
         })
+        setUploading(false)
+        if (inputRef.current) inputRef.current.value = ""
+        return
+      }
+      try {
+        setMaterials(await storageService.listCourseMaterials(courseId))
+      } catch (error: unknown) {
+        // The file is in the bucket; only the list could not be re-read.
+        // Reported as «upload failed», this had the teacher uploading the
+        // same file a second time.
+        toast({ title: getErrorDetail(error), variant: "destructive" })
       } finally {
         setUploading(false)
         if (inputRef.current) inputRef.current.value = ""

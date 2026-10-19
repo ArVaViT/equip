@@ -6,7 +6,7 @@
  * second weekly series.
  */
 import type { ReactNode } from "react"
-import { render, renderHook, screen, waitFor } from "@testing-library/react"
+import { act, render, renderHook, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { I18nextProvider } from "react-i18next"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -59,6 +59,28 @@ describe("lists the course editor could not read", () => {
     result.current.reloadList()
     await waitFor(() => expect(result.current.loadFailed).toBe(false))
     expect(list).toHaveBeenCalledTimes(2)
+  })
+
+  it("events: a list that could not be re-read after a series was created is shown as failed, not stale", async () => {
+    vi.spyOn(coursesService, "getCourseEventsForEdit")
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(new Error("offline"))
+    vi.spyOn(coursesService, "createCourseEvent").mockResolvedValue({ id: "e1" } as never)
+    const { result } = renderHook(() => useEventsSection("c1", vi.fn(async () => true)))
+    await waitFor(() => expect(result.current.loadFailed).toBe(false))
+    act(() => {
+      result.current.setForm({
+        ...result.current.form,
+        title: "Lecture",
+        event_date: "2099-10-24T10:00",
+        repeat_every: "1",
+        repeat_count: "4",
+      })
+    })
+    await act(async () => {
+      await result.current.save()
+    })
+    expect(result.current.loadFailed).toBe(true)
   })
 
   it("the announcements dialog shows the failure with a retry, not «no announcements yet»", async () => {

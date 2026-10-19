@@ -100,9 +100,13 @@ export function useEventsSection(
     try {
       const fresh = await coursesService.getCourseEventsForEdit(courseId)
       setEvents(fresh)
+      setLoadFailed(false)
       return fresh
     } catch {
-      // The list stays as it was; the save itself already succeeded.
+      // The save itself already succeeded; the list is what is unknown. Shown
+      // as failed with a retry rather than left as it was — a stale list
+      // under «Created 8 events» invited the series a second time.
+      setLoadFailed(true)
       return null
     }
   }, [courseId])
