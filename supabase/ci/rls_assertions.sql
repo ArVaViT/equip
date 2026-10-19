@@ -978,6 +978,25 @@ END $$;
 
 RESET ROLE;
 
+-- Structural guard (20261019120000): no policy reads profiles.role or
+-- organization_members by hand. The helpers are where a closed account is
+-- closed; a policy that spells the check out again would reopen it for one
+-- table. The policies on those two tables themselves only compare the
+-- caller's id, so they are not matched.
+DO $$
+DECLARE offenders text;
+BEGIN
+  SELECT string_agg(tablename || '.' || policyname, ', ') INTO offenders
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND (coalesce(qual, '') || coalesce(with_check, '')) SIMILAR TO
+        '%(profiles|organization_members)%';
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'SECURITY HOLE: policies read role or membership by hand instead of a helper: %', offenders;
+  END IF;
+  RAISE NOTICE 'OK: no policy reads profiles.role or organization_members inline';
+END $$;
+
 -- Structural guard: the column has no reader left in a policy, and the
 -- helper that read it is gone. A policy written by habit against the
 -- deprecated column would answer the wrong organization with a real uuid.
