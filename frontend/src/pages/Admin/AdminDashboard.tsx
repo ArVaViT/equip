@@ -268,6 +268,8 @@ export default function AdminDashboard() {
               onReset={audit.resetFilters}
               onPageChange={audit.setPage}
               onPageSizeChange={audit.setPageSize}
+              error={audit.error}
+              onReload={audit.reload}
             />
           </Suspense>
         </div>

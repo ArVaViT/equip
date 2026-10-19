@@ -94,7 +94,7 @@ export function useAdminAudit({ enabled }: UseAdminAuditArgs) {
     [setParams],
   )
 
-  const { data: fetchedData, loading, error: fetchError } = useAsyncData(
+  const { data: fetchedData, loading, error: fetchError, refetch } = useAsyncData(
     async (isCancelled) => {
       if (!enabled) return undefined
       const query: AuditLogQuery = { page, page_size: pageSize }
@@ -131,6 +131,10 @@ export function useAdminAudit({ enabled }: UseAdminAuditArgs) {
     logs,
     total,
     loading,
+    // The tab shows these instead of «No audit entries» (or the previous
+    // filter's rows) when the fetch failed.
+    error: fetchError !== null,
+    reload: refetch,
     page,
     pageSize,
     action,

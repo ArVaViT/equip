@@ -19,10 +19,11 @@ vi.mock("@/lib/supabase", () => ({
   },
 }))
 
+let pendingCerts: () => Promise<unknown[]> = () => Promise.resolve([])
 vi.mock("@/services/courses", () => ({
   coursesService: {
     getAllUsers: () => Promise.resolve(users),
-    getAdminPendingCerts: () => Promise.resolve([]),
+    getAdminPendingCerts: () => pendingCerts(),
     bulkUpdateUserRoles: () => Promise.resolve(bulkResult),
   },
 }))
@@ -64,6 +65,17 @@ describe("admin overview counts", () => {
     const { result } = renderHook(() => useAdminOverview({ currentUserId: "a" }), { wrapper: Wrapper })
     await waitFor(() => expect(result.current.error).not.toBeNull())
     expect(result.current.stats.courses).toBe(0)
+  })
+
+  it("says the load failed when the pending certificates could not be read, rather than «0 to approve»", async () => {
+    pendingCerts = () => Promise.reject(new Error("offline"))
+    try {
+      const { result } = renderHook(() => useAdminOverview({ currentUserId: "a" }), { wrapper: Wrapper })
+      await waitFor(() => expect(result.current.error).not.toBeNull())
+      expect(result.current.adminCerts).toEqual([])
+    } finally {
+      pendingCerts = () => Promise.resolve([])
+    }
   })
 })
 

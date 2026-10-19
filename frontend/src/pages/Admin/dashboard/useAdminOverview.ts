@@ -100,7 +100,9 @@ export function useAdminOverview({ currentUserId, enabled = true, certsOnly = fa
         coursesService.getAllUsers(),
         supabase.from("courses").select("id", { count: "exact", head: true }),
         supabase.from("enrollments").select("id", { count: "exact", head: true }),
-        coursesService.getAdminPendingCerts().catch(() => []),
+        // Not caught: «[]» hid the card and put «0 pending actions» on the
+        // overview when the request had simply failed.
+        coursesService.getAdminPendingCerts(),
       ])
       if (isCancelled()) return undefined
       // A count query that failed answers ``count: null`` beside an
