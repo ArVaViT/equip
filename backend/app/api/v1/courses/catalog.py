@@ -37,6 +37,7 @@ from app.services.translation.resolve_for_display import (
 )
 
 from ._router import router
+from ._viewer import for_viewer
 
 
 @router.get("", response_model=list[CourseSummary])
@@ -190,10 +191,10 @@ def get_course_detail(
         # language first, then the newest a person wrote), a held edit included — not the machine's translation of an edit they
         # wrote in another language, and not an empty name before it lands.
         populate_spine_texts(db, [course], prefer_human=True)
-        return CourseResponse.model_validate(course, from_attributes=True)
+        return for_viewer(CourseResponse.model_validate(course, from_attributes=True), course, current_user)
     response.headers["Vary"] = "Accept-Language"
     if not should_apply_course_translation_overlay(course=course, current_user=current_user):
-        return CourseResponse.model_validate(course, from_attributes=True)
+        return for_viewer(CourseResponse.model_validate(course, from_attributes=True), course, current_user)
     # A chapter held for its first release is the owner's and the
     # admin's to see — the same two the ``?source=1`` gate above trusts.
     # Everybody else is a reader, and a reader is not shown it.
@@ -204,7 +205,7 @@ def get_course_detail(
     # first lesson before deciding.
     if current_user is None or not guest_preview.reads_course_as_enrolled(db, course, current_user):
         localized.preview_chapter_id = guest_preview.preview_chapter_id(db, course)
-    return localized
+    return for_viewer(localized, course, current_user)
 
 
 class CourseReadingTime(BaseModel):

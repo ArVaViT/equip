@@ -213,6 +213,15 @@ class CourseResponse(_ReadTitle):
     # Controls the enroll button on the catalog: ``public`` shows
     # "Записаться", ``institute`` shows "Доступно только по приглашению".
     access_mode: Literal["public", "institute"] = "public"
+    #: Whether the reader may edit this course: its author, or platform
+    #: staff — the same two ``is_owner_or_admin`` trusts with the source
+    #: text and the unreleased lessons. Decided by the server, so the client
+    #: need not be told who the author is to find out.
+    viewer_can_edit: bool = False
+    #: The author's account id. On the course page it is sent only to the
+    #: reader who may edit (``viewer_can_edit``); a guest or a student
+    #: reads ``None`` — the «Автор» tab names the person, the id named
+    #: nobody they could use it for.
     created_by: UUID | None = None
     created_at: datetime
     updated_at: datetime | None = None
@@ -295,7 +304,8 @@ class CourseSummary(_ReadTitle):
     # (``GET /courses``), and the author's account id is nothing a reader
     # needs: the card names the school, and the «Автор» tab
     # (``/courses/{id}/author``) the person. No client read it from a list —
-    # the one ownership check (``CourseDetail``) reads ``CourseResponse``.
+    # the one ownership check (``CourseDetail``) reads ``viewer_can_edit``
+    # on ``CourseResponse``.
     created_at: datetime
     updated_at: datetime | None = None
     deleted_at: datetime | None = None
@@ -352,7 +362,8 @@ class CourseDashboardSummary(_ReadTitle):
     id: str
     status: str = "draft"
     access_mode: Literal["public", "institute"] = "public"
-    created_by: UUID | None = None
+    # No ``created_by``: the student's dashboard names the course, not the
+    # account that wrote it, and no client read it from this list.
     created_at: datetime
     updated_at: datetime | None = None
     deleted_at: datetime | None = None

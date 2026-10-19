@@ -149,7 +149,18 @@ export interface Course {
   organization_name?: string | null
   organization_slug?: string | null
   access_mode: 'public' | 'institute'
-  created_by: string
+  /**
+   * Whether the reader may edit this course — its author, or platform
+   * staff. Decided by the server (`is_owner_or_admin`), so the page never
+   * has to know who the author is; absent on list shapes.
+   */
+  viewer_can_edit?: boolean
+  /**
+   * The author's account id. The course page sends it only to the reader
+   * who may edit; a guest or a student reads `null`. Nothing on the client
+   * decides ownership from it — that is `viewer_can_edit`.
+   */
+  created_by?: string | null
   created_at: string
   updated_at: string
   deleted_at: string | null

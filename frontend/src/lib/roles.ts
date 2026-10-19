@@ -12,7 +12,8 @@ import { ROLES, type UserRole } from "@/types"
  * ``TEACHING_ROLES`` in ``app/models/user.py`` mirrors it exactly.
  *
  * What this does NOT grant: ownership. Whether a director may edit *this*
- * course is still ``created_by``, exactly as it is for a teacher.
+ * course is still its authorship — the server's ``viewer_can_edit`` on the
+ * course page — exactly as it is for a teacher.
  */
 export const TEACHING_ROLES: ReadonlySet<UserRole> = new Set<UserRole>([
   ROLES.ADMIN,
