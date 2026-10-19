@@ -7,7 +7,7 @@ interface ChapterListProps {
   chapters: Chapter[];
   onDragEnd: (result: DropResult) => void;
   onTitleChange: (chapterId: string, title: string) => void;
-  onRename: (chapter: Chapter, title: string) => void;
+  onRename: (chapter: Chapter, title: string, previous: string) => void;
   onToggleLock: (chapter: Chapter) => void;
   onEdit: (chapterId: string) => void;
   onDelete: (chapterId: string) => void;
@@ -59,7 +59,7 @@ export function ChapterList({
               chapter={ch}
               index={idx}
               onTitleChange={(title) => onTitleChange(ch.id, title)}
-              onRename={(title) => onRename(ch, title)}
+              onRename={(title, previous) => onRename(ch, title, previous)}
               onToggleLock={() => onToggleLock(ch)}
               onEdit={() => onEdit(ch.id)}
               onDelete={() => onDelete(ch.id)}

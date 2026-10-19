@@ -178,9 +178,15 @@ export function useModuleEditor(
     );
   };
 
-  const renameChapter = async (ch: Chapter, newTitle: string) => {
-    if (!courseId || !moduleId || !newTitle.trim()) return;
+  // `previous`: the title before editing began. `ch.title` is already the
+  // typed text, so a refused rename used to «roll back» to what was typed.
+  const renameChapter = async (ch: Chapter, newTitle: string, previous: string = ch.title) => {
+    if (!courseId || !moduleId) return;
     const trimmed = newTitle.trim();
+    if (!trimmed) {
+      updateChapterLocal(ch.id, { title: previous });
+      return;
+    }
     const check = makeChapterSchema().pick({ title: true }).safeParse({ title: trimmed });
     if (!check.success) {
       toast({
@@ -188,18 +194,18 @@ export function useModuleEditor(
           check.error.issues[0]?.message ?? t("lessons.invalidTitle"),
         variant: "destructive",
       });
+      updateChapterLocal(ch.id, { title: previous });
       return;
     }
-    const previousTitle = ch.title;
     updateChapterLocal(ch.id, { title: trimmed });
     try {
       await coursesService.updateCourseChapter(courseId, ch.id, {
         title: trimmed,
       });
-    } catch {
-      updateChapterLocal(ch.id, { title: previousTitle });
+    } catch (err) {
+      updateChapterLocal(ch.id, { title: previous });
       toast({
-        title: t("lessons.toast.renameFailed"),
+        title: getErrorDetail(err, t("lessons.toast.renameFailed")),
         variant: "destructive",
       });
     }
