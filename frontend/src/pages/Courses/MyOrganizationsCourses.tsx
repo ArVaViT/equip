@@ -4,8 +4,8 @@ import { Lock } from "lucide-react"
 
 import CourseCard from "@/components/course/CourseCard"
 import { Eyebrow } from "@/components/patterns"
-import { useAsyncData } from "@/hooks/useAsyncData"
-import { organizationsService } from "@/services/organizations"
+
+import type { ClosedCoursesBlock } from "./useMyOrganizationsBlocks"
 
 /**
  * The closed courses of every organization the reader belongs to — the
@@ -14,12 +14,8 @@ import { organizationsService } from "@/services/organizations"
  * somebody sent them and from nowhere else. One block per organization,
  * each to its page; organizations never mix.
  */
-export function MyOrganizationsCourses({ userId, progress }: { userId: string; progress: Map<string, number> }) {
-  const { t, i18n } = useTranslation()
-  const { data } = useAsyncData(() => organizationsService.mine().catch(() => []), [userId, i18n.language])
-  const blocks = (data ?? [])
-    .map((block) => ({ ...block, closed: block.courses.filter((c) => c.access_mode === "institute") }))
-    .filter((block) => block.closed.length > 0)
+export function MyOrganizationsCourses({ blocks, progress }: { blocks: ClosedCoursesBlock[]; progress: Map<string, number> }) {
+  const { t } = useTranslation()
   if (blocks.length === 0) return null
   return (
     <div className="mb-8 space-y-10">

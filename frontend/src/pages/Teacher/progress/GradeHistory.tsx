@@ -70,10 +70,10 @@ export function GradeHistory({ courseId, studentId }: { courseId: string; studen
 
   return (
     <div>
-      <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
+      <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold">
         <History className="h-4 w-4" strokeWidth={1.75} aria-hidden />
         {t("studentProgress.history.title")}
-      </h4>
+      </h3>
       {entries === null ? (
         <Button size="sm" variant="outline" onClick={load} disabled={loading}>
           {loading && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />}

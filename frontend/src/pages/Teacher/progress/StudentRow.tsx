@@ -365,10 +365,10 @@ export function StudentRow({
       )}
       {detail && !detailLoading && allChapters.size > 0 && (
         <div>
-          <h4 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-1.5">
             <BookOpen className="h-4 w-4" strokeWidth={1.75} />
             {t("studentProgress.row.chapterBreakdown")}
-          </h4>
+          </h3>
           <div className="space-y-2">
             {Array.from(allChapters.entries()).map(([id, entry]) => (
               <ChapterBreakdownRow
