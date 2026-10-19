@@ -942,7 +942,8 @@
       "plan_limit_reached": "You already have {{limit}} courses, which is as many as one teacher can keep at once. Delete one you no longer need, or ask an administrator.",
       "validation_failed": "Something you entered isn't right.",
       "legal_consent_required": "Please accept the current Terms of Use and Privacy Policy before making changes.",
-      "legal_document_changed": "This document has changed. Please reload and read it again."
+      "legal_document_changed": "This document has changed. Please reload and read it again.",
+      "grade_sheet_work_unmarked": "Some work is still waiting to be marked. Mark it first, then close the grade sheet."
     },
     "byStatus": {
       "400": "The request couldn't be processed. Check what you entered.",
@@ -3148,6 +3149,11 @@
     "notClosedBody": "Closing it freezes every student's result as it stands today. The printed page reads from that snapshot, so re-marking work later cannot change a document already signed.",
     "close": "Close the grade sheet",
     "closeFailed": "Could not close the grade sheet.",
+    "unmarked": {
+      "body_one": "{{count}} student still has unmarked work. Closing now would record it as a zero.",
+      "body_other": "{{count}} students still have unmarked work. Closing now would record it as a zero.",
+      "openQueue": "Open the marking queue"
+    },
     "print": "Print",
     "closedOn": "Closed {{date}}",
     "wasReopened": "This sheet replaces a reopened one. Reason: {{reason}}",

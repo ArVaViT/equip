@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { I18nextProvider } from "react-i18next"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -79,6 +79,38 @@ describe("VedomostPage", () => {
     vi.spyOn(gradesService, "getGradeSheet").mockResolvedValue(null)
     renderPage()
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(i18n.t("vedomost.notClosedTitle"))
+  })
+
+  it("says why the sheet would not close, and where the unread work is", async () => {
+    // The server refuses to sign over an unread essay (the snapshot would
+    // count it as a zero). That is not a failed request: the reason stays
+    // under the button with the way to the queue, and the button stays —
+    // the person marks the work and presses it again.
+    vi.spyOn(gradesService, "getGradeSheet").mockResolvedValue(null)
+    vi.spyOn(gradesService, "closeGradeSheet").mockRejectedValue(
+      Object.assign(new Error("Conflict"), {
+        isAxiosError: true,
+        response: {
+          status: 409,
+          data: {
+            detail: {
+              code: "grade_sheet.work_unmarked",
+              message: "3 student(s) still have 4 piece(s) of work waiting to be marked.",
+              context: { students: 3, items: 4, course_id: "c1" },
+            },
+          },
+        },
+      }),
+    )
+    renderPage()
+    fireEvent.click(await screen.findByRole("button", { name: i18n.t("vedomost.close") }))
+
+    expect(await screen.findByRole("status")).toHaveTextContent(i18n.t("vedomost.unmarked.body", { count: 3 }))
+    expect(screen.getByRole("link", { name: i18n.t("vedomost.unmarked.openQueue") })).toHaveAttribute(
+      "href",
+      "/teach/grading",
+    )
+    expect(screen.getByRole("button", { name: i18n.t("vedomost.close") })).toBeEnabled()
   })
 
   it("does not offer to close anything when the request was refused", async () => {
