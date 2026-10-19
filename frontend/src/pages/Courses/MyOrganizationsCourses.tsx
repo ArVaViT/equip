@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next"
 import { Lock } from "lucide-react"
 
 import CourseCard from "@/components/course/CourseCard"
-import { Eyebrow } from "@/components/patterns"
+import { Button } from "@/components/ui/button"
+import { ErrorState, Eyebrow } from "@/components/patterns"
 
 import type { ClosedCoursesBlock } from "./useMyOrganizationsBlocks"
 
@@ -14,8 +15,34 @@ import type { ClosedCoursesBlock } from "./useMyOrganizationsBlocks"
  * somebody sent them and from nowhere else. One block per organization,
  * each to its page; organizations never mix.
  */
-export function MyOrganizationsCourses({ blocks, progress }: { blocks: ClosedCoursesBlock[]; progress: Map<string, number> }) {
+export function MyOrganizationsCourses({
+  blocks,
+  error,
+  refetch,
+  progress,
+}: {
+  blocks: ClosedCoursesBlock[]
+  error: Error | null
+  refetch: () => void
+  progress: Map<string, number>
+}) {
   const { t } = useTranslation()
+  if (error) {
+    // Not nothing: this is the only way to a member's closed courses, and
+    // a catalogue that silently shows the public ones reads as «you have
+    // no institute».
+    return (
+      <ErrorState
+        className="mb-8 py-6"
+        title={t("myOrganizations.loadFailed")}
+        action={
+          <Button size="sm" variant="outline" onClick={refetch}>
+            {t("common.tryAgain")}
+          </Button>
+        }
+      />
+    )
+  }
   if (blocks.length === 0) return null
   return (
     <div className="mb-8 space-y-10">

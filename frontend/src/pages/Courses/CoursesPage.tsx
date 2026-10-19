@@ -63,8 +63,8 @@ export default function CoursesPage() {
   // under its own h2, and the catalogue then gets an h2 of its own. With
   // those on the page a card is an h3; straight under the page's h1 it is
   // an h2. A search hides the sections, and the cards climb back.
-  const organizationBlocks = useMyOrganizationsBlocks(user?.id)
-  const organizationSectionsShown = Boolean(user) && !query && organizationBlocks.length > 0
+  const organizations = useMyOrganizationsBlocks(user?.id)
+  const organizationSectionsShown = Boolean(user) && !query && organizations.blocks.length > 0
   const progressByCourseId = useMemo(() => {
     const map = new Map<string, number>()
     for (const e of myEnrollments ?? []) {
@@ -153,7 +153,8 @@ export default function CoursesPage() {
         </div>
       </section>
 
-      {organizationSectionsShown && <MyOrganizationsCourses blocks={organizationBlocks} progress={progressByCourseId} />}
+      {/* Shown with sections to list or a failed read to say so; nothing otherwise. */}
+      {user && !query && <MyOrganizationsCourses {...organizations} progress={progressByCourseId} />}
 
       {loading ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3">

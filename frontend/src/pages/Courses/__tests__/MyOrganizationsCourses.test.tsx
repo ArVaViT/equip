@@ -9,6 +9,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "@/i18n/config"
 import { organizationsService } from "@/services/organizations"
 import { MyOrganizationsCourses } from "../MyOrganizationsCourses"
+import { useMyOrganizationsBlocks } from "../useMyOrganizationsBlocks"
+
+/** The page's wiring: the hook reads, the component shows. */
+function Harness({ userId }: { userId: string }) {
+  const organizations = useMyOrganizationsBlocks(userId)
+  return <MyOrganizationsCourses {...organizations} progress={new Map()} />
+}
 
 function Wrapper({ children }: { children: ReactNode }) {
   return (
@@ -37,7 +44,7 @@ describe("MyOrganizationsCourses", () => {
           courses: [{ id: "k1", title: "Acts", access_mode: "institute" }],
         } as never,
       ])
-    render(<MyOrganizationsCourses userId="u1" progress={new Map()} />, { wrapper: Wrapper })
+    render(<Harness userId="u1" />, { wrapper: Wrapper })
 
     expect(await screen.findByRole("alert")).toBeInTheDocument()
     await userEvent.click(screen.getByRole("button", { name: "Try again" }))
