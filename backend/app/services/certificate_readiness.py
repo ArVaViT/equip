@@ -26,13 +26,13 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from app.models.quiz import QuizAnswer, QuizAttempt, QuizQuestion
+from app.models.quiz import QuizAttempt
 from app.services.gradable_items import course_items
 from app.services.grade_calculator import calculate_student_grade_for_course
 from app.services.grade_exemption_service import excused_item_ids
 from app.services.grade_override import resolve_official_row
 from app.services.grade_sheet_service import FAIL, NOT_ATTESTED, official_result
-from app.services.grading_queue import unread_answer_filters
+from app.services.grading_queue import work_awaiting_marking
 from app.services.grading_scheme import effective_bands, get_org_settings
 from app.services.zachet import NOT_ATTESTED as ZACHET_NOT_ATTESTED
 from app.services.zachet import (
@@ -161,9 +161,19 @@ def certificate_blockers(
     chapter_of = {str(i.id): str(i.chapter_id) for i in (*quizzes, *assignments) if i.chapter_id}
 
     # Waiting on the teacher, waiting on the student, and never handed in read
-    # identically as "not done" and are three different conversations.
-    awaiting_marking = {str(q) for q in _quizzes_awaiting_marking(db, student_id, [q.id for q in quizzes])}
+    # identically as "not done" and are three different conversations. The
+    # first is the queue's own definition, shared with the ведомость: what is
+    # named here as unread is exactly what refuses to be signed over.
     submissions = latest_submissions(db, student_id=student_id, assignment_ids=[a.id for a in assignments])
+    awaiting_marking = work_awaiting_marking(
+        db,
+        student_id,
+        course_id=course.id,
+        quizzes=quizzes,
+        assignments=assignments,
+        submissions=submissions,
+        excused=excused,
+    )
     returned: set[str] = set()
     missing: set[str] = set()
     for assignment in assignments:
@@ -175,14 +185,10 @@ def certificate_blockers(
             missing.add(aid)
         elif submission["status"] == "returned":
             returned.add(aid)
-        elif submission["status"] == "submitted" and submission["grade"] is None:
-            awaiting_marking.add(aid)
     # A quiz never attempted counts as a zero in a band scheme and as unmet in
     # pass/fail — either way it belongs on the list by name, not as a number.
     attempted = _quizzes_attempted(db, student_id, [q.id for q in quizzes])
     missing |= {str(q.id) for q in quizzes if str(q.id) not in excused and q.id not in attempted}
-
-    awaiting_marking -= excused
 
     for code, ids in ((WORK_NOT_GRADED, awaiting_marking), (WORK_RETURNED, returned), (WORK_NOT_SUBMITTED, missing)):
         if ids:
@@ -249,32 +255,6 @@ def _quizzes_attempted(db: Session, student_id: UUID, quiz_ids: list) -> set:
             QuizAttempt.quiz_id.in_(quiz_ids),
             QuizAttempt.user_id == student_id,
             QuizAttempt.completed_at.isnot(None),
-        )
-        .distinct()
-        .all()
-    )
-    return {row[0] for row in rows}
-
-
-def _quizzes_awaiting_marking(db: Session, student_id: UUID, quiz_ids: list) -> set:
-    """Quizzes where this student has a finished attempt with an unread answer.
-
-    One query for the course, not one per quiz: this runs on the student's own
-    course page, which is the most-loaded authenticated screen there is.
-    """
-    if not quiz_ids:
-        return set()
-    rows = (
-        db.query(QuizAttempt.quiz_id)
-        .join(QuizAnswer, QuizAnswer.attempt_id == QuizAttempt.id)
-        .join(QuizQuestion, QuizQuestion.id == QuizAnswer.question_id)
-        .filter(
-            QuizAttempt.quiz_id.in_(quiz_ids),
-            QuizAttempt.user_id == student_id,
-            # The same definition the teacher's queue uses. Told "your essay is
-            # not marked yet" for an answer that is not on the teacher's list,
-            # a student waits for something that will never arrive.
-            *unread_answer_filters(),
         )
         .distinct()
         .all()
