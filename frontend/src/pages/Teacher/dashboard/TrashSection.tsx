@@ -4,6 +4,7 @@ import { Archive, RotateCcw, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import PageSpinner from "@/components/ui/PageSpinner"
+import { ErrorState } from "@/components/patterns"
 import { useConfirm } from "@/components/ui/alert-dialog"
 import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
@@ -22,20 +23,24 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
   const { t } = useTranslation()
   const [trashedCourses, setTrashedCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(false)
+  // A list that could not be read is not an empty bin: «Trash is empty»
+  // over a failed request told a teacher their deleted course was gone.
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   const [restoringId, setRestoringId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!visible) return
     const signal = { cancelled: false }
     setLoading(true)
+    setLoadFailed(false)
     coursesService
       .getTrashedCourses()
       .then((data) => {
         if (!signal.cancelled) setTrashedCourses(data)
       })
       .catch(() => {
-        if (!signal.cancelled)
-          toast({ title: t("teacherDashboard.trash.loadFailed"), variant: "destructive" })
+        if (!signal.cancelled) setLoadFailed(true)
       })
       .finally(() => {
         if (!signal.cancelled) setLoading(false)
@@ -43,7 +48,7 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
     return () => {
       signal.cancelled = true
     }
-  }, [visible, t])
+  }, [visible, attempt])
 
   const handleRestore = async (id: string) => {
     setRestoringId(id)
@@ -98,6 +103,16 @@ export function TrashSection({ visible, onToggle, onRestore }: Props) {
         <div className="mt-4">
           {loading ? (
             <PageSpinner variant="section" />
+          ) : loadFailed ? (
+            <ErrorState
+              className="py-6"
+              title={t("teacherDashboard.trash.loadFailed")}
+              action={
+                <Button size="sm" variant="outline" onClick={() => setAttempt((n) => n + 1)}>
+                  {t("common.tryAgain")}
+                </Button>
+              }
+            />
           ) : trashedCourses.length === 0 ? (
             <p className="text-sm text-ink-muted py-4">
               {t("teacherDashboard.trash.empty")}

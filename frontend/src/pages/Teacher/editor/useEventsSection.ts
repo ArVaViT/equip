@@ -28,6 +28,9 @@ export interface PendingScope {
 
 interface EventsSection {
   events: CourseEvent[]
+  /** The list could not be read — not the same as an empty list. */
+  loadFailed: boolean
+  reloadList: () => void
   form: EventFormState
   setForm: (v: EventFormState) => void
   editingId: string | null
@@ -86,6 +89,11 @@ export function useEventsSection(
   }, [defaults])
   const [saving, setSaving] = useState(false)
   const [pendingScope, setPendingScope] = useState<PendingScope | null>(null)
+  // See `useAnnouncementsSection`: a failed read shown as «No events yet»
+  // invites the teacher to create the weekly series a second time.
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const reloadList = useCallback(() => setLoadAttempt((n) => n + 1), [])
 
   const reload = useCallback(async (): Promise<CourseEvent[] | null> => {
     if (!courseId) return null
@@ -104,6 +112,7 @@ export function useEventsSection(
     // linger while this one loads (the calendar's course picker).
     setEvents([])
     setPendingScope(null)
+    setLoadFailed(false)
     if (!courseId) return
     let cancelled = false
     coursesService
@@ -112,12 +121,12 @@ export function useEventsSection(
         if (!cancelled) setEvents(e)
       })
       .catch(() => {
-        if (!cancelled) setEvents([])
+        if (!cancelled) setLoadFailed(true)
       })
     return () => {
       cancelled = true
     }
-  }, [courseId])
+  }, [courseId, loadAttempt])
 
   const resetForm = useCallback(() => {
     setForm(blankForm())
@@ -296,6 +305,8 @@ export function useEventsSection(
 
   return {
     events,
+    loadFailed,
+    reloadList,
     form,
     setForm,
     editingId,

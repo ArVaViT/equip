@@ -9,6 +9,9 @@ type Confirm = ReturnType<typeof useConfirm>
 
 interface AnnouncementsSection {
   announcements: Announcement[]
+  /** The list could not be read — not the same as an empty list. */
+  loadFailed: boolean
+  reload: () => void
   title: string
   setTitle: (v: string) => void
   content: string
@@ -37,22 +40,29 @@ export function useAnnouncementsSection(
   const [content, setContent] = useState("")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [posting, setPosting] = useState(false)
+  // A list that could not be read must not look like an empty one: a
+  // teacher who sees «No announcements yet» posts the notice again, and
+  // every student is mailed twice.
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const reload = useCallback(() => setLoadAttempt((n) => n + 1), [])
 
   useEffect(() => {
     if (!courseId) return
     let cancelled = false
+    setLoadFailed(false)
     coursesService
       .getAnnouncementsForEdit(courseId)
       .then((a) => {
         if (!cancelled) setAnnouncements(a)
       })
       .catch(() => {
-        if (!cancelled) setAnnouncements([])
+        if (!cancelled) setLoadFailed(true)
       })
     return () => {
       cancelled = true
     }
-  }, [courseId])
+  }, [courseId, loadAttempt])
 
   const resetForm = useCallback(() => {
     setTitle("")
@@ -125,6 +135,8 @@ export function useAnnouncementsSection(
 
   return {
     announcements,
+    loadFailed,
+    reload,
     title,
     setTitle,
     content,

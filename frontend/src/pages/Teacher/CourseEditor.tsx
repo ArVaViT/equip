@@ -433,6 +433,8 @@ export default function CourseEditor() {
         onEdit={announcements.startEdit}
         onCancelEdit={announcements.resetForm}
         onDelete={announcements.remove}
+        loadFailed={announcements.loadFailed}
+        onReload={announcements.reload}
       />
 
       <MaterialsModal
@@ -454,6 +456,8 @@ export default function CourseEditor() {
           events.resetForm()
         }}
         events={events.events}
+        loadFailed={events.loadFailed}
+        onReload={events.reloadList}
         form={events.form}
         onFormChange={events.setForm}
         editingId={events.editingId}
