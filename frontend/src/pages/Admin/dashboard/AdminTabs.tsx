@@ -55,6 +55,7 @@ export function AdminTabs({ active, onChange, tabs }: Props) {
     <div
       className="no-scrollbar mb-6 flex gap-1 overflow-x-auto border-b border-edge sm:mb-8"
       role="tablist"
+      aria-label={t("admin.tabsLabel")}
       onKeyDown={onKeyDown}
     >
       {tabs.map((name) => {

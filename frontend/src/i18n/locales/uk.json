@@ -2624,6 +2624,7 @@
         "totalCount": "{{count}} запитань"
       }
     },
+    "tabsLabel": "Розділи панелі адміністратора",
     "tabOverview": "Огляд",
     "tabCohorts": "Групи",
     "tabAudit": "Журнал дій",

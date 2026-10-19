@@ -46,7 +46,7 @@ export function EmptyState({
             {icon}
           </span>
         )}
-        <p className="text-sm text-ink-muted">{title}</p>
+        <Title className="text-sm text-ink-muted">{title}</Title>
         {description && (
           <p className="max-w-md text-xs text-ink-muted">
             {description}

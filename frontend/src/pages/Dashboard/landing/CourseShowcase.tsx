@@ -50,7 +50,7 @@ import { usePhoneCut } from "./phoneCut"
  */
 
 export function CourseShowcase() {
-  const { t, i18n } = useTranslation()
+  const { i18n } = useTranslation()
   const prefersReducedMotion = useReducedMotion()
   // A pinned shelf is a desktop idea. On a phone it turned five courses
   // into two and a half screens of vertical scrolling, and it competes with
@@ -210,7 +210,7 @@ export function CourseShowcase() {
   // they are large enough to read.
   if (!prefersReducedMotion && phone) {
     return (
-      <SceneBand label={t("header.courses")} pose="row">
+      <SceneBand labelledBy={SHELF_HEADING_ID} pose="row">
         <ShelfHeading />
         <div className="mx-auto w-full max-w-5xl px-5">
           <ul data-backdrop-target data-stack="left" className="divide-y divide-line border-y border-line">
@@ -230,7 +230,7 @@ export function CourseShowcase() {
   // can swipe, or a grid if even that is too much.
   if (prefersReducedMotion || !pinned) {
     return (
-      <SceneBand label={t("header.courses")} pose="row">
+      <SceneBand labelledBy={SHELF_HEADING_ID} pose="row">
       <ShelfHeading />
       <div className="mx-auto w-full max-w-5xl px-5 sm:px-6">
         {prefersReducedMotion ? (
@@ -266,7 +266,7 @@ export function CourseShowcase() {
     <div ref={trackRef} className="relative">
       {/* The backdrop lays one sheet behind each cover while the shelf is
           on screen — see `SceneBand` and `LandingBackdrop`. */}
-      <SceneBand label={t("header.courses")} pose="row" className="overflow-hidden">
+      <SceneBand labelledBy={SHELF_HEADING_ID} pose="row" className="overflow-hidden">
         <ShelfHeading />
         {/* The row starts at the page's own left margin and runs off the
             right edge — a shelf that continues past the window, rather than
@@ -289,17 +289,24 @@ export function CourseShowcase() {
   )
 }
 
+const SHELF_HEADING_ID = "landing-courses"
+
 /**
- * The shelf's own heading, for the outline only: the band is named by its
- * `aria-label`, but a heading is what a reader walks, and without one the
- * course titles (h3) hang under whichever h2 came before — on the first
+ * The shelf's own heading, for the outline only — and the band's name, so
+ * «Courses» is written once (the organization page names its directors'
+ * section the same way). A heading is what a reader walks, and without one
+ * the course titles (h3) hang under whichever h2 came before — on the first
  * version of the page, straight under the h1. Nothing is shown: the shelf
  * is covers, and a visible «Courses» over it would say what they already
- * say (the organization page does the same for its directors).
+ * say.
  */
 function ShelfHeading() {
   const { t } = useTranslation()
-  return <h2 className="sr-only">{t("header.courses")}</h2>
+  return (
+    <h2 id={SHELF_HEADING_ID} className="sr-only">
+      {t("header.courses")}
+    </h2>
+  )
 }
 
 /** The way from the shelf to the whole catalogue, in every layout. */

@@ -187,6 +187,8 @@ describe("PublicLanding (unauth marketing page)", () => {
     await screen.findAllByText("Курс проповеди")
     const shelf = await screen.findByRole("heading", { level: 2, name: i18n.t("header.courses") })
     expect(shelf).toHaveClass("sr-only")
+    // …and it is what names the band, so «Courses» is said once.
+    expect(screen.getByRole("region", { name: i18n.t("header.courses") })).toHaveAttribute("aria-labelledby", shelf.id)
     const { levels, gaps } = headingOutline(container)
     expect(gaps).toEqual([])
     // …and the course titles sit right under it.
