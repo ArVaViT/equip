@@ -64,6 +64,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (inflightUserId.current === userId) inflightUserId.current = null
           if (!mounted.current || activeUserId.current !== userId) return
           if (error || !data) {
+            // Nobody is signed in as far as the app can tell, so the next
+            // SIGNED_IN for this account must load the profile again. With
+            // the id left here it was waved through as «already loaded»,
+            // and signing in again did nothing — no error, no dashboard.
+            activeUserId.current = null
             setLoading(false)
             return
           }
@@ -126,6 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         () => {
           if (inflightUserId.current === userId) inflightUserId.current = null
           if (mounted.current && activeUserId.current === userId) {
+            activeUserId.current = null
             setLoading(false)
           }
         },
