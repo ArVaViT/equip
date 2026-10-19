@@ -943,7 +943,7 @@
       "validation_failed": "Etwas an Ihrer Eingabe stimmt nicht.",
       "legal_consent_required": "Bitte akzeptieren Sie die aktuellen Nutzungsbedingungen und die Datenschutzerklärung, bevor Sie etwas ändern.",
       "legal_document_changed": "Dieses Dokument hat sich geändert. Bitte laden Sie die Seite neu und lesen Sie es erneut.",
-      "grade_sheet_work_unmarked": "Es gibt noch unbewertete Arbeiten. Bewerten Sie sie zuerst und schließen Sie dann die Notenliste ab."
+      "grade_sheet_work_unmarked": "Es gibt noch unbewertete Arbeiten. Die Notenliste lässt sich abschließen, sobald die Lehrkraft des Kurses sie bewertet oder die Personen davon befreit hat."
     },
     "byStatus": {
       "400": "Die Anfrage konnte nicht verarbeitet werden. Prüfen Sie Ihre Eingaben.",
@@ -3155,8 +3155,8 @@
     "close": "Notenliste abschließen",
     "closeFailed": "Die Notenliste konnte nicht abgeschlossen werden.",
     "unmarked": {
-      "body_one": "{{count}} Person hat noch eine unbewertete Arbeit. Wird die Notenliste jetzt abgeschlossen, zählt sie als null.",
-      "body_other": "{{count}} Personen haben noch unbewertete Arbeiten. Wird die Notenliste jetzt abgeschlossen, zählen sie als null.",
+      "body_one": "{{count}} Person hat noch eine unbewertete Arbeit. Wird die Notenliste jetzt abgeschlossen, zählt sie als null. Die Lehrkraft des Kurses bewertet sie oder befreit die Person davon — danach lässt sich die Liste abschließen.",
+      "body_other": "{{count}} Personen haben noch unbewertete Arbeiten. Wird die Notenliste jetzt abgeschlossen, zählen sie als null. Die Lehrkraft des Kurses bewertet sie oder befreit die Personen davon — danach lässt sich die Liste abschließen.",
       "openQueue": "Bewertungsliste öffnen"
     },
     "print": "Drucken",

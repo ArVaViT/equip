@@ -943,7 +943,7 @@
       "validation_failed": "Something you entered isn't right.",
       "legal_consent_required": "Please accept the current Terms of Use and Privacy Policy before making changes.",
       "legal_document_changed": "This document has changed. Please reload and read it again.",
-      "grade_sheet_work_unmarked": "Some work is still waiting to be marked. Mark it first, then close the grade sheet."
+      "grade_sheet_work_unmarked": "Some work is still waiting to be marked. The sheet closes once the course's teacher has marked it or excused the students from it."
     },
     "byStatus": {
       "400": "The request couldn't be processed. Check what you entered.",
@@ -3155,8 +3155,8 @@
     "close": "Close the grade sheet",
     "closeFailed": "Could not close the grade sheet.",
     "unmarked": {
-      "body_one": "{{count}} student still has unmarked work. Closing now would record it as a zero.",
-      "body_other": "{{count}} students still have unmarked work. Closing now would record it as a zero.",
+      "body_one": "{{count}} student still has unmarked work. Closing now would record it as a zero. The course's teacher marks it, or excuses the student from it; then the sheet closes.",
+      "body_other": "{{count}} students still have unmarked work. Closing now would record it as a zero. The course's teacher marks it, or excuses the students from it; then the sheet closes.",
       "openQueue": "Open the marking queue"
     },
     "print": "Print",
