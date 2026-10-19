@@ -910,7 +910,7 @@
     },
     "generic": "Etwas ist schiefgelaufen.",
     "network": "Keine Verbindung. Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.",
-    "timeout": "Der Server antwortet zu lange nicht. Versuchen Sie es erneut.",
+    "timeout": "Der Server hat zu lange nicht geantwortet. Versuchen Sie es erneut.",
     "byCode": {
       "auth_required": "Bitte melden Sie sich erneut an.",
       "auth_forbidden": "Sie haben dafür keine Berechtigung.",
