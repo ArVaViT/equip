@@ -11,6 +11,14 @@ import { NOTE_MAX_LENGTH, notesService } from "@/services/notes"
 
 type SaveState = "idle" | "saving" | "saved" | "failed"
 
+/**
+ * What this browser keeps of a note the server does not hold yet: the text
+ * as typed, and the text it was typed over (`base`). On the next visit the
+ * draft is sent only while the server still holds `base` — a note edited
+ * on another device since then is kept, not written over.
+ */
+type NoteDraft = { text: string; base: string }
+
 const SAVE_AFTER_MS = 1200
 
 /**
@@ -57,14 +65,41 @@ export function LessonNote({ chapterId }: { chapterId: string }) {
   const mounted = useRef(true)
   const draftKey = user ? noteDraftKey(user.id, chapterId) : null
 
-  /** The text as last typed here, kept while the server does not hold it. */
+  /**
+   * The text as last typed here, kept while the server does not hold it —
+   * together with the text it was typed over, so the next visit can tell
+   * whether the server still holds that text or an edit made elsewhere.
+   */
   const keepDraft = (text: string) => {
     if (!draftKey) return
     try {
       if (text.trim() === saved.current.trim()) window.localStorage.removeItem(draftKey)
-      else window.localStorage.setItem(draftKey, text)
+      else window.localStorage.setItem(draftKey, JSON.stringify({ text, base: saved.current } satisfies NoteDraft))
     } catch {
       // No storage: the note is exactly as safe as it was before.
+    }
+  }
+
+  /** The draft this browser kept for the lesson, or `null`. */
+  const readDraft = (): NoteDraft | null => {
+    if (!draftKey) return null
+    try {
+      const raw = window.localStorage.getItem(draftKey)
+      if (raw === null) return null
+      const parsed: unknown = JSON.parse(raw)
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        typeof (parsed as NoteDraft).text === "string" &&
+        typeof (parsed as NoteDraft).base === "string"
+      ) {
+        return parsed as NoteDraft
+      }
+      window.localStorage.removeItem(draftKey)
+      return null
+    } catch {
+      /* no storage, or not a draft: no draft */
+      return null
     }
   }
 
@@ -85,19 +120,22 @@ export function LessonNote({ chapterId }: { chapterId: string }) {
         // A draft this browser kept and the server never confirmed: the
         // note as it was last typed here. It goes back into the box and out
         // to the server — what leaving the lesson tried to do.
-        let draft: string | null = null
-        try {
-          draft = draftKey ? window.localStorage.getItem(draftKey) : null
-        } catch {
-          /* no storage, no draft */
-        }
+        const draft = readDraft()
         if (draft === null) return
-        if (draft.trim() === server.trim()) {
+        if (draft.text.trim() === server.trim()) {
           keepDraft(server)
           return
         }
-        latest.current = draft
-        setBody(draft)
+        if (draft.base.trim() !== server.trim()) {
+          // The note was edited elsewhere since this draft was typed — the
+          // server holds a text the draft never saw. Sent anyway, the draft
+          // would have written over that edit; the edit that was saved wins
+          // over the one that was not.
+          keepDraft(server)
+          return
+        }
+        latest.current = draft.text
+        setBody(draft.text)
         setOpen(true)
         timer.current = setTimeout(save, SAVE_AFTER_MS)
       })
