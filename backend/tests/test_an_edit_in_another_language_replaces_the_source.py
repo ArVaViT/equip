@@ -363,3 +363,115 @@ def test_the_authors_source_view_shows_their_words_not_the_machines(db: Session)
     assert read("ru") == NEW_TITLE_EN
     # Asked for another language (the owner's German PDF): German.
     assert read("de") == TRANSLATED["de"]
+
+
+# ─── The same story through the API, and past the publication gate ──────
+#
+# The cases above exercise the services. These walk the two paths a
+# teacher actually takes — the editor's PUT on a live course, and a draft
+# rewritten before it is published — and read the result the way the
+# readers and the gate do (2026-10-19).
+
+
+def _module_title(db: Session, module_id: str, locale: str) -> Any:
+    db.expire_all()
+    return fetch_cv_entity_texts_with_fallback(
+        db,
+        entity_type="module",
+        entity_ids=[module_id],
+        fields=["title"],
+        display_locale=locale,
+        source_locale="ru",
+        fallback="none",
+    ).get((module_id, "title"))
+
+
+def _live_course_with_module(client: TestClient, db: Session) -> tuple[str, str]:
+    """A published Russian course whose module is read in four languages."""
+    course_id, module_id = _draft_course_with_module(client, db)
+    source_hash = compute_source_hash(RU_NAME, locale="ru")
+    for locale in ("en", "de", "uk"):
+        record_mt_version(
+            db,
+            entity_type="module",
+            entity_id=module_id,
+            field="title",
+            locale=locale,
+            text=f"[{locale}] Acts and the first church",
+            source_locale="ru",
+            source_hash=source_hash,
+        )
+    course = db.get(Course, course_id)
+    assert course is not None
+    course.status = CourseStatus.PUBLISHED
+    db.commit()
+    return course_id, module_id
+
+
+class _ModuleProvider:
+    name = "recording"
+
+    def translate(self, request: TranslationRequest) -> TranslationResult:
+        from app.services.translation.protocol import TranslationResult as Result
+
+        return Result(text=f"{TRANSLATED[request.target_locale]} ({request.target_locale})", model="test")
+
+
+@pytest.mark.usefixtures("_translation_on")
+def test_a_live_module_renamed_in_english_through_the_editor_reaches_every_reader(
+    client: TestClient, db: Session
+) -> None:
+    course_id, module_id = _live_course_with_module(client, db)
+
+    saved = client.put(f"{PREFIX}/{course_id}/modules/{module_id}", json={"title": EN_NAME})
+    assert saved.status_code == 200, saved.text
+
+    # Held: every reader, the Russian one included, keeps the old name;
+    # the author's own view already shows the new words.
+    assert _module_title(db, module_id, "ru") == RU_NAME
+    assert _module_title(db, module_id, "en") == "[en] Acts and the first church"
+    assert saved.json()["title"] == EN_NAME
+    editor = client.get(f"{PREFIX}/{course_id}/modules/{module_id}", params={"source": 1})
+    assert editor.status_code == 200, editor.text
+    assert editor.json()["title"] == EN_NAME
+
+    course = db.get(Course, course_id)
+    assert course is not None
+    translate_staged_edits(db, course, provider=_ModuleProvider())
+    assert [s.state for s in staged_status_for_course(db, course)] == ["ready"]
+    assert promote_ready_fields(db, course).promoted_fields == 1
+
+    # Released in the same step everywhere: the Russian side carries a
+    # translation of the English words, not the Russian they replaced.
+    assert _module_title(db, module_id, "en") == EN_NAME
+    assert _module_title(db, module_id, "ru") == f"{TRANSLATED['ru']} (ru)"
+    assert _module_title(db, module_id, "de") == f"{TRANSLATED['de']} (de)"
+    assert _module_title(db, module_id, "uk") == f"{TRANSLATED['uk']} (uk)"
+    assert _human_rows(db, "module", module_id, "title") == [("en", EN_NAME)]
+    # Nothing left in flight, and the editor still shows the author's words.
+    assert staged_status_for_course(db, course) == []
+    editor = client.get(f"{PREFIX}/{course_id}/modules/{module_id}", params={"source": 1})
+    assert editor.json()["title"] == EN_NAME
+
+
+@pytest.mark.usefixtures("_translation_on")
+def test_a_draft_rewritten_in_english_is_planned_and_gated_from_the_english(client: TestClient, db: Session) -> None:
+    """The publication gate and the plan both take the field's own source —
+    the English the author wrote last — not the course's declared Russian,
+    which the edit retired. Otherwise the gate would wait for an English
+    translation of a Russian text that no longer exists."""
+    from app.services.translation.completeness import course_translation_completeness
+    from app.services.translation.course_pipeline import plan_course_tasks
+
+    course_id, module_id = _draft_course_with_module(client, db)
+    assert client.put(f"{PREFIX}/{course_id}/modules/{module_id}", json={"title": EN_NAME}).status_code == 200
+    course = db.get(Course, course_id)
+    assert course is not None
+
+    gaps = course_translation_completeness(db, course).gaps
+    module_gaps = {(g.locale, g.reason) for g in gaps if g.entity_type == "module" and g.field == "title"}
+    assert module_gaps == {("ru", "missing"), ("de", "missing"), ("uk", "missing")}
+
+    tasks = [t for t in plan_course_tasks(db, course) if t.entity_type == "module" and t.field == "title"]
+    assert {(t.source_locale, t.target_locale) for t in tasks} == {("en", "ru"), ("en", "de"), ("en", "uk")}
+    assert {t.text for t in tasks} == {EN_NAME}
