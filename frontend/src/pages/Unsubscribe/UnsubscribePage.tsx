@@ -3,13 +3,31 @@ import { Link, useSearchParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { MailX } from "lucide-react"
 
+import { isAxiosError } from "axios"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { PageHeader } from "@/components/patterns"
+import { getErrorDetail } from "@/lib/errorDetail"
+import { toast } from "@/lib/toast"
 import { emailService, type UnsubscribeState } from "@/services/email"
 
-type View = { state: "loading" } | { state: "invalid" } | { state: "ask" | "done"; info: UnsubscribeState }
+type View =
+  | { state: "loading" }
+  | { state: "invalid" }
+  | { state: "unavailable" }
+  | { state: "ask" | "done"; info: UnsubscribeState }
+
+/**
+ * Only the server's own «no» means the link is bad. A dropped connection or
+ * a 500 used to be shown as «this link does not work» — a working link
+ * declared broken, to somebody who then went looking for the setting.
+ */
+function linkRefused(err: unknown): boolean {
+  const status = isAxiosError(err) ? err.response?.status : undefined
+  return status === 400 || status === 404 || status === 410 || status === 422
+}
 
 /**
  * Where the link at the foot of a course mail lands.
@@ -28,6 +46,7 @@ export default function UnsubscribePage() {
   const token = params.get("token") ?? ""
   const [view, setView] = useState<View>({ state: "loading" })
   const [busy, setBusy] = useState(false)
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     if (!token) {
@@ -35,29 +54,33 @@ export default function UnsubscribePage() {
       return
     }
     let cancelled = false
+    setView({ state: "loading" })
     emailService
       .readUnsubscribe(token)
       .then((info) => !cancelled && setView({ state: info.off ? "done" : "ask", info }))
-      .catch(() => !cancelled && setView({ state: "invalid" }))
+      .catch((err: unknown) => !cancelled && setView({ state: linkRefused(err) ? "invalid" : "unavailable" }))
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [token, attempt])
 
   const confirm = async () => {
     setBusy(true)
     try {
       const info = await emailService.unsubscribe(token)
       setView({ state: "done", info })
-    } catch {
-      setView({ state: "invalid" })
+    } catch (err) {
+      // The button stays: a failed request is tried again, not declared a
+      // broken link.
+      if (linkRefused(err)) setView({ state: "invalid" })
+      else toast({ title: getErrorDetail(err), variant: "destructive" })
     } finally {
       setBusy(false)
     }
   }
 
   if (view.state === "loading") return <PageSpinner />
-  const kind = view.state === "invalid" ? null : t(`profile.emails.kinds.${view.info.kind}`)
+  const kind = view.state === "invalid" || view.state === "unavailable" ? null : t(`profile.emails.kinds.${view.info.kind}`)
 
   return (
     <div className="container mx-auto max-w-2xl px-4 py-10">
@@ -66,6 +89,16 @@ export default function UnsubscribePage() {
         <CardContent className="space-y-4 py-8 text-center">
           <MailX className="mx-auto h-8 w-8 text-ink-muted" strokeWidth={1.5} aria-hidden />
           {view.state === "invalid" && <p className="text-sm text-ink-muted">{t("unsubscribe.invalid")}</p>}
+          {view.state === "unavailable" && (
+            <>
+              <p className="text-sm text-ink-muted" role="alert">
+                {t("unsubscribe.unavailable")}
+              </p>
+              <Button variant="outline" onClick={() => setAttempt((n) => n + 1)}>
+                {t("common.tryAgain")}
+              </Button>
+            </>
+          )}
           {view.state === "ask" && (
             <>
               <p className="text-sm">{t("unsubscribe.ask", { kind })}</p>
