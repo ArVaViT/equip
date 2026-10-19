@@ -8,9 +8,25 @@ import { rememberSignOutReason } from "@/lib/signOutReason"
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
 const cleanApiUrl = API_URL.replace(/\/+$/, "")
 
+/**
+ * How long a request may wait for an answer before it is treated as lost.
+ *
+ * Without a limit a request that never answers — a stalled connection, a
+ * proxy that swallowed the response — left whatever waited on it waiting
+ * forever: the lesson page's spinner, a «Submitting…» button, a dialog whose
+ * Cancel is refused while a save is in flight, and every later note save
+ * queued behind the one that hung. Thirty seconds is longer than any
+ * ordinary answer and short enough that a person is still looking at the
+ * screen when it is said. The two on-demand exports are built on the server
+ * while the request waits, so they get `LONG_REQUEST_MS`.
+ */
+export const REQUEST_TIMEOUT_MS = 30_000
+export const LONG_REQUEST_MS = 120_000
+
 const api = axios.create({
   baseURL: `${cleanApiUrl}/api/v1`,
   headers: { "Content-Type": "application/json" },
+  timeout: REQUEST_TIMEOUT_MS,
 })
 
 type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean }

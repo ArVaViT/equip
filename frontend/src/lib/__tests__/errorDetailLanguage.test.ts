@@ -96,6 +96,11 @@ describe("the language an error is read in", () => {
       expect(getErrorDetail(networkError())).toBe("Нет связи. Проверьте интернет и повторите.")
     })
 
+    it("says the server was slow, not «check your Wi-Fi», when the client gave up waiting", () => {
+      const err = new AxiosError("timeout of 30000ms exceeded", AxiosError.ECONNABORTED)
+      expect(getErrorDetail(err)).toBe("Сервер слишком долго не отвечает. Повторите.")
+    })
+
     it("does not pass a plain Error's message on — it is English by construction", () => {
       const message = getErrorDetail(new Error("timeout of 10000ms exceeded"), "Не удалось сохранить тест")
       expect(message).toBe("Не удалось сохранить тест")

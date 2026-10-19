@@ -908,6 +908,7 @@
     },
     "generic": "Something went wrong.",
     "network": "No connection. Check your internet and try again.",
+    "timeout": "The server took too long to answer. Try again.",
     "byCode": {
       "auth_required": "Please sign in again.",
       "auth_forbidden": "You don't have permission for this.",

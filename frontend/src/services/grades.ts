@@ -1,4 +1,4 @@
-import api from "./api"
+import api, { LONG_REQUEST_MS } from "./api"
 import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
 import type {
   GradeExemption,
@@ -264,6 +264,7 @@ export const gradesService = {
   async exportGradesCSV(courseId: string): Promise<Blob> {
     const response = await api.get(`/grades/course/${courseId}/export-csv`, {
       responseType: "blob",
+      timeout: LONG_REQUEST_MS,
     })
     return response.data
   },
