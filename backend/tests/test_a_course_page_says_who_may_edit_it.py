@@ -86,3 +86,33 @@ class TestTheDashboardListNamesNoAuthor:
         courses = [row["course"] for row in r.json() if row.get("course")]
         assert [c["id"] for c in courses] == [course_id]
         assert "created_by" not in courses[0]
+
+
+class TestTheWriteRoutesAnswerTheSameWay:
+    """``POST``, ``PUT``, clone and restore return the same ``CourseResponse``
+    as the course page. They are the author's own routes, so the answer is
+    yes on every one — not the schema's default, which would tell the author
+    who just saved a course that they may not edit it."""
+
+    def test_the_course_just_created_is_the_author_s_to_edit(self, client: TestClient) -> None:
+        r = client.post("/api/v1/courses", json={"title": "Preaching"})
+        assert r.status_code == 201, r.text
+        assert r.json()["viewer_can_edit"] is True
+        assert r.json()["created_by"] == str(TEACHER_ID)
+
+    def test_the_course_just_saved_is_still_the_author_s(self, db: Session, client: TestClient) -> None:
+        course_id = _course(db, status="draft")
+        r = client.put(f"/api/v1/courses/{course_id}", json={"title": "Preaching, revised"})
+        assert r.status_code == 200, r.text
+        assert r.json()["viewer_can_edit"] is True
+        assert r.json()["created_by"] == str(TEACHER_ID)
+
+    def test_a_clone_and_a_restored_course_are_the_author_s_too(self, db: Session, client: TestClient) -> None:
+        course_id = _course(db, status="draft")
+        cloned = client.post(f"/api/v1/courses/{course_id}/clone")
+        assert cloned.status_code == 201, cloned.text
+        assert cloned.json()["viewer_can_edit"] is True
+        assert client.delete(f"/api/v1/courses/{course_id}").status_code == 204
+        restored = client.post(f"/api/v1/courses/{course_id}/restore")
+        assert restored.status_code == 200, restored.text
+        assert restored.json()["viewer_can_edit"] is True

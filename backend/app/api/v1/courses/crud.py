@@ -16,7 +16,7 @@ from app.api.dependencies import (
 from app.core.database import get_db
 from app.core.errors import ErrorCode, equip_error
 from app.core.sanitize import sanitize_plain_text
-from app.models.course import Course, CourseStatus
+from app.models.course import CourseStatus
 from app.models.user import User
 from app.schemas.course import CourseCreate, CourseResponse, CourseUpdate, ResyncProgressResponse
 from app.services.audit_service import log_action
@@ -40,6 +40,7 @@ from app.services.translation.pipeline_hooks import (
 from app.services.translation.resolve_for_display import populate_spine_texts
 
 from ._router import router
+from ._viewer import as_seen_by
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ def create_new_course(
     teacher: User = Depends(require_teacher),
     requested: UUID | None = Depends(requested_organization_id),
     db: Session = Depends(get_db),
-) -> Course:
+) -> CourseResponse:
     # How many courses one teacher may hold is a plan decision, not a
     # rule this route owns — see ``app.services.limits``. Every path that
     # hands a teacher a new live course asks the same gate: here, clone,
@@ -76,7 +77,7 @@ def create_new_course(
         source_locale=teacher.preferred_locale,
     )
     log_action(db, teacher.id, "create", "course", course.id)
-    return course
+    return as_seen_by(course, teacher)
 
 
 @router.put("/{course_id}", response_model=CourseResponse)
@@ -85,7 +86,7 @@ def update_existing_course(
     data: CourseUpdate,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
-) -> Course:
+) -> CourseResponse:
     course = get_course(db, course_id)
     if not course:
         raise equip_error(
@@ -184,7 +185,7 @@ def update_existing_course(
     # and re-loading modules as plain ORM instances with no runtime title.
     # Without this, response serialisation fails Pydantic validation.
     populate_spine_texts(db, [result])
-    return result
+    return as_seen_by(result, teacher)
 
 
 @router.delete("/{course_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -221,7 +222,7 @@ def clone_existing_course(
     teacher: User = Depends(require_teacher),
     requested: UUID | None = Depends(requested_organization_id),
     db: Session = Depends(get_db),
-) -> Course:
+) -> CourseResponse:
     course = get_course(db, course_id)
     if not course:
         raise equip_error(
@@ -273,7 +274,7 @@ def clone_existing_course(
             message="Failed to clone course",
             context={"resource_type": "course", "course_id": course_id},
         )
-    return new_course
+    return as_seen_by(new_course, teacher)
 
 
 @router.post("/{course_id}/restore", response_model=CourseResponse)
@@ -281,7 +282,7 @@ def restore_deleted_course(
     course_id: str,
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),
-) -> Course:
+) -> CourseResponse:
     course = get_course(db, course_id, include_deleted=True)
     if not course:
         raise equip_error(
@@ -304,7 +305,7 @@ def restore_deleted_course(
     assert_can_own_another_course(db, teacher)
     result = restore_course(db, course)
     log_action(db, teacher.id, "restore", "course", course_id)
-    return result
+    return as_seen_by(result, teacher)
 
 
 @router.post("/{course_id}/resync-progress", response_model=ResyncProgressResponse)
