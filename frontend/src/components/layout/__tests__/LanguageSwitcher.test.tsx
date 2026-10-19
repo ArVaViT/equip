@@ -198,4 +198,15 @@ describe("LanguageSwitcher", () => {
     const english = screen.getByRole("menuitemradio", { name: /English/i })
     expect(english).toHaveAttribute("aria-checked", "false")
   })
+
+  it("says which language each name is in, so a screen reader pronounces it in that language", async () => {
+    const user = userEvent.setup()
+    render(<LanguageSwitcher variant="full" />, { wrapper: I18nWrapper })
+    await user.click(screen.getByRole("button"))
+    await screen.findAllByRole("menuitemradio")
+    for (const locale of SUPPORTED_LOCALES) {
+      const name = screen.getByText(LOCALE_NATIVE_LABELS[locale], { selector: "[lang]" })
+      expect(name).toHaveAttribute("lang", locale)
+    }
+  })
 })

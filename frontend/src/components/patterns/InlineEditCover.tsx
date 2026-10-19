@@ -180,6 +180,7 @@ export function InlineEditCover({
         type="file"
         accept={acceptAttribute(COURSE_ASSETS)}
         className="hidden"
+        aria-label={t("inlineEdit.cover.replace")}
         onChange={(e) => {
           const f = e.target.files?.[0]
           e.target.value = ""

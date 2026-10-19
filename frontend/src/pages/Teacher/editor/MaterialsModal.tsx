@@ -84,6 +84,7 @@ export function MaterialsModal({
           type="file"
           accept={ACCEPTED_TYPES}
           className="hidden"
+          aria-label={t("teacherEditor.modals.materials.upload")}
           onChange={onUploadChange}
         />
         <UploadRightsNotice className="-mt-2" />

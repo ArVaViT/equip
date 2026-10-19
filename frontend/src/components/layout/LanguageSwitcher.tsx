@@ -116,7 +116,12 @@ export default function LanguageSwitcher({ variant = "full" }: LanguageSwitcherP
         >
           {LOCALE_MENU_ORDER.map((locale) => (
             <DropdownMenuRadioItem key={locale} value={locale} disabled={busy}>
-              <span className="flex-1">{LOCALE_NATIVE_LABELS[locale]}</span>
+              {/* Named in itself (see above), so the name is in that language —
+                  `lang` lets a screen reader say «Deutsch» in German rather
+                  than in the voice of the page. */}
+              <span className="flex-1" lang={locale}>
+                {LOCALE_NATIVE_LABELS[locale]}
+              </span>
               <span className="text-xs uppercase text-ink-muted">{locale}</span>
             </DropdownMenuRadioItem>
           ))}
