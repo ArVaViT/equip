@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { I18nextProvider } from "react-i18next"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -107,5 +108,34 @@ describe("a cohort's page", () => {
 
     const link = await screen.findByRole("link", { name: "Ведомость" })
     expect(link).toHaveAttribute("href", "/teacher/courses/c-acts/vedomost")
+  })
+
+  it("does not count a renamed cohort as saved when the server refused", async () => {
+    auth.role = "director"
+    const update = vi.spyOn(cohortsService, "updateCohort").mockRejectedValueOnce(
+      Object.assign(new Error("Conflict"), { isAxiosError: true, response: { status: 409, data: {} } }),
+    )
+    const user = userEvent.setup()
+    open()
+    const name = await screen.findByDisplayValue("Осень 2026")
+    await user.clear(name)
+    await user.type(name, "Весна 2027")
+    await user.tab()
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(1))
+    // The text stays for correcting; the heading keeps the saved name.
+    expect(name).toHaveValue("Весна 2027")
+    expect(screen.getByRole("heading", { name: "Осень 2026" })).toBeInTheDocument()
+
+    // Blurring again sends the same text again — a refusal did not become
+    // the baseline that «nothing changed» is measured against.
+    update.mockResolvedValueOnce({
+      id: "k1", name: "Весна 2027", start_date: "2026-10-01", end_date: "2026-12-20", enrollment_start: null,
+      enrollment_end: null, status: "active", max_students: null, created_by: null,
+      created_at: "2026-09-01T00:00:00Z", updated_at: null, course_ids: [],
+    } as never)
+    await user.click(name)
+    await user.tab()
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(2))
+    expect(update).toHaveBeenLastCalledWith("k1", { name: "Весна 2027" })
   })
 })

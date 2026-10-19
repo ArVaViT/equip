@@ -131,18 +131,21 @@ export default function CohortDetailPage() {
     void load()
   }, [load])
 
+  /** True when the server took the change. */
   const patch = async (
     fieldName: string,
     body: Parameters<typeof cohortsService.updateCohort>[1],
-  ) => {
-    if (!cohortId) return
+  ): Promise<boolean> => {
+    if (!cohortId) return false
     setSavingField(fieldName)
     try {
       const updated = await cohortsService.updateCohort(cohortId, body)
       setCohort(updated)
       toast({ title: t("admin.cohorts.toast.saved"), variant: "success" })
-    } catch {
-      toast({ title: t("admin.cohorts.toast.saveFailed"), variant: "destructive" })
+      return true
+    } catch (err) {
+      toast({ title: getErrorDetail(err, t("admin.cohorts.toast.saveFailed")), variant: "destructive" })
+      return false
     } finally {
       setSavingField(null)
     }
@@ -338,16 +341,15 @@ export default function CohortDetailPage() {
               // are accepted; the server's the right place to enforce
               // "you can't shrink capacity below current enrolment".
               if (!v.trim()) {
-                void patch("max_students", { max_students: null })
-                return
+                return patch("max_students", { max_students: null })
               }
               const parsed = Number(v)
               if (!Number.isFinite(parsed)) {
                 toast({ title: t("admin.cohorts.toast.invalidMaxStudents"), variant: "destructive" })
-                return
+                return false
               }
               const n = Math.max(1, Math.min(99999, Math.floor(parsed)))
-              void patch("max_students", { max_students: n })
+              return patch("max_students", { max_students: n })
             }}
             inputType="number"
           />
@@ -514,8 +516,10 @@ interface FieldProps {
    *  the last value we sync'd in from the parent. The field owns the
    *  diff check so callers don't each rewrite it (and so the check
    *  uses our ``lastSyncedRef`` baseline instead of a stale closure
-   *  over ``cohort.someField``). */
-  onSave: (next: string) => void
+   *  over ``cohort.someField``). Answers ``false`` when the server said
+   *  no, so the field keeps counting the text as unsaved — the next blur
+   *  sends it again instead of treating a refused value as the baseline. */
+  onSave: (next: string) => void | boolean | Promise<boolean | void>
 }
 
 function Field({ label, value, placeholder, inputType = "text", disabled, onSave }: FieldProps) {
@@ -541,10 +545,14 @@ function Field({ label, value, placeholder, inputType = "text", disabled, onSave
     lastSyncedRef.current = value
   }, [value])
 
-  const commit = () => {
+  const commit = async () => {
     if (local === lastSyncedRef.current) return
-    lastSyncedRef.current = local
-    onSave(local)
+    const attempted = local
+    const ok = await onSave(attempted)
+    // A refusal used to be written into the baseline before the request
+    // went out: the field then showed the new text, the header the old
+    // name, and blurring again sent nothing because «nothing changed».
+    if (ok !== false) lastSyncedRef.current = attempted
   }
 
   return (
@@ -557,7 +565,7 @@ function Field({ label, value, placeholder, inputType = "text", disabled, onSave
         placeholder={placeholder}
         disabled={disabled}
         onChange={(e) => setLocal(e.target.value)}
-        onBlur={commit}
+        onBlur={() => void commit()}
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur()
           else if (e.key === "Escape") {
@@ -575,7 +583,7 @@ interface DateFieldProps {
   value: string | null
   disabled?: boolean
   nullable?: boolean
-  onSave: (iso: string | null) => Promise<void> | void
+  onSave: (iso: string | null) => Promise<boolean | void> | void
 }
 
 function DateField({ label, value, disabled, nullable, onSave }: DateFieldProps) {
