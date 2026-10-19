@@ -213,6 +213,15 @@ class CourseResponse(_ReadTitle):
     # Controls the enroll button on the catalog: ``public`` shows
     # "Записаться", ``institute`` shows "Доступно только по приглашению".
     access_mode: Literal["public", "institute"] = "public"
+    #: Whether the reader may edit this course: its author, or platform
+    #: staff — the same two ``is_owner_or_admin`` trusts with the source
+    #: text and the unreleased lessons. Decided by the server, so the client
+    #: need not be told who the author is to find out.
+    viewer_can_edit: bool = False
+    #: The author's account id. On the course page it is sent only to the
+    #: reader who may edit (``viewer_can_edit``); a guest or a student
+    #: reads ``None`` — the «Автор» tab names the person, the id named
+    #: nobody they could use it for.
     created_by: UUID | None = None
     created_at: datetime
     updated_at: datetime | None = None

@@ -11,7 +11,6 @@ import { recordCourseView } from "@/lib/recentlyViewed"
 import { readCourseStructure } from "@/lib/courseStructure"
 import { useAuth } from "@/context/useAuth"
 import { toast } from "@/lib/toast"
-import { ROLES } from "@/types"
 import type {
   CalendarEvent,
   Certificate,
@@ -226,7 +225,10 @@ export default function CourseDetail() {
     )
   }
 
-  const isOwner = user?.id === course.created_by || user?.role === ROLES.ADMIN
+  // The server says who may edit (the author, or platform staff). Comparing
+  // the reader's id with `created_by` here meant sending the author's
+  // account id to every guest who opened the page.
+  const isOwner = course.viewer_can_edit === true
 
   if (!enrollment) {
     return (
