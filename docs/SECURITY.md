@@ -230,6 +230,37 @@ false for `anon` either way.
 with an always-false expression. Writing `TO authenticated` would say what
 is meant.
 
+## A closed account holds no role (2026-10-19)
+
+An account its owner deleted (`DELETE /users/me`) or an administrator
+switched off (`deactivated_at`) keeps its Supabase session on purpose: it
+is not banned in GoTrue (a ban would answer `user_banned` before the
+password and tell anybody typing the address that it belongs to a deleted
+Equip account), and the session is the door back for a self-restore. The
+API refuses every call of such a session (`refuse_if_closed`) and the
+profile trigger freezes its row.
+
+Until `20261019120000_a_closed_account_holds_no_role` the RLS layer did
+not know. The definer helpers every policy asks -- `can_teach()`,
+`is_platform_staff()`, `is_staff_of()`, `is_member_of()` -- read
+`profiles.role` and the membership rows, which deletion does not touch, so
+with the publishable key and the session it still held a closed account
+read as the staff it used to be: a suspended director still read the
+school's certificates and cohorts through PostgREST, a teacher who deleted
+their account still passed `course_assets_teacher_insert` on Storage, a
+switched-off administrator still read `audit_logs`. The helpers now also
+require `deactivated_at IS NULL` (a deleted account is always deactivated,
+by `profiles_deleted_is_deactivated_check`); the two policies that spelled
+the admin check out by hand (`audit_logs_select_admin`,
+`course_events_select`) call the helper instead. Own rows
+(`user_id = auth.uid()`) stay readable -- the export and the restore
+screen need them. Section 18 of `supabase/ci/rls_assertions.sql` proves
+both directions: switched off, nothing; switched back on, everything.
+
+**Rule for new policies:** never test `profiles.role` or
+`organization_members` inline -- call the helper, so a closed account is
+closed everywhere at once.
+
 ## Dependency scanning
 
 - Backend: `pip-audit --requirement requirements.txt --strict` runs in
