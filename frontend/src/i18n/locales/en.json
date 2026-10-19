@@ -6,6 +6,7 @@
     "done": "Done: “{{kind}}” emails will no longer arrive.",
     "again": "You can turn them back on in your profile, under Settings.",
     "invalid": "This link does not work. Turn email off in your profile, under Settings.",
+    "unavailable": "Couldn't open the link right now.",
     "toProfile": "Open profile"
   },
   "guest": {
@@ -189,7 +190,8 @@
       "student": "member"
     },
     "catalog": "Open catalogue",
-    "title": "My organizations"
+    "title": "My organizations",
+    "loadFailed": "Couldn't load your school's courses."
   },
   "header": {
     "home": "Home",

@@ -6,6 +6,7 @@
     "done": "Erledigt: E-Mails „{{kind}}“ kommen nicht mehr.",
     "again": "Sie können sie im Profil unter „Einstellungen“ wieder einschalten.",
     "invalid": "Dieser Link funktioniert nicht. E-Mails schalten Sie im Profil unter „Einstellungen“ ab.",
+    "unavailable": "Der Link konnte gerade nicht geöffnet werden.",
     "toProfile": "Profil öffnen"
   },
   "guest": {
@@ -189,7 +190,8 @@
       "student": "Mitglied"
     },
     "catalog": "Offener Katalog",
-    "title": "Meine Organisationen"
+    "title": "Meine Organisationen",
+    "loadFailed": "Die Kurse Ihrer Schule konnten nicht geladen werden."
   },
   "header": {
     "home": "Start",
