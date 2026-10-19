@@ -283,9 +283,12 @@ function SingleAssignment({
       // No answer at all: the work may be on the server already, and a
       // second press would hand it in twice. Ask before saying it failed.
       if (answerWasLost(error)) {
+        // The panel holds only the latest submission, so the history's
+        // earlier copies are «unseen» too: only a row newer than the one on
+        // screen can be the request's own.
         const known = new Set(submission ? [submission.id] : [])
         const rows = await coursesService.getMySubmissions(assignment.id).catch(() => null)
-        const mine = rows && newestUnseen(rows, known, (r) => r.submitted_at)
+        const mine = rows && newestUnseen(rows, known, (r) => r.submitted_at, submission?.submitted_at)
         if (mine) {
           landed(mine)
           setSubmitting(false)
