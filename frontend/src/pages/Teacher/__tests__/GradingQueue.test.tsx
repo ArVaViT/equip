@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { I18nextProvider } from "react-i18next"
 import { MemoryRouter } from "react-router-dom"
@@ -253,5 +253,46 @@ describe("GradingQueue", () => {
     expect(rubric).toHaveBeenCalledTimes(2)
     // The retry used to run the «new piece of work» reset and wipe the note.
     expect(screen.getByPlaceholderText("Что удалось, что поправить, как именно")).toHaveValue("Хорошо, но коротко")
+  })
+
+  it("keeps the first criterion's mark when the second is tapped before the first was answered", async () => {
+    vi.spyOn(gradesService, "getQueue").mockResolvedValue([group()])
+    vi.spyOn(gradesService, "getAssignmentQueue").mockResolvedValue([work()])
+    const level = (id: string, label: string) => ({ id, label, points: 5, description: null, order_index: 0 })
+    vi.spyOn(rubricsService, "forSubmission").mockResolvedValue({
+      rubric: {
+        id: "r1",
+        course_id: "c1",
+        title: "Эссе",
+        max_score: 10,
+        criteria: [
+          { id: "cr1", title: "Опора на текст", description: null, order_index: 0, levels: [level("l1", "Да")] },
+          { id: "cr2", title: "Ясность", description: null, order_index: 1, levels: [level("l2", "Ясно")] },
+        ],
+      },
+      marks: [],
+      earned: null,
+      out_of: 10,
+    })
+    const releases: (() => void)[] = []
+    const setMarks = vi.spyOn(rubricsService, "setMarks").mockImplementation(
+      (_id, marks) =>
+        new Promise((resolve) =>
+          releases.push(() =>
+            resolve({ rubric: null, marks: marks.map((m) => ({ ...m, points: 5, comment: null })), earned: 5, out_of: 10 }),
+          ),
+        ),
+    )
+    render(<GradingQueue />, { wrapper: Wrapper })
+    await userEvent.click(await screen.findByRole("button", { name: /Проверить/ }))
+
+    await userEvent.click(await screen.findByRole("button", { name: /Да/ }))
+    await userEvent.click(screen.getByRole("button", { name: /Ясно/ }))
+    expect(setMarks).toHaveBeenCalledTimes(2)
+    // The second request carries both marks, not only its own.
+    expect(setMarks.mock.calls[1]?.[1].map((m) => m.criterion_id).sort()).toEqual(["cr1", "cr2"])
+    releases.forEach((release) => release())
+    // Both criteria marked: «Save and finish» is open.
+    await waitFor(() => expect(screen.getByRole("button", { name: /Сохранить и закончить/ })).toBeEnabled())
   })
 })
