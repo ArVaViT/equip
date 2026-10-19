@@ -6,16 +6,22 @@
  * so a student on 86.5 read 86%, 87% and 86.5% on three screens, because
  * Python rounds a .5 tie to even and JavaScript rounds it up.
  *
- * One decimal, and never rounded before the symbol is chosen: a score of 89.5
- * printed as "90%" sits next to the letter B, and the school's own band table
- * says 90 is an A. The teacher is left holding two facts that contradict each
- * other, and the one they can see is the wrong one.
+ * Two decimals, because that is the precision the letter is chosen at. The
+ * backend rounds every score to two places and reads the band table from
+ * that number; printing one place put 89.95 on the page as «90,0% B» next to
+ * a scale that says 90 is an A. The teacher was left holding two facts that
+ * contradict each other, and the one they could see was the wrong one. The
+ * number is never rounded again before the symbol is chosen (2026-10-19).
  */
 import { formatPercent } from "@/i18n/number"
 
-export function formatGradePercent(score: number): string {
-  // One decimal, in the reader's own notation. `toFixed` always emits a
-  // period; ru, de and uk all write 86,5. This is the number that ends up
-  // printed on a signed grade sheet.
-  return formatPercent(score, 1)
+/** Decimal places a grade is shown at — the backend's own rounding. */
+export const GRADE_FRACTION_DIGITS = 2
+
+export function formatGradePercent(score: number, locale?: string): string {
+  // In the reader's own notation. `toFixed` always emits a period; ru, de and
+  // uk all write 86,50. This is the number that ends up printed on a signed
+  // grade sheet — ``locale`` is for that document, which speaks its own
+  // language rather than the interface's.
+  return formatPercent(score, GRADE_FRACTION_DIGITS, locale)
 }

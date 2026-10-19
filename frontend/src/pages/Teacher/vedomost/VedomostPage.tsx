@@ -3,8 +3,9 @@ import { Link, useParams, useSearchParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { EmptyState, ErrorState } from "@/components/patterns"
-import { FileText, Loader2, Printer } from "lucide-react"
+import { AlertCircle, FileText, Loader2, Printer } from "lucide-react"
 import { gradesService } from "@/services/grades"
+import { getErrorCode, getErrorContext } from "@/lib/errorCode"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
 import type { GradeSheet } from "@/types"
@@ -48,6 +49,11 @@ function VedomostPage() {
   const [loading, setLoading] = useState(true)
   const [closing, setClosing] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  // Why the server would not close it: how many students still have unread
+  // work. Stays under the button rather than passing through as a toast —
+  // the person has to go and mark it, and needs the reason still on screen
+  // when they come back to try again.
+  const [unmarked, setUnmarked] = useState<number | null>(null)
 
   const begin = useLatestRequest()
   const load = useCallback(() => {
@@ -78,9 +84,17 @@ function VedomostPage() {
   const close = async () => {
     if (!courseId) return
     setClosing(true)
+    setUnmarked(null)
     try {
       setSheet(await gradesService.closeGradeSheet(courseId, cohortId))
     } catch (err) {
+      if (getErrorCode(err) === "grade_sheet.work_unmarked") {
+        // Not a failure of the request: the sheet is fine, the queue is not
+        // empty. The snapshot would count every unread essay as a zero.
+        const students = getErrorContext(err)?.students
+        setUnmarked(typeof students === "number" ? students : 1)
+        return
+      }
       toast({ title: getErrorDetail(err, t("vedomost.closeFailed")), variant: "destructive" })
     } finally {
       setClosing(false)
@@ -127,10 +141,32 @@ function VedomostPage() {
           titleAs="h1"
           description={t("vedomost.notClosedBody")}
           action={
-            <Button onClick={close} disabled={closing}>
-              {closing && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.75} />}
-              {t("vedomost.close")}
-            </Button>
+            <div className="flex flex-col items-center gap-3">
+              <Button onClick={close} disabled={closing}>
+                {closing && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.75} />}
+                {t("vedomost.close")}
+              </Button>
+              {/* The server's refusal, as the reason and the next step: the
+                  snapshot would count every unread essay as a zero, so the
+                  sheet closes once the queue is empty. Same card as the
+                  student's certificate explainer — same kind of fact. */}
+              {unmarked !== null && (
+                <div
+                  role="status"
+                  className="max-w-md rounded-lg border border-warning/40 bg-warning/5 px-3 py-2.5 text-left text-sm"
+                >
+                  <div className="flex items-start gap-1.5">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning-ink" strokeWidth={1.75} aria-hidden />
+                    <div>
+                      <p>{t("vedomost.unmarked.body", { count: unmarked })}</p>
+                      <Link to="/teach/grading" className="mt-1.5 inline-block underline underline-offset-2 hover:text-ink">
+                        {t("vedomost.unmarked.openQueue")}
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           }
         />
       </div>

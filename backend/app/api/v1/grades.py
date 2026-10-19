@@ -83,7 +83,7 @@ from app.services.grade_override import (
     resolve_official_row,
     validate_override,
 )
-from app.services.grade_sheet_service import active_sheet, finalize_sheet, reopen_sheet
+from app.services.grade_sheet_service import UnmarkedWork, active_sheet, finalize_sheet, reopen_sheet
 from app.services.grading_queue import assignment_work, pending_summary, waiting_groups
 from app.services.grading_scheme import effective_bands, get_org_settings, validate_scheme_threshold
 from app.services.my_grade_service import build_my_course_grade, latest_enrollment
@@ -449,7 +449,21 @@ def close_grade_sheet(
     history of what was signed survives a correction.
     """
     course = verify_course_in_own_school(db, course_id, director)
-    sheet = finalize_sheet(db, course, cohort_id, director.id)
+    try:
+        sheet = finalize_sheet(db, course, cohort_id, director.id)
+    except UnmarkedWork as refused:
+        # The snapshot would count every unread essay as a zero and the
+        # director would sign that. Not a malformed request and not a
+        # permission problem: the same call succeeds once the queue is empty.
+        raise equip_error(
+            ErrorCode.GRADE_SHEET_WORK_UNMARKED,
+            status_code=status.HTTP_409_CONFLICT,
+            message=(
+                f"{refused.students} student(s) still have {refused.items} piece(s) of work "
+                "waiting to be marked. Mark them first, then close the ведомость."
+            ),
+            context={"students": refused.students, "items": refused.items, "course_id": course_id},
+        ) from None
     db.commit()
 
     log_action(

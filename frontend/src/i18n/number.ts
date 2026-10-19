@@ -37,9 +37,10 @@ import i18n, { activeIntlTag } from "./config"
  * of decimal places.
  *
  * Fixed rather than "up to": a column of grades reading 86,5 / 90 / 78,2 is
- * harder to scan than 86,5 / 90,0 / 78,2, and the one-decimal contract is
- * load-bearing (see `formatGradePercent` — a grade rounded before its letter
- * is chosen contradicts the band table it sits next to).
+ * harder to scan than 86,5 / 90,0 / 78,2. A grade itself goes through
+ * `formatGradePercent`, which fixes the places at the precision its letter
+ * was chosen at — a grade rounded before its letter is chosen contradicts
+ * the band table it sits next to.
  */
 export function formatNumber(value: number, fractionDigits = 1, locale?: string): string {
   if (!Number.isFinite(value)) return ""

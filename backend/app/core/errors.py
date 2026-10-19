@@ -167,6 +167,16 @@ class ErrorCode(enum.StrEnum):
     ``context.unknown_option_ids`` / ``missing_option_ids`` say what
     differed."""
 
+    # ── Grade sheet (ведомость) ─────────────────────────────────────────
+    GRADE_SHEET_WORK_UNMARKED = "grade_sheet.work_unmarked"
+    """Closing the sheet would sign over work nobody has read: an essay in a
+    finished quiz attempt with no mark, or a submitted assignment with no
+    grade. The snapshot counts unmarked work as zero, so a page closed now
+    would fail students for essays sitting in the teacher's queue. Refused
+    until the queue for this поток is empty; ``context.students`` is how
+    many students have something unread and ``context.items`` how many
+    pieces of work — the client sends the teacher to the marking queue."""
+
     # ── Daily Challenge ─────────────────────────────────────────────────
     DAILY_CHALLENGE_NOT_SCHEDULED = "daily_challenge.not_scheduled"
     """No question is scheduled for the requested UTC date — usually

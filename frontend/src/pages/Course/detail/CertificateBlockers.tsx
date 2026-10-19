@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { gradesService } from "@/services/grades"
 import { toast } from "@/lib/toast"
 import { chapterHref, type CourseStructure } from "@/lib/courseStructure"
+import { formatNumber } from "@/i18n/number"
+import { GRADE_FRACTION_DIGITS } from "@/pages/Teacher/gradebook/formatGrade"
 import type { CertificateBlocker } from "@/types"
 
 /**
@@ -112,6 +114,12 @@ export function CertificateBlockers({
                   : "myGrade.certificate.reason.unknown",
                 {
                   ...blocker.params,
+                  // The score in the reader's notation and at the precision
+                  // its letter was chosen at — the same text as the grade
+                  // card above it, not a raw 64.5 beside a «64,50%».
+                  ...(typeof blocker.params.final_score === "number"
+                    ? { final_score: formatNumber(blocker.params.final_score, GRADE_FRACTION_DIGITS) }
+                    : {}),
                   // Итоговая counts unmarked work as zero, so while anything
                   // is unread the figure is a floor that can only rise. Saying
                   // so is the difference between "you are failing" and "not all

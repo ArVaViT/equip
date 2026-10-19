@@ -8,6 +8,7 @@ import { useConfirm } from "@/components/ui/alert-dialog";
 import { useNow } from "@/hooks/useNow";
 import { EventsModal } from "@/pages/Teacher/editor/EventsModal";
 import { useEventsSection } from "@/pages/Teacher/editor/useEventsSection";
+import { useGuardedClose } from "@/pages/Teacher/editor/useGuardedClose";
 import { courseOfRecentLiveSession, newEventDefaults } from "./newEventDefaults";
 
 /**
@@ -55,14 +56,15 @@ export function CalendarEventDialog({
   useEffect(() => {
     if (open) resetForm();
   }, [open, resetForm]);
+  // The same form as the course editor's, so the same question on the way
+  // out: Escape over a half-written class asks before throwing it away. The
+  // calendar's prefilled fields are not typing (`dirty` knows the defaults).
+  const closeGuarded = useGuardedClose(confirm, onClose);
 
   return (
     <EventsModal
       open={open}
-      onClose={() => {
-        section.resetForm();
-        onClose();
-      }}
+      onClose={() => void closeGuarded(section.dirty, section.resetForm)}
       defaultTime={defaults.defaultTime}
       header={
         courses.length > 1 ? (

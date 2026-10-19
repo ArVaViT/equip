@@ -57,6 +57,8 @@ export type ErrorCode =
   | "quiz.has_attempts"
   | "quiz.already_exists"
   | "quiz.options_changed"
+  // grade sheet (ведомость)
+  | "grade_sheet.work_unmarked"
   // daily challenge
   | "daily_challenge.not_scheduled"
   | "daily_challenge.not_translated"

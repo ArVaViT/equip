@@ -36,7 +36,9 @@ from app.models.quiz import Quiz, QuizAnswer, QuizAttempt, QuizQuestion
 from app.models.user import User
 from app.schemas.locale import normalize_locale
 from app.services import quiz_service
+from app.services.grade_exemption_service import excused_item_ids
 from app.services.late_work import first_handed_in, is_late
+from app.services.zachet import latest_submissions
 
 if TYPE_CHECKING:
     from uuid import UUID
@@ -59,6 +61,72 @@ def unread_answer_filters() -> tuple:
         QuizAnswer.text_answer.isnot(None),
         QuizQuestion.question_type.in_(quiz_service.MANUAL_GRADED_QUESTION_TYPES),
     )
+
+
+def quizzes_awaiting_marking(db: Session, student_id: UUID, quiz_ids: list) -> set:
+    """Quizzes where this student has a finished attempt with an unread answer.
+
+    One query for the course, not one per quiz: this runs on the student's own
+    course page, which is the most-loaded authenticated screen there is.
+    """
+    if not quiz_ids:
+        return set()
+    rows = (
+        db.query(QuizAttempt.quiz_id)
+        .join(QuizAnswer, QuizAnswer.attempt_id == QuizAttempt.id)
+        .join(QuizQuestion, QuizQuestion.id == QuizAnswer.question_id)
+        .filter(
+            QuizAttempt.quiz_id.in_(quiz_ids),
+            QuizAttempt.user_id == student_id,
+            # The same definition the teacher's queue uses. Told "your essay is
+            # not marked yet" for an answer that is not on the teacher's list,
+            # a student waits for something that will never arrive.
+            *unread_answer_filters(),
+        )
+        .distinct()
+        .all()
+    )
+    return {row[0] for row in rows}
+
+
+def work_awaiting_marking(
+    db: Session,
+    student_id: UUID,
+    *,
+    course_id: str,
+    quizzes: list,
+    assignments: list,
+    submissions: dict | None = None,
+    excused: set[str] | None = None,
+) -> set[str]:
+    """Item ids where this student's work is waiting on a teacher.
+
+    An unread open answer in a finished quiz attempt, or a submitted
+    assignment with no mark on it — minus anything the student was excused
+    from, which is not owed and so cannot be waiting. Returned work is not
+    here: it has been read, and the ball is with the student.
+
+    One definition for everything that asks "is anything of theirs unread":
+    the certificate explainer that names the unmarked essay, and the
+    ведомость that refuses to close over it. Written out twice they drift,
+    and the drift is a student told "your essay is not marked yet" on one
+    screen while a director signs a page that counted it as a zero.
+
+    ``submissions`` and ``excused`` are taken from a caller that has already
+    fetched them for its own purposes; left out, they are fetched here.
+    """
+    if submissions is None:
+        submissions = latest_submissions(db, student_id=student_id, assignment_ids=[a.id for a in assignments])
+    if excused is None:
+        excused_quiz_ids, excused_assignment_ids = excused_item_ids(db, student_id=student_id, course_id=course_id)
+        excused = {str(i) for i in excused_quiz_ids} | {str(i) for i in excused_assignment_ids}
+
+    awaiting = {str(q) for q in quizzes_awaiting_marking(db, student_id, [q.id for q in quizzes])}
+    for assignment in assignments:
+        submission = submissions.get(assignment.id)
+        if submission is not None and submission["status"] == "submitted" and submission["grade"] is None:
+            awaiting.add(str(assignment.id))
+    return awaiting - excused
 
 
 def pending_by_course(db: Session, teacher_id: UUID) -> dict[str, int]:

@@ -29,7 +29,7 @@ describe("officialGrade", () => {
   it("shows one number when nothing is outstanding", () => {
     const g = officialGrade(student())
 
-    expect(g.text).toBe("74.0% C")
+    expect(g.text).toBe("74.00% C")
     expect(g.finalText).toBeNull()
   })
 
@@ -37,7 +37,7 @@ describe("officialGrade", () => {
     // Both screens format through one function now — that is the whole of D14
     // reduced to a string comparison.
     expect(officialGrade(student({ current_grade: 86.5, current_letter_grade: "B" })).text).toBe(
-      "86.5% B",
+      "86.50% B",
     )
   })
 
@@ -54,8 +54,8 @@ describe("officialGrade", () => {
       }),
     )
 
-    expect(g.text).toBe("100.0% A")
-    expect(g.finalText).toBe("25.0% F")
+    expect(g.text).toBe("100.00% A")
+    expect(g.finalText).toBe("25.00% F")
   })
 
   it("shows a hand-set grade rather than either computed number", () => {
@@ -87,7 +87,7 @@ describe("officialGrade", () => {
 
   it("drops the symbol on a scheme that has none", () => {
     expect(officialGrade(student({ current_letter_grade: null, letter_grade: null })).text).toBe(
-      "74.0%",
+      "74.00%",
     )
   })
 })

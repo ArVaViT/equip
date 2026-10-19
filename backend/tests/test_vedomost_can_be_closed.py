@@ -16,12 +16,13 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
+from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.cohort import Cohort
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
 from app.models.grade_sheet import GradeSheet, GradeSheetRow
 from app.models.org_settings import OrgSettings
-from app.models.quiz import Quiz, QuizAttempt
+from app.models.quiz import Quiz, QuizAnswer, QuizAttempt, QuizQuestion
 from app.models.student_grade import StudentGrade
 from app.models.user import User
 from tests.conftest import TEST_ORGANIZATION_ID
@@ -942,3 +943,176 @@ def test_a_director_reads_the_gradebook_behind_the_sheet_but_does_not_mark(db: S
 
     assert [r.status_code for r in reads] == [200, 200, 200, 200], [r.text for r in reads]
     assert mark.status_code == 403
+
+
+# --------------------------------------------------------------------------
+# the sheet does not close over unread work
+# --------------------------------------------------------------------------
+#
+# The snapshot counts unmarked work as zero. A page closed over an unread
+# essay fails a student on paper for work sitting in the teacher's queue —
+# and that page is signed and filed. The definition of "unread" is the
+# queue's own, shared with the certificate explainer (2026-10-19).
+
+
+def _unread_essay(db: Session, quiz, student_id) -> None:
+    """A finished attempt with an open answer nobody has marked."""
+    attempt = QuizAttempt(
+        id=uuid.uuid4(),
+        quiz_id=quiz.id,
+        user_id=student_id,
+        score=0,
+        max_score=100,
+        passed=False,
+        completed_at=datetime.now(UTC),
+    )
+    db.add(attempt)
+    db.flush()
+    question = QuizQuestion(id=uuid.uuid4(), quiz_id=quiz.id, question_type="essay", points=10, order_index=0)
+    db.add(question)
+    db.flush()
+    db.add(
+        QuizAnswer(
+            id=uuid.uuid4(),
+            attempt_id=attempt.id,
+            question_id=question.id,
+            text_answer="Ответ",
+            points_earned=0,
+            graded_at=None,
+        )
+    )
+
+
+def _assignment(db: Session, course_id: str):
+    chapter = Chapter(
+        id=f"{course_id}-a", module_id=f"{course_id}-m", order_index=1, chapter_type="assignment", title="Эссе"
+    )
+    db.add(chapter)
+    db.flush()
+    assignment = Assignment(id=uuid.uuid4(), chapter_id=chapter.id, max_score=100)
+    db.add(assignment)
+    db.flush()
+    return assignment
+
+
+def _submit(db: Session, assignment, student_id, *, status: str = "submitted", grade: int | None = None) -> None:
+    db.add(
+        AssignmentSubmission(
+            id=uuid.uuid4(), assignment_id=assignment.id, student_id=student_id, status=status, grade=grade
+        )
+    )
+
+
+def test_a_sheet_does_not_close_over_an_unread_essay(admin_client, db: Session, teacher, student) -> None:
+    course, quiz = _course(db, teacher, "c-sheet-unread-essay")
+    _enrol(db, course.id, STUDENT_ID)
+    _unread_essay(db, quiz, STUDENT_ID)
+    db.commit()
+
+    resp = admin_client.post(SHEET_URL.format(course_id=course.id))
+
+    assert resp.status_code == 409, resp.text
+    detail = resp.json()["detail"]
+    assert detail["code"] == "grade_sheet.work_unmarked"
+    assert detail["context"]["students"] == 1
+    assert detail["context"]["items"] == 1
+    assert db.query(GradeSheet).filter(GradeSheet.course_id == course.id).count() == 0, "nothing was signed"
+    assert admin_client.get(SHEET_URL.format(course_id=course.id)).json() is None
+
+
+def test_a_sheet_does_not_close_over_an_unmarked_submission_and_closes_once_it_is_marked(
+    admin_client, db: Session, teacher, student
+) -> None:
+    course, quiz = _course(db, teacher, "c-sheet-unmarked-sub")
+    assignment = _assignment(db, course.id)
+    _enrol(db, course.id, STUDENT_ID)
+    _attempt(db, quiz, STUDENT_ID, 90)
+    _submit(db, assignment, STUDENT_ID)
+    db.commit()
+
+    refused = admin_client.post(SHEET_URL.format(course_id=course.id))
+    assert refused.status_code == 409, refused.text
+    assert refused.json()["detail"]["context"] == {"students": 1, "items": 1, "course_id": course.id}
+
+    submission = db.query(AssignmentSubmission).filter(AssignmentSubmission.student_id == STUDENT_ID).one()
+    submission.grade = 85
+    submission.status = "graded"
+    db.commit()
+
+    closed = admin_client.post(SHEET_URL.format(course_id=course.id))
+    assert closed.status_code == 201, closed.text
+
+
+def test_the_refusal_counts_students_not_pieces_of_work(admin_client, db: Session, teacher, student) -> None:
+    """Two unread pieces from one student is one student with something to
+    wait for — the sentence on the button says how many people, and the
+    queue says how many pieces."""
+    course, quiz = _course(db, teacher, "c-sheet-unread-count")
+    assignment = _assignment(db, course.id)
+    other = User(id=uuid.uuid4(), email="other-unread@example.com", full_name="Другой", role="student")
+    db.add(other)
+    db.flush()
+    _enrol(db, course.id, STUDENT_ID)
+    _enrol(db, course.id, other.id)
+    _unread_essay(db, quiz, STUDENT_ID)
+    _submit(db, assignment, STUDENT_ID)
+    _attempt(db, quiz, other.id, 90)
+    db.commit()
+
+    detail = admin_client.post(SHEET_URL.format(course_id=course.id)).json()["detail"]
+
+    assert detail["context"]["students"] == 1
+    assert detail["context"]["items"] == 2
+
+
+def test_excused_unread_work_does_not_hold_the_sheet(admin_client, db: Session, teacher, student) -> None:
+    """An exemption means the work is not owed, so it cannot be waiting — the
+    same subtraction the certificate explainer makes."""
+    from app.services.grade_exemption_service import apply_exemption
+
+    course, quiz = _course(db, teacher, "c-sheet-excused-unread")
+    _enrol(db, course.id, STUDENT_ID)
+    _unread_essay(db, quiz, STUDENT_ID)
+    db.commit()
+    apply_exemption(
+        db, student_id=STUDENT_ID, course_id=course.id, item_type="quiz", item_id=quiz.id, teacher_id=teacher.id
+    )
+    db.commit()
+
+    assert admin_client.post(SHEET_URL.format(course_id=course.id)).status_code == 201
+
+
+def test_returned_work_does_not_hold_the_sheet(admin_client, db: Session, teacher, student) -> None:
+    """Handed back for revision is the student's move, not the teacher's."""
+    course, quiz = _course(db, teacher, "c-sheet-returned")
+    assignment = _assignment(db, course.id)
+    _enrol(db, course.id, STUDENT_ID)
+    _attempt(db, quiz, STUDENT_ID, 90)
+    _submit(db, assignment, STUDENT_ID, status="returned", grade=40)
+    db.commit()
+
+    assert admin_client.post(SHEET_URL.format(course_id=course.id)).status_code == 201
+
+
+def test_unread_work_in_another_cohort_does_not_hold_this_sheet(admin_client, db: Session, teacher, student) -> None:
+    """A sheet is one поток's page (D11); last year's unread essay is not on it."""
+    course, quiz = _course(db, teacher, "c-sheet-unread-other-cohort")
+    this_year = Cohort(
+        id=uuid.uuid4(), start_date=datetime.now(UTC).date(), end_date=datetime.now(UTC).date(), status="active"
+    )
+    db.add(this_year)
+    db.flush()
+    other = User(id=uuid.uuid4(), email="other-cohort@example.com", full_name="Другой", role="student")
+    db.add(other)
+    db.flush()
+    _enrol(db, course.id, STUDENT_ID)
+    _unread_essay(db, quiz, STUDENT_ID)
+    _enrol(db, course.id, other.id, cohort_id=this_year.id)
+    _attempt(db, quiz, other.id, 90)
+    db.commit()
+
+    scoped = admin_client.post(f"{SHEET_URL.format(course_id=course.id)}?cohort_id={this_year.id}")
+    unscoped = admin_client.post(SHEET_URL.format(course_id=course.id))
+
+    assert scoped.status_code == 201, scoped.text
+    assert unscoped.status_code == 409, unscoped.text

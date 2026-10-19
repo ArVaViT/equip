@@ -28,8 +28,10 @@ from app.models.enrollment import Enrollment
 from app.models.grade_sheet import GradeSheet, GradeSheetRow
 from app.models.organization import Organization
 from app.models.user import User
+from app.services.gradable_items import course_items
 from app.services.grade_calculator import calculate_all_student_grades
 from app.services.grade_override import override_for_cohort
+from app.services.grading_queue import work_awaiting_marking
 from app.services.grading_scheme import effective_bands, get_org_settings, score_passes, symbol_floor
 from app.services.translation.resolve_for_display import fetch_course_titles_by_id
 from app.services.zachet import NOT_ATTESTED as ZACHET_NOT_ATTESTED
@@ -240,12 +242,60 @@ def students_in_scope(db: Session, course_id: str, cohort_id: UUID | None) -> li
     return [str(r.user_id) for r in query.all()]
 
 
+class UnmarkedWork(Exception):
+    """The sheet cannot close: somebody's work is still waiting to be marked.
+
+    ``students`` is how many students have something unread, ``items`` how
+    many pieces of work. The route turns this into the typed envelope; the
+    service does not know about HTTP.
+    """
+
+    def __init__(self, students: int, items: int) -> None:
+        super().__init__(f"{items} unmarked item(s) across {students} student(s)")
+        self.students = students
+        self.items = items
+
+
+def unmarked_work(db: Session, course: Course, student_ids: list[str]) -> dict[str, int]:
+    """``{student_id: unmarked item count}`` for the students on this sheet.
+
+    The queue's own definition of "waiting on a teacher" — an unread open
+    answer in a finished attempt, a submitted assignment with no mark —
+    minus exemptions, exactly as the certificate explainer counts it.
+    Per student, like the rest of the closing: a sheet is closed once a
+    term, not once a page view.
+    """
+    quizzes, assignments = course_items(db, course.id)
+    if not quizzes and not assignments:
+        return {}
+    counts: dict[str, int] = {}
+    for student_id in student_ids:
+        student_uuid = as_uuid(student_id)
+        if student_uuid is None:
+            continue
+        waiting = work_awaiting_marking(db, student_uuid, course_id=course.id, quizzes=quizzes, assignments=assignments)
+        if waiting:
+            counts[student_id] = len(waiting)
+    return counts
+
+
 def finalize_sheet(db: Session, course: Course, cohort_id: UUID | None, closed_by: UUID) -> GradeSheet:
     """Close the ведомость: freeze every student's official result.
+
+    Refused while anything on it is unmarked. The snapshot counts unmarked
+    work as zero, so a page closed over an unread essay would fail a student
+    on paper for work sitting in the teacher's queue — and that page is
+    signed and filed. Marking first is the only order that produces a true
+    document (2026-10-19).
 
     Re-closing supersedes the previous sheet rather than overwriting it, so the
     history of what was signed survives a correction.
     """
+    in_scope = set(students_in_scope(db, course.id, cohort_id))
+    waiting = unmarked_work(db, course, sorted(in_scope))
+    if waiting:
+        raise UnmarkedWork(students=len(waiting), items=sum(waiting.values()))
+
     previous = active_sheet(db, course.id, cohort_id)
     if previous is not None:
         from datetime import UTC, datetime
@@ -279,7 +329,6 @@ def finalize_sheet(db: Session, course: Course, cohort_id: UUID | None, closed_b
     db.add(sheet)
     db.flush()
 
-    in_scope = set(students_in_scope(db, course.id, cohort_id))
     # Course-invariant lookups, hoisted out of the per-student loop below.
     sheet_assignments = [r.id for r in assignments_in_course(db, course.id)] if scheme == "pass_fail" else None
     sheet_quizzes = course_quiz_rows(db, course.id) if scheme == "pass_fail" else None
