@@ -259,7 +259,20 @@ both directions: switched off, nothing; switched back on, everything.
 
 **Rule for new policies:** never test `profiles.role` or
 `organization_members` inline -- call the helper, so a closed account is
-closed everywhere at once.
+closed everywhere at once. A structural guard at the end of section 18
+fails CI on a policy that names either table. Wrap a helper that takes
+nothing from the row as `(SELECT public.is_platform_staff())`: the planner
+then evaluates it once per statement instead of once per row.
+
+The same review found the bucket half-closed: `course_assets_teacher_insert`
+asks `can_teach()`, but since 20261016011000 UPDATE and DELETE on
+`course-assets` go by `owner_id` and `courses.created_by`, which a closed
+account keeps -- so a teacher who deleted their account could still
+overwrite or remove the covers and lesson images of the courses they left
+behind. `20261019130000_a_closed_account_touches_no_course_file` puts
+`can_teach()` in front of both. Storage policies are not in
+`schema.sql` and have no CI probe; the fix was proven against a local
+stand-in of `storage.objects` (closed: 0 rows written; restored: all).
 
 ## Dependency scanning
 
