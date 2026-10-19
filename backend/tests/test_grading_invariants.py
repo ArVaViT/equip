@@ -191,7 +191,13 @@ def test_more_marks_never_lower_the_final_or_its_letter(
 
 
 def test_current_rides_the_same_weights_as_final() -> None:
-    """«Текущая» differs only in the denominator inside a category (D10)."""
+    """«Текущая» differs only in the denominator inside a category (D10).
+
+    Текущее поведение, решение владельца: the weights are the course's, not
+    the student's. A category that is live for the class but holds nothing
+    read for this student contributes 0 to their текущая rather than dropping
+    out of it — a change of that policy is a decision, not a regression here.
+    """
     b = _breakdown(40.0, 30.0, qw=70, aw=30, current_quiz_avg=80.0, current_assignment_avg=60.0)
 
     assert b.final_score == 37.0
@@ -215,11 +221,16 @@ def test_everything_excused_is_not_assessed_whatever_the_averages_say() -> None:
     ("quiz_avg", "symbol"),
     [
         (89.994, "B"),  # rounds to 89.99
-        (89.995, "A"),  # rounds to 90.0 — a float tie, decided by the binary representation
+        # Текущее поведение, решение владельца: a tie in the third decimal is
+        # decided by the float's binary representation under Python's
+        # round-half-even, not by a stated rounding policy. Pinned so the
+        # symbol and the number stay together, not because the direction of
+        # the tie was chosen.
+        (89.995, "A"),  # rounds to 90.0
         (89.996, "A"),
         (89.5, "B"),  # one decimal does not round it up to the A line
         (69.994, "D"),
-        (69.995, "C"),
+        (69.995, "C"),  # the same tie, the same caveat
         (59.999, "D"),  # 60.0 after rounding
         (0.004, "F"),
         (99.999, "A"),
@@ -240,6 +251,8 @@ def test_the_letter_is_read_from_the_two_decimal_score_every_surface_prints(quiz
     [
         (70.0, Decimal("70"), True),
         (69.99, Decimal("70"), False),
+        # Текущее поведение, решение владельца: the line is read off the
+        # two-decimal score, so a third-decimal tie that rounds up passes.
         (69.995, Decimal("70"), True),  # the breakdown already rounded it to 70.0
         (100.0, Decimal("100"), True),
         (0.0, Decimal("0"), True),
@@ -437,6 +450,10 @@ def test_a_resubmission_marked_higher_raises_and_marked_lower_lowers(db: Session
 
 
 def test_an_unmarked_resubmission_leaves_the_previous_mark_standing(db: Session, teacher, student) -> None:
+    """Текущее поведение, решение владельца (2026-10-03, `_latest_graded`):
+    while a resubmission waits, the previous mark stands in both numbers and
+    the item list says pending. The quiz side does the same with a retake
+    whose essay is unread."""
     course, _, (a0,), _ = _course(db, teacher, "c-inv-resubmit-wait", quizzes=0, assignments=1)
     t0 = datetime.now(UTC)
     _submission(db, a0, 70, when=t0)
@@ -495,7 +512,11 @@ def test_a_finished_attempt_on_a_quiz_worth_nothing_is_not_a_mark_and_not_a_cras
     anyway: the attempt wakes the category — `category_is_live` asks for a
     finished attempt with nothing unread, and this one qualifies — but it is
     not a mark, every surface says "nothing marked yet", and nothing divides
-    by the zero."""
+    by the zero.
+
+    Текущее поведение, решение владельца: that an attempt worth nothing wakes
+    the category for the whole class is what the code does today, not a rule
+    anybody chose. Requiring `max_score > 0` there would be a policy change."""
     course, (q0, q1), _, enrollment = _course(db, teacher, "c-inv-zero-max", quizzes=2, assignments=0)
     _attempt(db, q0, 0, max_score=0)
 
