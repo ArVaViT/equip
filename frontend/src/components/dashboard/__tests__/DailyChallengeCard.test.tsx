@@ -100,6 +100,21 @@ describe("DailyChallengeCard", () => {
     expect(await screen.findByText(/no question today/i)).toBeInTheDocument()
   })
 
+  it("shows a failed read in the card, with a retry, instead of an empty body under the header", async () => {
+    const getToday = vi
+      .fn()
+      .mockRejectedValueOnce(new AxiosError("Network Error", "ERR_NETWORK"))
+      .mockResolvedValue(todayPayload())
+    stub({ getToday, getStreak: vi.fn().mockResolvedValue({ current: 0, best: 0 }) })
+    render(<DailyChallengeCard />, { wrapper: Wrapper })
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }))
+
+    expect(await screen.findByText(todayPayload().question_text)).toBeInTheDocument()
+    expect(getToday).toHaveBeenCalledTimes(2)
+  })
+
   it("says the question is not translated yet rather than rendering blanks", async () => {
     // Before the daily challenge was wired into the translation
     // pipeline, a reader in a language the question had not reached got
