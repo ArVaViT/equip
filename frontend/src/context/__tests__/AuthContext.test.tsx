@@ -496,4 +496,30 @@ describe("AuthContext", () => {
     await waitFor(() => expect(screen.getByTestId("user").textContent).toBe("a@b.com"))
     expect(single).toHaveBeenCalledTimes(1)
   })
+
+  it("gives up on a profile read that never answers, instead of loading forever", async () => {
+    vi.useFakeTimers()
+    try {
+      const single = vi.fn().mockReturnValue(new Promise(() => {}))
+      const eq = vi.fn().mockReturnValue({ maybeSingle: single })
+      const select = vi.fn().mockReturnValue({ eq })
+      from.mockReturnValue({ select })
+      render(
+        <AuthProvider>
+          <AuthProbe />
+        </AuthProvider>,
+      )
+      await act(async () => {
+        authHandler!("SIGNED_IN", makeSession(makeSupabaseUser()))
+      })
+      expect(screen.getByTestId("loading").textContent).toBe("true")
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000)
+      })
+      expect(screen.getByTestId("loading").textContent).toBe("false")
+      expect(screen.getByTestId("user").textContent).toBe("anon")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

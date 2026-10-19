@@ -23,6 +23,9 @@ import { publishAccountDeleted } from "@/lib/accountDeleted"
 // and the language switcher records real choices. The first-run flow no
 // longer asks about language at all.
 
+/** How long the profile read after sign-in may take before it counts as failed. */
+export const PROFILE_READ_TIMEOUT_MS = 30_000
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   // Seed from the synchronous storage probe: anonymous visitors (no token)
@@ -50,13 +53,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // reject the promise — so relying on the `.then` rejection handler only
     // would leave `loading` stuck forever on DB errors. Handle `error` in the
     // success branch explicitly.
-    supabase
+    const query = supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
       // maybeSingle: a profile row that does not exist yet (the moment after
       // sign-up) is an empty answer, not a 406 counted as an error in RUM.
       .maybeSingle()
+    // supabase-js has no timeout of its own, and this one read gates the
+    // whole application: a profile query that never answered left the
+    // full-screen «Loading…» up for good. Given up on, it is a failed read —
+    // the login form, and the next sign-in asks again.
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const gaveUp = new Promise<{ data: null; error: { message: string } }>((resolve) => {
+      timer = setTimeout(() => resolve({ data: null, error: { message: "profile read timed out" } }), PROFILE_READ_TIMEOUT_MS)
+    })
+    Promise.race([query, gaveUp])
+      .finally(() => clearTimeout(timer))
       .then(
         ({ data, error }) => {
           // Clear inflight regardless of outcome — a failed fetch
