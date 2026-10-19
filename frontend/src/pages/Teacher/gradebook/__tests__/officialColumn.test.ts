@@ -43,7 +43,7 @@ describe("officialColumn", () => {
       entry({ final_score: 87.4, letter_grade: "B", current_score: 87.4, current_letter_grade: "B" }),
     )
 
-    expect(cell).toEqual({ text: "87.4% B", finalText: null, isManual: false, noteKey: null })
+    expect(cell).toEqual({ text: "87.40% B", finalText: null, isManual: false, noteKey: null })
   })
 
   it("shows both numbers as soon as they diverge", () => {
@@ -53,24 +53,25 @@ describe("officialColumn", () => {
       entry({ current_score: 100, current_letter_grade: "A", final_score: 25, letter_grade: "F" }),
     )
 
-    expect(cell.text).toBe("100.0% A")
-    expect(cell.finalText).toBe("25.0% F")
+    expect(cell.text).toBe("100.00% A")
+    expect(cell.finalText).toBe("25.00% F")
   })
 
   it("omits the symbol on a scheme that has none", () => {
     // percent courses have no letter; printing an empty one leaves a dangling space
-    expect(officialColumn(entry({ current_score: 91, final_score: 91 })).text).toBe("91.0%")
+    expect(officialColumn(entry({ current_score: 91, final_score: 91 })).text).toBe("91.00%")
   })
 
   it("never rounds the percentage past the letter beside it", () => {
-    // 89.5 printed as "90% B" leaves a teacher holding two facts that
+    // 89.95 printed as "90.0% B" leaves a teacher holding two facts that
     // contradict each other — the school's band table says 90 is an A — and
-    // the one they can see is the wrong one.
+    // the one they can see is the wrong one. The letter is chosen from the
+    // two-place number, so that is the number shown (2026-10-19).
     expect(
       officialColumn(
-        entry({ current_score: 89.5, current_letter_grade: "B", final_score: 89.5, letter_grade: "B" }),
+        entry({ current_score: 89.95, current_letter_grade: "B", final_score: 89.95, letter_grade: "B" }),
       ).text,
-    ).toBe("89.5% B")
+    ).toBe("89.95% B")
   })
 
   it("shows a hand-set grade instead of the computed one", () => {

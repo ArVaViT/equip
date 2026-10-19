@@ -1,4 +1,4 @@
-import { formatPercent } from "@/i18n/number"
+import { formatGradePercent } from "@/pages/Teacher/gradebook/formatGrade"
 import type { MyCourseGrade, MyGradeItem } from "@/types"
 
 export interface MyGradeDisplay {
@@ -20,12 +20,12 @@ const NOTE_BY_STATE: Record<string, string> = {
 }
 
 /**
- * Percent with one decimal, matching every teacher surface exactly —
- * including the decimal separator, which is a comma for three of the four
- * languages served and was a hard period here.
+ * The same formatter as every teacher surface, so the two of them read the
+ * same number — including the decimal separator, which is a comma for three
+ * of the four languages served and was a hard period here.
  */
 function formatScore(score: number, symbol: string | null): string {
-  const pct = formatPercent(score, 1)
+  const pct = formatGradePercent(score)
   return symbol ? `${pct} ${symbol}` : pct
 }
 

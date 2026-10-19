@@ -40,7 +40,7 @@ function item(over: Partial<MyGradeItem> = {}): MyGradeItem {
 describe("myGradeDisplay", () => {
   it("shows one number when nothing is outstanding", () => {
     expect(myGradeDisplay(grade())).toEqual({
-      headline: "82.0% B",
+      headline: "82.00% B",
       isManual: false,
       finalText: null,
       noteKey: null,
@@ -54,14 +54,14 @@ describe("myGradeDisplay", () => {
       grade({ current_score: 100, current_symbol: "A", final_score: 25, final_symbol: "F", scores_differ: true }),
     )
 
-    expect(d.headline).toBe("100.0% A")
-    expect(d.finalText).toBe("25.0% F")
+    expect(d.headline).toBe("100.00% A")
+    expect(d.finalText).toBe("25.00% F")
   })
 
   it("formats exactly as the teacher's screens do", () => {
     // Same string on both sides, so a student and a teacher looking at the
     // same grade are looking at the same characters.
-    expect(myGradeDisplay(grade({ current_score: 86.5, current_symbol: "B" })).headline).toBe("86.5% B")
+    expect(myGradeDisplay(grade({ current_score: 86.5, current_symbol: "B" })).headline).toBe("86.50% B")
   })
 
   it("prefers a hand-set grade over both computed numbers", () => {
@@ -105,7 +105,7 @@ describe("myGradeDisplay", () => {
   })
 
   it("drops the symbol on a scheme that has none", () => {
-    expect(myGradeDisplay(grade({ current_symbol: null, final_symbol: null })).headline).toBe("82.0%")
+    expect(myGradeDisplay(grade({ current_symbol: null, final_symbol: null })).headline).toBe("82.00%")
   })
 })
 

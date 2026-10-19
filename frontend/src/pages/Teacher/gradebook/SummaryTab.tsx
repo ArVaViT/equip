@@ -23,7 +23,8 @@ import { EMPTY_FORM } from "./helpers"
 import { symbolRank, symbolTone, type GradeBand } from "./symbolScale"
 import { classAverages } from "./classAverages"
 import { gradePillLabel } from "./notice"
-import { formatNumber, formatPercent } from "@/i18n/number"
+import { formatNumber } from "@/i18n/number"
+import { formatGradePercent, GRADE_FRACTION_DIGITS } from "./formatGrade"
 
 interface Props {
   summary: GradeSummaryResponse | null
@@ -277,22 +278,22 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
             student in a class where anyone had been marked read 0.0% — "nobody
             has opened theirs" printed as a failing figure. */}
         <p className="text-sm tabular-nums text-right">
-          {b.student_has_quiz_marks ? formatPercent(b.quiz_avg, 1) : "—"}
+          {b.student_has_quiz_marks ? formatGradePercent(b.quiz_avg) : "—"}
         </p>
         <p className="text-sm tabular-nums text-right">
-          {b.student_has_assignment_marks ? formatPercent(b.assignment_avg, 1) : "—"}
+          {b.student_has_assignment_marks ? formatGradePercent(b.assignment_avg) : "—"}
         </p>
         {/* «Текущая» leads — it is the number the student sees, so it is the
             one that makes a conversation with them possible. «Итоговая» sits
             under it the moment they differ, with the reason on hover (D10). */}
         <p className="text-sm font-semibold tabular-nums text-right">
-          {hasScore ? formatPercent(b.current_score, 1) : "—"}
+          {hasScore ? formatGradePercent(b.current_score) : "—"}
           {hasScore && b.scores_differ && (
             <span
               className="block text-xs font-normal text-ink-muted"
               title={t("gradebook.pair.explainer")}
             >
-              {t("gradebook.pair.finalShort", { grade: formatPercent(b.final_score, 1) })}
+              {t("gradebook.pair.finalShort", { grade: formatGradePercent(b.final_score) })}
             </span>
           )}
         </p>
@@ -381,7 +382,7 @@ const StudentSummaryRow = memo(function StudentSummaryRow({
                 values={{
                   manual: manualGrade?.override_code ?? "",
                   calc: b.letter_grade,
-                  pct: formatNumber(b.final_score, 1),
+                  pct: formatNumber(b.final_score, GRADE_FRACTION_DIGITS),
                 }}
                 components={{ strong: <strong /> }}
               />
@@ -456,9 +457,9 @@ function BreakdownEntry({
   return (
     <div>
       <span className="text-ink-muted">{label}</span>{" "}
-      <span className="font-medium">{formatPercent(pct, 1)}</span>
+      <span className="font-medium">{formatGradePercent(pct)}</span>
       <span className="text-ink-muted text-xs ml-1">
-        (×{weight}% = {formatNumber(weighted, 1)})
+        (×{weight}% = {formatNumber(weighted, GRADE_FRACTION_DIGITS)})
       </span>
     </div>
   )
@@ -496,12 +497,12 @@ function ClassAverageRow({
         )}
       </span>
       <p className="tabular-nums text-right">
-        {averages.quiz !== null ? formatPercent(averages.quiz, 1) : "—"}
+        {averages.quiz !== null ? formatGradePercent(averages.quiz) : "—"}
       </p>
       <p className="tabular-nums text-right">
-        {averages.assignment !== null ? formatPercent(averages.assignment, 1) : "—"}
+        {averages.assignment !== null ? formatGradePercent(averages.assignment) : "—"}
       </p>
-      <p className="tabular-nums text-right">{hasNumbers ? formatPercent(classAvg, 1) : "—"}</p>
+      <p className="tabular-nums text-right">{hasNumbers ? formatGradePercent(classAvg) : "—"}</p>
       <span />
       <span />
     </div>
