@@ -132,7 +132,11 @@ export default function TeacherGradebook() {
         const [course, rawGrades, gradeSummary, progress] = await Promise.all([
           coursesService.getCourse(courseId),
           coursesService.getCourseGrades(courseId).catch(() => []),
-          coursesService.getGradeSummary(courseId).catch(() => null),
+          // Not caught: the summary is the class. Answered with «null» a
+          // 500 or a dropped connection rendered «No students enrolled» and
+          // the default weights in an editable card — one «Save» away from
+          // writing 40/60 over the course's real configuration.
+          coursesService.getGradeSummary(courseId),
           coursesService.getGradebookMatrix(courseId).catch((err: unknown) => {
             // `getCourse` succeeds for any course the viewer may read, so a
             // teacher opening a colleague's course id got the real title over
@@ -192,9 +196,18 @@ export default function TeacherGradebook() {
       const updated = await coursesService.updateGradingConfig(courseId, configDraft)
       setConfig(updated)
       toast({ title: t("toast.gradingWeightsSaved"), variant: "success" })
+    } catch (err) {
+      toast({ title: getErrorDetail(err, t("toast.gradingConfigSaveFailed")), variant: "destructive" })
+      setSavingConfig(false)
+      return
+    }
+    try {
       await refreshSummary()
     } catch {
-      toast({ title: t("toast.gradingConfigSaveFailed"), variant: "destructive" })
+      // The weights are saved; only the re-read of the symbols failed. A
+      // «save failed» here, straight after «saved», had the teacher saving
+      // the same numbers twice.
+      toast({ title: t("errors.loadTeacherCoursesFailed"), variant: "destructive" })
     } finally {
       setSavingConfig(false)
     }
