@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { Modal } from "@/components/patterns"
+import { ErrorState, Modal } from "@/components/patterns"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select"
 import { cohortsService } from "@/services/cohorts"
 import { coursesService } from "@/services/courses"
+import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
 import type { Course } from "@/types"
 
@@ -34,6 +35,10 @@ export function AttachCourseDialog({
   const { t } = useTranslation()
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(false)
+  // «Every course is already attached» over a failed read sent the admin
+  // away believing there was nothing to attach.
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [selected, setSelected] = useState("")
   const [saving, setSaving] = useState(false)
 
@@ -53,6 +58,11 @@ export function AttachCourseDialog({
     if (!open) return
     let cancelled = false
     setLoading(true)
+    setLoadFailed(false)
+    // Not the previous opening's list: a read that fails must not leave
+    // last time's courses — one of them possibly attached since — on offer.
+    setCourses([])
+    setSelected("")
     coursesService
       .getCourses()
       .then((list) => {
@@ -62,7 +72,7 @@ export function AttachCourseDialog({
         setSelected(available[0]?.id ?? "")
       })
       .catch(() => {
-        if (!cancelled) toast({ title: t("admin.cohorts.toast.loadCoursesFailed"), variant: "destructive" })
+        if (!cancelled) setLoadFailed(true)
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -70,7 +80,7 @@ export function AttachCourseDialog({
     return () => {
       cancelled = true
     }
-  }, [open, t])
+  }, [open, loadAttempt])
 
   const submit = async () => {
     // Guard against rapid double-clicks / Enter+click races -- without
@@ -84,8 +94,8 @@ export function AttachCourseDialog({
       await cohortsService.attachCourseToCohort(cohortId, selected)
       toast({ title: t("admin.cohorts.toast.courseAttached"), variant: "success" })
       onAttached()
-    } catch {
-      toast({ title: t("admin.cohorts.toast.attachFailed"), variant: "destructive" })
+    } catch (err) {
+      toast({ title: getErrorDetail(err, t("admin.cohorts.toast.attachFailed")), variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -96,6 +106,16 @@ export function AttachCourseDialog({
       <div className="space-y-4">
         {loading ? (
           <p className="text-sm text-ink-muted py-4">{t("common.loading")}</p>
+        ) : loadFailed ? (
+          <ErrorState
+            className="py-4"
+            title={t("admin.cohorts.toast.loadCoursesFailed")}
+            action={
+              <Button size="sm" variant="outline" onClick={() => setLoadAttempt((n) => n + 1)}>
+                {t("common.tryAgain")}
+              </Button>
+            }
+          />
         ) : courses.length === 0 ? (
           <p className="text-sm text-ink-muted py-4">
             {t("admin.cohorts.noMoreCourses")}
