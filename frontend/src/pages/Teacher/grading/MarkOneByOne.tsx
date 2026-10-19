@@ -73,13 +73,19 @@ export function MarkOneByOne({
 
   const current = work?.[index]
 
+  // Each piece of work starts clean. Carrying the previous student's note
+  // into the next essay is the one mistake this screen must never make.
+  // Only on a new piece of work, though: this used to run on a rubric retry
+  // too, and «Try again» wiped the note the teacher had typed meanwhile.
+  useEffect(() => {
+    if (!current) return
+    setGrade(null)
+    setFeedback("")
+  }, [current])
+
   useEffect(() => {
     if (!current) return
     let cancelled = false
-    // Each piece of work starts clean. Carrying the previous student's note
-    // into the next essay is the one mistake this screen must never make.
-    setGrade(null)
-    setFeedback("")
     setRubric(null)
     setRubricFailed(false)
     rubricsService

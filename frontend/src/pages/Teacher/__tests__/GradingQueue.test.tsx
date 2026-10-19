@@ -234,4 +234,24 @@ describe("GradingQueue", () => {
 
     expect(await screen.findByRole("button", { name: /Сохранить и закончить/ })).toBeDisabled()
   })
+
+  it("keeps the note the teacher typed when the rubric is asked for again", async () => {
+    vi.spyOn(gradesService, "getQueue").mockResolvedValue([group()])
+    vi.spyOn(gradesService, "getAssignmentQueue").mockResolvedValue([work()])
+    const rubric = vi
+      .spyOn(rubricsService, "forSubmission")
+      .mockRejectedValueOnce(forbidden())
+      .mockResolvedValue({ rubric: null, marks: [], earned: null, out_of: null })
+    render(<GradingQueue />, { wrapper: Wrapper })
+    await userEvent.click(await screen.findByRole("button", { name: /Проверить/ }))
+
+    expect(await screen.findByText("Не удалось загрузить рубрику")).toBeInTheDocument()
+    await userEvent.type(screen.getByPlaceholderText("Что удалось, что поправить, как именно"), "Хорошо, но коротко")
+    await userEvent.click(screen.getByRole("button", { name: "Повторить" }))
+
+    expect(await screen.findByRole("spinbutton", { name: "Оценка" })).toBeInTheDocument()
+    expect(rubric).toHaveBeenCalledTimes(2)
+    // The retry used to run the «new piece of work» reset and wipe the note.
+    expect(screen.getByPlaceholderText("Что удалось, что поправить, как именно")).toHaveValue("Хорошо, но коротко")
+  })
 })
