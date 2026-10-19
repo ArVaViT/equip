@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
+import { answerWasLost, newestUnseen } from "@/lib/lostResponse"
 import { rubricsService } from "@/services/rubrics"
 import { useAuth } from "@/context/useAuth"
 import { useLocalDraft } from "@/hooks/useLocalDraft"
@@ -256,25 +257,41 @@ function SingleAssignment({
     if (!content.trim() && !fileUrl.trim()) return
     if (declarationNeeded && !declaration.confirmed) return
     setSubmitting(true)
-    try {
-      const sub = await coursesService.submitAssignment(assignment.id, {
-        content: content.trim() || undefined,
-        file_url: fileUrl.trim() || undefined,
-        declaration: declarationNeeded
-          ? {
-              ai_use: declaration.usedAi ? "assisted" : "none",
-              // The text as displayed, not a pointer to it.
-              statement: declarationStatement(policy, t),
-              note: declaration.usedAi ? declaration.note.trim() || undefined : undefined,
-            }
-          : undefined,
-      })
+    const landed = (sub: AssignmentSubmission) => {
       setSubmission(sub)
       setContent("")
       setFileUrl("")
       clearDraft()
       onSubmitted?.()
+    }
+    try {
+      landed(
+        await coursesService.submitAssignment(assignment.id, {
+          content: content.trim() || undefined,
+          file_url: fileUrl.trim() || undefined,
+          declaration: declarationNeeded
+            ? {
+                ai_use: declaration.usedAi ? "assisted" : "none",
+                // The text as displayed, not a pointer to it.
+                statement: declarationStatement(policy, t),
+                note: declaration.usedAi ? declaration.note.trim() || undefined : undefined,
+              }
+            : undefined,
+        }),
+      )
     } catch (error: unknown) {
+      // No answer at all: the work may be on the server already, and a
+      // second press would hand it in twice. Ask before saying it failed.
+      if (answerWasLost(error)) {
+        const known = new Set(submission ? [submission.id] : [])
+        const rows = await coursesService.getMySubmissions(assignment.id).catch(() => null)
+        const mine = rows && newestUnseen(rows, known, (r) => r.submitted_at)
+        if (mine) {
+          landed(mine)
+          setSubmitting(false)
+          return
+        }
+      }
       const detail = getErrorDetail(error)
       toast({ title: detail || t("toast.assignmentSubmitFailed"), variant: "destructive" })
     } finally {

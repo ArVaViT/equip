@@ -260,6 +260,42 @@ describe("QuizTaker", () => {
     expect(screen.getByText(/Couldn't check how many attempts/i)).toBeInTheDocument()
   })
 
+  it("finds the attempt on the server when only the answer was lost, instead of spending a second one", async () => {
+    getChapterQuiz.mockResolvedValue(makeQuiz())
+    getMyQuizAttempts.mockResolvedValueOnce([]).mockResolvedValueOnce([makeAttempt({ id: "a-landed" })])
+    submitQuiz.mockRejectedValue(Object.assign(new Error("Network Error"), { isAxiosError: true }))
+    const user = userEvent.setup()
+
+    render(<QuizTaker chapterId="chap-1" />, renderOpts)
+    await waitFor(() => screen.getByText("Genesis 1 Quiz"))
+    await user.click(screen.getByLabelText("6"))
+    await user.click(screen.getByRole("button", { name: "True" }))
+    await user.click(screen.getByRole("button", { name: /submit quiz/i }))
+
+    await waitFor(() => expect(screen.getByText(/you passed/i)).toBeInTheDocument())
+    expect(submitQuiz).toHaveBeenCalledTimes(1)
+    expect(getMyQuizAttempts).toHaveBeenCalledTimes(2)
+    expect(toast).not.toHaveBeenCalled()
+  })
+
+  it("says it failed when nothing landed — the answer was lost and the server holds no new attempt", async () => {
+    getChapterQuiz.mockResolvedValue(makeQuiz())
+    getMyQuizAttempts.mockResolvedValue([])
+    submitQuiz.mockRejectedValue(Object.assign(new Error("Network Error"), { isAxiosError: true }))
+    const user = userEvent.setup()
+
+    render(<QuizTaker chapterId="chap-1" />, renderOpts)
+    await waitFor(() => screen.getByText("Genesis 1 Quiz"))
+    await user.click(screen.getByLabelText("6"))
+    await user.click(screen.getByRole("button", { name: "True" }))
+    await user.click(screen.getByRole("button", { name: /submit quiz/i }))
+
+    await waitFor(() => expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" })))
+    expect(screen.queryByText(/you passed/i)).toBeNull()
+    // The answers are still on screen for the retry.
+    expect(screen.getByRole("button", { name: /submit quiz/i })).toBeEnabled()
+  })
+
   it("shows a toast when the submission fails", async () => {
     getChapterQuiz.mockResolvedValue(makeQuiz())
     getMyQuizAttempts.mockResolvedValue([])

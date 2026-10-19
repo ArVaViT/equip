@@ -171,4 +171,19 @@ describe("AssignmentPanel — a failed lookup is not an empty one", () => {
     expect(screen.getByText(/Восстановлен черновик/)).toBeInTheDocument()
     window.localStorage.clear()
   })
+
+  it("finds the work on the server when only the answer was lost, instead of handing it in twice", async () => {
+    vi.spyOn(coursesService, "getMySubmissions").mockResolvedValueOnce([]).mockResolvedValueOnce([SUBMITTED])
+    const submit = vi
+      .spyOn(coursesService, "submitAssignment")
+      .mockRejectedValue(Object.assign(new Error("Network Error"), { isAxiosError: true }))
+    render(<AssignmentPanel chapterId="ch-1" assignmentId="a-1" aiPolicy="ai_open" />, { wrapper: Wrapper })
+
+    await userEvent.type((await screen.findAllByRole("textbox"))[0]!, "Уже сдано")
+    await userEvent.click(screen.getByRole("button", { name: /Отправить/i }))
+
+    expect(await screen.findByText(/Отправлено|На проверке/)).toBeInTheDocument()
+    expect(submit).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole("button", { name: /Отправить/i })).not.toBeInTheDocument()
+  })
 })
