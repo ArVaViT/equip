@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { render, screen } from "@testing-library/react"
+import { fireEvent, render, screen } from "@testing-library/react"
 import { I18nextProvider } from "react-i18next"
 import { MemoryRouter } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -65,6 +65,15 @@ describe("LegalDocumentPage", () => {
 
     expect(await screen.findByRole("alert")).toBeInTheDocument()
     expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument()
+  })
+
+  it("asks for the document again on request", async () => {
+    const fetch = vi.spyOn(legalService, "document").mockRejectedValueOnce(new Error("offline")).mockResolvedValue(DOC)
+    render(<LegalDocumentPage slug="privacy" />, { wrapper: Wrapper })
+    await screen.findByRole("alert")
+    fireEvent.click(screen.getByRole("button", { name: "Повторить" }))
+    expect(await screen.findByRole("heading", { level: 1 })).toBeInTheDocument()
+    expect(fetch).toHaveBeenCalledTimes(2)
   })
 })
 

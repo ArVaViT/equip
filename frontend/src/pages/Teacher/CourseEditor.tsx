@@ -212,6 +212,13 @@ export default function CourseEditor() {
           title={t("courseEditor.notFound.title")}
           description={data.loadError ?? t("courseEditor.notFound.description")}
           action={
+            data.loadError ? (
+              <Button size="sm" onClick={data.retryLoad}>
+                {t("common.tryAgain")}
+              </Button>
+            ) : undefined
+          }
+          secondaryAction={
             <Button variant="outline" size="sm" onClick={goBack}>
               {t("courseEditor.notFound.backToCourses")}
             </Button>

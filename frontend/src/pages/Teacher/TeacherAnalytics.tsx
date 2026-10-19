@@ -45,6 +45,7 @@ export default function TeacherAnalytics() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
   const [courseTitle, setCourseTitle] = useState("")
   const [loading, setLoading] = useState(true)
+  const [attempt, setAttempt] = useState(0)
 
   useUserTour({
     tourId: "analytics-v1",
@@ -77,7 +78,7 @@ export default function TeacherAnalytics() {
     }
     load()
     return () => { cancelled = true }
-  }, [courseId, t])
+  }, [courseId, t, attempt])
 
   // "This month" on the reader's calendar, the one the dates below are shown in.
   const thisMonth = zonedDayKey(new Date()).slice(0, 7)
@@ -99,6 +100,11 @@ export default function TeacherAnalytics() {
           icon={<BarChart3 strokeWidth={1.75} />}
           title={t("teacherAnalytics.loadFailed")}
           action={
+            <Button size="sm" onClick={() => setAttempt((n) => n + 1)}>
+              {t("common.tryAgain")}
+            </Button>
+          }
+          secondaryAction={
             <Link to="/teacher">
               <Button variant="ghost">
                 <ArrowLeft className="h-4 w-4 mr-1.5" strokeWidth={1.75} />

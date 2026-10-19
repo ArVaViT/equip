@@ -32,7 +32,17 @@ export function OrganizationsTab() {
   const reload = () => setVersion((v) => v + 1)
 
   if (loading && !data) return <PageSpinner variant="section" />
-  if (error || !data) return <ErrorState title={t("adminOrgs.loadError")} />
+  if (error || !data)
+    return (
+      <ErrorState
+        title={t("adminOrgs.loadError")}
+        action={
+          <Button size="sm" variant="outline" onClick={reload}>
+            {t("common.tryAgain")}
+          </Button>
+        }
+      />
+    )
 
   return (
     <div className="space-y-6">

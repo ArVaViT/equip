@@ -139,4 +139,17 @@ describe("the organizations tab", () => {
     await user.click(screen.getByRole("button", { name: "Добавить" }))
     await waitFor(() => expect(field).toHaveValue(""))
   })
+
+  it("asks again from a failed load", async () => {
+    const list = vi
+      .spyOn(organizationsService, "adminList")
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue([org()])
+    const user = userEvent.setup()
+    render(<OrganizationsTab />, { wrapper: Wrapper })
+    expect(await screen.findByRole("alert")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Повторить" }))
+    expect(await screen.findByText("UCOAT")).toBeInTheDocument()
+    expect(list).toHaveBeenCalledTimes(2)
+  })
 })

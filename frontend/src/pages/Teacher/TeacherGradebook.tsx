@@ -518,6 +518,7 @@ export default function TeacherGradebook() {
 
       {activeTab === "table" && (
         <GradeTableTab
+          onReload={reload}
           progressData={progressData}
           orderedModules={orderedModules}
           moduleChapterMap={moduleChapterMap}

@@ -41,6 +41,13 @@ export default function OrganizationPage() {
         <ErrorState
           title={notFound ? t("organization.notFound") : t("organization.loadError")}
           action={
+            notFound ? undefined : (
+              <Button size="sm" onClick={() => setVersion((v) => v + 1)}>
+                {t("common.tryAgain")}
+              </Button>
+            )
+          }
+          secondaryAction={
             <Link to="/courses">
               <Button variant="outline" size="sm">{t("organization.toCatalog")}</Button>
             </Link>
