@@ -873,6 +873,130 @@ END $$;
 
 RESET ROLE;
 
+-- 18) A closed account holds no role (20261019120000).
+--
+-- An account its owner deleted, or an administrator switched off, keeps its
+-- Supabase session on purpose: it is the door back for a restore. The API
+-- refuses every call (`refuse_if_closed`) and the profile trigger freezes
+-- the row -- but the SECURITY DEFINER helpers the policies ask read only
+-- `role` and the membership rows, so the session still read as the teacher
+-- or director it used to be: the school's certificates and cohorts through
+-- PostgREST, and the course-assets bucket through Storage. Still S from
+-- section 17: teacher of B. Switched off as the owner, S holds nothing in B;
+-- switched back on, everything returns (the positive control).
+RESET ROLE;
+UPDATE public.profiles SET deactivated_at = now()
+ WHERE id = '55555555-5555-5555-5555-555555555555';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  IF public.can_teach() THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated teacher still passes can_teach() (Storage uploads)';
+  END IF;
+  IF public.is_staff_of('bbbb2222-0000-0000-0000-000000000002') THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated teacher is still staff of their school';
+  END IF;
+  IF public.is_member_of('bbbb2222-0000-0000-0000-000000000002') THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated account is still a member of its school';
+  END IF;
+  IF public.is_director_of('bbbb2222-0000-0000-0000-000000000002') THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated account still directs';
+  END IF;
+  SELECT count(*) INTO n FROM public.member_organization_ids();
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated account still lists % organization(s)', n;
+  END IF;
+  SELECT count(*) INTO n FROM public.certificates WHERE id = 'dddd0002-0000-0000-0000-000000000002';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated teacher still reads the school''s certificates';
+  END IF;
+  SELECT count(*) INTO n FROM public.cohorts WHERE id = 'cccc0002-0000-0000-0000-000000000002';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated teacher still reads the school''s cohorts';
+  END IF;
+  SELECT count(*) INTO n FROM public.courses WHERE id = 'course-b-institute';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated member still reads the school''s closed course';
+  END IF;
+  -- Their own rows are still theirs: the export and the restore screen need them.
+  SELECT count(*) INTO n FROM public.certificates WHERE id = 'dddd0003-0000-0000-0000-000000000003';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: a deactivated account lost sight of its own certificate';
+  END IF;
+  RAISE NOTICE 'OK: a deactivated account holds no role and no membership';
+END $$;
+
+-- Platform staff the same: the audit trail and the editorial close with the account.
+RESET ROLE;
+\set admin_off '66666666-6666-6666-6666-666666666666'
+INSERT INTO auth.users (id, email) VALUES (:'admin_off', 'admin-off@test.local');
+INSERT INTO public.profiles (id, email, role, deactivated_at)
+VALUES (:'admin_off', 'admin-off@test.local', 'admin', now());
+INSERT INTO public.audit_logs (user_id, action, resource_id, resource_type)
+VALUES (:'admin_off', 'probe', 'x', 'user');
+SET request.jwt.claim.sub = '66666666-6666-6666-6666-666666666666';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  IF public.is_platform_staff() THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated administrator is still platform staff';
+  END IF;
+  SELECT count(*) INTO n FROM public.audit_logs;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated administrator still reads the audit trail (% rows)', n;
+  END IF;
+  SELECT count(*) INTO n FROM public.daily_challenge_question_events;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated administrator still reads the editorial log';
+  END IF;
+  RAISE NOTICE 'OK: a deactivated administrator is nobody''s staff';
+END $$;
+
+-- Positive control: switched back on, S is B's teacher again.
+RESET ROLE;
+UPDATE public.profiles SET deactivated_at = NULL
+ WHERE id = '55555555-5555-5555-5555-555555555555';
+SET request.jwt.claim.sub = '55555555-5555-5555-5555-555555555555';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  IF NOT public.can_teach() OR NOT public.is_staff_of('bbbb2222-0000-0000-0000-000000000002') THEN
+    RAISE EXCEPTION 'BROKEN: a restored teacher does not teach';
+  END IF;
+  SELECT count(*) INTO n FROM public.certificates WHERE id = 'dddd0002-0000-0000-0000-000000000002';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: a restored teacher cannot read their school''s certificates';
+  END IF;
+  RAISE NOTICE 'OK: a restored account holds its role again (positive control)';
+END $$;
+
+RESET ROLE;
+
+-- Structural guard (20261019120000): no policy reads profiles.role or
+-- organization_members by hand. The helpers are where a closed account is
+-- closed; a policy that spells the check out again would reopen it for one
+-- table. The policies on those two tables themselves only compare the
+-- caller's id, so they are not matched.
+DO $$
+DECLARE offenders text;
+BEGIN
+  SELECT string_agg(tablename || '.' || policyname, ', ') INTO offenders
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND (coalesce(qual, '') || coalesce(with_check, '')) SIMILAR TO
+        '%(profiles|organization_members)%';
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'SECURITY HOLE: policies read role or membership by hand instead of a helper: %', offenders;
+  END IF;
+  RAISE NOTICE 'OK: no policy reads profiles.role or organization_members inline';
+END $$;
+
 -- Structural guard: the column has no reader left in a policy, and the
 -- helper that read it is gone. A policy written by habit against the
 -- deprecated column would answer the wrong organization with a real uuid.

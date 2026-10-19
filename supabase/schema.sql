@@ -37,6 +37,7 @@ CREATE FUNCTION public.can_teach() RETURNS boolean
     SELECT EXISTS (
         SELECT 1 FROM public.profiles
         WHERE id = (SELECT auth.uid()) AND role IN ('teacher', 'director', 'admin')
+          AND deactivated_at IS NULL
     );
 $$;
 
@@ -278,9 +279,10 @@ CREATE FUNCTION public.is_director_of(org uuid) RETURNS boolean
     SET search_path TO 'public', 'pg_temp'
     AS $$
     SELECT org IS NOT NULL AND EXISTS (
-        SELECT 1 FROM public.organization_members
-        WHERE user_id = (SELECT auth.uid()) AND organization_id = org AND status = 'active'
-          AND role = 'director'
+        SELECT 1 FROM public.organization_members m
+        JOIN public.profiles p ON p.id = m.user_id AND p.deactivated_at IS NULL
+        WHERE m.user_id = (SELECT auth.uid()) AND m.organization_id = org AND m.status = 'active'
+          AND m.role = 'director'
     );
 $$;
 
@@ -289,7 +291,7 @@ $$;
 -- Name: FUNCTION is_director_of(org uuid); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.is_director_of(org uuid) IS 'Active director of this organization. false for NULL. Platform admin is not a membership role: policies say is_platform_staff() OR is_director_of().';
+COMMENT ON FUNCTION public.is_director_of(org uuid) IS 'Active director of this organization, with an open account. false for NULL. Platform admin is not a membership role: policies say is_platform_staff() OR is_director_of().';
 
 
 --
@@ -301,8 +303,9 @@ CREATE FUNCTION public.is_member_of(org uuid) RETURNS boolean
     SET search_path TO 'public', 'pg_temp'
     AS $$
     SELECT org IS NOT NULL AND EXISTS (
-        SELECT 1 FROM public.organization_members
-        WHERE user_id = (SELECT auth.uid()) AND organization_id = org AND status = 'active'
+        SELECT 1 FROM public.organization_members m
+        JOIN public.profiles p ON p.id = m.user_id AND p.deactivated_at IS NULL
+        WHERE m.user_id = (SELECT auth.uid()) AND m.organization_id = org AND m.status = 'active'
     );
 $$;
 
@@ -311,7 +314,7 @@ $$;
 -- Name: FUNCTION is_member_of(org uuid); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.is_member_of(org uuid) IS 'Active member of this organization in any role. false for NULL — a NULL organization must never satisfy a comparison.';
+COMMENT ON FUNCTION public.is_member_of(org uuid) IS 'Active member of this organization in any role, with an open account. false for NULL — a NULL organization must never satisfy a comparison.';
 
 
 --
@@ -325,6 +328,7 @@ CREATE FUNCTION public.is_platform_staff() RETURNS boolean
     SELECT EXISTS (
         SELECT 1 FROM public.profiles
         WHERE id = (SELECT auth.uid()) AND role = 'admin'
+          AND deactivated_at IS NULL
     );
 $$;
 
@@ -338,9 +342,10 @@ CREATE FUNCTION public.is_staff_of(org uuid) RETURNS boolean
     SET search_path TO 'public', 'pg_temp'
     AS $$
     SELECT org IS NOT NULL AND EXISTS (
-        SELECT 1 FROM public.organization_members
-        WHERE user_id = (SELECT auth.uid()) AND organization_id = org AND status = 'active'
-          AND role IN ('teacher', 'director')
+        SELECT 1 FROM public.organization_members m
+        JOIN public.profiles p ON p.id = m.user_id AND p.deactivated_at IS NULL
+        WHERE m.user_id = (SELECT auth.uid()) AND m.organization_id = org AND m.status = 'active'
+          AND m.role IN ('teacher', 'director')
     );
 $$;
 
@@ -349,7 +354,7 @@ $$;
 -- Name: FUNCTION is_staff_of(org uuid); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.is_staff_of(org uuid) IS 'Active teacher or director of this organization. false for NULL.';
+COMMENT ON FUNCTION public.is_staff_of(org uuid) IS 'Active teacher or director of this organization, with an open account. false for NULL.';
 
 
 --
@@ -360,8 +365,9 @@ CREATE FUNCTION public.member_organization_ids() RETURNS SETOF uuid
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO 'public', 'pg_temp'
     AS $$
-    SELECT organization_id FROM public.organization_members
-    WHERE user_id = (SELECT auth.uid()) AND status = 'active';
+    SELECT m.organization_id FROM public.organization_members m
+    JOIN public.profiles p ON p.id = m.user_id AND p.deactivated_at IS NULL
+    WHERE m.user_id = (SELECT auth.uid()) AND m.status = 'active';
 $$;
 
 
@@ -4015,9 +4021,7 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 -- Name: audit_logs audit_logs_select_admin; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY audit_logs_select_admin ON public.audit_logs FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = 'admin'::text)))));
+CREATE POLICY audit_logs_select_admin ON public.audit_logs FOR SELECT TO authenticated USING (( SELECT public.is_platform_staff() AS is_platform_staff));
 
 
 --
@@ -4109,9 +4113,7 @@ ALTER TABLE public.course_events ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY course_events_select ON public.course_events FOR SELECT TO authenticated USING (((created_by = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1
    FROM public.enrollments e
-  WHERE (((e.course_id)::text = (course_events.course_id)::text) AND (e.user_id = ( SELECT auth.uid() AS uid))))) OR (EXISTS ( SELECT 1
-   FROM public.profiles p
-  WHERE ((p.id = ( SELECT auth.uid() AS uid)) AND (p.role = 'admin'::text))))));
+  WHERE (((e.course_id)::text = (course_events.course_id)::text) AND (e.user_id = ( SELECT auth.uid() AS uid))))) OR ( SELECT public.is_platform_staff() AS is_platform_staff)));
 
 
 --
