@@ -304,7 +304,8 @@ class CourseSummary(_ReadTitle):
     # (``GET /courses``), and the author's account id is nothing a reader
     # needs: the card names the school, and the «Автор» tab
     # (``/courses/{id}/author``) the person. No client read it from a list —
-    # the one ownership check (``CourseDetail``) reads ``CourseResponse``.
+    # the one ownership check (``CourseDetail``) reads ``viewer_can_edit``
+    # on ``CourseResponse``.
     created_at: datetime
     updated_at: datetime | None = None
     deleted_at: datetime | None = None
@@ -361,7 +362,8 @@ class CourseDashboardSummary(_ReadTitle):
     id: str
     status: str = "draft"
     access_mode: Literal["public", "institute"] = "public"
-    created_by: UUID | None = None
+    # No ``created_by``: the student's dashboard names the course, not the
+    # account that wrote it, and no client read it from this list.
     created_at: datetime
     updated_at: datetime | None = None
     deleted_at: datetime | None = None

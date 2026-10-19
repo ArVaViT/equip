@@ -70,3 +70,19 @@ class TestWhoIsToldWhat:
             assert r.status_code == 200, r.text
             assert r.json()["viewer_can_edit"] is False
             assert r.json()["created_by"] is None
+
+
+class TestTheDashboardListNamesNoAuthor:
+    def test_a_student_s_course_list_carries_no_account_id(self, db: Session, student_client: TestClient) -> None:
+        from app.models.enrollment import Enrollment
+
+        from .conftest import STUDENT_ID
+
+        course_id = _course(db)
+        db.add(Enrollment(id=f"e-{uuid.uuid4().hex[:6]}", user_id=STUDENT_ID, course_id=course_id, progress=0))
+        db.commit()
+        r = student_client.get("/api/v1/users/me/courses")
+        assert r.status_code == 200, r.text
+        courses = [row["course"] for row in r.json() if row.get("course")]
+        assert [c["id"] for c in courses] == [course_id]
+        assert "created_by" not in courses[0]
