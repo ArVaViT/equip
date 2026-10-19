@@ -183,3 +183,64 @@ def test_an_older_read_attempt_still_counts_while_a_retake_waits(db: Session, te
     assert single.student_has_quiz_marks is batch.student_has_quiz_marks is True
     assert single.current_score == batch.current_score == 60.0
     assert single.final_score == batch.final_score == 60.0
+
+
+def _mixed_attempt(
+    db: Session, quiz: Quiz, choice: QuizQuestion, essay: QuizQuestion, *, choice_points: int, essay_points: int | None
+) -> None:
+    """A finished attempt on a choice-plus-essay quiz worth 10. ``essay_points``
+    None leaves the essay unread: the attempt's ``score`` is then the choice
+    part alone — the running total ``attempts.py`` stores at submit."""
+    attempt = QuizAttempt(
+        id=uuid.uuid4(),
+        quiz_id=quiz.id,
+        user_id=STUDENT_ID,
+        score=choice_points + (essay_points or 0),
+        max_score=10,
+        passed=False,
+        completed_at=datetime.now(UTC),
+    )
+    db.add(attempt)
+    db.flush()
+    now = datetime.now(UTC)
+    db.add(
+        QuizAnswer(
+            id=uuid.uuid4(), attempt_id=attempt.id, question_id=choice.id, points_earned=choice_points, graded_at=now
+        )
+    )
+    db.add(
+        QuizAnswer(
+            id=uuid.uuid4(),
+            attempt_id=attempt.id,
+            question_id=essay.id,
+            text_answer="Мой ответ",
+            points_earned=essay_points or 0,
+            graded_at=None if essay_points is None else now,
+        )
+    )
+    db.commit()
+
+
+def test_a_retake_whose_running_total_beats_the_read_mark_raises_only_the_final(db: Session, teacher, student) -> None:
+    """Choice 5 + essay 5. The read attempt is 3/10; the retake has the choice
+    part right (5/10 so far) and its essay waiting. The running total is the
+    higher number, and it belongs to «итоговая» alone: «текущая» stays on the
+    mark a teacher gave. Pins that ``best`` and ``best_read`` are two different
+    columns — a path reading the wrong one agrees with the other tests here,
+    where the unread attempt never outscores the read one."""
+    course, (quiz,), _ = _course(db, teacher, "c-quiz-door-running-total", quizzes=1)
+    choice = QuizQuestion(id=uuid.uuid4(), quiz_id=quiz.id, question_type="multiple_choice", points=5, order_index=0)
+    essay = QuizQuestion(id=uuid.uuid4(), quiz_id=quiz.id, question_type="essay", points=5, order_index=1)
+    db.add_all([choice, essay])
+    db.commit()
+    _mixed_attempt(db, quiz, choice, essay, choice_points=0, essay_points=3)
+    _mixed_attempt(db, quiz, choice, essay, choice_points=5, essay_points=None)
+
+    single = calculate_student_grade_for_course(db, course, STUDENT_ID)
+    (batch,) = [r["breakdown"] for r in calculate_all_student_grades(db, course) if r["student_id"] == str(STUDENT_ID)]
+
+    assert single == batch
+    assert single.student_has_quiz_marks is True
+    assert single.current_score == 30.0, "the retake is not a mark until its essay is read"
+    assert single.final_score == 50.0, "the floor can only rise, and the running total is the floor"
+    assert single.scores_differ is True
