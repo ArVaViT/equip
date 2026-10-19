@@ -37,7 +37,8 @@ export default function CourseDetail() {
   // holds the previous one until the new one loads.
   useNamedPageTitle(course && course.id === id ? course.title : null)
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null)
-  const [certificate, setCertificate] = useState<Certificate | null>(null)
+  // `undefined` when the request failed: not known, which is not «none».
+  const [certificate, setCertificate] = useState<Certificate | null | undefined>(null)
   const [loadAttempt, setLoadAttempt] = useState(0)
   /**
    * `null` when the progress request failed. Not an empty set.
@@ -88,7 +89,7 @@ export default function CourseDetail() {
           ? coursesService.getEnrollmentStatus(id)
           : Promise.resolve({ enrolled: false, enrollment: null as Enrollment | null })
         const certP = user
-          ? coursesService.getCourseCertificate(id).catch(() => null)
+          ? coursesService.getCourseCertificate(id).catch(() => undefined)
           : Promise.resolve(null)
         const progressP = user
           ? coursesService.getMyChapterProgress(id).catch(() => null)

@@ -1561,6 +1561,7 @@
       "request": "Request Certificate",
       "requestSuccess": "Certificate requested",
       "requestFailed": "Failed to request certificate",
+      "loadFailed": "Couldn't check your certificate.",
       "pendingTitle": "Awaiting teacher approval",
       "pendingDescription": "Your certificate request has been submitted. Your instructor will review it shortly.",
       "adminPendingTitle": "Awaiting admin approval",

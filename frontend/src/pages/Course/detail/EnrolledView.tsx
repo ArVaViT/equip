@@ -39,7 +39,8 @@ interface Props {
   completedChapterIds: Set<string> | null
   materials: CourseMaterial[]
   calendarEvents: CalendarEvent[]
-  certificate: Certificate | null
+  /** `undefined` when the request failed — see `CertificateCard`. */
+  certificate: Certificate | null | undefined
   onCertificateUpdate: (cert: Certificate | null) => void
 }
 
@@ -191,7 +192,7 @@ export function EnrolledView({
         onClose={handleCloseCompletion}
         courseId={course.id}
         courseTitle={course.title}
-        hasCertificate={certificate !== null}
+        hasCertificate={Boolean(certificate)}
         onCertificateRequested={onCertificateUpdate}
       />
     </div>

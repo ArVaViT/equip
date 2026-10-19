@@ -1561,6 +1561,7 @@
       "request": "Zertifikat anfordern",
       "requestSuccess": "Zertifikat angefordert",
       "requestFailed": "Zertifikat konnte nicht angefordert werden",
+      "loadFailed": "Zertifikat konnte nicht geprüft werden.",
       "pendingTitle": "Wartet auf die Bestätigung des Dozenten",
       "pendingDescription": "Ihr Antrag wurde eingereicht. Ihr Dozent prüft ihn in Kürze.",
       "adminPendingTitle": "Wartet auf die Bestätigung der Administration",
