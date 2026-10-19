@@ -8,7 +8,7 @@
  * person could have done — ask for a new link — was never mentioned.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { I18nextProvider } from "react-i18next";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -98,6 +98,22 @@ describe("AuthCallback", () => {
     completeAuthLanding.mockResolvedValue({ status: "failed", reason: "other" });
     renderAt();
     expect(await screen.findByRole("alert")).toHaveTextContent(i18n.t("auth.callback.timedOut"));
+  });
+
+  it("stops waiting on a verification that never answers, and offers the sign-in page", async () => {
+    vi.useFakeTimers();
+    try {
+      completeAuthLanding.mockReturnValue(new Promise(() => {}));
+      renderAt();
+      expect(screen.getByText(i18n.t("auth.callback.completing"))).toBeInTheDocument();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(30_000);
+      });
+      expect(screen.getByRole("alert")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: i18n.t("auth.signIn") })).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("shows progress while the link is being verified", () => {

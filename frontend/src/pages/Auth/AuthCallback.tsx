@@ -7,7 +7,15 @@ import AuthLayout from "@/components/layout/AuthLayout"
 import { ExpiredLink } from "@/components/auth/ExpiredLink"
 import { useAuth } from "@/context/useAuth"
 import { supabase } from "@/lib/supabase"
-import { completeAuthLanding } from "@/lib/authLanding"
+import { completeAuthLanding, type AuthLandingResult } from "@/lib/authLanding"
+
+/**
+ * How long the link's verification may take before the page stops waiting.
+ * supabase-js has no timeout of its own, and a `verifyOtp` that never
+ * answered left «Completing sign-in…» spinning with no way out but the
+ * address bar.
+ */
+export const AUTH_LANDING_TIMEOUT_MS = 30_000
 
 /**
  * Where Google (`/auth/callback`) and every email link but recovery
@@ -37,7 +45,12 @@ export default function AuthCallback() {
       navigate(path, { replace: true })
     }
 
-    void completeAuthLanding().then(async (result) => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const gaveUp = new Promise<AuthLandingResult>((resolve) => {
+      timer = setTimeout(() => resolve({ status: "failed", reason: "other" }), AUTH_LANDING_TIMEOUT_MS)
+    })
+    void Promise.race([completeAuthLanding(), gaveUp]).then(async (result) => {
+      clearTimeout(timer)
       if (cancelled) return
       if (result.status === "signed-in") {
         go(result.recovery ? "/auth/reset-password" : (takeReturnPath() ?? "/"))
@@ -57,6 +70,7 @@ export default function AuthCallback() {
 
     return () => {
       cancelled = true
+      clearTimeout(timer)
     }
   }, [navigate])
 
