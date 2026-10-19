@@ -199,6 +199,11 @@ export function DailyChallengeCard() {
           // The day has moved on under the card: fetch the question that
           // is today's now rather than leave a card no answer fits.
           setReloadKey((k) => k + 1)
+        } else if (code === "daily_challenge.already_attempted") {
+          // Answered in another tab or on another device. The options stayed
+          // clickable and every tap read the same refusal; the reload brings
+          // the card into its answered state.
+          setReloadKey((k) => k + 1)
         } else {
           toast.error(t("dailyChallenge.toast.submitError"))
         }
