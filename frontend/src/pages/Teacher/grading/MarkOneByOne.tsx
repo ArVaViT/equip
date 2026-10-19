@@ -95,6 +95,9 @@ export function MarkOneByOne({
   useEffect(() => {
     if (!current) return
     let cancelled = false
+    // A mark still in flight belongs to the previous piece of work; its
+    // answer must not land on this one.
+    marksSeq.current++
     setRubric(null)
     setRubricFailed(false)
     rubricsService
