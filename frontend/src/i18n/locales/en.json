@@ -2196,6 +2196,11 @@
       "description": "It will leave the catalog, and students — including those already enrolled — will not be able to open its lessons until you publish it again. Their progress and grades are kept.",
       "confirm": "Unpublish"
     },
+    "closeUnsaved": {
+      "title": "Close without saving?",
+      "description": "What you typed in this window is not saved and will be lost.",
+      "confirm": "Close without saving"
+    },
     "pdf": {
       "preparing": "Preparing the course PDF…",
       "failed": "Could not prepare the PDF. Please try again."

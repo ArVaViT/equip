@@ -51,6 +51,7 @@ import {
   useCourseReadiness,
   useCourseTranslation,
   useEventsSection,
+  useGuardedClose,
   useMaterialsSection,
 } from "./editor"
 import type { CourseEditorModal } from "./editor/types"
@@ -77,6 +78,10 @@ export default function CourseEditor() {
   const [modal, setModal] = useState<CourseEditorModal>(null)
   const [savingAccessMode, setSavingAccessMode] = useState(false)
   const closeModal = useCallback(() => setModal(null), [])
+  // Escape or a click beside the announcements / events dialog used to blank
+  // a half-written form without a word. Now it asks, if there is anything
+  // typed to ask about.
+  const closeGuarded = useGuardedClose(confirm, closeModal)
   const goBack = useCallback(() => navigate("/teacher"), [navigate])
 
   const data = useCourseData(courseId, confirm)
@@ -425,10 +430,7 @@ export default function CourseEditor() {
 
       <AnnouncementsModal
         open={modal === "announce"}
-        onClose={() => {
-          closeModal()
-          announcements.resetForm()
-        }}
+        onClose={() => void closeGuarded(announcements.dirty, announcements.resetForm)}
         announcements={announcements.announcements}
         title={announcements.title}
         content={announcements.content}
@@ -458,10 +460,7 @@ export default function CourseEditor() {
 
       <EventsModal
         open={modal === "events"}
-        onClose={() => {
-          closeModal()
-          events.resetForm()
-        }}
+        onClose={() => void closeGuarded(events.dirty, events.resetForm)}
         events={events.events}
         loadFailed={events.loadFailed}
         onReload={events.reloadList}

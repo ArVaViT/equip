@@ -18,6 +18,10 @@ interface AnnouncementsSection {
   setContent: (v: string) => void
   /** The announcement the form is editing, or ``null`` when it is composing a new one. */
   editingId: string | null
+  /** True when the form holds something not yet posted: text typed into a
+   *  blank form, or an edit that differs from the announcement it started
+   *  from. What «close without saving?» is asked about. */
+  dirty: boolean
   posting: boolean
   /** Create when nothing is being edited; save the edit otherwise. */
   post: () => Promise<void>
@@ -133,6 +137,13 @@ export function useAnnouncementsSection(
     [confirm, t, editingId, resetForm],
   )
 
+  // Compared with the announcement as it stands, not with blank: an edit
+  // opened and closed untouched has nothing to lose.
+  const original = editingId ? announcements.find((a) => a.id === editingId) : undefined
+  const dirty = original
+    ? title !== original.title || content !== original.content
+    : title.trim() !== "" || content.trim() !== ""
+
   return {
     announcements,
     loadFailed,
@@ -142,6 +153,7 @@ export function useAnnouncementsSection(
     content,
     setContent,
     editingId,
+    dirty,
     posting,
     post,
     startEdit,

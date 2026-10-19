@@ -26,6 +26,25 @@ export interface PendingScope {
   eventId: string
 }
 
+/** The form as `startEdit` opens it for this event — also what "untouched" means. */
+function formForEvent(ev: CourseEvent): EventFormState {
+  return {
+    title: ev.title,
+    description: ev.description ?? "",
+    event_type: ev.event_type,
+    event_date: isoToLocalInput(ev.event_date),
+    meeting_url: ev.meeting_url ?? "",
+    recording_url: ev.recording_url ?? "",
+    duration_minutes: ev.duration_minutes ? String(ev.duration_minutes) : "",
+    repeat_every: "0",
+    repeat_count: EMPTY_EVENT_FORM.repeat_count,
+  }
+}
+
+function sameForm(a: EventFormState, b: EventFormState): boolean {
+  return (Object.keys(EMPTY_EVENT_FORM) as (keyof EventFormState)[]).every((k) => a[k] === b[k])
+}
+
 interface EventsSection {
   events: CourseEvent[]
   /** The list could not be read — not the same as an empty list. */
@@ -34,6 +53,10 @@ interface EventsSection {
   form: EventFormState
   setForm: (v: EventFormState) => void
   editingId: string | null
+  /** True when the form holds something not yet saved: a blank form typed
+   *  into, or an edit that differs from the event it was opened from. What
+   *  «close without saving?» is asked about. */
+  dirty: boolean
   /** The event being edited, when it belongs to a weekly series. */
   editingSeries: boolean
   saving: boolean
@@ -138,21 +161,19 @@ export function useEventsSection(
   }, [blankForm])
 
   const startEdit = useCallback((ev: CourseEvent) => {
-    setForm({
-      title: ev.title,
-      description: ev.description ?? "",
-      event_type: ev.event_type,
-      event_date: isoToLocalInput(ev.event_date),
-      meeting_url: ev.meeting_url ?? "",
-      recording_url: ev.recording_url ?? "",
-      duration_minutes: ev.duration_minutes ? String(ev.duration_minutes) : "",
-      repeat_every: "0",
-      repeat_count: EMPTY_EVENT_FORM.repeat_count,
-    })
+    setForm(formForEvent(ev))
     setEditingId(ev.id)
   }, [])
 
-  const editingSeries = Boolean(editingId && events.find((e) => e.id === editingId)?.series_id)
+  const editing = editingId ? events.find((e) => e.id === editingId) : undefined
+  const editingSeries = Boolean(editing?.series_id)
+  // Against the event as it stands when editing, against the blank form
+  // (defaults included) when composing: an untouched form has nothing to
+  // lose, and the calendar's prefilled class is not something the teacher
+  // typed.
+  const dirty = editing
+    ? !sameForm(form, formForEvent(editing))
+    : !sameForm(form, { ...EMPTY_EVENT_FORM, ...defaults })
 
   const submit = useCallback(
     async (scope: SeriesScope) => {
@@ -314,6 +335,7 @@ export function useEventsSection(
     form,
     setForm,
     editingId,
+    dirty,
     editingSeries,
     saving,
     startEdit,

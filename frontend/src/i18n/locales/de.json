@@ -2196,6 +2196,11 @@
       "description": "Der Kurs verschwindet aus dem Katalog, und Lernende – auch bereits eingeschriebene – können seine Lektionen erst wieder öffnen, wenn Sie ihn erneut veröffentlichen. Fortschritt und Noten bleiben erhalten.",
       "confirm": "Veröffentlichung aufheben"
     },
+    "closeUnsaved": {
+      "title": "Ohne Speichern schließen?",
+      "description": "Was Sie in diesem Fenster eingegeben haben, ist nicht gespeichert und geht verloren.",
+      "confirm": "Ohne Speichern schließen"
+    },
     "pdf": {
       "preparing": "Kurs-PDF wird erstellt…",
       "failed": "Das PDF konnte nicht erstellt werden. Bitte erneut versuchen."
