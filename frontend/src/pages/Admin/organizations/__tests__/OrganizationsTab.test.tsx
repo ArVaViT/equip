@@ -120,4 +120,23 @@ describe("the organizations tab", () => {
     expect(read).toHaveBeenCalledWith("o2")
     expect(read).toHaveBeenCalledTimes(1)
   })
+
+  it("keeps the typed address when the server refuses to appoint it", async () => {
+    vi.spyOn(organizationsService, "adminList").mockResolvedValue([org()])
+    const appoint = vi.spyOn(organizationsService, "adminAppointDirector").mockRejectedValue(
+      Object.assign(new Error("Not Found"), { isAxiosError: true, response: { status: 404, data: {} } }),
+    )
+    const user = userEvent.setup()
+    render(<OrganizationsTab />, { wrapper: Wrapper })
+    const field = await screen.findByLabelText("Добавить директора — почта зарегистрированного аккаунта")
+    await user.type(field, "dean@ucoat.org")
+    await user.click(screen.getByRole("button", { name: "Добавить" }))
+    await waitFor(() => expect(appoint).toHaveBeenCalledWith("o1", "dean@ucoat.org"))
+    // A typo is corrected in place, not retyped from nothing.
+    expect(field).toHaveValue("dean@ucoat.org")
+
+    appoint.mockResolvedValue(undefined as never)
+    await user.click(screen.getByRole("button", { name: "Добавить" }))
+    await waitFor(() => expect(field).toHaveValue(""))
+  })
 })
