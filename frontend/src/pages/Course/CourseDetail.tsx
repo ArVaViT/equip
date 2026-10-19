@@ -11,6 +11,7 @@ import { recordCourseView } from "@/lib/recentlyViewed"
 import { readCourseStructure } from "@/lib/courseStructure"
 import { useAuth } from "@/context/useAuth"
 import { toast } from "@/lib/toast"
+import { getErrorDetail } from "@/lib/errorDetail"
 import type {
   CalendarEvent,
   Certificate,
@@ -174,8 +175,10 @@ export default function CourseDetail() {
       setMaterials(mats)
       setCalendarEvents(evts)
       toast({ title: t("toast.enrolledSuccess"), variant: "success" })
-    } catch {
-      toast({ title: t("toast.enrolledFailed"), variant: "destructive" })
+    } catch (err) {
+      // The server's own reason when it has one: already enrolled, the
+      // window closed, the group full — each asks for a different next step.
+      toast({ title: getErrorDetail(err, t("toast.enrolledFailed")), variant: "destructive" })
     } finally {
       setEnrolling(false)
     }
