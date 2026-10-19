@@ -8,9 +8,7 @@
  * under the page's h1, a `<dl>` whose pairs are wrapped one level too deep.
  * The 2026-10-19 pass found exactly those, on the catalog, the gradebook,
  * the progress board and the profile; this file is what would have caught
- * them. The catalog itself is not here yet: its cards' level is being fixed
- * on `fix/card-heading-levels` (a `headingLevel` on `CourseCard`), and the
- * case belongs here once that lands.
+ * them.
  *
  * Each screen is also held to one h1 and an outline with no skipped level,
  * because jsdom lets axe see structure but not paint: colour contrast is
@@ -39,7 +37,9 @@ vi.mock("@/lib/toast", () => ({ toast: vi.fn() }))
 import { coursesService } from "@/services/courses"
 import { gradesService } from "@/services/grades"
 import { notesService } from "@/services/notes"
+import { organizationsService } from "@/services/organizations"
 import { storageService } from "@/services/storage"
+import CoursesPage from "@/pages/Courses/CoursesPage"
 import CourseDetail from "@/pages/Course/CourseDetail"
 import ChapterView from "@/pages/Course/ChapterView"
 import CalendarPage from "@/pages/Calendar/CalendarPage"
@@ -121,6 +121,21 @@ describe("key screens have no axe violations and a walkable outline", () => {
     vi.spyOn(coursesService, "getMyCertificates").mockResolvedValue([])
     vi.spyOn(coursesService, "getTeacherCourses").mockResolvedValue([])
     vi.spyOn(storageService, "listCourseMaterials").mockResolvedValue([])
+  })
+
+  it("the catalog, with a section for the reader's organization", async () => {
+    // Both levels a card can take: an h3 under the organization's h2 and
+    // under «Open catalogue», and — on a catalog with no sections — an h2
+    // straight under the page's h1 (CoursesPage.headings.test.tsx).
+    vi.spyOn(coursesService, "getCourses").mockResolvedValue([COURSE])
+    vi.spyOn(organizationsService, "mine").mockResolvedValue([{
+      organization_id: "o1", organization_slug: "ucoat", organization_name: "UCOAT", role: "student",
+      courses: [{ ...COURSE, id: "c2", title: "Курс проповеди", access_mode: "institute" }],
+    }])
+    render(<Wrap at="/courses"><CoursesPage /></Wrap>)
+    await screen.findByRole("heading", { level: 3, name: "Курс проповеди" })
+    await screen.findByRole("heading", { level: 3, name: "Деяния апостолов" })
+    await expectCleanPage()
   })
 
   it("the course page, enrolled", async () => {
