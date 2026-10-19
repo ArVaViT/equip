@@ -1,4 +1,4 @@
-import api from "./api"
+import api, { LONG_REQUEST_MS } from "./api"
 import type { SupportedLocale } from "@/i18n/config"
 
 /**
@@ -88,7 +88,13 @@ export const courseTranslationService = {
   },
 
   async prepare(courseId: string): Promise<PrepareResult> {
-    const { data } = await api.post<PrepareResult>(`/courses/${courseId}/translate`)
+    // With the queue on (production) this is one INSERT and returns at
+    // once. Without it the server translates the course inside this
+    // request — hundreds of provider round trips — and the default thirty
+    // seconds would call a working translation lost.
+    const { data } = await api.post<PrepareResult>(`/courses/${courseId}/translate`, undefined, {
+      timeout: LONG_REQUEST_MS,
+    })
     return data
   },
 }
