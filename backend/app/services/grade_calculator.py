@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from sqlalchemy import case, select
 from sqlalchemy import func as sqlfunc
 from sqlalchemy.orm import Session
 
@@ -144,6 +145,34 @@ def category_is_live(db: Session, *, quiz_ids: list[UUID], assignment_ids: list[
         )
 
     return has_quiz_work, has_assignment_work
+
+
+def _best_attempt_columns() -> tuple:
+    """The two per-quiz bests one query returns: over every finished attempt,
+    and over the finished attempts a teacher has actually read.
+
+    ``best`` feeds «итоговая»: an attempt whose open answers nobody has read
+    carries its auto-graded running total, a floor that can only rise, which
+    is the sense in which итоговая counts unmarked work (D10).
+
+    ``best_read`` feeds «текущая» and the student's "has a mark" flag. A quiz
+    with an essay in it is *completed* the moment it is submitted, and until
+    the essay is read its attempt is a running total, not a result. The
+    per-item list already hides that number as ``pending_review``; counting
+    it here as a mark handed a student «0,0% F» the moment a classmate's quiz
+    was read — the 2026-10-02 defect, arriving through the quiz door.
+
+    "Read" is the same fact :func:`category_is_live` asks about: no answer on
+    the attempt with ``graded_at IS NULL``.
+    """
+    pct = QuizAttempt.score * 100.0 / sqlfunc.nullif(QuizAttempt.max_score, 0)
+    unread = (
+        select(QuizAnswer.id).where(QuizAnswer.attempt_id == QuizAttempt.id, QuizAnswer.graded_at.is_(None)).exists()
+    )
+    return (
+        sqlfunc.max(pct).label("best"),
+        sqlfunc.max(case((~unread, pct), else_=None)).label("best_read"),
+    )
 
 
 def effective_weights(course: Course, *, has_quizzes: bool, has_assignments: bool) -> tuple[int, int]:
@@ -390,10 +419,7 @@ def calculate_student_grade(
     student_has_quiz_marks = False
     if quiz_ids:
         rows = (
-            db.query(
-                QuizAttempt.quiz_id,
-                sqlfunc.max(QuizAttempt.score * 100.0 / sqlfunc.nullif(QuizAttempt.max_score, 0)).label("best"),
-            )
+            db.query(QuizAttempt.quiz_id, *_best_attempt_columns())
             .filter(
                 QuizAttempt.quiz_id.in_(quiz_ids),
                 QuizAttempt.user_id == student_id,
@@ -405,14 +431,16 @@ def calculate_student_grade(
         # Capped at 100 like the assignment percentages below: an attempt
         # graded on another scale must not read as more than full marks.
         best_scores = [min(100.0, float(r.best)) for r in rows if r.best is not None]
-        student_has_quiz_marks = bool(best_scores)
+        # Only what a teacher has read is a mark (see `_best_attempt_columns`).
+        read_scores = [min(100.0, float(r.best_read)) for r in rows if r.best_read is not None]
+        student_has_quiz_marks = bool(read_scores)
         total_quizzes = len(quiz_ids)
         quiz_avg = sum(best_scores) / total_quizzes if total_quizzes > 0 else 0.0
         # «Текущая» — the same marks over only the work that has been marked
         # (D10). Mid-course this is the number that answers "how am I doing";
         # `quiz_avg` above answers "what will this be if I stop now", which is a
         # different and much harsher question in week two.
-        current_quiz_avg = sum(best_scores) / len(best_scores) if best_scores else 0.0
+        current_quiz_avg = sum(read_scores) / len(read_scores) if read_scores else 0.0
 
     assignment_avg = 0.0
     current_assignment_avg = 0.0
@@ -515,13 +543,12 @@ def calculate_all_student_grades(db: Session, course: Course):
     # over 100 — a student excused from the one quiz they did badly on had the
     # bad score divided by the remaining count.
     quiz_scores: dict[str, dict[UUID, float]] = {str(sid): {} for sid in student_ids}
+    # The same bests over only the attempts a teacher has read — what «текущая»
+    # and the "has a mark" flag are built from (see `_best_attempt_columns`).
+    read_quiz_scores: dict[str, dict[UUID, float]] = {str(sid): {} for sid in student_ids}
     if quiz_ids:
         quiz_rows = (
-            db.query(
-                QuizAttempt.user_id,
-                QuizAttempt.quiz_id,
-                sqlfunc.max(QuizAttempt.score * 100.0 / sqlfunc.nullif(QuizAttempt.max_score, 0)).label("best"),
-            )
+            db.query(QuizAttempt.user_id, QuizAttempt.quiz_id, *_best_attempt_columns())
             .filter(
                 QuizAttempt.quiz_id.in_(quiz_ids),
                 QuizAttempt.user_id.in_(student_ids),
@@ -533,6 +560,8 @@ def calculate_all_student_grades(db: Session, course: Course):
         for qr in quiz_rows:
             if qr.best is not None:
                 quiz_scores.setdefault(str(qr.user_id), {})[qr.quiz_id] = min(100.0, float(qr.best))
+            if qr.best_read is not None:
+                read_quiz_scores.setdefault(str(qr.user_id), {})[qr.quiz_id] = min(100.0, float(qr.best_read))
 
     # Batch: best assignment grade per student per assignment. Keyed by item for
     # the same reason as the quizzes above.
@@ -628,7 +657,8 @@ def calculate_all_student_grades(db: Session, course: Course):
         assignment_avg = sum(asgs) / total_assignments if total_assignments > 0 else 0.0
         # The same marks over only what has been marked (D10) — see the
         # single-student path; the two must agree here as everywhere else.
-        current_quiz_avg = sum(qs) / len(qs) if qs else 0.0
+        read_qs = [s for qid, s in read_quiz_scores.get(sid, {}).items() if qid not in excused_q]
+        current_quiz_avg = sum(read_qs) / len(read_qs) if read_qs else 0.0
         current_assignment_avg = sum(asgs) / len(asgs) if asgs else 0.0
         comp = completion_counts.get(sid, 0)
         participation_pct = (comp / total_chapters * 100.0) if total_chapters else 0.0
@@ -655,7 +685,7 @@ def calculate_all_student_grades(db: Session, course: Course):
             # this category count at all"; this answers "has anyone read *this
             # student's* work" — and a class where one student is marked must
             # not put a 0 on the row of everyone who isn't.
-            student_has_quiz_marks=bool(qs),
+            student_has_quiz_marks=bool(read_qs),
             student_has_assignment_marks=bool(asgs),
             current_quiz_avg=current_quiz_avg,
             current_assignment_avg=current_assignment_avg,
