@@ -70,7 +70,7 @@ export function GradingConfigCard({
         <div className="flex items-center gap-2">
           <Settings2 className="h-5 w-5 text-ink-muted" strokeWidth={1.75} aria-hidden />
           <div>
-            <CardTitle>{t("gradebook.config.title")}</CardTitle>
+            <CardTitle as="h2">{t("gradebook.config.title")}</CardTitle>
             <CardDescription className="text-xs">
               {t("gradebook.config.description")}
             </CardDescription>

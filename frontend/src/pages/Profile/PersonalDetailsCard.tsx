@@ -168,27 +168,28 @@ export function PersonalDetailsCard() {
           </div>
         </div>
 
+        {/* A <dl> holds its dt/dd pairs directly or in one <div> each —
+            nothing deeper. The icon therefore sits inside the term, and the
+            value is indented past it (icon 16px + gap 12px = pl-7). */}
         <dl className="divide-y divide-border rounded-md border border-edge">
-          <div className="flex items-start gap-3 px-4 py-3">
-            <Mail className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-            <div className="min-w-0">
-              <dt className="text-xs text-ink-muted">{t("auth.email")}</dt>
-              <dd className="truncate text-sm font-medium">{user.email}</dd>
-            </div>
+          <div className="min-w-0 px-4 py-3">
+            <dt className="flex items-center gap-3 text-xs text-ink-muted">
+              <Mail className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+              {t("auth.email")}
+            </dt>
+            <dd className="truncate pl-7 text-sm font-medium">{user.email}</dd>
           </div>
-          <div className="flex items-start gap-3 px-4 py-3">
-            <Phone className="mt-2.5 h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
-            <div className="min-w-0 flex-1 space-y-1">
-              <dt>
-                <Label htmlFor="profile-phone" className="text-xs font-normal text-ink-muted">
-                  {t("profile.personal.phone")}
-                </Label>
-              </dt>
-              <dd className="space-y-1">
-                <Input id="profile-phone" type="tel" value={user.phone ?? ""} disabled placeholder="+1 555 000 0000" />
-                <p className="text-xs text-ink-muted">{t("profile.personal.phoneSoon")}</p>
-              </dd>
-            </div>
+          <div className="min-w-0 space-y-1 px-4 py-3">
+            <dt className="flex items-center gap-3">
+              <Phone className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
+              <Label htmlFor="profile-phone" className="text-xs font-normal text-ink-muted">
+                {t("profile.personal.phone")}
+              </Label>
+            </dt>
+            <dd className="space-y-1 pl-7">
+              <Input id="profile-phone" type="tel" value={user.phone ?? ""} disabled placeholder="+1 555 000 0000" />
+              <p className="text-xs text-ink-muted">{t("profile.personal.phoneSoon")}</p>
+            </dd>
           </div>
         </dl>
 

@@ -42,6 +42,13 @@ describe("GradeHistory", () => {
     vi.restoreAllMocks()
   })
 
+  it("is titled at h3: the row sits in the students' card, whose title is the page's h2", () => {
+    vi.spyOn(gradesService, "getGradeHistory").mockResolvedValue([])
+    render(<GradeHistory courseId="c-1" studentId="s-1" />, { wrapper: Wrapper })
+
+    expect(screen.getByRole("heading", { level: 3, name: i18n.t("studentProgress.history.title") })).toBeInTheDocument()
+  })
+
   it("does not ask the server until somebody asks it to", () => {
     const load = vi.spyOn(gradesService, "getGradeHistory").mockResolvedValue([])
     render(<GradeHistory courseId="c-1" studentId="s-1" />, { wrapper: Wrapper })

@@ -2233,6 +2233,7 @@
         "totalCount": "{{count}} вопрос(ов)"
       }
     },
+    "tabsLabel": "Разделы админ-панели",
     "tabOverview": "Обзор",
     "tabCohorts": "Когорты",
     "tabAudit": "Журнал аудита",

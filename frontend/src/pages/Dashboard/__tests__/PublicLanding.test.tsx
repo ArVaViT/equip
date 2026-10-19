@@ -4,9 +4,11 @@ import { resolve } from "node:path"
 import { render, screen } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
 import { I18nextProvider } from "react-i18next"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import i18n from "@/i18n/config"
+import { coursesService } from "@/services/courses"
+import { headingOutline } from "@/test/a11y"
 import { PublicLanding } from "@/pages/Dashboard/PublicLanding"
 
 /**
@@ -42,6 +44,8 @@ function renderLanding() {
 }
 
 describe("PublicLanding (unauth marketing page)", () => {
+  afterEach(() => vi.restoreAllMocks())
+
   it("spends the h1 on the claim, not on the brand name", () => {
     // The name is already in the header, the <title> and the footer.
     // Repeating it in the largest type on the page tells a visitor deciding
@@ -157,6 +161,39 @@ describe("PublicLanding (unauth marketing page)", () => {
     expect(tour?.muted || tour?.hasAttribute("muted")).toBe(true)
     expect(tour?.hasAttribute("loop")).toBe(true)
     expect(tour?.hasAttribute("controls")).toBe(false)
+  })
+
+  it("keeps an outline a screen reader can walk: one h1, then each claim as an h2", () => {
+    // The three claims were h3s straight under the hero's h1 — a skipped
+    // level, which axe reports as heading-order and a reader hears as a
+    // sub-section of nothing.
+    const { container } = renderLanding()
+    const { levels, gaps } = headingOutline(container)
+    expect(gaps).toEqual([])
+    expect(levels.filter((l) => l === 1)).toHaveLength(1)
+    expect(levels[0]).toBe(1)
+    expect(levels[1]).toBe(2)
+  })
+
+  it("gives the course shelf a heading of its own, so its courses are not sub-sections of the last claim", async () => {
+    // The shelf's h3s hung straight under the h1 (a skipped level), and
+    // after the claims became h2s they would hang under the third claim.
+    // The heading is for the outline only — the shelf shows covers.
+    vi.spyOn(coursesService, "getCourses").mockResolvedValue([
+      { id: "c1", title: "Деяния апостолов", image_url: null } as never,
+      { id: "c2", title: "Курс проповеди", image_url: null } as never,
+    ])
+    const { container } = renderLanding()
+    await screen.findAllByText("Курс проповеди")
+    const shelf = await screen.findByRole("heading", { level: 2, name: i18n.t("header.courses") })
+    expect(shelf).toHaveClass("sr-only")
+    // …and it is what names the band, so «Courses» is said once.
+    expect(screen.getByRole("region", { name: i18n.t("header.courses") })).toHaveAttribute("aria-labelledby", shelf.id)
+    const { levels, gaps } = headingOutline(container)
+    expect(gaps).toEqual([])
+    // …and the course titles sit right under it.
+    const index = Array.from(container.querySelectorAll("h1, h2, h3, h4, h5, h6")).indexOf(shelf)
+    expect(levels[index + 1]).toBe(3)
   })
 
   it("does not render a generic 'reset password' marketing card", () => {

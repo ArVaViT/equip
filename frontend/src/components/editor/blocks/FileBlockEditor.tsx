@@ -161,6 +161,7 @@ export function FileBlockEditor({ block, courseId, chapterId, onUpdated }: Props
         type="file"
         accept={acceptAttribute(COURSE_MATERIALS)}
         className="hidden"
+        aria-label={t("blockEditor.file.uploadCta")}
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file) void upload(file)

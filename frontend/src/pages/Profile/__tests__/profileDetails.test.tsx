@@ -5,6 +5,7 @@ import { I18nextProvider } from "react-i18next"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 import i18n from "@/i18n/config"
+import { axe } from "@/test/a11y"
 import { setDisplayTimeZone, zonedDayKey } from "@/i18n/timeZone"
 import type { User } from "@/types"
 
@@ -52,6 +53,19 @@ describe("personal details", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     currentUser = { ...baseUser }
+  })
+
+  it("lists the address and the phone as a <dl> a screen reader can read as one", async () => {
+    // Each pair was wrapped twice (a row, then a column beside the icon);
+    // a <dl> allows one wrapper, so axe reported the terms as orphans
+    // (definition-list, dlitem — serious).
+    const { container } = render(<PersonalDetailsCard />, { wrapper: Wrapper })
+    expect(await axe(container)).toHaveNoViolations()
+    const dl = container.querySelector("dl")!
+    for (const row of Array.from(dl.children)) {
+      expect(row.tagName).toBe("DIV")
+      expect(Array.from(row.children).map((c) => c.tagName)).toEqual(["DT", "DD"])
+    }
   })
 
   it("shows the phone but will not let anyone type into it", () => {

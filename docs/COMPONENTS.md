@@ -138,6 +138,12 @@ import { BookOpen } from "lucide-react"
 less padding, so the message reads as quiet inline copy instead of a box
 inside a box.
 
+`titleAs` says what the title is in the outline: a `<p>` by default, since
+most empty states sit under a page heading. When the empty state *is* the
+page (a grade sheet not yet closed), pass `"h1"` so the page keeps its one
+h1; `"h2"` for a section that is otherwise empty. It looks the same at any
+level.
+
 ### `<ErrorState>` — "we tried to load X and failed"
 
 For the recoverable-error case: API 5xx, timeout, network error. Includes

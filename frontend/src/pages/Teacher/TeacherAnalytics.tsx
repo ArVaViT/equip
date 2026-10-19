@@ -170,7 +170,7 @@ export default function TeacherAnalytics() {
 
       <Card>
         <CardHeader>
-          <CardTitle>
+          <CardTitle as="h2">
             {t("teacherAnalytics.enrollments.heading")}
           </CardTitle>
           <CardDescription>

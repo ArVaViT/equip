@@ -280,9 +280,11 @@ type ClaimText = { title: string; body: string; short: string }
 function Claim({ title, body, short }: ClaimText) {
   return (
     <div className={`max-w-2xl ${TEXT_VEIL}`}>
-      <h3 className="font-serif text-3xl font-medium leading-tight tracking-[-0.025em] text-ink sm:text-5xl">
+      {/* An h2: each claim is a top-level section of the page, straight under
+          the hero's h1. It was an h3, which read as a level skipped. */}
+      <h2 className="font-serif text-3xl font-medium leading-tight tracking-[-0.025em] text-ink sm:text-5xl">
         {title}
-      </h3>
+      </h2>
       <p className="mt-3 text-[0.9375rem] leading-relaxed text-ink-muted sm:hidden">{short}</p>
       <p className="mt-4 hidden max-w-xl text-lg leading-relaxed text-ink-muted sm:block">{body}</p>
     </div>

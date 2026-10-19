@@ -81,7 +81,10 @@ describe("StudentRow — opening a student", () => {
     })
     show()
 
-    expect(await screen.findByText(i18n.t("studentProgress.row.chapterBreakdown"))).toBeInTheDocument()
+    // An h3: the row sits in the students' card, whose title is the page's h2.
+    expect(
+      await screen.findByRole("heading", { level: 3, name: i18n.t("studentProgress.row.chapterBreakdown") }),
+    ).toBeInTheDocument()
     expect(screen.queryByText(i18n.t("studentProgress.row.loadingDetail"))).not.toBeInTheDocument()
     expect(getStudentProgressDetail).toHaveBeenCalledTimes(1)
   })

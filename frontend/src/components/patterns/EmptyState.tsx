@@ -15,6 +15,13 @@ interface EmptyStateProps {
    * padding so the empty message reads as restrained inline copy.
    */
   variant?: "default" | "compact"
+  /**
+   * What the title is in the outline. A paragraph by default — most empty
+   * states sit under a page heading. When the empty state *is* the page
+   * (a sheet not yet closed), pass `"h1"` so the page keeps its one h1;
+   * `"h2"` for a section that is otherwise empty. Looks the same either way.
+   */
+  titleAs?: "p" | "h1" | "h2"
 }
 
 export function EmptyState({
@@ -24,6 +31,7 @@ export function EmptyState({
   action,
   className,
   variant = "default",
+  titleAs: Title = "p",
 }: EmptyStateProps) {
   if (variant === "compact") {
     return (
@@ -38,7 +46,7 @@ export function EmptyState({
             {icon}
           </span>
         )}
-        <p className="text-sm text-ink-muted">{title}</p>
+        <Title className="text-sm text-ink-muted">{title}</Title>
         {description && (
           <p className="max-w-md text-xs text-ink-muted">
             {description}
@@ -62,7 +70,7 @@ export function EmptyState({
         </span>
       )}
       <div className="space-y-1">
-        <p className="font-serif text-base font-semibold text-ink">{title}</p>
+        <Title className="font-serif text-base font-semibold text-ink">{title}</Title>
         {description && (
           <p className="max-w-md text-sm text-ink-muted">{description}</p>
         )}

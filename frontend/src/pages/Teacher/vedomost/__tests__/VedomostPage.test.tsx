@@ -73,6 +73,14 @@ describe("VedomostPage", () => {
     expect(await screen.findByRole("button", { name: i18n.t("vedomost.close") })).toBeInTheDocument()
   })
 
+  it("is still a page with one h1 while the sheet is open", async () => {
+    // The whole screen is an empty state then; its title is the page's
+    // heading, not a paragraph, so a reader jumping by headings lands.
+    vi.spyOn(gradesService, "getGradeSheet").mockResolvedValue(null)
+    renderPage()
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent(i18n.t("vedomost.notClosedTitle"))
+  })
+
   it("does not offer to close anything when the request was refused", async () => {
     vi.spyOn(gradesService, "getGradeSheet").mockRejectedValue(forbidden())
     renderPage()

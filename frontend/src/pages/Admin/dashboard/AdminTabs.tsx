@@ -32,10 +32,32 @@ const TAB_META: Record<AdminTab, { icon: typeof Users; labelKey: string }> = {
  */
 export function AdminTabs({ active, onChange, tabs }: Props) {
   const { t } = useTranslation()
+  // WAI-ARIA tabs, as the course page's and the profile's: arrow keys move
+  // between tabs, Home and End jump to the ends, and only the open tab is in
+  // the tab order — so Tab from the strip lands in the panel, not on the
+  // next of seven tabs.
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const i = tabs.indexOf(active)
+    const next =
+      e.key === "ArrowRight" ? tabs[(i + 1) % tabs.length]
+      : e.key === "ArrowLeft" ? tabs[(i - 1 + tabs.length) % tabs.length]
+      : e.key === "Home" ? tabs[0]
+      : e.key === "End" ? tabs[tabs.length - 1]
+      : undefined
+    if (!next) return
+    e.preventDefault()
+    onChange(next)
+    document.getElementById(ADMIN_TAB_TRIGGER_ID[next])?.focus()
+  }
   return (
     // Seven tabs do not fit a laptop's width: the row scrolls sideways
     // rather than wrapping a label onto two lines or running off the page.
-    <div className="no-scrollbar mb-6 flex gap-1 overflow-x-auto border-b border-edge sm:mb-8" role="tablist">
+    <div
+      className="no-scrollbar mb-6 flex gap-1 overflow-x-auto border-b border-edge sm:mb-8"
+      role="tablist"
+      aria-label={t("admin.tabsLabel")}
+      onKeyDown={onKeyDown}
+    >
       {tabs.map((name) => {
         const { icon: Icon, labelKey } = TAB_META[name]
         return (
@@ -75,6 +97,7 @@ function TabButton({ name, active, onClick, icon, label }: TabButtonProps) {
       id={ADMIN_TAB_TRIGGER_ID[name]}
       aria-controls={ADMIN_TAB_PANEL_ID[name]}
       aria-selected={active}
+      tabIndex={active ? 0 : -1}
       onClick={onClick}
       className={cn(
         "relative min-h-[44px] shrink-0 whitespace-nowrap px-3 py-2.5 text-sm font-medium transition-colors sm:min-h-0 sm:px-4",

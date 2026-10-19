@@ -2522,6 +2522,7 @@
         "totalCount": "{{count}} Frage(n)"
       }
     },
+    "tabsLabel": "Verwaltungsbereiche",
     "tabOverview": "Überblick",
     "tabCohorts": "Gruppen",
     "tabAudit": "Prüfprotokoll",

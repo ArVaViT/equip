@@ -27,12 +27,16 @@ import type { ReactNode } from "react"
 export function SceneBand({
   children,
   label,
+  labelledBy,
   pose,
   flush = false,
   className = "",
 }: {
   children: ReactNode
   label?: string
+  /** The id of the band's own heading, when it has one: the heading then
+   *  names the region, and the name is written once. */
+  labelledBy?: string
   pose?: "frame" | "row"
   /**
    * As tall as its content on every width, tight to what is above it. For
@@ -45,6 +49,7 @@ export function SceneBand({
   return (
     <section
       aria-label={label}
+      aria-labelledby={labelledBy}
       data-scene-stop="center"
       data-backdrop-pose={pose}
       className={

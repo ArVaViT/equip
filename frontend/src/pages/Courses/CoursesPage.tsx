@@ -14,6 +14,7 @@ import { EmptyState, ErrorState } from "@/components/patterns"
 import { useUserTour } from "@/hooks/useUserTour"
 import { coursesCatalogSteps } from "@/lib/tourSteps"
 import { MyOrganizationsCourses } from "./MyOrganizationsCourses"
+import { useMyOrganizationsBlocks } from "./useMyOrganizationsBlocks"
 
 /**
  * Public course catalog. Lifted out of the old HomePage when the
@@ -58,6 +59,12 @@ export default function CoursesPage() {
     async () => (user ? coursesService.getMyCourses().catch(() => []) : []),
     [user?.id],
   )
+  // The reader's organizations' closed courses go above the catalogue, each
+  // under its own h2, and the catalogue then gets an h2 of its own. With
+  // those on the page a card is an h3; straight under the page's h1 it is
+  // an h2. A search hides the sections, and the cards climb back.
+  const organizationBlocks = useMyOrganizationsBlocks(user?.id)
+  const organizationSectionsShown = Boolean(user) && !query && organizationBlocks.length > 0
   const progressByCourseId = useMemo(() => {
     const map = new Map<string, number>()
     for (const e of myEnrollments ?? []) {
@@ -146,7 +153,7 @@ export default function CoursesPage() {
         </div>
       </section>
 
-      {user && !query && <MyOrganizationsCourses userId={user.id} progress={progressByCourseId} />}
+      {organizationSectionsShown && <MyOrganizationsCourses blocks={organizationBlocks} progress={progressByCourseId} />}
 
       {loading ? (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-7 lg:grid-cols-3">
@@ -177,6 +184,7 @@ export default function CoursesPage() {
             <CourseCard
               key={course.id}
               course={course}
+              headingLevel={organizationSectionsShown ? "h3" : "h2"}
               progress={progressByCourseId.get(course.id)}
               style={{ "--stagger-index": index } as React.CSSProperties}
             />

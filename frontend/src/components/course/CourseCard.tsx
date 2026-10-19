@@ -29,6 +29,12 @@ interface CourseCardProps {
    * you" on a course they can open (2026-10-03).
    */
   viewerIsMember?: boolean
+  /**
+   * The card's place in the page outline. Straight under the catalogue's
+   * h1 the title is an h2; under a section heading (a school's courses on
+   * its page) it is an h3, the default.
+   */
+  headingLevel?: "h2" | "h3"
 }
 
 function EnrollmentBadge({ start, end }: { start?: string | null; end?: string | null }) {
@@ -56,7 +62,7 @@ function EnrollmentBadge({ start, end }: { start?: string | null; end?: string |
   )
 }
 
-function CourseCard({ course, style, progress, viewerIsMember = false }: CourseCardProps) {
+function CourseCard({ course, style, progress, viewerIsMember = false, headingLevel = "h3" }: CourseCardProps) {
   const { t } = useTranslation()
   const [imgError, setImgError] = useState(false)
   const coverSrc = toProxyImage(course.image_url)
@@ -110,7 +116,7 @@ function CourseCard({ course, style, progress, viewerIsMember = false }: CourseC
             {course.organization_name}
           </p>
         )}
-        <CardTitle className="leading-snug line-clamp-2 text-wrap-safe">
+        <CardTitle as={headingLevel} className="leading-snug line-clamp-2 text-wrap-safe">
           {orNotTranslated(t, course.title)}
         </CardTitle>
         {course.description && (

@@ -88,6 +88,8 @@ describe("StudentProgress — a course nobody has enrolled in yet", () => {
     expect(await screen.findByText("Anna Petrenko")).toBeInTheDocument()
     // jsdom has no matchMedia, so this is the phone's list.
     expect(screen.getByRole("list", { name: i18n.t("studentProgress.table.heading") })).toBeInTheDocument()
+    // The students' card sits straight under the page's h1: an h2, not an h3.
+    expect(screen.getByRole("heading", { level: 2, name: new RegExp(i18n.t("studentProgress.table.heading")) })).toBeInTheDocument()
     expect(screen.queryByText(i18n.t("studentProgress.table.emptyNoStudents"))).not.toBeInTheDocument()
     // No "click a row to see details" line: the chevron on each row says it.
     expect(screen.queryByText(/click a row/i)).not.toBeInTheDocument()
