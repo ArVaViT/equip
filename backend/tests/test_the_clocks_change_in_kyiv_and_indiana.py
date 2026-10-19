@@ -318,3 +318,184 @@ class TestTheDayTurnsAtTheReadersMidnight:
         clock = type("Clock", (_Clock,), {"instant": instant})
         monkeypatch.setattr(schedule_module, "datetime", clock)
         assert reader_today(zone) == day
+
+
+# Wednesdays at 19:00 in Kyiv, from before its change to after Indiana's,
+# as the app sends them (the first as an instant, the zone named).
+KYIV_FIRST = "2026-10-21T16:00:00Z"  # Wed 19:00 EEST
+KYIV_WEDNESDAYS_UTC = [
+    datetime(2026, 10, 21, 16, 0, tzinfo=UTC),  # EEST
+    datetime(2026, 10, 28, 17, 0, tzinfo=UTC),  # EET; Indiana still EDT
+    datetime(2026, 11, 4, 17, 0, tzinfo=UTC),  # both on winter time
+]
+
+
+class TestAKyivSeriesThroughTheApi:
+    """The mirror of the Indiana series above, from Kyiv's side of the week."""
+
+    def _kyiv_series(self, client: TestClient, course_id: str) -> None:
+        r = client.post(
+            f"{COURSES}/{course_id}/events",
+            json={
+                "title": "Урок",
+                "event_type": "live_session",
+                "event_date": KYIV_FIRST,
+                "duration_minutes": 90,
+                "repeat": {"every_weeks": 1, "until": "2026-11-04", "time_zone": "Europe/Kyiv"},
+            },
+        )
+        assert r.status_code == 201, r.text
+
+    def _rows(self, db: Session, course_id: str) -> list[CourseEvent]:
+        db.expire_all()
+        return db.query(CourseEvent).filter(CourseEvent.course_id == course_id).order_by(CourseEvent.event_date).all()
+
+    def test_wednesday_stays_at_seven_in_kyiv_and_the_calendar_serves_the_instants(
+        self, client: TestClient, db: Session, student: User
+    ) -> None:
+        course_id = _course(db, student)
+        self._kyiv_series(client, course_id)
+        rows = self._rows(db, course_id)
+        assert [_read(r.event_date, KYIV) for r in rows] == ["Wed 21 19:00", "Wed 28 19:00", "Wed 04 19:00"]
+        # Noon in Indiana, then 13:00 for the one week Kyiv has changed and Indiana has not.
+        assert [_read(r.event_date, INDY) for r in rows] == ["Wed 21 12:00", "Wed 28 13:00", "Wed 04 12:00"]
+        assert {r.time_zone for r in rows} == {"Europe/Kyiv"}
+        # What every reader's calendar is built from: the instants, which the
+        # app then shows on the reader's own clock.
+        r = client.get(f"/api/v1/calendar/events?course_id={course_id}")
+        assert r.status_code == 200, r.text
+        served = sorted(datetime.fromisoformat(e["event_date"]) for e in r.json() if e["source"] == "course_event")
+        assert [_aware(s) for s in served] == KYIV_WEDNESDAYS_UTC
+
+    def test_a_teacher_in_indiana_moving_a_kyiv_series_an_hour_later_keeps_eight_in_kyiv(
+        self, client: TestClient, db: Session, student: User
+    ) -> None:
+        # 19:00 → 20:00 on the first Wednesday, edited from Indiana. On
+        # Kyiv's own clock the move is one hour on every lesson; measured on
+        # Indiana's it would be one hour before its change and two after.
+        course_id = _course(db, student)
+        self._kyiv_series(client, course_id)
+        first = self._rows(db, course_id)[0]
+        r = client.put(
+            f"{COURSES}/{course_id}/events/{first.id}?scope=following",
+            json={"event_date": "2026-10-21T17:00:00Z", "time_zone": "America/Indiana/Indianapolis"},
+        )
+        assert r.status_code == 200, r.text
+        rows = self._rows(db, course_id)
+        assert [_read(r.event_date, KYIV) for r in rows] == ["Wed 21 20:00", "Wed 28 20:00", "Wed 04 20:00"]
+        assert [_aware(r.event_date) for r in rows] == [s + timedelta(hours=1) for s in KYIV_WEDNESDAYS_UTC]
+        assert {r.time_zone for r in rows} == {"Europe/Kyiv"}
+        # Each moved lesson is announced again at its new hour.
+        assert all(r.reminded_at is None for r in rows)
+
+
+class TestADeadlineIsAMoment:
+    """A deadline is set on one clock — «23:59 по Киеву» — and stored as the
+    instant; a reader elsewhere sees the same instant on their own clock,
+    which in the week between the changes is an hour from the usual."""
+
+    @pytest.mark.parametrize(
+        ("instant", "kyiv", "indiana"),
+        [
+            # Fri Oct 23: both on summer time (Kyiv UTC+3, Indiana UTC-4).
+            (datetime(2026, 10, 23, 20, 59, tzinfo=UTC), "Fri 23 23:59", "Fri 23 16:59"),
+            # Fri Oct 30: Kyiv back on UTC+2, Indiana still UTC-4.
+            (datetime(2026, 10, 30, 21, 59, tzinfo=UTC), "Fri 30 23:59", "Fri 30 17:59"),
+            # Fri Nov 6: both on winter time (UTC+2, UTC-5).
+            (datetime(2026, 11, 6, 21, 59, tzinfo=UTC), "Fri 06 23:59", "Fri 06 16:59"),
+        ],
+        ids=["before-both", "week-between", "after-both"],
+    )
+    def test_23_59_in_kyiv_is_one_instant_everywhere(
+        self, client: TestClient, db: Session, student: User, instant: datetime, kyiv: str, indiana: str
+    ) -> None:
+        from app.schemas.calendar import CalendarEvent as CalendarItem
+        from app.services.event_reminders import send_due_reminders
+
+        course_id = _course(db, student)
+        r = client.post(
+            f"{COURSES}/{course_id}/events",
+            json={"title": "Эссе", "event_type": "deadline", "event_date": instant.isoformat()},
+        )
+        assert r.status_code == 201, r.text
+        row = db.get(CourseEvent, uuid.UUID(r.json()["id"]))
+        assert row is not None
+        assert _read(row.event_date, KYIV) == kyiv
+        assert _read(row.event_date, INDY) == indiana
+        # The feed carries the instant and no length: a moment, not an hour.
+        item = CalendarItem(
+            id=str(row.id),
+            title="Эссе",
+            event_type="deadline",
+            event_date=_aware(row.event_date),
+            course_id=course_id,
+            source="course_event",
+        )
+        for subscriber_zone in ("Europe/Kyiv", "America/Indiana/Indianapolis", None):
+            ics = render_calendar([item], locale="ru", time_zone=subscriber_zone)
+            assert f"DTSTART:{instant.strftime('%Y%m%dT%H%M%SZ')}" in ics
+            assert "DURATION:PT0S" in ics
+        # A deadline is not "starting": no hour-before reminder on any side of the change.
+        assert send_due_reminders(db, now=instant - timedelta(minutes=30)) == 0
+
+
+class TestTheInvitationNamesTheHour:
+    """The invitation letter writes the first session on the school's clock,
+    with that clock named — the one place the server itself prints a time."""
+
+    @pytest.mark.parametrize(
+        ("zone", "moment", "locale", "expected"),
+        [
+            (
+                "Europe/Kyiv",
+                datetime(2026, 10, 21, 16, 0, tzinfo=UTC),
+                "ru",
+                "21.10.2026, 19:00 по киевскому времени",
+            ),
+            (
+                "Europe/Kyiv",
+                datetime(2026, 10, 28, 17, 0, tzinfo=UTC),
+                "ru",
+                "28.10.2026, 19:00 по киевскому времени",
+            ),
+            (
+                "Europe/Kyiv",
+                datetime(2026, 11, 4, 17, 0, tzinfo=UTC),
+                "uk",
+                "04.11.2026, 19:00 за київським часом",
+            ),
+            # Indiana and the Pacific coast change together, so the pair holds all autumn.
+            (
+                "America/Indiana/Indianapolis",
+                datetime(2026, 10, 31, 23, 0, tzinfo=UTC),
+                "ru",
+                "31.10.2026, 19:00 по времени Индианы (США) / 16:00 по тихоокеанскому времени США",
+            ),
+            (
+                "America/Indiana/Indianapolis",
+                datetime(2026, 11, 8, 0, 0, tzinfo=UTC),
+                "en",
+                "2026-11-07, 19:00 Eastern Time (Indiana, US) / 16:00 Pacific",
+            ),
+            # A school with no words for its zone is named by its offset, which the change moves.
+            (
+                "Europe/Berlin",
+                datetime(2026, 10, 21, 17, 0, tzinfo=UTC),
+                "de",
+                "21.10.2026, 19:00 Zeit der Schule (UTC+2)",
+            ),
+            (
+                "Europe/Berlin",
+                datetime(2026, 10, 28, 18, 0, tzinfo=UTC),
+                "de",
+                "28.10.2026, 19:00 Zeit der Schule (UTC+1)",
+            ),
+        ],
+    )
+    def test_on_the_school_s_clock_on_every_side_of_the_change(
+        self, zone: str, moment: datetime, locale: str, expected: str
+    ) -> None:
+        from app.services.email.invitation import _session_text
+
+        text = _session_text(moment, locale, zone_or_utc(zone))  # type: ignore[arg-type]
+        assert text == expected
