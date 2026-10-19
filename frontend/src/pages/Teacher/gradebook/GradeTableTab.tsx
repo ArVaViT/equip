@@ -93,7 +93,7 @@ export function GradeTableTab({
     <div className="space-y-4">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle>{t("gradebook.table.title")}</CardTitle>
+          <CardTitle as="h2">{t("gradebook.table.title")}</CardTitle>
           <CardDescription className="text-xs">{t("gradebook.table.description")}</CardDescription>
         </CardHeader>
         <CardContent>

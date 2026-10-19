@@ -31,6 +31,11 @@ describe("selected day heading", () => {
     expect(screen.getByText("Monday")).toBeInTheDocument()
   })
 
+  it("is an h2: the panel sits straight under the page's h1, and the outline must not skip a level", () => {
+    render(<SelectedDayPanel selectedDay={new Date(2026, 9, 5)} events={[]} now={Date.now()} />, { wrapper: Wrapper })
+    expect(screen.getByRole("heading", { level: 2, name: "October 5" })).toBeInTheDocument()
+  })
+
   const session = (date: string) =>
     ({
       id: "e", title: "Session", description: null, event_type: "live_session", event_date: date,

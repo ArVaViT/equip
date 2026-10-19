@@ -54,6 +54,13 @@ describe("CourseCard", () => {
     expect(screen.getByText("Intro course")).toBeInTheDocument()
   })
 
+  it("titles the card at the level its page needs: h3 under a section, h2 straight under the page's h1", () => {
+    renderCard(makeCourse({ title: "Genesis" }))
+    expect(screen.getByRole("heading", { level: 3, name: "Genesis" })).toBeInTheDocument()
+    render(<CourseCard course={makeCourse({ title: "Exodus" })} headingLevel="h2" />, { wrapper: TestWrapper })
+    expect(screen.getByRole("heading", { level: 2, name: "Exodus" })).toBeInTheDocument()
+  })
+
   it("counts lessons, not modules: four lessons and no module is not \"0 modules\"", async () => {
     await i18n.changeLanguage("en")
     renderCard(makeCourse({ modules: [], chapter_count: 4, module_count: 0 }))

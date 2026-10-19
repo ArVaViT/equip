@@ -312,7 +312,7 @@ export default function CohortDetailPage() {
 
       <Card className="mb-6">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle as="h2" className="flex items-center gap-2">
             <Calendar className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             {t("admin.cohorts.detailsHeading")}
           </CardTitle>
@@ -399,7 +399,7 @@ export default function CohortDetailPage() {
 
       <Card className="mb-6">
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
-          <CardTitle>
+          <CardTitle as="h2">
             {t("admin.cohorts.coursesHeading", { count: courses.length })}
           </CardTitle>
           {/* A completed cohort is history: the server refuses new courses and
@@ -681,7 +681,7 @@ function StudentsCard({
     <Card>
       <CardHeader className="gap-3 space-y-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle as="h2" className="flex items-center gap-2">
             <Users className="h-4 w-4" strokeWidth={1.75} aria-hidden />
             {t("admin.cohorts.studentsHeading", { count: students.length })}
           </CardTitle>

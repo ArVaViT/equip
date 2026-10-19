@@ -177,6 +177,7 @@ export default function CoursesPage() {
             <CourseCard
               key={course.id}
               course={course}
+              headingLevel="h2"
               progress={progressByCourseId.get(course.id)}
               style={{ "--stagger-index": index } as React.CSSProperties}
             />

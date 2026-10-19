@@ -114,7 +114,7 @@ export function SummaryTab({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t("gradebook.summary.title")}</CardTitle>
+        <CardTitle as="h2">{t("gradebook.summary.title")}</CardTitle>
         <CardDescription>{t("gradebook.summary.description")}</CardDescription>
       </CardHeader>
       <CardContent>
