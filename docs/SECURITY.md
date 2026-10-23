@@ -274,6 +274,27 @@ behind. `20261019130000_a_closed_account_touches_no_course_file` puts
 `schema.sql` and have no CI probe; the fix was proven against a local
 stand-in of `storage.objects` (closed: 0 rows written; restored: all).
 
+The private bucket next to it, `course-materials` (lesson files, served
+through a signed URL only), was still as 20260227031530 wrote it: the
+administrator spelled out by hand (`profiles.role = 'admin'`), the owner by
+`courses.created_by`, the student by an `enrollments` row -- none of which
+a closed account loses -- and no `TO` clause. So a switched-off or deleted
+administrator, course owner or enrolled student still read the files, and
+the first two still wrote them.
+`20261023230000_a_closed_account_touches_no_course_material` rewrites the
+four policies the way the sibling bucket's read: `(SELECT
+public.is_platform_staff())` for the administrator, `(SELECT
+public.can_teach())` in front of every write, `TO authenticated`, and for
+SELECT -- where an enrolled student is not inside any helper -- the one
+check no helper offers alone, `profiles.deactivated_at IS NULL`, read
+through the caller's own `profiles_select_self`. For an open account
+nothing changes (a demoted owner loses the writes, as on `course-assets`;
+the editor and the API already refuse them). Section 19 of
+`supabase/ci/rls_assertions.sql` builds a stand-in of `storage.objects`,
+replays the migration onto it and probes it as an open and a closed
+administrator, owner and student -- the first CI probe of a storage
+policy.
+
 ## Dependency scanning
 
 - Backend: `pip-audit --requirement requirements.txt --strict` runs in
