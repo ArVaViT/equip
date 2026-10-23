@@ -1093,9 +1093,13 @@ BEGIN
   RETURN _parts[1:array_length(_parts, 1) - 1];
 END $$;
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-GRANT USAGE ON SCHEMA storage TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO authenticated;
+-- Supabase grants both client roles the table; the policies decide.
+GRANT USAGE ON SCHEMA storage TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO anon, authenticated;
 
+-- The state the migration finds in production for the eight policies it
+-- rewrites or leaves (avatars, course-assets), then the migration itself.
+\ir ../migrations/20260915142924_a_policy_without_to_still_reaches_anon.sql
 \ir ../migrations/20261023230000_a_closed_account_touches_no_course_material.sql
 
 -- The people: S (section 17; a teacher of B, open again since the end of
@@ -1114,7 +1118,8 @@ VALUES ('enrollment-m-student', :'student', 'course-m-materials');
 
 INSERT INTO storage.objects (bucket_id, name, owner_id) VALUES
   ('course-materials', 'course-m-materials/handout.pdf', '55555555-5555-5555-5555-555555555555'),
-  ('course-materials', 'course-a-institute/syllabus.pdf', NULL);
+  ('course-materials', 'course-a-institute/syllabus.pdf', NULL),
+  ('avatars', '55555555-5555-5555-5555-555555555555/avatar-old.png', '55555555-5555-5555-5555-555555555555');
 
 -- Open administrator: every file, and every write.
 SET request.jwt.claim.sub = '77777777-7777-7777-7777-777777777777';
@@ -1194,6 +1199,85 @@ EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: an upload into somebody else''s course is refused';
 END $$;
 
+-- A rename is an UPDATE: the new row is checked too, so a file cannot be
+-- moved into the folder of a course the owner does not own.
+DO $$
+BEGIN
+  UPDATE storage.objects SET name = 'course-a-institute/moved.pdf'
+   WHERE name = 'course-m-materials/handout.pdf';
+  RAISE EXCEPTION 'SECURITY HOLE: a teacher moves their file into a course they do not own';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a move into somebody else''s course is refused';
+END $$;
+
+-- The owner's own avatar folder: open, they replace the picture.
+DO $$
+DECLARE n int;
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id)
+  VALUES ('avatars', '55555555-5555-5555-5555-555555555555/avatar-new.png', '55555555-5555-5555-5555-555555555555');
+  UPDATE storage.objects SET name = '55555555-5555-5555-5555-555555555555/avatar-renamed.png'
+   WHERE name = '55555555-5555-5555-5555-555555555555/avatar-new.png';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: an open account cannot rename its own avatar (% rows)', n;
+  END IF;
+  DELETE FROM storage.objects WHERE name = '55555555-5555-5555-5555-555555555555/avatar-renamed.png';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: an open account cannot remove its own avatar (% rows)', n;
+  END IF;
+  RAISE NOTICE 'OK: an open account writes its own avatar folder';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id)
+  VALUES ('avatars', '11111111-1111-1111-1111-111111111111/planted.png', '55555555-5555-5555-5555-555555555555');
+  RAISE EXCEPTION 'SECURITY HOLE: an account uploads into somebody else''s avatar folder';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: an upload into somebody else''s avatar folder is refused';
+END $$;
+
+-- Demoted to student (the course stays theirs): reads the files of the
+-- course they made, as on course-assets; writes and removes nothing.
+RESET ROLE;
+UPDATE public.profiles SET role = 'student' WHERE id = '55555555-5555-5555-5555-555555555555';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'course-materials';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: a demoted owner reads % course materials, expected their course''s 1', n;
+  END IF;
+  UPDATE storage.objects SET name = name WHERE name = 'course-m-materials/handout.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a demoted owner still changes a course material';
+  END IF;
+  DELETE FROM storage.objects WHERE name = 'course-m-materials/handout.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a demoted owner still removes a course material';
+  END IF;
+  RAISE NOTICE 'OK: a demoted owner reads the materials of their course and writes none';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id)
+  VALUES ('course-materials', 'course-m-materials/by-demoted.pdf', '55555555-5555-5555-5555-555555555555');
+  RAISE EXCEPTION 'SECURITY HOLE: a demoted owner still uploads a course material';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a demoted owner''s upload is refused';
+END $$;
+
+RESET ROLE;
+UPDATE public.profiles SET role = 'teacher' WHERE id = '55555555-5555-5555-5555-555555555555';
+SET ROLE authenticated;
+
 -- Open student: reads the course they attend, writes nothing.
 RESET ROLE;
 SET request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
@@ -1269,6 +1353,32 @@ EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a deactivated owner''s upload is refused';
 END $$;
 
+-- Nor their own avatar folder: the picture others see stays as it was.
+DO $$
+DECLARE n int;
+BEGIN
+  UPDATE storage.objects SET name = name WHERE name = '55555555-5555-5555-5555-555555555555/avatar-old.png';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated account still changes its avatar';
+  END IF;
+  DELETE FROM storage.objects WHERE name = '55555555-5555-5555-5555-555555555555/avatar-old.png';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated account still removes its avatar';
+  END IF;
+  RAISE NOTICE 'OK: a deactivated account changes and removes no avatar';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id)
+  VALUES ('avatars', '55555555-5555-5555-5555-555555555555/after-closing.png', '55555555-5555-5555-5555-555555555555');
+  RAISE EXCEPTION 'SECURITY HOLE: a deactivated account still uploads an avatar';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a deactivated account''s avatar upload is refused';
+END $$;
+
 RESET ROLE;
 SET request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 SET ROLE authenticated;
@@ -1334,7 +1444,12 @@ BEGIN
   IF n <> 1 THEN
     RAISE EXCEPTION 'BROKEN: a restored owner cannot write their course materials (% rows)', n;
   END IF;
-  RAISE NOTICE 'OK: a restored owner reads and writes their course materials again (positive control)';
+  DELETE FROM storage.objects WHERE name = '55555555-5555-5555-5555-555555555555/avatar-old.png';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: a restored account cannot remove its own avatar (% rows)', n;
+  END IF;
+  RAISE NOTICE 'OK: a restored owner reads and writes their course materials and avatar again (positive control)';
 END $$;
 
 RESET ROLE;
@@ -1351,30 +1466,55 @@ BEGIN
   RAISE NOTICE 'OK: a restored student reads their course materials again (positive control)';
 END $$;
 
+-- Anonymous: no policy admits `anon`, and none is evaluated for it -- it
+-- holds no EXECUTE on the helpers, so a policy that reached it would
+-- error rather than refuse. Zero rows, no error.
+RESET ROLE;
+SET request.jwt.claim.sub = '';
+SET ROLE anon;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: anon reads % storage object(s)', n;
+  END IF;
+  RAISE NOTICE 'OK: anon reads no storage object, without an error';
+END $$;
+
 RESET ROLE;
 
 -- Structural guard (20261023230000): the four course-materials policies
--- exist, apply to `authenticated` only (never `anon`, who holds no EXECUTE
--- on the helpers), and none spells a role out by hand -- the helpers are
--- where a closed account is closed.
+-- exist; every storage policy applies to `authenticated` only (never
+-- `anon`, who holds no EXECUTE on the helpers); and, as in section 18 for
+-- `public`, none reads profiles or organization_members by hand -- the
+-- helpers are where a closed account is closed.
 DO $$
 DECLARE n int; offenders text;
 BEGIN
   SELECT count(*) INTO n FROM pg_policies
   WHERE schemaname = 'storage' AND tablename = 'objects'
-    AND policyname LIKE 'course\_materials\_%'
-    AND roles = ARRAY['authenticated']::name[];
+    AND policyname LIKE 'course\_materials\_%';
   IF n <> 4 THEN
-    RAISE EXCEPTION 'BROKEN: % course-materials policies apply to authenticated only, expected 4', n;
+    RAISE EXCEPTION 'BROKEN: % course-materials policies, expected 4', n;
   END IF;
   SELECT string_agg(policyname, ', ') INTO offenders
   FROM pg_policies
   WHERE schemaname = 'storage' AND tablename = 'objects'
-    AND (coalesce(qual, '') LIKE '%role%' OR coalesce(with_check, '') LIKE '%role%');
+    AND roles <> ARRAY['authenticated']::name[];
   IF offenders IS NOT NULL THEN
-    RAISE EXCEPTION 'SECURITY HOLE: storage policies read a role by hand instead of a helper: %', offenders;
+    RAISE EXCEPTION 'SECURITY HOLE: storage policies not limited to authenticated: %', offenders;
   END IF;
-  RAISE NOTICE 'OK: course-materials policies are authenticated-only and name no role by hand';
+  SELECT string_agg(policyname, ', ') INTO offenders
+  FROM pg_policies
+  WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND (coalesce(qual, '') || coalesce(with_check, '')) SIMILAR TO
+        '%(profiles|organization_members)%';
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'SECURITY HOLE: storage policies read role, membership or account state by hand instead of a helper: %', offenders;
+  END IF;
+  RAISE NOTICE 'OK: storage policies are authenticated-only and read profiles through the helpers alone';
 END $$;
 
 SELECT 'RLS policy assertions passed' AS result;
