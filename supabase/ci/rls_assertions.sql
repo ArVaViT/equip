@@ -1210,24 +1210,55 @@ EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a move into somebody else''s course is refused';
 END $$;
 
--- The owner's own avatar folder: open, they replace the picture.
+-- A move between buckets is one UPDATE of the row, and permissive UPDATE
+-- policies are OR-ed: with an UPDATE policy on a public bucket, the new row
+-- was admitted by that policy while the old one left course-materials
+-- under its owner's. The public buckets have no UPDATE policy any more, so
+-- the private file stays private: into avatars the new row satisfies no
+-- policy (refused), and a row already in a public bucket satisfies no
+-- USING (0 rows).
+DO $$
+BEGIN
+  UPDATE storage.objects
+     SET bucket_id = 'avatars', name = '55555555-5555-5555-5555-555555555555/handout.pdf'
+   WHERE bucket_id = 'course-materials' AND name = 'course-m-materials/handout.pdf';
+  RAISE EXCEPTION 'SECURITY HOLE: a course owner moves a private file into the public avatars bucket';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a move from course-materials into avatars is refused';
+END $$;
+
+DO $$
+DECLARE n int;
+BEGIN
+  UPDATE storage.objects
+     SET bucket_id = 'course-assets', name = 'content-images/avatar-old.png'
+   WHERE bucket_id = 'avatars' AND name = '55555555-5555-5555-5555-555555555555/avatar-old.png';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: an account moves a file from avatars into course-assets (% rows)', n;
+  END IF;
+  UPDATE storage.objects SET name = '55555555-5555-5555-5555-555555555555/avatar-renamed.png'
+   WHERE bucket_id = 'avatars' AND name = '55555555-5555-5555-5555-555555555555/avatar-old.png';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: an avatar is renamed in place -- a public bucket has an UPDATE policy again (% rows)', n;
+  END IF;
+  RAISE NOTICE 'OK: nothing moves out of avatars, and nothing is renamed there';
+END $$;
+
+-- The owner's own avatar folder: open, they add a picture and remove one
+-- (how the app replaces an avatar: a fresh key, then the old one removed).
 DO $$
 DECLARE n int;
 BEGIN
   INSERT INTO storage.objects (bucket_id, name, owner_id)
   VALUES ('avatars', '55555555-5555-5555-5555-555555555555/avatar-new.png', '55555555-5555-5555-5555-555555555555');
-  UPDATE storage.objects SET name = '55555555-5555-5555-5555-555555555555/avatar-renamed.png'
-   WHERE name = '55555555-5555-5555-5555-555555555555/avatar-new.png';
-  GET DIAGNOSTICS n = ROW_COUNT;
-  IF n <> 1 THEN
-    RAISE EXCEPTION 'BROKEN: an open account cannot rename its own avatar (% rows)', n;
-  END IF;
-  DELETE FROM storage.objects WHERE name = '55555555-5555-5555-5555-555555555555/avatar-renamed.png';
+  DELETE FROM storage.objects WHERE name = '55555555-5555-5555-5555-555555555555/avatar-new.png';
   GET DIAGNOSTICS n = ROW_COUNT;
   IF n <> 1 THEN
     RAISE EXCEPTION 'BROKEN: an open account cannot remove its own avatar (% rows)', n;
   END IF;
-  RAISE NOTICE 'OK: an open account writes its own avatar folder';
+  RAISE NOTICE 'OK: an open account adds to and removes from its own avatar folder';
 END $$;
 
 DO $$
@@ -1357,17 +1388,12 @@ END $$;
 DO $$
 DECLARE n int;
 BEGIN
-  UPDATE storage.objects SET name = name WHERE name = '55555555-5555-5555-5555-555555555555/avatar-old.png';
-  GET DIAGNOSTICS n = ROW_COUNT;
-  IF n <> 0 THEN
-    RAISE EXCEPTION 'SECURITY HOLE: a deactivated account still changes its avatar';
-  END IF;
   DELETE FROM storage.objects WHERE name = '55555555-5555-5555-5555-555555555555/avatar-old.png';
   GET DIAGNOSTICS n = ROW_COUNT;
   IF n <> 0 THEN
     RAISE EXCEPTION 'SECURITY HOLE: a deactivated account still removes its avatar';
   END IF;
-  RAISE NOTICE 'OK: a deactivated account changes and removes no avatar';
+  RAISE NOTICE 'OK: a deactivated account removes no avatar';
 END $$;
 
 DO $$
@@ -1514,7 +1540,17 @@ BEGIN
   IF offenders IS NOT NULL THEN
     RAISE EXCEPTION 'SECURITY HOLE: storage policies read role, membership or account state by hand instead of a helper: %', offenders;
   END IF;
-  RAISE NOTICE 'OK: storage policies are authenticated-only and read profiles through the helpers alone';
+  -- No UPDATE policy on a public bucket: a move is an UPDATE, and an UPDATE
+  -- policy there admits the new row of a file leaving course-materials.
+  SELECT string_agg(policyname, ', ') INTO offenders
+  FROM pg_policies
+  WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND cmd = 'UPDATE'
+    AND (coalesce(qual, '') || coalesce(with_check, '')) SIMILAR TO '%(avatars|course-assets)%';
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a public bucket has an UPDATE policy again (a move out of course-materials goes through it): %', offenders;
+  END IF;
+  RAISE NOTICE 'OK: storage policies are authenticated-only, read profiles through the helpers alone, and no public bucket is updatable';
 END $$;
 
 SELECT 'RLS policy assertions passed' AS result;

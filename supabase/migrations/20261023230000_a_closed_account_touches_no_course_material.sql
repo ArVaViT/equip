@@ -48,6 +48,29 @@
 -- The avatars write policies ask `is_open_account()` too: a closed account
 -- does not change the picture others see next to its name.
 --
+-- The two public buckets lose their UPDATE policies altogether
+-- (`avatars_owner_update`, `course_assets_teacher_update`; review of this
+-- migration, 2026-10-23). Storage's move and copy (`POST /object/move`,
+-- `destinationBucket`) are one UPDATE of `storage.objects` under the
+-- caller's role, and permissive policies are OR-ed per command: a row
+-- leaving `course-materials` passed the owner's `course_materials_teacher_
+-- update` USING, and the new row -- now in `avatars`, in the caller's own
+-- folder -- passed `avatars_owner_update`, whose WITH CHECK was its USING.
+-- From `avatars` the same step reached `course-assets`. Neither the target
+-- bucket's MIME list nor its size limit is checked on a move. So the owner
+-- of a course could turn a 50 MB private PDF or audio file into a public
+-- object served from equipbible.com (`/img/course-assets/...`), with the
+-- course-materials policies never asked about the destination. Nothing
+-- uses UPDATE on these buckets: the app uploads every cover and avatar
+-- under a fresh key and removes the old one (20261016011000,
+-- frontend/src/services/storage.ts -- `upload` with `upsert: false`,
+-- `remove`, `createSignedUrl`; no `move`, `copy` or `update`, in the
+-- frontend, the backend or the e2e specs), so upsert, rename and move in
+-- the public buckets are refused from now on, on purpose. A file in
+-- `course-materials` can still be renamed by its course's owner, inside
+-- the bucket: its UPDATE policy checks the new row against the same
+-- predicate, and no other UPDATE policy remains to admit a row elsewhere.
+--
 -- For an open account nothing changes: an administrator, the owner of the
 -- course and an enrolled student read what they read, the first two write
 -- what they wrote, and everyone keeps their own avatar folder.
@@ -56,9 +79,10 @@
 -- these four): `anon` never passed -- `auth.uid()` is null for it -- and
 -- now the helpers, on which `anon` holds no EXECUTE, are not evaluated for
 -- it at all. `(SELECT ...)` around a helper that takes nothing from the row
--- keeps it an InitPlan, evaluated once per statement; the three
--- course-assets policies of 20261016011000 / 20261019130000 called theirs
--- bare and are rewritten with the wrapper only -- same text otherwise.
+-- keeps it an InitPlan, evaluated once per statement; the course-assets
+-- SELECT and DELETE policies of 20261016011000 / 20261019130000 called
+-- theirs bare and are rewritten with the wrapper only -- same text
+-- otherwise.
 --
 -- Storage policies are not in supabase/schema.sql (it dumps `public` only;
 -- the helper is added there by hand). supabase/ci/rls_assertions.sql
@@ -165,9 +189,10 @@ CREATE POLICY "course_materials_teacher_delete"
   );
 
 -- ---------------------------------------------------------------------------
--- avatars: the owner's folder, while the account is open. The public SELECT
--- (`avatars_owner_read`) is not touched: a picture already shown to
--- everyone through the public URL hides nothing from its owner.
+-- avatars: the owner's folder, while the account is open. `avatars_owner_read`
+-- (SELECT of the own folder, TO authenticated -- what `remove` needs to find
+-- the row; the public URL is served by the public bucket without RLS) is not
+-- touched. UPDATE is dropped and not recreated: see the header.
 -- ---------------------------------------------------------------------------
 
 DROP POLICY IF EXISTS "avatars_owner_insert" ON storage.objects;
@@ -181,14 +206,6 @@ CREATE POLICY "avatars_owner_insert"
   );
 
 DROP POLICY IF EXISTS "avatars_owner_update" ON storage.objects;
-CREATE POLICY "avatars_owner_update"
-  ON storage.objects FOR UPDATE
-  TO authenticated
-  USING (
-    bucket_id = 'avatars'
-    AND (SELECT public.is_open_account())
-    AND (storage.foldername(name))[1] = auth.uid()::text
-  );
 
 DROP POLICY IF EXISTS "avatars_owner_delete" ON storage.objects;
 CREATE POLICY "avatars_owner_delete"
@@ -201,9 +218,10 @@ CREATE POLICY "avatars_owner_delete"
   );
 
 -- ---------------------------------------------------------------------------
--- course-assets: the same policies as 20261019130000 / 20261016011000, the
--- helpers wrapped so the planner evaluates each once per statement. What
--- they answer does not change.
+-- course-assets: SELECT and DELETE as 20261019130000 / 20261016011000 wrote
+-- them, the helpers wrapped so the planner evaluates each once per
+-- statement -- what they answer does not change. UPDATE is dropped and not
+-- recreated: see the header.
 -- ---------------------------------------------------------------------------
 
 DROP POLICY IF EXISTS "course_assets_teacher_read" ON storage.objects;
@@ -220,27 +238,6 @@ CREATE POLICY "course_assets_teacher_read"
   );
 
 DROP POLICY IF EXISTS "course_assets_teacher_update" ON storage.objects;
-CREATE POLICY "course_assets_teacher_update"
-  ON storage.objects FOR UPDATE
-  TO authenticated
-  USING (
-    bucket_id = 'course-assets'
-    AND (SELECT public.can_teach())
-    AND (
-      owner_id = (SELECT auth.uid())::text
-      OR (storage.foldername(name))[1] IN (SELECT c.id FROM public.courses c WHERE c.created_by = (SELECT auth.uid()))
-      OR (SELECT public.is_platform_staff())
-    )
-  )
-  WITH CHECK (
-    bucket_id = 'course-assets'
-    AND (SELECT public.can_teach())
-    AND (
-      owner_id = (SELECT auth.uid())::text
-      OR (storage.foldername(name))[1] IN (SELECT c.id FROM public.courses c WHERE c.created_by = (SELECT auth.uid()))
-      OR (SELECT public.is_platform_staff())
-    )
-  );
 
 DROP POLICY IF EXISTS "course_assets_teacher_delete" ON storage.objects;
 CREATE POLICY "course_assets_teacher_delete"

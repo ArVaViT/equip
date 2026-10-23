@@ -300,6 +300,27 @@ minted before the account closed keeps working until it expires
 (`SIGNED_URL_TTL_SECONDS`, one hour) -- Storage checks the signature, not
 these policies.
 
+**The public buckets have no UPDATE policy, on purpose** (same migration;
+found in its review). Storage's move and copy (`POST /object/move`, with
+`destinationBucket`) are one UPDATE of `storage.objects` under the
+caller's role, and permissive UPDATE policies are OR-ed: the row leaving
+`course-materials` passed its owner's policy, and the new row, now in
+`avatars` under the caller's own folder, passed `avatars_owner_update`;
+from there the same step reached `course-assets`. A move checks neither
+the target bucket's MIME list nor its size limit, so the owner of a course
+could publish a 50 MB private PDF or recording on equipbible.com through
+`/img/course-assets/...`. `avatars_owner_update` and
+`course_assets_teacher_update` are dropped and not recreated. Nothing used
+them: covers and avatars are uploaded under a fresh key and the old one is
+removed (`upload` with `upsert: false`, `remove`; no `move`, `copy`,
+`update` or `upsert` anywhere in the frontend, the backend or the e2e
+specs). So upsert, rename and move in `avatars` and `course-assets` are
+refused -- a new write there is a new key. A file in `course-materials`
+can still be renamed inside the bucket by its course's owner; its UPDATE
+policy checks the new row, and no other UPDATE policy remains to admit a
+row elsewhere. Section 19 probes both moves and guards against an UPDATE
+policy returning to a public bucket.
+
 ## Dependency scanning
 
 - Backend: `pip-audit --requirement requirements.txt --strict` runs in
