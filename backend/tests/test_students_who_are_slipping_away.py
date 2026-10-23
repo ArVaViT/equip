@@ -24,6 +24,7 @@ from tests._cv_helpers import make_course_with_text
 from tests.conftest import TEACHER_ID
 
 if TYPE_CHECKING:
+    import pytest
     from fastapi.testclient import TestClient
     from sqlalchemy.orm import Session
 
@@ -176,14 +177,21 @@ def test_who_is_on_the_list_and_why(db: Session, teacher: User) -> None:
     assert people["reader"]  # reading two days ago kept them off it
 
 
-def test_the_teacher_sees_it_in_their_language(client: TestClient, db: Session, teacher: User) -> None:
+def test_the_teacher_sees_it_in_their_language(
+    client: TestClient, db: Session, teacher: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
     _setup(db)
+    # The route asks for the real "now"; pin it to the fixtures' NOW. Left real,
+    # "quiet" (last seen 2026-09-21) passed GONE_AFTER on 2026-10-21 and the
+    # test began to fail on every branch.
+    monkeypatch.setattr(
+        "app.api.v1.analytics.students_at_risk",
+        lambda db, teacher_id: students_at_risk(db, teacher_id, now=NOW),
+    )
     r = client.get("/api/v1/analytics/at-risk", headers={"Accept-Language": "ru"})
     assert r.status_code == 200, r.text
     names = {row["full_name"] for row in r.json()}
-    # Real "now" here: the fixtures are days old relative to 2026-10-01, so at
-    # least those two are on it whatever today is.
-    assert {"quiet", "missed"} <= names
+    assert names == {"quiet", "missed", "again"}
     assert "stranger" not in names and "done" not in names
     assert all(row["course_title"] == "Деяния" for row in r.json())
     # The address the gradebook already shows, for the card's "write" button.
