@@ -1055,4 +1055,502 @@ BEGIN
   RAISE NOTICE 'OK: no Daily Challenge policy admits a teacher by role';
 END $$;
 
+-- ---------------------------------------------------------------------
+-- 19) A closed account touches no course material (20261023230000).
+--
+-- `course-materials` is the private bucket: lesson files, served only
+-- through a signed URL. Its four policies were written before the helpers
+-- existed and asked nothing a closed account loses -- `profiles.role`,
+-- `courses.created_by`, an `enrollments` row -- so a switched-off or deleted
+-- administrator, course owner or student still read (and the first two
+-- wrote) through Storage with the session it keeps for a restore.
+--
+-- Storage policies are not in schema.sql (it dumps `public` only) and the
+-- real `storage` schema is Supabase's. A stand-in of `storage.objects` and
+-- `storage.foldername()` is created here, the migration is replayed onto
+-- it from its own file, and the policies are probed as `authenticated` the
+-- way every section above probes `public`. Open accounts first (what the
+-- bucket must keep doing), then closed, then restored.
+-- ---------------------------------------------------------------------
+
+RESET ROLE;
+
+CREATE SCHEMA storage;
+CREATE TABLE storage.objects (
+    id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    bucket_id  text NOT NULL,
+    name       text NOT NULL,
+    owner_id   text,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+-- Supabase's definition: every path segment but the last.
+CREATE FUNCTION storage.foldername(name text) RETURNS text[]
+    LANGUAGE plpgsql
+    AS $$
+DECLARE _parts text[];
+BEGIN
+  SELECT string_to_array(name, '/') INTO _parts;
+  RETURN _parts[1:array_length(_parts, 1) - 1];
+END $$;
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+-- Supabase grants both client roles the table; the policies decide.
+GRANT USAGE ON SCHEMA storage TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO anon, authenticated;
+
+-- The state the migration finds in production for the eight policies it
+-- rewrites or leaves (avatars, course-assets), then the migration itself.
+\ir ../migrations/20260915142924_a_policy_without_to_still_reaches_anon.sql
+\ir ../migrations/20261023230000_a_closed_account_touches_no_course_material.sql
+
+-- The people: S (section 17; a teacher of B, open again since the end of
+-- section 18) owns course M; the student from section 1 is enrolled in it;
+-- a new, open administrator; and the switched-off administrator from
+-- section 18. Two files: one in M, one in A's course that none of them owns
+-- or attends.
+\set admin_on '77777777-7777-7777-7777-777777777777'
+INSERT INTO auth.users (id, email) VALUES (:'admin_on', 'admin-on@test.local');
+INSERT INTO public.profiles (id, email, role) VALUES (:'admin_on', 'admin-on@test.local', 'admin');
+
+INSERT INTO public.courses (id, status, access_mode, organization_id, created_by)
+VALUES ('course-m-materials', 'published', 'institute', :'school_b', :'member_s');
+INSERT INTO public.enrollments (id, user_id, course_id)
+VALUES ('enrollment-m-student', :'student', 'course-m-materials');
+
+INSERT INTO storage.objects (bucket_id, name, owner_id) VALUES
+  ('course-materials', 'course-m-materials/handout.pdf', '55555555-5555-5555-5555-555555555555'),
+  ('course-materials', 'course-a-institute/syllabus.pdf', NULL),
+  ('avatars', '55555555-5555-5555-5555-555555555555/avatar-old.png', '55555555-5555-5555-5555-555555555555');
+
+-- Open administrator: every file, and every write.
+SET request.jwt.claim.sub = '77777777-7777-7777-7777-777777777777';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'course-materials';
+  IF n <> 2 THEN
+    RAISE EXCEPTION 'BROKEN: an administrator reads % of the 2 course materials', n;
+  END IF;
+  INSERT INTO storage.objects (bucket_id, name, owner_id)
+  VALUES ('course-materials', 'course-a-institute/by-admin.pdf', '77777777-7777-7777-7777-777777777777');
+  UPDATE storage.objects SET name = 'course-a-institute/by-admin-renamed.pdf'
+   WHERE name = 'course-a-institute/by-admin.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: an administrator cannot rename a course material (% rows)', n;
+  END IF;
+  DELETE FROM storage.objects WHERE name = 'course-a-institute/by-admin-renamed.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: an administrator cannot remove a course material (% rows)', n;
+  END IF;
+  RAISE NOTICE 'OK: an open administrator reads and writes every course material';
+END $$;
+
+-- Open owner: the files of their course, and only those.
+RESET ROLE;
+SET request.jwt.claim.sub = '55555555-5555-5555-5555-555555555555';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'course-materials';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: the owner of M reads % course materials, expected only M''s 1', n;
+  END IF;
+  SELECT count(*) INTO n FROM storage.objects WHERE name = 'course-a-institute/syllabus.pdf';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a teacher reads the materials of a course they do not own';
+  END IF;
+  INSERT INTO storage.objects (bucket_id, name, owner_id)
+  VALUES ('course-materials', 'course-m-materials/new.pdf', '55555555-5555-5555-5555-555555555555');
+  UPDATE storage.objects SET name = 'course-m-materials/renamed.pdf'
+   WHERE name = 'course-m-materials/new.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: the owner cannot rename their course material (% rows)', n;
+  END IF;
+  UPDATE storage.objects SET name = name WHERE name = 'course-a-institute/syllabus.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a teacher changes the material of a course they do not own';
+  END IF;
+  DELETE FROM storage.objects WHERE name = 'course-a-institute/syllabus.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a teacher removes the material of a course they do not own';
+  END IF;
+  DELETE FROM storage.objects WHERE name = 'course-m-materials/renamed.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: the owner cannot remove their course material (% rows)', n;
+  END IF;
+  RAISE NOTICE 'OK: an open owner reads and writes the materials of their course only';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id)
+  VALUES ('course-materials', 'course-a-institute/planted.pdf', '55555555-5555-5555-5555-555555555555');
+  RAISE EXCEPTION 'SECURITY HOLE: a teacher uploads into a course they do not own';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: an upload into somebody else''s course is refused';
+END $$;
+
+-- A rename is an UPDATE: the new row is checked too, so a file cannot be
+-- moved into the folder of a course the owner does not own.
+DO $$
+BEGIN
+  UPDATE storage.objects SET name = 'course-a-institute/moved.pdf'
+   WHERE name = 'course-m-materials/handout.pdf';
+  RAISE EXCEPTION 'SECURITY HOLE: a teacher moves their file into a course they do not own';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a move into somebody else''s course is refused';
+END $$;
+
+-- A move between buckets is one UPDATE of the row, and permissive UPDATE
+-- policies are OR-ed: with an UPDATE policy on a public bucket, the new row
+-- was admitted by that policy while the old one left course-materials
+-- under its owner's. The public buckets have no UPDATE policy any more, so
+-- the private file stays private: into avatars the new row satisfies no
+-- policy (refused), and a row already in a public bucket satisfies no
+-- USING (0 rows).
+DO $$
+BEGIN
+  UPDATE storage.objects
+     SET bucket_id = 'avatars', name = '55555555-5555-5555-5555-555555555555/handout.pdf'
+   WHERE bucket_id = 'course-materials' AND name = 'course-m-materials/handout.pdf';
+  RAISE EXCEPTION 'SECURITY HOLE: a course owner moves a private file into the public avatars bucket';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a move from course-materials into avatars is refused';
+END $$;
+
+DO $$
+DECLARE n int;
+BEGIN
+  UPDATE storage.objects
+     SET bucket_id = 'course-assets', name = 'content-images/avatar-old.png'
+   WHERE bucket_id = 'avatars' AND name = '55555555-5555-5555-5555-555555555555/avatar-old.png';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: an account moves a file from avatars into course-assets (% rows)', n;
+  END IF;
+  UPDATE storage.objects SET name = '55555555-5555-5555-5555-555555555555/avatar-renamed.png'
+   WHERE bucket_id = 'avatars' AND name = '55555555-5555-5555-5555-555555555555/avatar-old.png';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: an avatar is renamed in place -- a public bucket has an UPDATE policy again (% rows)', n;
+  END IF;
+  RAISE NOTICE 'OK: nothing moves out of avatars, and nothing is renamed there';
+END $$;
+
+-- The owner's own avatar folder: open, they add a picture and remove one
+-- (how the app replaces an avatar: a fresh key, then the old one removed).
+DO $$
+DECLARE n int;
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id)
+  VALUES ('avatars', '55555555-5555-5555-5555-555555555555/avatar-new.png', '55555555-5555-5555-5555-555555555555');
+  DELETE FROM storage.objects WHERE name = '55555555-5555-5555-5555-555555555555/avatar-new.png';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: an open account cannot remove its own avatar (% rows)', n;
+  END IF;
+  RAISE NOTICE 'OK: an open account adds to and removes from its own avatar folder';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id)
+  VALUES ('avatars', '11111111-1111-1111-1111-111111111111/planted.png', '55555555-5555-5555-5555-555555555555');
+  RAISE EXCEPTION 'SECURITY HOLE: an account uploads into somebody else''s avatar folder';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: an upload into somebody else''s avatar folder is refused';
+END $$;
+
+-- Demoted to student (the course stays theirs): reads the files of the
+-- course they made, as on course-assets; writes and removes nothing.
+RESET ROLE;
+UPDATE public.profiles SET role = 'student' WHERE id = '55555555-5555-5555-5555-555555555555';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'course-materials';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: a demoted owner reads % course materials, expected their course''s 1', n;
+  END IF;
+  UPDATE storage.objects SET name = name WHERE name = 'course-m-materials/handout.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a demoted owner still changes a course material';
+  END IF;
+  DELETE FROM storage.objects WHERE name = 'course-m-materials/handout.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a demoted owner still removes a course material';
+  END IF;
+  RAISE NOTICE 'OK: a demoted owner reads the materials of their course and writes none';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id)
+  VALUES ('course-materials', 'course-m-materials/by-demoted.pdf', '55555555-5555-5555-5555-555555555555');
+  RAISE EXCEPTION 'SECURITY HOLE: a demoted owner still uploads a course material';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a demoted owner''s upload is refused';
+END $$;
+
+RESET ROLE;
+UPDATE public.profiles SET role = 'teacher' WHERE id = '55555555-5555-5555-5555-555555555555';
+SET ROLE authenticated;
+
+-- Open student: reads the course they attend, writes nothing.
+RESET ROLE;
+SET request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'course-materials';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: an enrolled student reads % course materials, expected their course''s 1', n;
+  END IF;
+  SELECT count(*) INTO n FROM storage.objects WHERE name = 'course-m-materials/handout.pdf';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: an enrolled student cannot read the handout of their course';
+  END IF;
+  UPDATE storage.objects SET name = name WHERE name = 'course-m-materials/handout.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a student changes a course material';
+  END IF;
+  DELETE FROM storage.objects WHERE name = 'course-m-materials/handout.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a student removes a course material';
+  END IF;
+  RAISE NOTICE 'OK: an open student reads the materials of their course and writes none';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id)
+  VALUES ('course-materials', 'course-m-materials/by-student.pdf', '11111111-1111-1111-1111-111111111111');
+  RAISE EXCEPTION 'SECURITY HOLE: a student uploads a course material';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a student''s upload is refused';
+END $$;
+
+-- Switched off: the owner and the student. Both keep the course row, the
+-- enrollment row and the session; neither reads or writes a file.
+RESET ROLE;
+UPDATE public.profiles SET deactivated_at = now()
+ WHERE id IN ('55555555-5555-5555-5555-555555555555', '11111111-1111-1111-1111-111111111111');
+SET request.jwt.claim.sub = '55555555-5555-5555-5555-555555555555';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'course-materials';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated owner still reads % course material(s)', n;
+  END IF;
+  UPDATE storage.objects SET name = name WHERE name = 'course-m-materials/handout.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated owner still changes a course material';
+  END IF;
+  DELETE FROM storage.objects WHERE name = 'course-m-materials/handout.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated owner still removes a course material';
+  END IF;
+  RAISE NOTICE 'OK: a deactivated owner reads and writes no course material';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id)
+  VALUES ('course-materials', 'course-m-materials/after-closing.pdf', '55555555-5555-5555-5555-555555555555');
+  RAISE EXCEPTION 'SECURITY HOLE: a deactivated owner still uploads a course material';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a deactivated owner''s upload is refused';
+END $$;
+
+-- Nor their own avatar folder: the picture others see stays as it was.
+DO $$
+DECLARE n int;
+BEGIN
+  DELETE FROM storage.objects WHERE name = '55555555-5555-5555-5555-555555555555/avatar-old.png';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated account still removes its avatar';
+  END IF;
+  RAISE NOTICE 'OK: a deactivated account removes no avatar';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id)
+  VALUES ('avatars', '55555555-5555-5555-5555-555555555555/after-closing.png', '55555555-5555-5555-5555-555555555555');
+  RAISE EXCEPTION 'SECURITY HOLE: a deactivated account still uploads an avatar';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a deactivated account''s avatar upload is refused';
+END $$;
+
+RESET ROLE;
+SET request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'course-materials';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated student still reads % course material(s)', n;
+  END IF;
+  RAISE NOTICE 'OK: a deactivated student reads no course material';
+END $$;
+
+-- The switched-off administrator from section 18: no longer platform staff
+-- here either.
+RESET ROLE;
+SET request.jwt.claim.sub = '66666666-6666-6666-6666-666666666666';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'course-materials';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated administrator still reads % course material(s)', n;
+  END IF;
+  DELETE FROM storage.objects WHERE bucket_id = 'course-materials';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a deactivated administrator still removes course materials';
+  END IF;
+  RAISE NOTICE 'OK: a deactivated administrator reads and writes no course material';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id)
+  VALUES ('course-materials', 'course-a-institute/by-closed-admin.pdf', '66666666-6666-6666-6666-666666666666');
+  RAISE EXCEPTION 'SECURITY HOLE: a deactivated administrator still uploads a course material';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a deactivated administrator''s upload is refused';
+END $$;
+
+-- Positive control: restored, the owner and the student are back.
+RESET ROLE;
+UPDATE public.profiles SET deactivated_at = NULL
+ WHERE id IN ('55555555-5555-5555-5555-555555555555', '11111111-1111-1111-1111-111111111111');
+SET request.jwt.claim.sub = '55555555-5555-5555-5555-555555555555';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE name = 'course-m-materials/handout.pdf';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: a restored owner cannot read their course material';
+  END IF;
+  INSERT INTO storage.objects (bucket_id, name, owner_id)
+  VALUES ('course-materials', 'course-m-materials/after-restore.pdf', '55555555-5555-5555-5555-555555555555');
+  DELETE FROM storage.objects WHERE name = 'course-m-materials/after-restore.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: a restored owner cannot write their course materials (% rows)', n;
+  END IF;
+  DELETE FROM storage.objects WHERE name = '55555555-5555-5555-5555-555555555555/avatar-old.png';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: a restored account cannot remove its own avatar (% rows)', n;
+  END IF;
+  RAISE NOTICE 'OK: a restored owner reads and writes their course materials and avatar again (positive control)';
+END $$;
+
+RESET ROLE;
+SET request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE name = 'course-m-materials/handout.pdf';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: a restored student cannot read the handout of their course';
+  END IF;
+  RAISE NOTICE 'OK: a restored student reads their course materials again (positive control)';
+END $$;
+
+-- Anonymous: no policy admits `anon`, and none is evaluated for it -- it
+-- holds no EXECUTE on the helpers, so a policy that reached it would
+-- error rather than refuse. Zero rows, no error.
+RESET ROLE;
+SET request.jwt.claim.sub = '';
+SET ROLE anon;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: anon reads % storage object(s)', n;
+  END IF;
+  RAISE NOTICE 'OK: anon reads no storage object, without an error';
+END $$;
+
+RESET ROLE;
+
+-- Structural guard (20261023230000): the four course-materials policies
+-- exist; every storage policy applies to `authenticated` only (never
+-- `anon`, who holds no EXECUTE on the helpers); and, as in section 18 for
+-- `public`, none reads profiles or organization_members by hand -- the
+-- helpers are where a closed account is closed.
+DO $$
+DECLARE n int; offenders text;
+BEGIN
+  SELECT count(*) INTO n FROM pg_policies
+  WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND policyname LIKE 'course\_materials\_%';
+  IF n <> 4 THEN
+    RAISE EXCEPTION 'BROKEN: % course-materials policies, expected 4', n;
+  END IF;
+  SELECT string_agg(policyname, ', ') INTO offenders
+  FROM pg_policies
+  WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND roles <> ARRAY['authenticated']::name[];
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'SECURITY HOLE: storage policies not limited to authenticated: %', offenders;
+  END IF;
+  SELECT string_agg(policyname, ', ') INTO offenders
+  FROM pg_policies
+  WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND (coalesce(qual, '') || coalesce(with_check, '')) SIMILAR TO
+        '%(profiles|organization_members)%';
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'SECURITY HOLE: storage policies read role, membership or account state by hand instead of a helper: %', offenders;
+  END IF;
+  -- No UPDATE policy on a public bucket: a move is an UPDATE, and an UPDATE
+  -- policy there admits the new row of a file leaving course-materials.
+  SELECT string_agg(policyname, ', ') INTO offenders
+  FROM pg_policies
+  WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND cmd = 'UPDATE'
+    AND (coalesce(qual, '') || coalesce(with_check, '')) SIMILAR TO '%(avatars|course-assets)%';
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a public bucket has an UPDATE policy again (a move out of course-materials goes through it): %', offenders;
+  END IF;
+  RAISE NOTICE 'OK: storage policies are authenticated-only, read profiles through the helpers alone, and no public bucket is updatable';
+END $$;
+
 SELECT 'RLS policy assertions passed' AS result;

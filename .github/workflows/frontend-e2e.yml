@@ -206,6 +206,9 @@ jobs:
             supabase/migrations/20260910120214_a_teacher_can_see_the_file_they_uploaded.sql \
             supabase/migrations/20260910123047_course_materials_is_a_private_bucket.sql \
             supabase/migrations/20260915142924_a_policy_without_to_still_reaches_anon.sql \
+            supabase/migrations/20261016011000_a_teacher_touches_only_their_own_course_files.sql \
+            supabase/migrations/20261019130000_a_closed_account_touches_no_course_file.sql \
+            supabase/migrations/20261023230000_a_closed_account_touches_no_course_material.sql \
           ; do
             $PSQL -f "$f"
           done
