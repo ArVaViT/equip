@@ -20,9 +20,18 @@
 -- Verified against production on 2026-10-23: `pg_policies` shows the four
 -- policies exactly as 20260227031530 wrote them, applied to every role
 -- (`{public}` -- no TO clause), and 20260910123047 only flipped the bucket
--- to private.
+-- to private. The `avatars` write policies have the same shape: the folder
+-- is the account's own, which a closed account keeps.
 --
--- The policies now say what the sibling bucket's say:
+-- One new helper, `is_open_account()`: the account behind the session is
+-- not deactivated (a deleted account is always a deactivated one, by
+-- `profiles_deleted_is_deactivated_check`). The other helpers answer about
+-- a role or a membership; an enrolled student holds neither, and the owner
+-- of an avatar folder holds nothing but the folder. Same shape, grants and
+-- search_path as the helpers of 20261019120000; no EXECUTE for `anon`
+-- (20260915030000).
+--
+-- The course-materials policies now say what the sibling bucket's say:
 --
 --   * the administrator is `(SELECT public.is_platform_staff())`, which is
 --     false for a closed account;
@@ -31,30 +40,60 @@
 --     not a teacher, and neither is one demoted to student -- the editor
 --     and the API already refuse that person (`TEACHING_ROLES`,
 --     `canTeach`), so the bucket now refuses them too;
---   * SELECT keeps the owner and the enrolled student, and asks that the
---     account be open -- `profiles.deactivated_at IS NULL`, read through
---     the caller's own `profiles_select_self` policy. No helper says just
---     that today, and an enrolled student is not inside `can_teach()`; a
---     deleted account is always a deactivated one
---     (`profiles_deleted_is_deactivated_check`), so this one column covers
---     both. A demoted owner still reads the files of the course they made,
---     as the sibling bucket's SELECT still shows them its files.
+--   * SELECT keeps the owner and the enrolled student, behind
+--     `(SELECT public.is_open_account())`. A demoted owner still reads the
+--     files of the course they made, as the sibling bucket's SELECT still
+--     shows them its files.
+--
+-- The avatars write policies ask `is_open_account()` too: a closed account
+-- does not change the picture others see next to its name.
 --
 -- For an open account nothing changes: an administrator, the owner of the
 -- course and an enrolled student read what they read, the first two write
--- what they wrote. `TO authenticated` is written out (20260915142924 did it
--- for the other eight storage policies and missed these four): `anon` never
--- passed -- `auth.uid()` is null for it -- and now the helpers, on which
--- `anon` holds no EXECUTE (20260915030000), are not evaluated for it at all.
--- `(SELECT ...)` around a helper that takes nothing from the row keeps it an
--- InitPlan, evaluated once per statement.
+-- what they wrote, and everyone keeps their own avatar folder.
+-- `TO authenticated` is written out on the course-materials policies
+-- (20260915142924 did it for the other eight storage policies and missed
+-- these four): `anon` never passed -- `auth.uid()` is null for it -- and
+-- now the helpers, on which `anon` holds no EXECUTE, are not evaluated for
+-- it at all. `(SELECT ...)` around a helper that takes nothing from the row
+-- keeps it an InitPlan, evaluated once per statement; the three
+-- course-assets policies of 20261016011000 / 20261019130000 called theirs
+-- bare and are rewritten with the wrapper only -- same text otherwise.
 --
--- Storage policies are not in supabase/schema.sql (it dumps `public` only);
--- supabase/ci/rls_assertions.sql section 19 replays this file onto a
--- stand-in of storage.objects and probes it as a closed and as an open
--- administrator, owner and student.
+-- Storage policies are not in supabase/schema.sql (it dumps `public` only;
+-- the helper is added there by hand). supabase/ci/rls_assertions.sql
+-- section 19 replays this file onto a stand-in of storage.objects and
+-- probes it as a closed and as an open administrator, owner and student.
+--
+-- A signed URL minted before the account closed keeps working until it
+-- expires (SIGNED_URL_TTL_SECONDS, one hour); the signature is checked by
+-- Storage, not by these policies. Accepted.
 --
 -- Idempotent; DROP/CREATE as every storage migration here.
+
+-- ---------------------------------------------------------------------------
+-- The helper.
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.is_open_account() RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = (SELECT auth.uid()) AND deactivated_at IS NULL
+    );
+$$;
+
+COMMENT ON FUNCTION public.is_open_account() IS
+  'The signed-in account is open (profiles.deactivated_at IS NULL); says nothing about a role. For policies that admit a person by a row they hold -- an enrollment, their own folder -- rather than by a role. See 20261023230000.';
+
+REVOKE EXECUTE ON FUNCTION public.is_open_account() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_open_account() TO authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- course-materials: the private bucket.
+-- ---------------------------------------------------------------------------
 
 DROP POLICY IF EXISTS "course_materials_enrolled_read" ON storage.objects;
 CREATE POLICY "course_materials_enrolled_read"
@@ -67,10 +106,7 @@ CREATE POLICY "course_materials_enrolled_read"
       (SELECT public.is_platform_staff())
       OR (
         -- An open account --
-        EXISTS (
-          SELECT 1 FROM public.profiles
-          WHERE id = (SELECT auth.uid()) AND deactivated_at IS NULL
-        )
+        (SELECT public.is_open_account())
         AND (
           -- -- that owns the course,
           (storage.foldername(name))[1] IN (SELECT c.id FROM public.courses c WHERE c.created_by = (SELECT auth.uid()))
@@ -124,6 +160,98 @@ CREATE POLICY "course_materials_teacher_delete"
     AND (SELECT public.can_teach())
     AND (
       (storage.foldername(name))[1] IN (SELECT c.id FROM public.courses c WHERE c.created_by = (SELECT auth.uid()))
+      OR (SELECT public.is_platform_staff())
+    )
+  );
+
+-- ---------------------------------------------------------------------------
+-- avatars: the owner's folder, while the account is open. The public SELECT
+-- (`avatars_owner_read`) is not touched: a picture already shown to
+-- everyone through the public URL hides nothing from its owner.
+-- ---------------------------------------------------------------------------
+
+DROP POLICY IF EXISTS "avatars_owner_insert" ON storage.objects;
+CREATE POLICY "avatars_owner_insert"
+  ON storage.objects FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    bucket_id = 'avatars'
+    AND (SELECT public.is_open_account())
+    AND (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+DROP POLICY IF EXISTS "avatars_owner_update" ON storage.objects;
+CREATE POLICY "avatars_owner_update"
+  ON storage.objects FOR UPDATE
+  TO authenticated
+  USING (
+    bucket_id = 'avatars'
+    AND (SELECT public.is_open_account())
+    AND (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+DROP POLICY IF EXISTS "avatars_owner_delete" ON storage.objects;
+CREATE POLICY "avatars_owner_delete"
+  ON storage.objects FOR DELETE
+  TO authenticated
+  USING (
+    bucket_id = 'avatars'
+    AND (SELECT public.is_open_account())
+    AND (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+-- ---------------------------------------------------------------------------
+-- course-assets: the same policies as 20261019130000 / 20261016011000, the
+-- helpers wrapped so the planner evaluates each once per statement. What
+-- they answer does not change.
+-- ---------------------------------------------------------------------------
+
+DROP POLICY IF EXISTS "course_assets_teacher_read" ON storage.objects;
+CREATE POLICY "course_assets_teacher_read"
+  ON storage.objects FOR SELECT
+  TO authenticated
+  USING (
+    bucket_id = 'course-assets'
+    AND (
+      owner_id = (SELECT auth.uid())::text
+      OR (storage.foldername(name))[1] IN (SELECT c.id FROM public.courses c WHERE c.created_by = (SELECT auth.uid()))
+      OR (SELECT public.is_platform_staff())
+    )
+  );
+
+DROP POLICY IF EXISTS "course_assets_teacher_update" ON storage.objects;
+CREATE POLICY "course_assets_teacher_update"
+  ON storage.objects FOR UPDATE
+  TO authenticated
+  USING (
+    bucket_id = 'course-assets'
+    AND (SELECT public.can_teach())
+    AND (
+      owner_id = (SELECT auth.uid())::text
+      OR (storage.foldername(name))[1] IN (SELECT c.id FROM public.courses c WHERE c.created_by = (SELECT auth.uid()))
+      OR (SELECT public.is_platform_staff())
+    )
+  )
+  WITH CHECK (
+    bucket_id = 'course-assets'
+    AND (SELECT public.can_teach())
+    AND (
+      owner_id = (SELECT auth.uid())::text
+      OR (storage.foldername(name))[1] IN (SELECT c.id FROM public.courses c WHERE c.created_by = (SELECT auth.uid()))
+      OR (SELECT public.is_platform_staff())
+    )
+  );
+
+DROP POLICY IF EXISTS "course_assets_teacher_delete" ON storage.objects;
+CREATE POLICY "course_assets_teacher_delete"
+  ON storage.objects FOR DELETE
+  TO authenticated
+  USING (
+    bucket_id = 'course-assets'
+    AND (SELECT public.can_teach())
+    AND (
+      owner_id = (SELECT auth.uid())::text
+      OR (storage.foldername(name))[1] IN (SELECT c.id FROM public.courses c WHERE c.created_by = (SELECT auth.uid()))
       OR (SELECT public.is_platform_staff())
     )
   );

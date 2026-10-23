@@ -318,6 +318,28 @@ COMMENT ON FUNCTION public.is_member_of(org uuid) IS 'Active member of this orga
 
 
 --
+-- Name: is_open_account(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.is_open_account() RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+    SELECT EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = (SELECT auth.uid()) AND deactivated_at IS NULL
+    );
+$$;
+
+
+--
+-- Name: FUNCTION is_open_account(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.is_open_account() IS 'The signed-in account is open (profiles.deactivated_at IS NULL); says nothing about a role. For policies that admit a person by a row they hold -- an enrollment, their own folder -- rather than by a role. See 20261023230000.';
+
+
+--
 -- Name: is_platform_staff(); Type: FUNCTION; Schema: public; Owner: -
 --
 

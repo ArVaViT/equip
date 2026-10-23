@@ -285,15 +285,20 @@ the first two still wrote them.
 four policies the way the sibling bucket's read: `(SELECT
 public.is_platform_staff())` for the administrator, `(SELECT
 public.can_teach())` in front of every write, `TO authenticated`, and for
-SELECT -- where an enrolled student is not inside any helper -- the one
-check no helper offers alone, `profiles.deactivated_at IS NULL`, read
-through the caller's own `profiles_select_self`. For an open account
+SELECT -- where an enrolled student is inside no role helper -- a new one,
+`(SELECT public.is_open_account())`: the account is not deactivated, and
+nothing about a role. The `avatars` write policies ask it too (the folder
+is the account's own, which a closed account keeps). For an open account
 nothing changes (a demoted owner loses the writes, as on `course-assets`;
 the editor and the API already refuse them). Section 19 of
 `supabase/ci/rls_assertions.sql` builds a stand-in of `storage.objects`,
 replays the migration onto it and probes it as an open and a closed
 administrator, owner and student -- the first CI probe of a storage
-policy.
+policy -- and extends the rule above to storage: no storage policy names
+`profiles` or `organization_members`. Accepted remainder: a signed URL
+minted before the account closed keeps working until it expires
+(`SIGNED_URL_TTL_SECONDS`, one hour) -- Storage checks the signature, not
+these policies.
 
 ## Dependency scanning
 
