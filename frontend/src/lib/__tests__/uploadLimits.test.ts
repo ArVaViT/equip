@@ -1,3 +1,7 @@
+import { readFileSync } from "node:fs"
+import { dirname, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
+
 import { describe, expect, it } from "vitest"
 
 import {
@@ -27,6 +31,26 @@ describe("bucket specs match the migration", () => {
     expect(COURSE_MATERIALS.maxBytes).toBe(50 * MB)
     expect(COURSE_MATERIALS.mimeTypes).toContain("audio/mp4")
     expect(COURSE_MATERIALS.mimeTypes).not.toContain("video/mp4")
+  })
+
+  // A copy into a bucket is checked by its INSERT policy alone, so the
+  // policy names the bucket's list too; the three have to agree.
+  it("each bucket's INSERT policy names the same types", () => {
+    const here = dirname(fileURLToPath(import.meta.url))
+    const sql = readFileSync(
+      resolve(
+        here,
+        "../../../../supabase/migrations/20261024142623_a_bucket_admits_only_its_own_types_however_the_file_arrives.sql",
+      ),
+      "utf-8",
+    )
+    const policyTypes = (policy: string): string[] => {
+      const body = sql.slice(sql.indexOf(`CREATE POLICY "${policy}"`))
+      const array = /ARRAY\[([^\]]*)\]/.exec(body.slice(0, body.indexOf(");")))?.[1] ?? ""
+      return [...array.matchAll(/'([^']+)'/g)].map((m) => m[1] ?? "")
+    }
+    expect(policyTypes("course_assets_teacher_insert")).toEqual(COURSE_ASSETS.mimeTypes)
+    expect(policyTypes("course_materials_teacher_insert")).toEqual(COURSE_MATERIALS.mimeTypes)
   })
 
   it("the picker filter does not offer .mp4 and does offer .m4a", () => {

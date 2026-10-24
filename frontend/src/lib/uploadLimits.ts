@@ -10,7 +10,9 @@
  * failed in English a few seconds later. Keeping the numbers here, once,
  * lets every upload path check the same limits the server will.
  *
- * If a migration changes a bucket, change it here in the same PR.
+ * If a migration changes a bucket, change it here in the same PR — and
+ * the bucket's INSERT policy, which names the same list
+ * (`20261024142623_a_bucket_admits_only_its_own_types_however_the_file_arrives.sql`).
  */
 
 export const MB = 1024 * 1024
