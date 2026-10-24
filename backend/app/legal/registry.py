@@ -371,7 +371,11 @@ def month_after(day: date) -> date:
 
 
 def still_announced(revision: Revision, today: date) -> bool:
-    """Whether a notice about ``revision`` is still shown on ``today``.
+    """Whether a notice about a signed document's ``revision`` is still shown.
+
+    Not for the supplier list: its ``effective`` is the day the list changed,
+    and the policy promises 60 days to object from the announcement — the
+    status route leaves those notices out of this rule.
 
     A notice is shown from the day the revision is published until a month
     after the day it takes effect, and then not again. Until 2026-10-23 it was

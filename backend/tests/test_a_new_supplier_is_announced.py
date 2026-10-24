@@ -45,12 +45,12 @@ PROVIDERS = "providers"
 
 @pytest.fixture(autouse=True)
 def _the_clock_stands_on_the_day_of_the_change(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A notice is shown for a month after the revision takes effect.
+    """The tests stand on the day of the change.
 
-    The supplier list last changed on 2026-09-17, so on the real clock nobody
-    has been told about it since 2026-10-17 — which is the rule working, not
-    these tests failing. They are about *who* is told, so they stand on the
-    day itself.
+    A signed document's notice stops a month after its revision takes effect,
+    so on the real clock the lists these tests read would change under them
+    on that date. The supplier page's own notice does not stop (see
+    ``test_a_supplier_change_is_still_told_long_after_it``).
     """
     from app.api.v1 import legal as route
 
@@ -124,6 +124,24 @@ def _mine(client: TestClient) -> dict[str, list[dict[str, str]]]:
 
 def _notice_slugs(client: TestClient) -> list[str]:
     return [notice["slug"] for notice in _mine(client)["notices"]]
+
+
+def test_a_supplier_change_is_still_told_long_after_it(
+    student_client: TestClient, db: Session, student: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The policy promises the change is announced, with 60 days to object.
+
+    A month from the day the list changed would end the telling inside those
+    60 days, and tell nobody who comes back later — so the month after which a
+    signed document's notice stops does not apply here.
+    """
+    from app.api.v1 import legal as route
+
+    changed = document_spec(PROVIDERS).current.effective
+    _accept_everything(db, student, on=datetime.combine(changed, datetime.min.time(), UTC) - timedelta(days=30))
+    monkeypatch.setattr(route, "_today", lambda: changed + timedelta(days=365))
+
+    assert PROVIDERS in _notice_slugs(student_client)
 
 
 def test_the_supplier_page_has_more_than_one_revision() -> None:

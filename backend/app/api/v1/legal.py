@@ -164,12 +164,19 @@ def my_acceptances(
         # gate is up: a banner about a page nobody signs, next to a dialog
         # demanding a signature, is two claims on attention for one change.
         #
-        # Both kinds stop a month after the revision takes effect
-        # (``still_announced``), whether or not anybody closed them.
+        # A signed document's notice stops a month after the revision takes
+        # effect (``still_announced``), whether or not anybody closed it. The
+        # supplier list's does not: its ``effective`` is the day the list
+        # changed, and the policy promises that change is announced in the
+        # platform with 60 days to object — a month from that day would end
+        # the telling inside the window, and tell nobody who comes back later.
         notices=[
             _summary(spec)
-            for spec in (*notices_for(role, accepted), *reference_notices_for(_last_agreed_on(rows), told, owed))
-            if (spec.slug, spec.current.version) not in told and still_announced(spec.current, today)
+            for spec in (
+                *(spec for spec in notices_for(role, accepted) if still_announced(spec.current, today)),
+                *reference_notices_for(_last_agreed_on(rows), told, owed),
+            )
+            if (spec.slug, spec.current.version) not in told
         ],
     )
 
