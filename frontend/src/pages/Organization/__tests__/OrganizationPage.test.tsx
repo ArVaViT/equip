@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { I18nextProvider } from "react-i18next"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
@@ -22,6 +22,7 @@ vi.mock("@/lib/supabase", () => ({
 
 import i18n from "@/i18n/config"
 import { organizationsService, type OrganizationPage as Page } from "@/services/organizations"
+import { storageService } from "@/services/storage"
 import OrganizationPage from "../OrganizationPage"
 
 const page = (over: Partial<Page> = {}): Page => ({
@@ -167,6 +168,38 @@ describe("an organization's page", () => {
     vi.spyOn(organizationsService, "getPage").mockResolvedValue(page({ viewer_can_edit: true, id: "o1", show_member_count: true }))
     renderPage()
     expect(await screen.findByRole("button", { name: "Редактировать страницу" })).toBeInTheDocument()
+  })
+
+  it("lets its director put up a logo and take it down, the way a profile photo is", async () => {
+    vi.spyOn(organizationsService, "getPage").mockResolvedValue(page({ viewer_can_edit: true, id: "o1", show_member_count: true }))
+    const stored = "/img/organization-logos/o1/logo-1a2b3c4d.png"
+    const upload = vi.spyOn(storageService, "uploadOrganizationLogo").mockResolvedValue(stored)
+    const remove = vi.spyOn(storageService, "removePublicObject").mockResolvedValue()
+    const update = vi.spyOn(organizationsService, "updateProfile").mockResolvedValue(page({ viewer_can_edit: true, id: "o1" }))
+    renderPage()
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole("button", { name: "Редактировать страницу" }))
+    // No logo yet: the initials stand in, and there is nothing to remove.
+    expect(screen.getAllByText("U").length).toBeGreaterThan(0)
+    expect(screen.queryByRole("button", { name: "Убрать логотип" })).toBeNull()
+
+    // Too large is refused before anything is uploaded.
+    const big = new File([new Uint8Array(2 * 1024 * 1024 + 1)], "big.png", { type: "image/png" })
+    await user.upload(screen.getByLabelText("Логотип"), big)
+    expect(upload).not.toHaveBeenCalled()
+
+    // Picked: uploaded into the organization's own folder, the page told,
+    // nothing removed (there was nothing).
+    const file = new File(["png"], "Логотип.png", { type: "image/png" })
+    await user.upload(screen.getByLabelText("Логотип"), file)
+    await waitFor(() => expect(update).toHaveBeenCalledWith("o1", { logo_url: stored }))
+    expect(upload).toHaveBeenCalledWith("o1", file)
+    expect(remove).not.toHaveBeenCalled()
+
+    // Taken down: the page told first, then the file removed.
+    await user.click(await screen.findByRole("button", { name: "Убрать логотип" }))
+    await waitFor(() => expect(update).toHaveBeenLastCalledWith("o1", { logo_url: null }))
+    expect(remove).toHaveBeenCalledWith(stored)
   })
 
   it("asks again from a failed load, but not for a page that does not exist", async () => {

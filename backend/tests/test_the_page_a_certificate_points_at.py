@@ -306,6 +306,54 @@ class TestTheDirectorWritesThePage:
             )
         app.dependency_overrides.clear()
 
+    def test_the_logo_is_a_file_in_the_organizations_own_folder_or_nothing(self, db: Session, school: Organization):
+        director = _person(db, "Director", "director")
+        own = f"/img/organization-logos/{SCHOOL_ID}/logo-1a2b3c4d.png"
+        with _client_as(db, director) as c:
+            r = c.patch(f"/api/v1/organizations/{SCHOOL_ID}/profile", json={"logo_url": own})
+            assert r.status_code == 200, r.text
+            assert r.json()["logo_url"] == own
+            # Not the organization's own folder, not the logo bucket, not a
+            # file at all, or a picture hosted somewhere else: refused, and
+            # the one on the page stays.
+            for elsewhere in (
+                f"/img/organization-logos/{uuid.uuid4()}/logo-1a2b3c4d.png",
+                f"/img/avatars/{SCHOOL_ID}/logo-1a2b3c4d.png",
+                f"/img/organization-logos/{SCHOOL_ID}/",
+                f"/img/organization-logos/{SCHOOL_ID}/../other/logo.png",
+                f"/img/organization-logos/{SCHOOL_ID}/..",
+                f"/img/organization-logos/{SCHOOL_ID}/.hidden.png",
+                f"/img/organization-logos/{SCHOOL_ID}/a/logo.png",
+                f"https://rrisqutxlkamwfhcashl.supabase.co/storage/v1/object/public/organization-logos/{SCHOOL_ID}/x.png",
+                "https://example.org/logo.png",
+                "javascript:alert(1)",
+            ):
+                resp = c.patch(f"/api/v1/organizations/{SCHOOL_ID}/profile", json={"logo_url": elsewhere})
+                assert resp.status_code == 422, (elsewhere, resp.text)
+        app.dependency_overrides.clear()
+        # The page carries it to a stranger.
+        with _client_as(db, None) as c:
+            assert c.get("/api/v1/organizations/ucoat").json()["logo_url"] == own
+        app.dependency_overrides.clear()
+        # Taken down: the page shows the initials again, as it did before.
+        with _client_as(db, director) as c:
+            r = c.patch(f"/api/v1/organizations/{SCHOOL_ID}/profile", json={"logo_url": None})
+        app.dependency_overrides.clear()
+        assert r.status_code == 200, r.text
+        assert r.json()["logo_url"] is None
+
+    def test_nobody_but_the_director_sets_the_logo(self, db: Session, school: Organization):
+        teacher = _person(db, "Teacher", "teacher")
+        with _client_as(db, teacher) as c:
+            r = c.patch(
+                f"/api/v1/organizations/{SCHOOL_ID}/profile",
+                json={"logo_url": f"/img/organization-logos/{SCHOOL_ID}/logo-1a2b3c4d.png"},
+            )
+        app.dependency_overrides.clear()
+        assert r.status_code == 404
+        db.refresh(school)
+        assert school.logo_url is None
+
 
 class TestTheShowcase:
     def test_lists_only_verified_organizations_with_a_director_and_a_course(

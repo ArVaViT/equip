@@ -143,14 +143,16 @@ describe("frontend/vercel.json", () => {
     const catchAllIndex = filesystem.findIndex((r) => r.dest === "/index.html");
     const courseAssetsIndex = filesystem.findIndex((r) => r.dest?.includes("/course-assets/"));
     const avatarsIndex = filesystem.findIndex((r) => r.dest?.includes("/avatars/"));
+    const logosIndex = filesystem.findIndex((r) => r.dest?.includes("/organization-logos/"));
     const intakeIndex = filesystem.findIndex((r) =>
       r.dest?.startsWith("https://browser-intake-us5-datadoghq.com/"),
     );
 
-    it("all four rules are present", () => {
+    it("all five rules are present", () => {
       expect(catchAllIndex).toBeGreaterThanOrEqual(0);
       expect(courseAssetsIndex).toBeGreaterThanOrEqual(0);
       expect(avatarsIndex).toBeGreaterThanOrEqual(0);
+      expect(logosIndex).toBeGreaterThanOrEqual(0);
       expect(intakeIndex).toBeGreaterThanOrEqual(0);
     });
 
@@ -161,6 +163,7 @@ describe("frontend/vercel.json", () => {
     it("each proxy is listed before the catch-all", () => {
       expect(courseAssetsIndex).toBeLessThan(catchAllIndex);
       expect(avatarsIndex).toBeLessThan(catchAllIndex);
+      expect(logosIndex).toBeLessThan(catchAllIndex);
       expect(intakeIndex).toBeLessThan(catchAllIndex);
     });
 
@@ -172,6 +175,11 @@ describe("frontend/vercel.json", () => {
         "https://rrisqutxlkamwfhcashl.supabase.co/storage/v1/object/public/course-assets/lesson-1/cover.jpg",
       );
       expect(matches(filesystem[avatarsIndex], "/img/avatars/user-123.png")).toBe(true);
+      const logos = filesystem[logosIndex];
+      const logo = "/img/organization-logos/b761fe38-3c83-4954-ac7c-3363a24b5d7b/logo-1a2b3c4d.png";
+      expect(logo.replace(new RegExp(logos.src), logos.dest!)).toBe(
+        "https://rrisqutxlkamwfhcashl.supabase.co/storage/v1/object/public/organization-logos/b761fe38-3c83-4954-ac7c-3363a24b5d7b/logo-1a2b3c4d.png",
+      );
       const intake = filesystem[intakeIndex];
       expect("/_e/api/v2/rum".replace(new RegExp(intake.src), intake.dest!)).toBe(
         "https://browser-intake-us5-datadoghq.com/api/v2/rum",

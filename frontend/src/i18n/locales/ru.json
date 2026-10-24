@@ -129,7 +129,10 @@
       "saving": "Сохраняем…",
       "saved": "Страница организации обновлена",
       "failed": "Не удалось сохранить",
-      "websitePlaceholder": "https://"
+      "websitePlaceholder": "https://",
+      "logo": "Логотип",
+      "changeLogo": "Изменить логотип",
+      "removeLogo": "Убрать логотип"
     },
     "locked": {
       "how": "Как получить доступ",

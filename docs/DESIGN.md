@@ -38,12 +38,21 @@ Semantic set (light + dark):
 | `card` / `card-foreground`   | Elevated surfaces            |
 | `popover` / `popover-foreground` | Overlays                 |
 | `primary` / `primary-foreground` | Brand + primary actions  |
-| `accent` / `accent-foreground`   | Highlight (rare, academic gold) |
+| `accent` / `accent-foreground`   | Sage: the main button, rare highlights |
 | `destructive` / `destructive-foreground` | Danger only      |
 | `border` / `input` / `ring`  | 1px lines, form borders, focus |
 
 Extra statuses (added as needed): `success`, `warning`, `info`. Always paired
 with a `-foreground`.
+
+**The main button is sage** (decided 2026-10-23). The one filled action a
+page leads with takes `accent` on `accent-foreground` — the sage of the
+landing's leaves and the profile glow; 5.3:1 light, 7.9:1 dark. Everything
+else stays near-monochrome: outline, ghost and links are ink, colour is
+spent on meaning. Not in code yet: `Button`'s default is `bg-brand`
+(near-black `primary`) on every page, the landing included, and changing
+it moves all of them at once — its own pass, with screenshots and
+`contrast-audit.mjs`.
 
 ## Typography
 

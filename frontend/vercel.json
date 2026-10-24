@@ -39,6 +39,11 @@
       "check": true
     },
     {
+      "src": "^/img/organization-logos(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))?$",
+      "dest": "https://rrisqutxlkamwfhcashl.supabase.co/storage/v1/object/public/organization-logos/$1",
+      "check": true
+    },
+    {
       "src": "^(?:/((?!assets/|video/|\\.well-known/).*))$",
       "dest": "/index.html",
       "check": true

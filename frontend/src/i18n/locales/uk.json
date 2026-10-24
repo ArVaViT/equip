@@ -129,7 +129,10 @@
       "saving": "Зберігаємо…",
       "saved": "Сторінку організації оновлено",
       "failed": "Не вдалося зберегти",
-      "websitePlaceholder": "https://"
+      "websitePlaceholder": "https://",
+      "logo": "Логотип",
+      "changeLogo": "Змінити логотип",
+      "removeLogo": "Прибрати логотип"
     },
     "locked": {
       "how": "Як отримати доступ",

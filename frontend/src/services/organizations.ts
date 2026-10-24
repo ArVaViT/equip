@@ -53,6 +53,8 @@ export interface OrganizationProfileUpdate {
   description?: string | null
   website_url?: string | null
   show_member_count?: boolean
+  /** A file in the organization's own `organization-logos` folder (`storageService.uploadOrganizationLogo`), or `null` to take the logo down. */
+  logo_url?: string | null
 }
 
 export type OrganizationStatus = "pending" | "approved" | "verified" | "suspended"
