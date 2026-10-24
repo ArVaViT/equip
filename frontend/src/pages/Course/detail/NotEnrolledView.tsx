@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { toProxyImage } from "@/lib/images"
 import { countChapters, countModules, readCourseStructure } from "@/lib/courseStructure"
 import type { Course, Cohort } from "@/types"
-import { formatDate } from "./types"
+import { formatDate, formatSchoolDay } from "./types"
 import { planEnrollment } from "./enrollPlan"
 import { CohortSelectModal } from "./CohortSelectModal"
 import { DraftOutline } from "./DraftOutline"
@@ -126,14 +126,15 @@ export function NotEnrolledView({
                 </Badge>
               </div>
               <p className="text-sm text-ink-muted">
-                {formatDate(activeCohort.start_date)} &mdash; {formatDate(activeCohort.end_date)}
+                {formatSchoolDay(activeCohort.start_on, activeCohort.start_date)} &mdash;{" "}
+                {formatSchoolDay(activeCohort.end_on, activeCohort.end_date)}
               </p>
               {activeCohort.enrollment_start && activeCohort.enrollment_end && (
                 <p className="text-xs text-ink-muted mt-1 flex items-center gap-1">
                   <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
                   {t("courseDetail.enrollmentRangeLabel", {
-                    start: formatDate(activeCohort.enrollment_start),
-                    end: formatDate(activeCohort.enrollment_end),
+                    start: formatSchoolDay(activeCohort.enrollment_start_on, activeCohort.enrollment_start),
+                    end: formatSchoolDay(activeCohort.enrollment_end_on, activeCohort.enrollment_end),
                   })}
                 </p>
               )}

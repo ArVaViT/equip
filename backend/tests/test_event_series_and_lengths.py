@@ -480,34 +480,37 @@ class TestTheGroupsDays:
         assert "DTSTART;VALUE=DATE:20991219" in ics
 
     @pytest.mark.parametrize(
-        ("author_zone", "expected"),
+        ("school_zone", "expected"),
         [
-            # Picked as 00:30 on the 5th in Kyiv = 21:30Z on the 4th. A reader
-            # in Los Angeles is still on the 4th then — and must see the 5th.
+            # Picked as 00:30 on the 5th at a school in Kyiv = 21:30Z on the 4th.
+            # A reader in Los Angeles is still on the 4th then — and must see the 5th.
             ("Europe/Kyiv", date(2099, 10, 5)),
-            # The author never set a zone: UTC, the same day for everyone.
+            # A school that never named its zone keeps Indianapolis: 17:30 on the 4th.
             (None, date(2099, 10, 4)),
         ],
     )
-    def test_the_day_is_the_authors_not_the_readers(
-        self, db: Session, teacher: User, student: User, author_zone: str | None, expected: date
+    def test_the_day_is_the_school_s_not_the_reader_s(
+        self, db: Session, teacher: User, student: User, school_zone: str | None, expected: date
     ) -> None:
         from app.models.cohort import Cohort
         from app.models.course import Course
         from app.services.calendar_service import build_calendar_events
+        from app.services.grading_scheme import get_org_settings
 
         course_id = _course(db, student)
         course = db.get(Course, course_id)
         assert course is not None
-        author = teacher
-        author.time_zone = author_zone
+        get_org_settings(db, course.organization_id).time_zone = school_zone
+        # The director's own zone no longer decides (it did until 2026-10-23):
+        # a director in Kyiv running a school in Indiana dates it by the school.
+        teacher.time_zone = "Europe/Kyiv"
         cohort = Cohort(
             id=uuid.uuid4(),
             start_date=datetime(2099, 10, 4, 21, 30, tzinfo=UTC),
             end_date=datetime(2099, 12, 19, 7, 0, tzinfo=UTC),
             status="upcoming",
             organization_id=uuid.UUID(str(course.organization_id)),
-            created_by=author.id,
+            created_by=teacher.id,
         )
         db.add(cohort)
         db.flush()

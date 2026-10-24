@@ -3,10 +3,11 @@
 Sprint 3 covers the manual editorial flow — teachers and admins
 create questions in DRAFT, walk them forward through the 5 stages,
 reject what fails review, publish what passes, and schedule what's
-published. The AI generation orchestrator lands in a future sprint;
-it writes to the same ``daily_challenge_question_events`` audit
-table this service writes to, so the audit history is unified across
-manual + AI flows.
+published. The AI generation orchestrator (``orchestrator.py``) writes
+to the same ``daily_challenge_question_events`` audit table this
+service writes to, so the audit history is unified across manual + AI
+flows — and the replenish worker (``replenish.py``) drives these same
+helpers to publish its survivor with nobody in between.
 
 Status transition rules — forward-only
 

@@ -552,6 +552,12 @@ export interface Cohort {
   // Computed on the server from cohort_courses + enrollments — see ADR-010.
   course_ids: string[]
   student_count: number
+  /** The window's days, `YYYY-MM-DD` on the school's clock — the same for
+   *  every reader. The instants above stay for everything that is not a date. */
+  start_on?: string | null
+  end_on?: string | null
+  enrollment_start_on?: string | null
+  enrollment_end_on?: string | null
 }
 
 // InvitationRole deliberately excludes 'admin' -- mirrors the backend

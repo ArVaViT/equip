@@ -15,6 +15,7 @@ not a judgement made at the moment somebody is impatient to deploy.
 
 from __future__ import annotations
 
+import calendar
 import hashlib
 from dataclasses import dataclass
 from datetime import date
@@ -361,6 +362,30 @@ def notices_for(role: str, accepted: set[tuple[str, str]]) -> tuple[DocumentSpec
         if spec.consent_index <= best < len(spec.revisions) - 1:
             changed.append(spec)
     return tuple(changed)
+
+
+def month_after(day: date) -> date:
+    """The same day of the next month — its last day when there is no such day."""
+    year, month = (day.year + 1, 1) if day.month == 12 else (day.year, day.month + 1)
+    return date(year, month, min(day.day, calendar.monthrange(year, month)[1]))
+
+
+def still_announced(revision: Revision, today: date) -> bool:
+    """Whether a notice about a signed document's ``revision`` is still shown.
+
+    Not for the supplier list: its ``effective`` is the day the list changed,
+    and the policy promises 60 days to object from the announcement — the
+    status route leaves those notices out of this rule.
+
+    A notice is shown from the day the revision is published until a month
+    after the day it takes effect, and then not again. Until 2026-10-23 it was
+    shown until closed, which for somebody who never closes banners was for
+    ever — and a banner that is always there is one that is never read.
+    ``effective`` is a calendar day of the platform's, compared in UTC like
+    everything else about these documents (``_last_agreed_on``); a school's
+    clock does not come into it, since a reader may belong to no school.
+    """
+    return today < month_after(revision.effective)
 
 
 @cache

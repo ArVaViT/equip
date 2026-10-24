@@ -35,20 +35,26 @@ Pipeline (per Agent C's design)
        nowhere — see Round 6.
 
   Round 5 — Pilot review
-    Logged with status 'pilot_summary' but the actual pilot answering
-    happens via the editorial UI (Sprint 4+ frontend). The orchestrator
-    leaves a placeholder event so the audit trail is unified across the
-    AI + editorial phases.
+    Logged with status 'pilot_summary' only: no check happens here.
+    People can answer a draft from the editorial UI before promoting
+    it; the replenish worker promotes past this stage with nobody
+    having answered (see Round 6). The placeholder event keeps the
+    audit trail one shape across the AI and editorial phases.
 
   Round 6 — Publish-ready persistence
     For each surviving question, create a DRAFT row in
     ``daily_challenge_questions`` using the existing
-    ``create_question`` service. The editorial team then walks the
-    drafts through ``promote_status`` (or rejects them outright). The
-    orchestrator itself never publishes. The daily replenish worker
-    (``replenish.py``) is the one exception: it promotes a survivor of
-    all six rounds straight to published, so the schedule never runs
-    dry.
+    ``create_question`` service, and stop: this module publishes
+    nothing. Who publishes depends on the caller. From the editorial UI
+    a person walks the draft through ``promote_status`` and
+    ``publish_question``, or rejects it. From the daily replenish
+    worker (``replenish.py``) the survivor of the six rounds is
+    promoted through every stage — Round 5 included — and published on
+    the same tick, with nobody in between. "AI never publishes" is the
+    lessons' rule (a teacher sends a course out, and it waits in
+    ``publishing`` until its translations are checked); the Daily
+    Challenge publishes itself once the six rounds are passed
+    (decided 2026-10-23).
 
 Every round writes a row to ``daily_challenge_question_events`` with
 the same ``generation_run_id``. Editorial UI can later replay the
@@ -616,9 +622,10 @@ def run_generation(
         return outcome
 
     # ── Round 5 — Pilot placeholder ───────────────────────────────────
-    # Pilot review is human-driven via the editorial UI. The
-    # orchestrator stamps a placeholder event so the audit trail
-    # surfaces the gating point even when no humans have answered yet.
+    # No check happens here. People can answer a draft from the editorial
+    # UI before promoting it; the replenish worker promotes past this stage
+    # with nobody having answered (see the module docstring). The event is
+    # stamped so the audit trail keeps the same shape either way.
     _log_event(
         db,
         question_id=None,

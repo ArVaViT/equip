@@ -1,7 +1,7 @@
 """Serving the documents, and recording that somebody accepted one."""
 
 import uuid
-from datetime import date
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy import select
@@ -21,6 +21,7 @@ from app.legal import (
     notices_for,
     outstanding_for,
     required_slugs,
+    still_announced,
 )
 from app.legal.reference_notices import reference_notices_for
 from app.models.legal_acceptance import LegalAcceptance
@@ -103,6 +104,11 @@ def _last_agreed_on(rows: list[LegalAcceptance]) -> date | None:
     return max(row.accepted_at for row in rows).date()
 
 
+def _today() -> date:
+    """The platform's day, in UTC — the clock ``_last_agreed_on`` reads too."""
+    return datetime.now(UTC).date()
+
+
 def _accepted_rows(db: Session, user_id: uuid.UUID) -> list[LegalAcceptance]:
     return list(db.scalars(select(LegalAcceptance).where(LegalAcceptance.user_id == user_id)).all())
 
@@ -134,6 +140,7 @@ def my_acceptances(
         for row in db.scalars(select(LegalNoticeSeen).where(LegalNoticeSeen.user_id == current_user.id)).all()
     }
     owed = outstanding_for(role, accepted)
+    today = _today()
     return LegalStatusOut(
         accepted=[
             LegalAcceptanceOut(
@@ -156,9 +163,19 @@ def my_acceptances(
         # ``owed`` goes in so the second kind stays quiet while the consent
         # gate is up: a banner about a page nobody signs, next to a dialog
         # demanding a signature, is two claims on attention for one change.
+        #
+        # A signed document's notice stops a month after the revision takes
+        # effect (``still_announced``), whether or not anybody closed it. The
+        # supplier list's does not: its ``effective`` is the day the list
+        # changed, and the policy promises that change is announced in the
+        # platform with 60 days to object — a month from that day would end
+        # the telling inside the window, and tell nobody who comes back later.
         notices=[
             _summary(spec)
-            for spec in (*notices_for(role, accepted), *reference_notices_for(_last_agreed_on(rows), told, owed))
+            for spec in (
+                *(spec for spec in notices_for(role, accepted) if still_announced(spec.current, today)),
+                *reference_notices_for(_last_agreed_on(rows), told, owed),
+            )
             if (spec.slug, spec.current.version) not in told
         ],
     )

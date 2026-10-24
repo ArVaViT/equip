@@ -233,6 +233,14 @@ export function documentDay(day: string | null | undefined, instant?: string | n
 }
 
 /**
+ * `documentDay` in the canonical `YYYY-MM-DD` cell form — the day a school
+ * fixed (`start_on`), or "" when there is neither a day nor an instant.
+ */
+export function formatDay(day: string | null | undefined, instant?: string | null): string {
+  return documentDay(day, instant) ?? ""
+}
+
+/**
  * A `YYYY-MM-DD` day in long form — «24 октября 2026 г.», "24 October 2026"
  * — with no zone applied: the day is already decided, and projecting it
  * into the reader's zone would print the 23rd west of Greenwich. Formatted
