@@ -43,6 +43,15 @@
 -- where a closed account is closed. SELECT is what `remove` needs to find
 -- the row; the public URL is served by the public bucket without RLS.
 --
+-- INSERT also asks the type: `metadata->>'mimetype'` is one of exactly the
+-- bucket's four. Storage checks `allowed_mime_types` on an ordinary upload
+-- only; a copy (`POST /object/copy`) and an upload to a key ending in
+-- `.emptyFolderPlaceholder` are decided by this policy alone, on a row
+-- whose `metadata.mimetype` is the type the object will be served with --
+-- so without it a director could store `image/svg+xml` or a copied PDF in
+-- a public bucket on our origin (the same hole, and the same fix, as
+-- 20261024142623 for avatars, course-assets and course-materials).
+--
 -- Storage policies are not in supabase/schema.sql (it dumps `public` only;
 -- nothing in `public` changes here). supabase/ci/rls_assertions.sql
 -- section 21 replays this file onto the stand-in of storage.objects and
@@ -81,6 +90,7 @@ CREATE POLICY "organization_logos_director_insert"
   TO authenticated
   WITH CHECK (
     bucket_id = 'organization-logos'
+    AND (metadata->>'mimetype') = ANY (ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
     AND (
       (SELECT public.is_platform_staff())
       OR CASE

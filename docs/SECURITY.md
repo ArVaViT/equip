@@ -352,7 +352,11 @@ webp/gif (no SVG on a bucket served from equipbible.com), one folder per
 organization named by its id. SELECT, INSERT and DELETE go to the
 organization's director (`is_director_of()`) or platform staff
 (`is_platform_staff()`), both false for a closed account; no UPDATE
-policy, as on the other public buckets. The folder is cast to uuid behind
+policy, as on the other public buckets. INSERT also requires
+`metadata->>'mimetype'` to be one of the bucket's four types: a copy
+(`POST /object/copy`) and an upload to a `.emptyFolderPlaceholder` key
+skip the bucket's own MIME check and are decided by that policy alone.
+The folder is cast to uuid behind
 a CASE, so a key whose first segment is no uuid (every `course-materials`
 key, which the same policy is evaluated against) is a refusal and never an
 error. `PATCH /organizations/{id}/profile` accepts a `logo_url` only of

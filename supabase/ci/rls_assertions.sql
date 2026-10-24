@@ -1771,8 +1771,9 @@ END $$;
 -- to uuid behind a CASE, so a key that is not a uuid (every course-materials
 -- key) is a refusal, never an error. No UPDATE policy: a public bucket.
 --
--- The stand-in of storage.objects is section 19's; the migration also
--- inserts the bucket row, so a stand-in of storage.buckets is added here.
+-- The stand-in of storage.objects, `metadata` included, is section 19's;
+-- the migration also inserts the bucket row, so a stand-in of
+-- storage.buckets is added here.
 -- The people: the director of A (section 14), S (teacher of B, directs
 -- nothing; open again since the end of section 19), the open administrator
 -- and the switched-off one, and the student.
@@ -1790,9 +1791,9 @@ CREATE TABLE storage.buckets (
 
 \ir ../migrations/20261024033327_an_organization_has_a_logo_folder.sql
 
-INSERT INTO storage.objects (bucket_id, name, owner_id) VALUES
-  ('organization-logos', 'aaaa1111-0000-0000-0000-000000000001/logo-old.png', '33333333-3333-3333-3333-333333333333'),
-  ('organization-logos', 'bbbb2222-0000-0000-0000-000000000002/logo-old.png', NULL);
+INSERT INTO storage.objects (bucket_id, name, owner_id, metadata) VALUES
+  ('organization-logos', 'aaaa1111-0000-0000-0000-000000000001/logo-old.png', '33333333-3333-3333-3333-333333333333', '{"mimetype": "image/png"}'),
+  ('organization-logos', 'bbbb2222-0000-0000-0000-000000000002/logo-old.png', NULL, '{"mimetype": "image/png"}');
 
 -- The director of A: A's folder, and only A's.
 SET request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
@@ -1809,8 +1810,8 @@ BEGIN
   IF n <> 0 THEN
     RAISE EXCEPTION 'SECURITY HOLE: a director reads the logo folder of a school they do not direct';
   END IF;
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('organization-logos', 'aaaa1111-0000-0000-0000-000000000001/logo-new.png', '33333333-3333-3333-3333-333333333333');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('organization-logos', 'aaaa1111-0000-0000-0000-000000000001/logo-new.png', '33333333-3333-3333-3333-333333333333', '{"mimetype": "image/png"}');
   DELETE FROM storage.objects WHERE name = 'aaaa1111-0000-0000-0000-000000000001/logo-new.png';
   GET DIAGNOSTICS n = ROW_COUNT;
   IF n <> 1 THEN
@@ -1840,8 +1841,8 @@ END $$;
 
 DO $$
 BEGIN
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('organization-logos', 'bbbb2222-0000-0000-0000-000000000002/planted.png', '33333333-3333-3333-3333-333333333333');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('organization-logos', 'bbbb2222-0000-0000-0000-000000000002/planted.png', '33333333-3333-3333-3333-333333333333', '{"mimetype": "image/png"}');
   RAISE EXCEPTION 'SECURITY HOLE: a director uploads a logo for a school they do not direct';
 EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: an upload into another school''s logo folder is refused';
@@ -1849,11 +1850,47 @@ END $$;
 
 DO $$
 BEGIN
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('organization-logos', 'not-a-uuid/logo.png', '33333333-3333-3333-3333-333333333333');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('organization-logos', 'not-a-uuid/logo.png', '33333333-3333-3333-3333-333333333333', '{"mimetype": "image/png"}');
   RAISE EXCEPTION 'SECURITY HOLE: a director uploads a logo into a folder that names no organization';
 EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: an upload into a folder that is not an organization id is refused, not an error';
+END $$;
+
+-- The type, in A's own folder: the four image types and nothing else,
+-- however the row arrives -- an upload, a folder placeholder (Storage
+-- skips the MIME check for it), or a copy, which keeps the source's type
+-- or takes the one the caller names. Each probe is the INSERT Storage
+-- tests, rolled back.
+DO $$
+DECLARE c record; ok boolean; holes text := ''; broken text := '';
+BEGIN
+  FOR c IN SELECT * FROM (VALUES
+    ('logo-1.jpg', 'image/jpeg', true),
+    ('logo-2.webp', 'image/webp', true),
+    ('logo-3.gif', 'image/gif', true),
+    ('x.svg', 'image/svg+xml', false),
+    ('x/.emptyFolderPlaceholder', 'application/xhtml+xml', false),
+    ('x.js', 'text/javascript', false),
+    ('x.pdf', 'application/pdf', false),
+    ('x', NULL, false)
+  ) AS t(file, mime, want) LOOP
+    BEGIN
+      INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+      VALUES ('organization-logos', 'aaaa1111-0000-0000-0000-000000000001/' || c.file,
+              '33333333-3333-3333-3333-333333333333',
+              CASE WHEN c.mime IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('mimetype', c.mime) END);
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'rollback';
+    EXCEPTION
+      WHEN insufficient_privilege THEN ok := false;
+      WHEN raise_exception THEN ok := true;
+    END;
+    IF ok AND NOT c.want THEN holes := holes || ' ' || coalesce(c.mime, '(no type)'); END IF;
+    IF c.want AND NOT ok THEN broken := broken || ' ' || c.mime; END IF;
+  END LOOP;
+  IF holes <> '' THEN RAISE EXCEPTION 'SECURITY HOLE: the director of A adds a logo of type%', holes; END IF;
+  IF broken <> '' THEN RAISE EXCEPTION 'BROKEN: the director of A cannot add a logo of type%', broken; END IF;
+  RAISE NOTICE 'OK: A''s logo folder takes the four image types and nothing else';
 END $$;
 
 -- Permissive policies are OR-ed across buckets: the folder named after A
@@ -1881,15 +1918,15 @@ BEGIN
     RAISE EXCEPTION 'SECURITY HOLE: the logo policies let the director of A remove % file(s) of another bucket', n;
   END IF;
   BEGIN
-    INSERT INTO storage.objects (bucket_id, name, owner_id)
-    VALUES ('avatars', 'aaaa1111-0000-0000-0000-000000000001/by-director.png', '33333333-3333-3333-3333-333333333333');
+    INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+    VALUES ('avatars', 'aaaa1111-0000-0000-0000-000000000001/by-director.png', '33333333-3333-3333-3333-333333333333', '{"mimetype": "image/png"}');
     RAISE EXCEPTION 'SECURITY HOLE: the logo policies let the director of A upload into avatars';
   EXCEPTION
     WHEN insufficient_privilege THEN NULL;
   END;
   BEGIN
-    INSERT INTO storage.objects (bucket_id, name, owner_id)
-    VALUES ('course-materials', 'aaaa1111-0000-0000-0000-000000000001/by-director.pdf', '33333333-3333-3333-3333-333333333333');
+    INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+    VALUES ('course-materials', 'aaaa1111-0000-0000-0000-000000000001/by-director.pdf', '33333333-3333-3333-3333-333333333333', '{"mimetype": "application/pdf"}');
     RAISE EXCEPTION 'SECURITY HOLE: the logo policies let the director of A upload into course-materials';
   EXCEPTION
     WHEN insufficient_privilege THEN NULL;
@@ -1925,8 +1962,8 @@ END $$;
 
 DO $$
 BEGIN
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('organization-logos', 'bbbb2222-0000-0000-0000-000000000002/by-teacher.png', '55555555-5555-5555-5555-555555555555');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('organization-logos', 'bbbb2222-0000-0000-0000-000000000002/by-teacher.png', '55555555-5555-5555-5555-555555555555', '{"mimetype": "image/png"}');
   RAISE EXCEPTION 'SECURITY HOLE: a teacher uploads the logo of the school they teach in';
 EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a teacher''s logo upload is refused';
@@ -1954,14 +1991,48 @@ BEGIN
   IF n <> 2 THEN
     RAISE EXCEPTION 'BROKEN: an administrator reads % of the 2 logos', n;
   END IF;
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('organization-logos', 'bbbb2222-0000-0000-0000-000000000002/by-admin.png', '77777777-7777-7777-7777-777777777777');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('organization-logos', 'bbbb2222-0000-0000-0000-000000000002/by-admin.png', '77777777-7777-7777-7777-777777777777', '{"mimetype": "image/png"}');
   DELETE FROM storage.objects WHERE name = 'bbbb2222-0000-0000-0000-000000000002/by-admin.png';
   GET DIAGNOSTICS n = ROW_COUNT;
   IF n <> 1 THEN
     RAISE EXCEPTION 'BROKEN: an administrator cannot remove a logo (% rows)', n;
   END IF;
   RAISE NOTICE 'OK: an open administrator reads and writes every logo folder';
+END $$;
+
+-- A copy from course-materials, which staff read whole: the row keeps the
+-- PDF's type, or takes the one the caller names. Refused either way unless
+-- that type is an image.
+DO $$
+DECLARE c record; md jsonb; ok boolean; holes text := '';
+BEGIN
+  SELECT metadata INTO md FROM storage.objects
+   WHERE bucket_id = 'course-materials' AND name = 'course-a-institute/syllabus.pdf';
+  IF md IS NULL THEN
+    RAISE EXCEPTION 'BROKEN: the copy probe cannot read its source';
+  END IF;
+  FOR c IN SELECT * FROM (VALUES
+    ('s.pdf', NULL::text),
+    ('s.svg', 'image/svg+xml'),
+    ('s.xhtml', 'application/xhtml+xml')
+  ) AS t(file, mime) LOOP
+    BEGIN
+      INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+      VALUES ('organization-logos', 'bbbb2222-0000-0000-0000-000000000002/' || c.file,
+              '77777777-7777-7777-7777-777777777777',
+              CASE WHEN c.mime IS NULL THEN md ELSE md || jsonb_build_object('mimetype', c.mime) END);
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'rollback';
+    EXCEPTION
+      WHEN insufficient_privilege THEN ok := false;
+      WHEN raise_exception THEN ok := true;
+    END;
+    IF ok THEN holes := holes || ' ' || c.file; END IF;
+  END LOOP;
+  IF holes <> '' THEN
+    RAISE EXCEPTION 'SECURITY HOLE: an administrator copies a course PDF into organization-logos as%', holes;
+  END IF;
+  RAISE NOTICE 'OK: a course PDF copied into organization-logos is refused, under its own type or an image''s name';
 END $$;
 
 -- A student: nothing.
@@ -1981,8 +2052,8 @@ END $$;
 
 DO $$
 BEGIN
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('organization-logos', 'aaaa1111-0000-0000-0000-000000000001/by-student.png', '11111111-1111-1111-1111-111111111111');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('organization-logos', 'aaaa1111-0000-0000-0000-000000000001/by-student.png', '11111111-1111-1111-1111-111111111111', '{"mimetype": "image/png"}');
   RAISE EXCEPTION 'SECURITY HOLE: a student uploads a logo';
 EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a student''s logo upload is refused';
@@ -2011,8 +2082,8 @@ END $$;
 
 DO $$
 BEGIN
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('organization-logos', 'aaaa1111-0000-0000-0000-000000000001/after-closing.png', '33333333-3333-3333-3333-333333333333');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('organization-logos', 'aaaa1111-0000-0000-0000-000000000001/after-closing.png', '33333333-3333-3333-3333-333333333333', '{"mimetype": "image/png"}');
   RAISE EXCEPTION 'SECURITY HOLE: a deactivated director still uploads a logo';
 EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a deactivated director''s logo upload is refused';
@@ -2046,8 +2117,8 @@ BEGIN
   IF n <> 1 THEN
     RAISE EXCEPTION 'BROKEN: a restored director cannot read the school''s logo';
   END IF;
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('organization-logos', 'aaaa1111-0000-0000-0000-000000000001/after-restore.png', '33333333-3333-3333-3333-333333333333');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('organization-logos', 'aaaa1111-0000-0000-0000-000000000001/after-restore.png', '33333333-3333-3333-3333-333333333333', '{"mimetype": "image/png"}');
   DELETE FROM storage.objects WHERE name = 'aaaa1111-0000-0000-0000-000000000001/after-restore.png';
   GET DIAGNOSTICS n = ROW_COUNT;
   IF n <> 1 THEN
@@ -2105,7 +2176,18 @@ BEGIN
      OR b.allowed_mime_types <> ARRAY['image/jpeg','image/png','image/webp','image/gif'] THEN
     RAISE EXCEPTION 'BROKEN: the organization-logos bucket is not the avatars bucket''s shape (public, 2 MB, jpeg/png/webp/gif)';
   END IF;
-  RAISE NOTICE 'OK: organization-logos has three authenticated-only policies, no UPDATE, and the avatars bucket''s limits';
+  -- Its INSERT policy names the bucket's types: a copy is checked there only.
+  SELECT count(*) INTO n FROM pg_policies
+  WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND policyname = 'organization_logos_director_insert'
+    AND with_check LIKE '%''mimetype''%'
+    AND with_check LIKE '%''image/jpeg''%' AND with_check LIKE '%''image/png''%'
+    AND with_check LIKE '%''image/webp''%' AND with_check LIKE '%''image/gif''%'
+    AND with_check NOT LIKE '%svg%';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: organization_logos_director_insert does not ask metadata->>''mimetype'' for the bucket''s four types';
+  END IF;
+  RAISE NOTICE 'OK: organization-logos has three authenticated-only policies, no UPDATE, the avatars bucket''s limits, and an INSERT that asks the type';
 END $$;
 
 SELECT 'RLS policy assertions passed' AS result;
