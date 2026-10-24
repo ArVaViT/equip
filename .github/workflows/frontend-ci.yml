@@ -106,8 +106,15 @@ jobs:
       # tailwindcss (chokidar, micromatch), which runs at build time on our own
       # globs — nothing of it reaches a browser or takes input from a user. No
       # patched braces exists yet; drop this the day one does.
+      #
+      # GHSA-mrhx-c7xc-m3w5 (zod < 4.6.6, memory exhaustion validating oversized
+      # constrained collections) is allowlisted from 2026-10-24: zod runs only in
+      # the browser, on the auth and course forms' own input, so an oversized
+      # value can only stall the tab of whoever typed it. The fix, zod 4.6,
+      # grows the schemas chunk from 17.2 to 23.6 kB gzip, over its 20 kB
+      # budget; re-check when a smaller zod release lands.
       - name: Audit production dependencies
-        run: npx --yes audit-ci@7.1.0 --high --skip-dev --allowlist GHSA-qwww-vcr4-c8h2 GHSA-vfj7-8cjw-p6xm
+        run: npx --yes audit-ci@7.1.0 --high --skip-dev --allowlist GHSA-qwww-vcr4-c8h2 GHSA-vfj7-8cjw-p6xm GHSA-mrhx-c7xc-m3w5
 
       # ESLint 10 flat config resolves file patterns via its own config;
       # the legacy --ext flag was removed, and `tsx`/`ts` file matching is
