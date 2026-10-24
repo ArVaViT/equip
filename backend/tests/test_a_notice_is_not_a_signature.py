@@ -46,6 +46,22 @@ SEEN = "/api/v1/legal/notices/seen"
 
 CORRECTION = "2.2"
 
+#: The day 2.1 takes effect. Pinned, because a notice is shown for a month after
+#: that day and then not again: run on the real clock these tests would start
+#: failing on 2027-01-15, saying nothing about the code.
+THE_DAY_2_1_TAKES_EFFECT = date(2026, 12, 15)
+
+
+def _today_is(monkeypatch: pytest.MonkeyPatch, day: date) -> None:
+    from app.api.v1 import legal as route
+
+    monkeypatch.setattr(route, "_today", lambda: day)
+
+
+@pytest.fixture(autouse=True)
+def _the_clock_stands_where_2_1_takes_effect(monkeypatch: pytest.MonkeyPatch) -> None:
+    _today_is(monkeypatch, THE_DAY_2_1_TAKES_EFFECT)
+
 
 @pytest.fixture
 def publish_a_correction(monkeypatch: pytest.MonkeyPatch) -> Callable[[], str]:
@@ -216,3 +232,63 @@ def test_both_documents_published_on_2026_10_16_are_notices() -> None:
         current = document_spec(slug).current
         assert current.version == "2.1"
         assert current.consent is False
+
+
+# ── A notice stops a month after the revision takes effect ─────────────
+
+
+def _signed_2_0(db: Session) -> None:
+    db.query(LegalAcceptance).filter(LegalAcceptance.user_id == STUDENT_ID).delete()
+    for slug in ("privacy", "terms"):
+        db.add(
+            LegalAcceptance(
+                user_id=STUDENT_ID,
+                document_slug=slug,
+                version="2.0",
+                locale="ru",
+                content_sha256=LEGAL_DOCUMENT_FINGERPRINTS[(slug, "2.0", "ru")],
+            )
+        )
+    db.commit()
+
+
+@pytest.mark.parametrize(
+    ("today", "told"),
+    [
+        pytest.param(date(2026, 10, 16), ["privacy", "terms"], id="the-day-it-was-published"),
+        pytest.param(date(2026, 12, 14), ["privacy", "terms"], id="the-day-before-it-takes-effect"),
+        pytest.param(date(2026, 12, 15), ["privacy", "terms"], id="the-day-it-takes-effect"),
+        pytest.param(date(2027, 1, 14), ["privacy", "terms"], id="the-day-before-the-month-is-out"),
+        pytest.param(date(2027, 1, 15), [], id="a-month-on"),
+        pytest.param(date(2027, 1, 16), [], id="the-day-after-that"),
+    ],
+)
+def test_a_notice_is_shown_until_a_month_after_the_revision_takes_effect(
+    student_client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch, today: date, told: list[str]
+) -> None:
+    """Somebody on 2.0 who never closes banners.
+
+    Until 2026-10-23 they were told about 2.1 for ever. Now the server stops
+    telling them a month after the day it took effect — by calendar date, on
+    the platform's clock (UTC), the same clock ``effective`` is written in. The
+    client is not consulted: nothing about the banner changed there.
+    """
+    _signed_2_0(db)
+    _today_is(monkeypatch, today)
+
+    status = student_client.get(MINE).json()
+
+    assert status["outstanding"] == []
+    assert sorted(n["slug"] for n in status["notices"]) == told
+
+
+def test_an_expired_notice_was_not_quietly_marked_as_seen(
+    student_client: TestClient, db: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Not shown is not the same as told: the record of who was told stays what
+    # it was, so the two tables keep answering different questions.
+    _signed_2_0(db)
+    _today_is(monkeypatch, date(2027, 2, 1))
+
+    assert student_client.get(MINE).json()["notices"] == []
+    assert db.query(LegalNoticeSeen).count() == 0

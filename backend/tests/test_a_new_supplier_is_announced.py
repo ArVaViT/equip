@@ -44,6 +44,20 @@ PROVIDERS = "providers"
 
 
 @pytest.fixture(autouse=True)
+def _the_clock_stands_on_the_day_of_the_change(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A notice is shown for a month after the revision takes effect.
+
+    The supplier list last changed on 2026-09-17, so on the real clock nobody
+    has been told about it since 2026-10-17 — which is the rule working, not
+    these tests failing. They are about *who* is told, so they stand on the
+    day itself.
+    """
+    from app.api.v1 import legal as route
+
+    monkeypatch.setattr(route, "_today", lambda: document_spec(PROVIDERS).current.effective)
+
+
+@pytest.fixture(autouse=True)
 def _they_arrive_having_signed_nothing(nobody_has_signed_anything: None) -> None:
     """These tests place the acceptances themselves, at chosen times.
 

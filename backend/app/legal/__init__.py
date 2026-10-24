@@ -50,9 +50,11 @@ from app.legal.registry import (
     Revision,
     document_for,
     document_spec,
+    month_after,
     notices_for,
     outstanding_for,
     required_slugs,
+    still_announced,
 )
 
 __all__ = [
@@ -70,7 +72,9 @@ __all__ = [
     "Revision",
     "document_for",
     "document_spec",
+    "month_after",
     "notices_for",
     "outstanding_for",
     "required_slugs",
+    "still_announced",
 ]

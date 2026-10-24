@@ -44,7 +44,9 @@ const NAMES: Record<string, string> = {
  * commas is a consent screen people stop reading.
  *
  * Dismissal is recorded on the server rather than in ``localStorage``, so a
- * banner closed on a phone is not waiting on the laptop.
+ * banner closed on a phone is not waiting on the laptop. The server also
+ * stops sending a notice a month after its revision takes effect
+ * (``still_announced``), so one nobody closes does not stay for ever.
  */
 export function LegalNoticeBanner() {
   const { user } = useAuth()

@@ -27,9 +27,11 @@ from app.legal import (
     Revision,
     document_for,
     document_spec,
+    month_after,
     notices_for,
     outstanding_for,
     required_slugs,
+    still_announced,
 )
 from app.legal.registry import VERSION_HEADLINE, headline_version
 from app.models.user import UserRole
@@ -210,6 +212,31 @@ def test_dropping_a_role_from_a_document_stops_it_being_asked(monkeypatch) -> No
 
     assert "teacher-terms" not in required_slugs("teacher")
     assert "teacher-terms" in required_slugs("director")
+
+
+# ── A notice is shown for a month after the revision takes effect ─────
+
+
+def test_a_month_after_is_the_same_day_of_the_next_month() -> None:
+    assert month_after(date(2026, 12, 15)) == date(2027, 1, 15)
+    assert month_after(date(2026, 9, 17)) == date(2026, 10, 17)
+    # No 31st of February, and none of April: the month's last day instead.
+    assert month_after(date(2027, 1, 31)) == date(2027, 2, 28)
+    assert month_after(date(2028, 1, 31)) == date(2028, 2, 29)
+    assert month_after(date(2026, 3, 31)) == date(2026, 4, 30)
+
+
+def test_the_real_2_1_is_announced_until_2027_01_15_and_not_from_it() -> None:
+    privacy = document_spec("privacy").current
+    assert privacy.effective == date(2026, 12, 15)
+    # Shown from the day it was published, before it takes effect...
+    assert still_announced(privacy, date(2026, 10, 16))
+    # ...on the day itself, and up to the day before the month is out.
+    assert still_announced(privacy, date(2026, 12, 15))
+    assert still_announced(privacy, date(2027, 1, 14))
+    # A month on, not any more — from that day inclusive.
+    assert not still_announced(privacy, date(2027, 1, 15))
+    assert not still_announced(privacy, date(2027, 1, 16))
 
 
 # ── The translations are the same document, not a different one ───────
