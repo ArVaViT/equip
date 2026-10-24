@@ -19,6 +19,7 @@ conduct. The page says the organization is no longer active, which is
 the honest answer without being a retroactive one.
 """
 
+import re
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Response, status
@@ -57,6 +58,18 @@ _INACTIVE = "suspended"
 #: "2 teachers" is two names. Not shown below them.
 _MEMBERS_SHOWN_FROM = 10
 _TEACHERS_SHOWN_FROM = 3
+
+
+def _logo_url_of(organization_id: UUID) -> re.Pattern[str]:
+    """The only shape a logo URL may take: one file, in this organization's
+    own folder of the public ``organization-logos`` bucket, through the
+    ``/img/`` proxy -- exactly what ``storageService.uploadOrganizationLogo``
+    writes. The key is one ASCII segment that does not start with a dot
+    (Storage accepts nothing else; the app writes ``logo-<8 hex>.<ext>``),
+    so neither a nested path nor ``..`` nor another organization's folder,
+    nor a picture hosted anywhere else, is a logo. The bucket's RLS lets the director write only this folder;
+    this keeps the column from pointing outside it all the same."""
+    return re.compile(rf"^/img/organization-logos/{re.escape(str(organization_id))}/[A-Za-z0-9_-][A-Za-z0-9._-]*$")
 
 
 def _not_found(slug: str) -> Exception:
@@ -291,5 +304,15 @@ def update_organization_profile(
         organization.website_url = (updates["website_url"] or "").strip() or None
     if updates.get("show_member_count") is not None:
         organization.show_member_count = bool(updates["show_member_count"])
+    if "logo_url" in updates:
+        logo = (updates["logo_url"] or "").strip() or None
+        if logo is not None and not _logo_url_of(organization.id).fullmatch(logo):
+            raise equip_error(
+                ErrorCode.VALIDATION_FAILED,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                message="The logo must be a file in this organization's own logo folder",
+                context={"resource_type": "organization", "resource_id": str(organization_id), "field": "logo_url"},
+            )
+        organization.logo_url = logo
     db.commit()
     return get_organization_page(organization.slug, response, accept_language, 100, current_user, db)

@@ -35,6 +35,18 @@ export const COURSE_ASSETS: BucketSpec = {
   formatLabels: ["JPG", "PNG", "WebP", "GIF"],
 }
 
+/**
+ * Public bucket: an organization's logo, one folder per organization. The
+ * avatars bucket's shape (2 MB, the four raster types, no SVG) --
+ * `20261024033327_an_organization_has_a_logo_folder.sql`.
+ */
+export const ORGANIZATION_LOGOS: BucketSpec = {
+  maxBytes: 2 * MB,
+  mimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+  extensions: [".jpg", ".jpeg", ".png", ".webp", ".gif"],
+  formatLabels: ["JPG", "PNG", "WebP", "GIF"],
+}
+
 /** Private bucket: course materials and chapter file blocks. */
 export const COURSE_MATERIALS: BucketSpec = {
   maxBytes: 50 * MB,

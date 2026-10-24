@@ -117,7 +117,10 @@
       "saving": "Wird gespeichert…",
       "saved": "Die Seite der Organisation ist aktualisiert",
       "failed": "Speichern fehlgeschlagen",
-      "websitePlaceholder": "https://"
+      "websitePlaceholder": "https://",
+      "logo": "Logo",
+      "changeLogo": "Logo ändern",
+      "removeLogo": "Logo entfernen"
     },
     "locked": {
       "how": "So erhalten Sie Zugang",

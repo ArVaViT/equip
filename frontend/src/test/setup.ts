@@ -43,6 +43,18 @@ if (!globalThis.IntersectionObserver) {
   globalThis.IntersectionObserver = IntersectionObserverShim as unknown as typeof IntersectionObserver
 }
 
+// Nor ResizeObserver. Radix reads it on mount (`useSize`, behind Checkbox
+// and Switch), so a form with one of those crashed the first test that
+// rendered it (OrganizationProfileForm, 2026-10-24). Same shape as above.
+if (!globalThis.ResizeObserver) {
+  class ResizeObserverShim {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+  globalThis.ResizeObserver = ResizeObserverShim as unknown as typeof ResizeObserver
+}
+
 // Node 26 ships its own `localStorage` global, and it answers `undefined`
 // unless the process was started with `--localstorage-file`. That getter sits
 // on globalThis, which under the jsdom environment *is* `window` — so it

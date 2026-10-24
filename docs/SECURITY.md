@@ -345,6 +345,26 @@ not name `mimetype`. Accepted remainder: the size limit is still not
 checked on a copy -- a copied file must now call itself an image and is
 served as one.
 
+**`organization-logos` is the fourth bucket** (2026-10-24,
+`20261024033327_an_organization_has_a_logo_folder`): the avatars bucket
+with the organization in the person's place -- public, 2 MB, jpeg/png/
+webp/gif (no SVG on a bucket served from equipbible.com), one folder per
+organization named by its id. SELECT, INSERT and DELETE go to the
+organization's director (`is_director_of()`) or platform staff
+(`is_platform_staff()`), both false for a closed account; no UPDATE
+policy, as on the other public buckets. The folder is cast to uuid behind
+a CASE, so a key whose first segment is no uuid (every `course-materials`
+key, which the same policy is evaluated against) is a refusal and never an
+error. `PATCH /organizations/{id}/profile` accepts a `logo_url` only of
+the shape `/img/organization-logos/<that id>/<one ASCII segment>` -- the
+column cannot point at another organization's folder or at a picture
+hosted elsewhere. Section 21 of `rls_assertions.sql` probes the bucket as
+a director, a teacher who directs nothing, staff, a student, a closed
+director and anon; the `/img/` proxy (`frontend/vercel.json`,
+`frontend/vite.config.ts`) names the bucket. Nothing is uploaded today:
+the infrastructure exists and every logo stays empty, like a new profile's
+photo (decided 2026-10-23).
+
 ## Dependency scanning
 
 - Backend: `pip-audit --requirement requirements.txt --strict` runs in

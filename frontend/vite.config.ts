@@ -174,6 +174,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/img/, '/storage/v1/object/public'),
       },
+      '/img/organization-logos': {
+        target: process.env.VITE_SUPABASE_URL || 'https://rrisqutxlkamwfhcashl.supabase.co',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/img/, '/storage/v1/object/public'),
+      },
     },
   },
 })

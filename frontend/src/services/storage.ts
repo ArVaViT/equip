@@ -1,9 +1,16 @@
 import { supabase } from "@/lib/supabase"
-import { type BucketSpec, COURSE_ASSETS, COURSE_MATERIALS, resolveContentType } from "@/lib/uploadLimits"
+import { type BucketSpec, COURSE_ASSETS, COURSE_MATERIALS, ORGANIZATION_LOGOS, resolveContentType } from "@/lib/uploadLimits"
 
 const AVATARS_BUCKET = "avatars"
 const COURSE_ASSETS_BUCKET = "course-assets"
 const COURSE_MATERIALS_BUCKET = "course-materials"
+const ORGANIZATION_LOGOS_BUCKET = "organization-logos"
+const LOGO_EXTENSION: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/gif": "gif",
+}
 
 // Signed-URL TTL for on-demand downloads. One hour is plenty for a user to
 // click → browser to start the download, and keeps blast radius tight if a
@@ -268,6 +275,20 @@ export const storageService = {
   async uploadCourseImage(courseId: string, file: File): Promise<string> {
     const path = `${courseId}/cover-${crypto.randomUUID().slice(0, 8)}.${fileExtension(file.name)}`
     return uploadToPublicBucket(COURSE_ASSETS_BUCKET, path, withBucketContentType(file, COURSE_ASSETS))
+  },
+
+  /**
+   * An organization's logo: the avatar recipe with the organization's id
+   * as the folder. The bucket's RLS admits the folder to the organization's
+   * director and to platform staff, and `PATCH /organizations/{id}/profile`
+   * accepts a `logo_url` only of this exact shape.
+   */
+  async uploadOrganizationLogo(organizationId: string, file: File): Promise<string> {
+    // The extension comes from the type, not from the name: a key is ASCII
+    // or Storage refuses it, and "лого.пнг" is a PNG all the same.
+    const typed = withBucketContentType(file, ORGANIZATION_LOGOS)
+    const path = `${organizationId}/logo-${crypto.randomUUID().slice(0, 8)}.${LOGO_EXTENSION[typed.type] ?? "jpg"}`
+    return uploadToPublicBucket(ORGANIZATION_LOGOS_BUCKET, path, typed)
   },
 
   /**

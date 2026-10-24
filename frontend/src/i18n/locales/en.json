@@ -117,7 +117,10 @@
       "saving": "Saving…",
       "saved": "The organization's page is updated",
       "failed": "Could not save",
-      "websitePlaceholder": "https://"
+      "websitePlaceholder": "https://",
+      "logo": "Logo",
+      "changeLogo": "Change logo",
+      "removeLogo": "Remove logo"
     },
     "locked": {
       "how": "How to get access",

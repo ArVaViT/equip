@@ -143,6 +143,12 @@ class OrganizationProfileUpdate(RequestModel):
     # accepted "https://" as a website (2026-10-03).
     website_url: str | None = Field(None, max_length=300, pattern=r"^https://\S+\.\S+$")
     show_member_count: bool | None = None
+    #: The proxied URL of a file in the organization's own folder of the
+    #: public ``organization-logos`` bucket (``/img/organization-logos/<id>/
+    #: logo-<hex>.png``, as ``storage.ts`` writes it), or ``null`` to take
+    #: the logo down. The route holds it to that folder: a logo is never a
+    #: picture hosted elsewhere, and never another organization's file.
+    logo_url: str | None = Field(None, max_length=300)
 
 
 class OrganizationPublicResponse(BaseModel):

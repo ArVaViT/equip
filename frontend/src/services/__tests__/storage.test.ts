@@ -205,9 +205,27 @@ describe("replacing a public image", () => {
     expect(options).not.toHaveProperty("upsert")
   })
 
+  it("writes an organization's logo under a fresh key in the organization's own folder", async () => {
+    const organizationId = "b761fe38-3c83-4954-ac7c-3363a24b5d7b"
+    const url = await storageService.uploadOrganizationLogo(
+      organizationId,
+      new File([""], "Логотип.пнг", { type: "image/png" }),
+    )
+
+    const [path, , options] = uploadMock.mock.calls[0] ?? []
+    // The folder is what the bucket's RLS checks against the caller's
+    // directorships, and the shape is what the API accepts as a logo_url.
+    // The extension is the type's, never the name's: a key is ASCII.
+    expect(fromMock).toHaveBeenCalledWith("organization-logos")
+    expect(path).toMatch(new RegExp(`^${organizationId}/logo-[0-9a-f]{8}\\.png$`))
+    expect(options).not.toHaveProperty("upsert")
+    expect(url).toBe(`/img/organization-logos/${path}`)
+  })
+
   it.each([
     ["a cover", () => storageService.uploadCourseImage(COURSE_ID, new File(["png"], "c.png", { type: "image/png" }))],
     ["an avatar", () => storageService.uploadAvatar("u", new File(["jpg"], "me.jpg", { type: "image/jpeg" }))],
+    ["a logo", () => storageService.uploadOrganizationLogo("o", new File(["png"], "l.png", { type: "image/png" }))],
     ["a lesson image", () => storageService.uploadContentImage(new File(["webp"], "x.webp", { type: "image/webp" }))],
   ])("stores %s as cacheable for a year, with its own type", async (_what, upload) => {
     // Sent as multipart, Storage stored these `no-cache` and no CDN kept a
