@@ -17,8 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 import { EmptyState, ErrorState } from "@/components/patterns"
 import { cohortsService } from "@/services/cohorts"
-import { formatDate } from "@/i18n/format"
-import { zonedDayKey } from "@/i18n/timeZone"
+import { documentDay, formatDay } from "@/i18n/format"
 import type { Cohort } from "@/types"
 import { CreateCohortDialog } from "./CreateCohortDialog"
 import { FilterField } from "../dashboard/FilterField"
@@ -156,8 +155,8 @@ export function CohortsTab() {
     const q = search.trim().toLowerCase()
     return cohorts.filter((c) => {
       if (q && !c.name.toLowerCase().includes(q)) return false
-      // The day the list shows (the reader's zone), not the browser's.
-      const startKey = zonedDayKey(new Date(c.start_date))
+      // The day the list shows: the school's (`start_on`), not the reader's.
+      const startKey = documentDay(c.start_on, c.start_date) ?? ""
       if (startFrom && startKey < startFrom) return false
       if (startTo && startKey > startTo) return false
       return true
@@ -372,7 +371,7 @@ function CohortsTable({ items }: { items: Cohort[] }) {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-ink">{c.name}</p>
                 <p className="mt-1 text-xs text-ink-muted">
-                  {formatDate(c.start_date)} &mdash; {formatDate(c.end_date)}
+                  {formatDay(c.start_on, c.start_date)} &mdash; {formatDay(c.end_on, c.end_date)}
                 </p>
               </div>
               <Badge variant={STATUS_BADGE[c.status]} className="shrink-0 capitalize">
@@ -439,7 +438,7 @@ function CohortsTable({ items }: { items: Cohort[] }) {
                   </Badge>
                 </td>
                 <td className="px-5 py-3 text-xs text-ink-muted">
-                  {formatDate(c.start_date)} &mdash; {formatDate(c.end_date)}
+                  {formatDay(c.start_on, c.start_date)} &mdash; {formatDay(c.end_on, c.end_date)}
                 </td>
                 <td className="px-5 py-3 text-ink-muted">{c.course_ids.length}</td>
                 <td className="px-5 py-3 text-ink-muted">

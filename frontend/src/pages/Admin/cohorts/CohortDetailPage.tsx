@@ -23,7 +23,7 @@ import { cohortsService, type CohortStudent } from "@/services/cohorts"
 import { coursesService } from "@/services/courses"
 import { toast } from "@/lib/toast"
 import { getErrorDetail } from "@/lib/errorDetail"
-import { formatDate, isoToLocalInput, localInputToIso } from "@/i18n/format"
+import { formatDay, isoToLocalInput, localInputToIso } from "@/i18n/format"
 import type { Cohort, Course } from "@/types"
 import { AttachCourseDialog } from "./AttachCourseDialog"
 import { AddStudentDialog } from "./AddStudentDialog"
@@ -301,7 +301,7 @@ export default function CohortDetailPage() {
               />
             </div>
             <p className="text-sm text-ink-muted">
-              {formatDate(cohort.start_date)} &mdash; {formatDate(cohort.end_date)}
+              {formatDay(cohort.start_on, cohort.start_date)} &mdash; {formatDay(cohort.end_on, cohort.end_date)}
             </p>
             {cohort.max_students != null && (
               <CapacityMeter current={cohort.student_count} cap={cohort.max_students} />

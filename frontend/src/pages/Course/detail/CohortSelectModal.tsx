@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next"
 import { Modal } from "@/components/patterns"
 import { Button } from "@/components/ui/button"
 import type { Cohort } from "@/types"
-import { formatDate } from "./types"
+import { formatSchoolDay } from "./types"
 
 interface Props {
   open: boolean
@@ -49,7 +49,8 @@ export function CohortSelectModal({
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium">{cohort.name}</p>
               <p className="text-xs text-ink-muted">
-                {formatDate(cohort.start_date)} &mdash; {formatDate(cohort.end_date)}
+                {formatSchoolDay(cohort.start_on, cohort.start_date)} &mdash;{" "}
+                {formatSchoolDay(cohort.end_on, cohort.end_date)}
               </p>
               {cohort.max_students && (
                 <p className="text-xs text-ink-muted">

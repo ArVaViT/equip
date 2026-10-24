@@ -61,6 +61,7 @@ from app.services.content_versions import record_human_version
 from app.services.deleted_person import shown_email, shown_name
 from app.services.language_detection import detect_locale
 from app.services.memberships import belongs_to, directs, grant_student_memberships
+from app.services.school_clock import SchoolClocks
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import Localizer
 
@@ -153,6 +154,7 @@ def _serialize_many(db: Session, cohorts: list[Cohort]) -> list[CohortResponse]:
     }
 
     names_by_cohort = _fetch_cohort_names(db, cohort_ids)
+    clocks = SchoolClocks(db)
 
     out: list[CohortResponse] = []
     for c in cohorts:
@@ -174,6 +176,10 @@ def _serialize_many(db: Session, cohorts: list[Cohort]) -> list[CohortResponse]:
                 "updated_at": c.updated_at,
                 "course_ids": courses_by_cohort.get(c.id, []),
                 "student_count": counts_by_cohort.get(c.id, 0),
+                "start_on": clocks.day(c.organization_id, c.start_date),
+                "end_on": clocks.day(c.organization_id, c.end_date),
+                "enrollment_start_on": clocks.day(c.organization_id, c.enrollment_start),
+                "enrollment_end_on": clocks.day(c.organization_id, c.enrollment_end),
             }
         )
         out.append(resp)

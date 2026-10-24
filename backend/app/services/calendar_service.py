@@ -8,7 +8,6 @@ objects; header parsing and cache/Vary headers stay in the routes.
 """
 
 import uuid
-from datetime import UTC
 
 from sqlalchemy.orm import Session
 
@@ -48,7 +47,7 @@ def _cohort_days(
     """
     from app.models.cohort import Cohort
     from app.models.content_version import ContentVersion, ContentVersionStatus
-    from app.services.event_series import zone_or_utc
+    from app.services.school_clock import SchoolClocks
 
     rows = (
         db.query(Enrollment.cohort_id, Enrollment.course_id)
@@ -67,15 +66,13 @@ def _cohort_days(
     if not course_of:
         return []
     cohorts = db.query(Cohort).filter(Cohort.id.in_([uuid.UUID(cid) for cid in course_of])).all()
-    # The day is the one the director picked, in the zone they picked it
-    # in — the dates are stored as instants (09:00 of their day by
-    # default). Read in each reader's own zone, Kyiv's 5th was LA's 4th.
-    # Nobody to ask (the author's account is gone or never set a zone):
-    # UTC, so at least every reader sees the same day.
-    creator_ids = {c.created_by for c in cohorts if c.created_by}
-    zone_of: dict[uuid.UUID, str | None] = {
-        uid: tz for uid, tz in db.query(User.id, User.time_zone).filter(User.id.in_(creator_ids)).all()
-    }
+    # The day is the school's (``org_settings.time_zone``, else Indianapolis),
+    # the same one the ведомость and the cohort API print — the dates are
+    # stored as instants (09:00 of the director's day by default). Read in
+    # each reader's own zone, Kyiv's 5th was LA's 4th; read in the director's
+    # zone, as it was until 2026-10-23, a director whose account is gone or
+    # who never set a zone left every reader on UTC.
+    clocks = SchoolClocks(db)
     names: dict[tuple[str, str], str] = {}
     for eid, loc, text in (
         db.query(ContentVersion.entity_id, ContentVersion.locale, ContentVersion.text)
@@ -95,7 +92,6 @@ def _cohort_days(
         cid = str(cohort.id)
         name = names.get((cid, display_locale)) or names.get((cid, "*")) or t(display_locale, "calendar.cohort.unnamed")
         crs_id = course_of[cid]
-        zone = zone_or_utc(zone_of.get(cohort.created_by) if cohort.created_by else None)
         for source, key, when in (
             ("cohort_start", "calendar.cohort.start", cohort.start_date),
             ("cohort_end", "calendar.cohort.end", cohort.end_date),
@@ -110,7 +106,7 @@ def _cohort_days(
                     course_title=titles.get(crs_id),
                     source=source,  # type: ignore[arg-type]
                     all_day=True,
-                    day=(when if when.tzinfo else when.replace(tzinfo=UTC)).astimezone(zone).date(),
+                    day=clocks.day(cohort.organization_id, when),
                 )
             )
     return out

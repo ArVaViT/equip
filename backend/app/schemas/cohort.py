@@ -6,7 +6,7 @@ then independently attaches courses (via ``cohort_courses``) and
 students (via ``enrollments`` with ``cohort_id`` set).
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 from uuid import UUID
 
@@ -115,6 +115,14 @@ class CohortResponse(BaseModel):
     # Computed:
     course_ids: list[str] = Field(default_factory=list)
     student_count: int = 0
+    #: The window's days on the school's clock (``org_settings.time_zone``,
+    #: else Indianapolis) — the same for every reader, as the ведомость prints
+    #: them. Read in each reader's own zone, Kyiv's 5th was LA's 4th. The
+    #: instants above stay for everything that is not a date.
+    start_on: date | None = None
+    end_on: date | None = None
+    enrollment_start_on: date | None = None
+    enrollment_end_on: date | None = None
 
 
 class CohortCourseAttach(RequestModel):
