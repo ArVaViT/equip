@@ -1856,6 +1856,52 @@ EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: an upload into a folder that is not an organization id is refused, not an error';
 END $$;
 
+-- Permissive policies are OR-ed across buckets: the folder named after A
+-- is A's in organization-logos only. Without `bucket_id = 'organization-
+-- logos'` in a policy, the director of A would read, add and remove files
+-- under `aaaa1111-.../` in avatars and course-materials too.
+RESET ROLE;
+INSERT INTO storage.objects (bucket_id, name, owner_id) VALUES
+  ('avatars', 'aaaa1111-0000-0000-0000-000000000001/planted.png', NULL),
+  ('course-materials', 'aaaa1111-0000-0000-0000-000000000001/planted.pdf', NULL);
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects
+   WHERE bucket_id <> 'organization-logos' AND name LIKE 'aaaa1111-0000-0000-0000-000000000001/%';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: the logo policies show the director of A % file(s) of another bucket', n;
+  END IF;
+  DELETE FROM storage.objects
+   WHERE bucket_id <> 'organization-logos' AND name LIKE 'aaaa1111-0000-0000-0000-000000000001/%';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: the logo policies let the director of A remove % file(s) of another bucket', n;
+  END IF;
+  BEGIN
+    INSERT INTO storage.objects (bucket_id, name, owner_id)
+    VALUES ('avatars', 'aaaa1111-0000-0000-0000-000000000001/by-director.png', '33333333-3333-3333-3333-333333333333');
+    RAISE EXCEPTION 'SECURITY HOLE: the logo policies let the director of A upload into avatars';
+  EXCEPTION
+    WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    INSERT INTO storage.objects (bucket_id, name, owner_id)
+    VALUES ('course-materials', 'aaaa1111-0000-0000-0000-000000000001/by-director.pdf', '33333333-3333-3333-3333-333333333333');
+    RAISE EXCEPTION 'SECURITY HOLE: the logo policies let the director of A upload into course-materials';
+  EXCEPTION
+    WHEN insufficient_privilege THEN NULL;
+  END;
+  RAISE NOTICE 'OK: the folder named after A is A''s in organization-logos and nowhere else';
+END $$;
+
+RESET ROLE;
+DELETE FROM storage.objects
+ WHERE bucket_id <> 'organization-logos' AND name LIKE 'aaaa1111-0000-0000-0000-000000000001/%';
+SET ROLE authenticated;
+
 -- S: teacher of B, owner of course M, directs nothing. Reads no logo, writes
 -- none -- and cannot move a private course file into the public bucket.
 RESET ROLE;
