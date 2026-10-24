@@ -209,6 +209,7 @@ jobs:
             supabase/migrations/20261016011000_a_teacher_touches_only_their_own_course_files.sql \
             supabase/migrations/20261019130000_a_closed_account_touches_no_course_file.sql \
             supabase/migrations/20261023230000_a_closed_account_touches_no_course_material.sql \
+            supabase/migrations/20261024142623_a_bucket_admits_only_its_own_types_however_the_file_arrives.sql \
           ; do
             $PSQL -f "$f"
           done

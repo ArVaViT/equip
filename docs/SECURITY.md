@@ -321,6 +321,30 @@ policy checks the new row, and no other UPDATE policy remains to admit a
 row elsewhere. Section 19 probes both moves and guards against an UPDATE
 policy returning to a public bucket.
 
+**Every INSERT policy asks the type**
+(`20261024142623_a_bucket_admits_only_its_own_types_however_the_file_arrives`).
+A copy is not an UPDATE: `POST /object/copy` is a SELECT of the source and
+a rolled-back INSERT of the destination row under the caller's role, and,
+like a move, it never checks the destination bucket's MIME list or size
+limit. The row carries the source's `metadata`, or the
+`metadata.mimetype` the caller names. An upload to a key ending in
+`.emptyFolderPlaceholder` skips the MIME check too. So an enrolled student
+could copy a course's PDF into their own `avatars` folder, and anyone who
+may insert into a public bucket could store `image/svg+xml`,
+`application/xhtml+xml` or `text/javascript` there, served from
+equipbible.com. The INSERT policies of all three buckets now require
+`metadata->>'mimetype'` to be one of exactly the bucket's
+`allowed_mime_types`; an ordinary upload already met that, by the same
+exact comparison, before the policy ran. `course_assets_teacher_insert`
+also asks where, as SELECT and DELETE there do: the folder of a course the
+teacher owns, or `content-images/`; platform staff anywhere. **Rule:** a
+bucket's list and its INSERT policy change together, and
+`frontend/src/lib/uploadLimits.ts` with them. Section 20 probes copies and
+uploads of every kind and fails CI on a storage INSERT policy that does
+not name `mimetype`. Accepted remainder: the size limit is still not
+checked on a copy -- a copied file must now call itself an image and is
+served as one.
+
 ## Dependency scanning
 
 - Backend: `pip-audit --requirement requirements.txt --strict` runs in

@@ -1081,6 +1081,9 @@ CREATE TABLE storage.objects (
     bucket_id  text NOT NULL,
     name       text NOT NULL,
     owner_id   text,
+    -- What Storage puts in the row it tests: `mimetype` is the type the
+    -- object will be served with (20261024142623).
+    metadata   jsonb,
     created_at timestamptz NOT NULL DEFAULT now()
 );
 -- Supabase's definition: every path segment but the last.
@@ -1098,9 +1101,11 @@ GRANT USAGE ON SCHEMA storage TO anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON storage.objects TO anon, authenticated;
 
 -- The state the migration finds in production for the eight policies it
--- rewrites or leaves (avatars, course-assets), then the migration itself.
+-- rewrites or leaves (avatars, course-assets), then the migration itself,
+-- then the one after it (its INSERT policies ask the type; section 20).
 \ir ../migrations/20260915142924_a_policy_without_to_still_reaches_anon.sql
 \ir ../migrations/20261023230000_a_closed_account_touches_no_course_material.sql
+\ir ../migrations/20261024142623_a_bucket_admits_only_its_own_types_however_the_file_arrives.sql
 
 -- The people: S (section 17; a teacher of B, open again since the end of
 -- section 18) owns course M; the student from section 1 is enrolled in it;
@@ -1116,10 +1121,10 @@ VALUES ('course-m-materials', 'published', 'institute', :'school_b', :'member_s'
 INSERT INTO public.enrollments (id, user_id, course_id)
 VALUES ('enrollment-m-student', :'student', 'course-m-materials');
 
-INSERT INTO storage.objects (bucket_id, name, owner_id) VALUES
-  ('course-materials', 'course-m-materials/handout.pdf', '55555555-5555-5555-5555-555555555555'),
-  ('course-materials', 'course-a-institute/syllabus.pdf', NULL),
-  ('avatars', '55555555-5555-5555-5555-555555555555/avatar-old.png', '55555555-5555-5555-5555-555555555555');
+INSERT INTO storage.objects (bucket_id, name, owner_id, metadata) VALUES
+  ('course-materials', 'course-m-materials/handout.pdf', '55555555-5555-5555-5555-555555555555', '{"mimetype": "application/pdf", "size": 30000000}'),
+  ('course-materials', 'course-a-institute/syllabus.pdf', NULL, '{"mimetype": "application/pdf"}'),
+  ('avatars', '55555555-5555-5555-5555-555555555555/avatar-old.png', '55555555-5555-5555-5555-555555555555', '{"mimetype": "image/png"}');
 
 -- Open administrator: every file, and every write.
 SET request.jwt.claim.sub = '77777777-7777-7777-7777-777777777777';
@@ -1132,8 +1137,8 @@ BEGIN
   IF n <> 2 THEN
     RAISE EXCEPTION 'BROKEN: an administrator reads % of the 2 course materials', n;
   END IF;
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('course-materials', 'course-a-institute/by-admin.pdf', '77777777-7777-7777-7777-777777777777');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('course-materials', 'course-a-institute/by-admin.pdf', '77777777-7777-7777-7777-777777777777', '{"mimetype": "application/pdf"}');
   UPDATE storage.objects SET name = 'course-a-institute/by-admin-renamed.pdf'
    WHERE name = 'course-a-institute/by-admin.pdf';
   GET DIAGNOSTICS n = ROW_COUNT;
@@ -1164,8 +1169,8 @@ BEGIN
   IF n <> 0 THEN
     RAISE EXCEPTION 'SECURITY HOLE: a teacher reads the materials of a course they do not own';
   END IF;
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('course-materials', 'course-m-materials/new.pdf', '55555555-5555-5555-5555-555555555555');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('course-materials', 'course-m-materials/new.pdf', '55555555-5555-5555-5555-555555555555', '{"mimetype": "application/pdf"}');
   UPDATE storage.objects SET name = 'course-m-materials/renamed.pdf'
    WHERE name = 'course-m-materials/new.pdf';
   GET DIAGNOSTICS n = ROW_COUNT;
@@ -1192,8 +1197,8 @@ END $$;
 
 DO $$
 BEGIN
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('course-materials', 'course-a-institute/planted.pdf', '55555555-5555-5555-5555-555555555555');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('course-materials', 'course-a-institute/planted.pdf', '55555555-5555-5555-5555-555555555555', '{"mimetype": "application/pdf"}');
   RAISE EXCEPTION 'SECURITY HOLE: a teacher uploads into a course they do not own';
 EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: an upload into somebody else''s course is refused';
@@ -1251,8 +1256,8 @@ END $$;
 DO $$
 DECLARE n int;
 BEGIN
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('avatars', '55555555-5555-5555-5555-555555555555/avatar-new.png', '55555555-5555-5555-5555-555555555555');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('avatars', '55555555-5555-5555-5555-555555555555/avatar-new.png', '55555555-5555-5555-5555-555555555555', '{"mimetype": "image/png"}');
   DELETE FROM storage.objects WHERE name = '55555555-5555-5555-5555-555555555555/avatar-new.png';
   GET DIAGNOSTICS n = ROW_COUNT;
   IF n <> 1 THEN
@@ -1263,8 +1268,8 @@ END $$;
 
 DO $$
 BEGIN
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('avatars', '11111111-1111-1111-1111-111111111111/planted.png', '55555555-5555-5555-5555-555555555555');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('avatars', '11111111-1111-1111-1111-111111111111/planted.png', '55555555-5555-5555-5555-555555555555', '{"mimetype": "image/png"}');
   RAISE EXCEPTION 'SECURITY HOLE: an account uploads into somebody else''s avatar folder';
 EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: an upload into somebody else''s avatar folder is refused';
@@ -1298,8 +1303,8 @@ END $$;
 
 DO $$
 BEGIN
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('course-materials', 'course-m-materials/by-demoted.pdf', '55555555-5555-5555-5555-555555555555');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('course-materials', 'course-m-materials/by-demoted.pdf', '55555555-5555-5555-5555-555555555555', '{"mimetype": "application/pdf"}');
   RAISE EXCEPTION 'SECURITY HOLE: a demoted owner still uploads a course material';
 EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a demoted owner''s upload is refused';
@@ -1340,8 +1345,8 @@ END $$;
 
 DO $$
 BEGIN
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('course-materials', 'course-m-materials/by-student.pdf', '11111111-1111-1111-1111-111111111111');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('course-materials', 'course-m-materials/by-student.pdf', '11111111-1111-1111-1111-111111111111', '{"mimetype": "application/pdf"}');
   RAISE EXCEPTION 'SECURITY HOLE: a student uploads a course material';
 EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a student''s upload is refused';
@@ -1377,8 +1382,8 @@ END $$;
 
 DO $$
 BEGIN
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('course-materials', 'course-m-materials/after-closing.pdf', '55555555-5555-5555-5555-555555555555');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('course-materials', 'course-m-materials/after-closing.pdf', '55555555-5555-5555-5555-555555555555', '{"mimetype": "application/pdf"}');
   RAISE EXCEPTION 'SECURITY HOLE: a deactivated owner still uploads a course material';
 EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a deactivated owner''s upload is refused';
@@ -1398,8 +1403,8 @@ END $$;
 
 DO $$
 BEGIN
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('avatars', '55555555-5555-5555-5555-555555555555/after-closing.png', '55555555-5555-5555-5555-555555555555');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('avatars', '55555555-5555-5555-5555-555555555555/after-closing.png', '55555555-5555-5555-5555-555555555555', '{"mimetype": "image/png"}');
   RAISE EXCEPTION 'SECURITY HOLE: a deactivated account still uploads an avatar';
 EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a deactivated account''s avatar upload is refused';
@@ -1442,8 +1447,8 @@ END $$;
 
 DO $$
 BEGIN
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('course-materials', 'course-a-institute/by-closed-admin.pdf', '66666666-6666-6666-6666-666666666666');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('course-materials', 'course-a-institute/by-closed-admin.pdf', '66666666-6666-6666-6666-666666666666', '{"mimetype": "application/pdf"}');
   RAISE EXCEPTION 'SECURITY HOLE: a deactivated administrator still uploads a course material';
 EXCEPTION
   WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a deactivated administrator''s upload is refused';
@@ -1463,8 +1468,8 @@ BEGIN
   IF n <> 1 THEN
     RAISE EXCEPTION 'BROKEN: a restored owner cannot read their course material';
   END IF;
-  INSERT INTO storage.objects (bucket_id, name, owner_id)
-  VALUES ('course-materials', 'course-m-materials/after-restore.pdf', '55555555-5555-5555-5555-555555555555');
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('course-materials', 'course-m-materials/after-restore.pdf', '55555555-5555-5555-5555-555555555555', '{"mimetype": "application/pdf"}');
   DELETE FROM storage.objects WHERE name = 'course-m-materials/after-restore.pdf';
   GET DIAGNOSTICS n = ROW_COUNT;
   IF n <> 1 THEN
@@ -1551,6 +1556,208 @@ BEGIN
     RAISE EXCEPTION 'SECURITY HOLE: a public bucket has an UPDATE policy again (a move out of course-materials goes through it): %', offenders;
   END IF;
   RAISE NOTICE 'OK: storage policies are authenticated-only, read profiles through the helpers alone, and no public bucket is updatable';
+END $$;
+
+-- ---------------------------------------------------------------------
+-- 20) A bucket admits only its own types, however the file arrives
+--     (20261024142623, replayed with section 19's).
+--
+-- Storage checks a bucket's `allowed_mime_types` on an ordinary upload
+-- only. A copy (`POST /object/copy`) is authorized by a SELECT of the
+-- source and a rolled-back INSERT of the destination row, carrying the
+-- source's `metadata` or the `metadata.mimetype` the caller names; an
+-- upload to a key ending in `.emptyFolderPlaceholder` skips the MIME check
+-- and is tested with the declared type. Both are probed here the way
+-- Storage asks them: as that INSERT, under the caller's role, rolled back.
+-- ---------------------------------------------------------------------
+
+CREATE FUNCTION pg_temp.upload_admitted(dst_bucket text, dst text, mime text)
+RETURNS boolean LANGUAGE plpgsql AS $$
+BEGIN
+  BEGIN
+    INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+    VALUES (dst_bucket, dst, current_setting('request.jwt.claim.sub'),
+            CASE WHEN mime IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('mimetype', mime) END);
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'rollback';
+  EXCEPTION
+    WHEN insufficient_privilege THEN RETURN false;
+    WHEN raise_exception THEN RETURN true;
+  END;
+END $$;
+
+-- `mime` NULL keeps the source's metadata (`copyMetadata`, the default).
+CREATE FUNCTION pg_temp.copy_admitted(src_bucket text, src text, dst_bucket text, dst text, mime text)
+RETURNS boolean LANGUAGE plpgsql AS $$
+DECLARE md jsonb;
+BEGIN
+  SELECT metadata INTO md FROM storage.objects WHERE bucket_id = src_bucket AND name = src;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'BROKEN: the copy probe cannot read its source %/%', src_bucket, src;
+  END IF;
+  IF mime IS NOT NULL THEN
+    md := coalesce(md, '{}'::jsonb) || jsonb_build_object('mimetype', mime);
+  END IF;
+  BEGIN
+    INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+    VALUES (dst_bucket, dst, current_setting('request.jwt.claim.sub'), md);
+    RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'rollback';
+  EXCEPTION
+    WHEN insufficient_privilege THEN RETURN false;
+    WHEN raise_exception THEN RETURN true;
+  END;
+END $$;
+
+-- The enrolled student: their own avatar folder takes the four image
+-- types and nothing else -- not the course's PDF, not a script or a
+-- document under an image's name, not a folder placeholder.
+SET request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+SET ROLE authenticated;
+
+DO $$
+DECLARE c record; holes text := ''; broken text := '';
+BEGIN
+  FOR c IN SELECT * FROM (VALUES
+    ('copy the course PDF into avatars, type kept', false,
+     pg_temp.copy_admitted('course-materials', 'course-m-materials/handout.pdf',
+       'avatars', '11111111-1111-1111-1111-111111111111/handout.pdf', NULL)),
+    ('copy the course PDF into avatars as image/svg+xml', false,
+     pg_temp.copy_admitted('course-materials', 'course-m-materials/handout.pdf',
+       'avatars', '11111111-1111-1111-1111-111111111111/x.svg', 'image/svg+xml')),
+    ('upload a placeholder as application/xhtml+xml', false,
+     pg_temp.upload_admitted('avatars', '11111111-1111-1111-1111-111111111111/x/.emptyFolderPlaceholder', 'application/xhtml+xml')),
+    ('upload text/javascript', false,
+     pg_temp.upload_admitted('avatars', '11111111-1111-1111-1111-111111111111/x.js', 'text/javascript')),
+    ('upload image/svg+xml', false,
+     pg_temp.upload_admitted('avatars', '11111111-1111-1111-1111-111111111111/x.svg', 'image/svg+xml')),
+    ('upload application/pdf', false,
+     pg_temp.upload_admitted('avatars', '11111111-1111-1111-1111-111111111111/x.pdf', 'application/pdf')),
+    ('upload with no type', false,
+     pg_temp.upload_admitted('avatars', '11111111-1111-1111-1111-111111111111/x', NULL)),
+    ('upload image/jpeg', true,
+     pg_temp.upload_admitted('avatars', '11111111-1111-1111-1111-111111111111/avatar-1.jpg', 'image/jpeg')),
+    ('upload image/png', true,
+     pg_temp.upload_admitted('avatars', '11111111-1111-1111-1111-111111111111/avatar-2.png', 'image/png')),
+    ('upload image/webp', true,
+     pg_temp.upload_admitted('avatars', '11111111-1111-1111-1111-111111111111/avatar-3.webp', 'image/webp')),
+    ('upload image/gif', true,
+     pg_temp.upload_admitted('avatars', '11111111-1111-1111-1111-111111111111/avatar-4.gif', 'image/gif')),
+    ('upload a PNG into course-assets', false,
+     pg_temp.upload_admitted('course-assets', 'content-images/1-student.png', 'image/png'))
+  ) AS t(what, want, got) LOOP
+    IF c.got AND NOT c.want THEN holes := holes || ' / ' || c.what; END IF;
+    IF c.want AND NOT c.got THEN broken := broken || ' / ' || c.what; END IF;
+  END LOOP;
+  IF holes <> '' THEN RAISE EXCEPTION 'SECURITY HOLE: a student is admitted to%', holes; END IF;
+  IF broken <> '' THEN RAISE EXCEPTION 'BROKEN: a student is refused to%', broken; END IF;
+  RAISE NOTICE 'OK: a student''s avatar folder takes the four image types, and no copy of a course file';
+END $$;
+
+-- Teacher S, owner of M: covers in M's folder and lesson images in
+-- `content-images/`, as images; materials in M's folder, as the materials
+-- bucket's types. Not another course's folder, not a PDF in a public
+-- bucket, not a document in the private one.
+RESET ROLE;
+SET request.jwt.claim.sub = '55555555-5555-5555-5555-555555555555';
+SET ROLE authenticated;
+
+DO $$
+DECLARE c record; holes text := ''; broken text := '';
+BEGIN
+  FOR c IN SELECT * FROM (VALUES
+    ('a cover in their course''s folder, image/webp', true,
+     pg_temp.upload_admitted('course-assets', 'course-m-materials/cover-1a2b3c4d.webp', 'image/webp')),
+    ('a lesson image in content-images, image/png', true,
+     pg_temp.upload_admitted('course-assets', 'content-images/1729000000000-1a2b3c4d.png', 'image/png')),
+    ('a lesson image in content-images, image/jpeg', true,
+     pg_temp.upload_admitted('course-assets', 'content-images/1729000000001-1a2b3c4d.jpg', 'image/jpeg')),
+    ('a cover in another course''s folder', false,
+     pg_temp.upload_admitted('course-assets', 'course-a-institute/cover-1a2b3c4d.png', 'image/png')),
+    ('an image in a folder that is no course', false,
+     pg_temp.upload_admitted('course-assets', 'elsewhere/x.png', 'image/png')),
+    ('an image at the root of course-assets', false,
+     pg_temp.upload_admitted('course-assets', 'x.png', 'image/png')),
+    ('copy their PDF into course-assets, type kept', false,
+     pg_temp.copy_admitted('course-materials', 'course-m-materials/handout.pdf',
+       'course-assets', 'course-m-materials/h.pdf', NULL)),
+    ('copy their PDF into course-assets as image/svg+xml', false,
+     pg_temp.copy_admitted('course-materials', 'course-m-materials/handout.pdf',
+       'course-assets', 'content-images/h.svg', 'image/svg+xml')),
+    ('copy their PDF into their own avatar folder', false,
+     pg_temp.copy_admitted('course-materials', 'course-m-materials/handout.pdf',
+       'avatars', '55555555-5555-5555-5555-555555555555/h.pdf', NULL)),
+    ('a content image as image/svg+xml', false,
+     pg_temp.upload_admitted('course-assets', 'content-images/x.svg', 'image/svg+xml')),
+    ('a placeholder as application/xhtml+xml', false,
+     pg_temp.upload_admitted('course-assets', 'content-images/x/.emptyFolderPlaceholder', 'application/xhtml+xml')),
+    ('a content image as text/javascript', false,
+     pg_temp.upload_admitted('course-assets', 'content-images/x.js', 'text/javascript')),
+    ('a cover as application/pdf', false,
+     pg_temp.upload_admitted('course-assets', 'course-m-materials/cover.pdf', 'application/pdf')),
+    ('a material as application/pdf', true,
+     pg_temp.upload_admitted('course-materials', 'course-m-materials/1-sermon.pdf', 'application/pdf')),
+    ('a material as audio/mp4', true,
+     pg_temp.upload_admitted('course-materials', 'course-m-materials/1-memo.m4a', 'audio/mp4')),
+    ('a material as text/plain', true,
+     pg_temp.upload_admitted('course-materials', 'course-m-materials/chapter-1/1-notes.txt', 'text/plain')),
+    ('a material as text/html', false,
+     pg_temp.upload_admitted('course-materials', 'course-m-materials/x.html', 'text/html')),
+    ('a material as image/svg+xml', false,
+     pg_temp.upload_admitted('course-materials', 'course-m-materials/x.svg', 'image/svg+xml')),
+    ('a material placeholder as application/xhtml+xml', false,
+     pg_temp.upload_admitted('course-materials', 'course-m-materials/x/.emptyFolderPlaceholder', 'application/xhtml+xml'))
+  ) AS t(what, want, got) LOOP
+    IF c.got AND NOT c.want THEN holes := holes || ' / ' || c.what; END IF;
+    IF c.want AND NOT c.got THEN broken := broken || ' / ' || c.what; END IF;
+  END LOOP;
+  IF holes <> '' THEN RAISE EXCEPTION 'SECURITY HOLE: a teacher is admitted to add%', holes; END IF;
+  IF broken <> '' THEN RAISE EXCEPTION 'BROKEN: a teacher is refused to add%', broken; END IF;
+  RAISE NOTICE 'OK: a teacher adds images to their course''s folder and content-images, and materials of the bucket''s types';
+END $$;
+
+-- Platform staff file images anywhere in course-assets (the diagrams are
+-- theirs), and still only images.
+RESET ROLE;
+SET request.jwt.claim.sub = '77777777-7777-7777-7777-777777777777';
+SET ROLE authenticated;
+
+DO $$
+DECLARE c record; holes text := ''; broken text := '';
+BEGIN
+  FOR c IN SELECT * FROM (VALUES
+    ('an image in diagrams/', true,
+     pg_temp.upload_admitted('course-assets', 'diagrams/map.png', 'image/png')),
+    ('a cover in another owner''s course', true,
+     pg_temp.upload_admitted('course-assets', 'course-a-institute/cover-1a2b3c4d.png', 'image/png')),
+    ('an SVG in diagrams/', false,
+     pg_temp.upload_admitted('course-assets', 'diagrams/map.svg', 'image/svg+xml')),
+    ('a copy of any course''s PDF into course-assets', false,
+     pg_temp.copy_admitted('course-materials', 'course-a-institute/syllabus.pdf',
+       'course-assets', 'course-a-institute/s.pdf', NULL))
+  ) AS t(what, want, got) LOOP
+    IF c.got AND NOT c.want THEN holes := holes || ' / ' || c.what; END IF;
+    IF c.want AND NOT c.got THEN broken := broken || ' / ' || c.what; END IF;
+  END LOOP;
+  IF holes <> '' THEN RAISE EXCEPTION 'SECURITY HOLE: an administrator is admitted to add%', holes; END IF;
+  IF broken <> '' THEN RAISE EXCEPTION 'BROKEN: an administrator is refused to add%', broken; END IF;
+  RAISE NOTICE 'OK: an administrator adds images anywhere in course-assets, and only images';
+END $$;
+
+RESET ROLE;
+
+-- Structural guard: every INSERT policy on storage.objects asks the type.
+-- A new bucket's policy that forgets it is open to every copy above.
+DO $$
+DECLARE offenders text;
+BEGIN
+  SELECT string_agg(policyname, ', ') INTO offenders
+  FROM pg_policies
+  WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND cmd = 'INSERT'
+    AND coalesce(with_check, '') NOT LIKE '%''mimetype''%';
+  IF offenders IS NOT NULL THEN
+    RAISE EXCEPTION 'SECURITY HOLE: storage INSERT policies that do not ask metadata->>''mimetype'': %', offenders;
+  END IF;
+  RAISE NOTICE 'OK: every storage INSERT policy asks the type';
 END $$;
 
 SELECT 'RLS policy assertions passed' AS result;
