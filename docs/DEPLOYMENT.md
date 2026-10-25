@@ -169,22 +169,20 @@ After the PR is merged and CI is green:
 
 `db push` decides what to run by comparing the files in
 `supabase/migrations/` with the versions in
-`supabase_migrations.schema_migrations`. On this project the two do not
-line up: 32 migrations were applied (mostly through the Supabase MCP
-`apply_migration` tool, which records the moment it ran as the version)
-and recorded under timestamps different from their file names. To `db
-push`, those 32 files look unapplied, and the 32 recorded versions look
-like migrations nobody has. It refuses on the second, and the repair it
-suggests -- marking the recorded versions `reverted` -- clears the way
-for it to run all 32 files again against the live database: column
-drops, policy rewrites and grant revocations, replayed onto a schema
-that already has them. The same applies to MCP `apply_migration` for a
-new file: it records a version that is not the file's, and adds one more
-mismatch.
+`supabase_migrations.schema_migrations`. Until 2026-10-25 the two did not
+line up: 32 migrations had been applied through the Supabase MCP
+`apply_migration` tool, which records the moment it ran as the version,
+so to `db push` those files looked unapplied and the repair it suggests
+would have replayed column drops, policy rewrites and grant revocations
+onto a schema that already had them.
 
-Applying one named file (above) avoids both. Until the history is
-repaired so that every file's timestamp is recorded, that is the only
-path.
+On 2026-10-25 each of those 32 rows was renamed to its file's timestamp
+and name in one transaction (matched by name and checked by content), so
+`supabase migration list --linked` now shows every file applied and
+nothing extra. The rule stays: apply one named file (above), in a
+transaction with its own `schema_migrations` row, and never through MCP
+`apply_migration`, which would start the drift again. `db push` would
+also apply every pending file at once, skipping the per-file check.
 
 ### What if the migration breaks prod
 

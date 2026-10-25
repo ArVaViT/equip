@@ -43,11 +43,12 @@ still has pending work.
    row, in one transaction).
 
 **Do not use `supabase db push`, and do not use the MCP
-`apply_migration` tool.** 32 files here are recorded in
-`schema_migrations` under timestamps other than their own (MCP records
-the time it ran, not the file name), so `db push` sees them as pending
-and would re-run them against production once the recorded versions are
-repaired out of its way. `DEPLOYMENT.md` explains the failure in full.
+`apply_migration` tool.** MCP records the time it ran as the version, not
+the file name, so every file it applies drifts from `schema_migrations`.
+Until 2026-10-25, 32 files here were recorded that way; the history was
+repaired then and every file's own timestamp is now the recorded
+version. Keep it so: one file at a time, under its own timestamp.
+`DEPLOYMENT.md` explains why.
 
 ## Rebuilding a fresh database
 

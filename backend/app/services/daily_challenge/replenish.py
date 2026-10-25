@@ -1,9 +1,9 @@
 """Daily auto-replenish: generate ONE Daily Challenge question and append
 it to the end of the schedule.
 
-The bulk bootstrap (``scripts/bootstrap_daily_challenge_bank.py``) fires a
-~7-call burst per passage, which blows a free-tier Gemini quota when run
-210x back to back. This worker instead does exactly one passage per call,
+A bulk run fires a ~7-call burst per passage, which blows a free-tier
+Gemini quota when run 210x back to back. This worker instead does exactly
+one passage per call,
 driven by a once-a-day cron — ~7 calls/day stays comfortably under the
 free daily budget (the same reason the translation cron survives on the
 free tier: it sips, it doesn't gulp).
