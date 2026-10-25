@@ -1,9 +1,8 @@
 """Curated seed passages for the Daily Challenge auto-replenish worker.
 
 Single source of truth for which scripture passages the daily cron draws
-from (one per day, cycling). Mirrors the committed manifest
-``scripts/data/daily_challenge_seed_passages_full.json``; kept as a Python
-module so the serverless worker imports it without reaching into scripts/.
+from (one per day, cycling). Kept as a Python module so the serverless
+worker imports it without reaching into scripts/.
 """
 
 from __future__ import annotations

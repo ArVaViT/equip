@@ -13,8 +13,7 @@ one from that published pool — so this script does not need to touch
 This mirrors ``_seed_question_with_options`` in
 ``tests/test_daily_challenge_service.py`` (insert directly at
 ``status="published"``) rather than driving the AI generation
-orchestrator (``scripts/seed_daily_challenge_bank.py``,
-``scripts/bootstrap_daily_challenge_bank.py``) — those require
+orchestrator (``scripts/seed_daily_challenge_bank.py``) — that requires
 ``GEMINI_API_KEY`` and real LLM calls, which cost money and have no
 place in CI.
 

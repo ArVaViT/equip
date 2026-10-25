@@ -191,8 +191,8 @@ async function uploadToPublicBucket(
  * `no-cache`: every view of every cover went through to Storage and no CDN
  * in between kept a copy. `s-maxage` is for the edge in front of `/img/`:
  * Vercel keeps an external rewrite's response only when the origin allows
- * a shared cache to. `backend/scripts/storage_cache_control.py` rewrites
- * the objects uploaded before this.
+ * a shared cache to. Objects uploaded before this keep their old
+ * `no-cache`; rewriting them was judged not worth it (2026-10-17).
  */
 export const PUBLIC_OBJECT_CACHE_CONTROL = "public, max-age=31536000, s-maxage=86400, immutable"
 
