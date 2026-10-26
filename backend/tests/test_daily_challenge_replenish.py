@@ -10,7 +10,7 @@ contract) is exercised end-to-end.
 from __future__ import annotations
 
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
 from app.models.daily_challenge import (
@@ -241,6 +241,46 @@ class TestReplenishOneQuestion:
         # 7-10 is taken → appended to 7-11.
         assert out.status == "scheduled"
         assert out.challenge_date == "2026-07-11"
+
+
+class TestTheScheduleHorizon:
+    """A full schedule is not a reason to keep paying for questions."""
+
+    def _schedule(self, db: Session, admin: User, *, start: date, days: int) -> None:
+        for offset in range(days):
+            q = _draft(db, created_by=admin.id)
+            db.add(DailyChallengeSchedule(challenge_date=start + timedelta(days=offset), question_id=q.id))
+        db.commit()
+
+    def test_a_schedule_past_the_horizon_generates_nothing(self, db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        admin = _admin(db)
+        today = date(2026, 10, 25)
+        self._schedule(db, admin, start=today, days=R.SCHEDULE_HORIZON.days + 1)
+
+        def _must_not_run(*a: object, **k: object) -> GenerationOutcome:
+            raise AssertionError("generated with the schedule already full")
+
+        monkeypatch.setattr(R, "run_generation", _must_not_run)
+        out = R.replenish_one_question(db, client=object(), start_date=today)  # type: ignore[arg-type]
+
+        assert out.status == "ahead"
+        assert out.challenge_date == (today + timedelta(days=R.SCHEDULE_HORIZON.days + 1)).isoformat()
+
+    def test_a_schedule_inside_the_horizon_still_generates(self, db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        admin = _admin(db)
+        today = date(2026, 10, 25)
+        self._schedule(db, admin, start=today, days=R.SCHEDULE_HORIZON.days)
+        ran: list[object] = []
+
+        def _record(*a: object, **k: object) -> GenerationOutcome:
+            ran.append(k)
+            return GenerationOutcome(generation_run_id=uuid.uuid4(), created_question_ids=[])
+
+        monkeypatch.setattr(R, "run_generation", _record)
+        out = R.replenish_one_question(db, client=object(), start_date=today)  # type: ignore[arg-type]
+
+        assert ran
+        assert out.status == "no_survivors"
 
 
 class TestWorkerTickUnconfigured:
