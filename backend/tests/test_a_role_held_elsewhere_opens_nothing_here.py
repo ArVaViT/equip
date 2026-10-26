@@ -127,7 +127,13 @@ def world(db: Session, nobody_belongs_anywhere: None) -> dict:
     """Two organizations, a director in each, a closed course with a lesson in A, platform staff."""
     db.add_all(
         [
-            Organization(id=A_ID, slug="school-a", public_name="School A"),
+            # A is the platform's oldest school on purpose. ``conftest``
+            # writes its own organization first, and SQLite stamps
+            # ``created_at`` to the second: A came out oldest only when both
+            # rows landed in the same second and the id broke the tie. CI
+            # crossed the second on 2026-10-26 and filed a platform
+            # invitation under the conftest school.
+            Organization(id=A_ID, slug="school-a", public_name="School A", created_at=datetime(2020, 1, 1, tzinfo=UTC)),
             Organization(id=B_ID, slug="school-b", public_name="School B"),
         ]
     )
