@@ -49,8 +49,9 @@ class ReplenishResponse(BaseModel):
 
     ``status``: ``scheduled`` (new question appended), ``no_survivors``
     (generated but all candidates failed a gate), ``error`` (retry next
-    tick), ``no_actor`` (no admin to attribute to), or ``unconfigured``
-    (no Gemini key on this deployment)."""
+    tick), ``no_actor`` (no admin to attribute to), ``ahead`` (the schedule
+    already reaches past the horizon; nothing generated), or
+    ``unconfigured`` (no Gemini key on this deployment)."""
 
     status: str
     question_id: str | None = None

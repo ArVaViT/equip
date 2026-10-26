@@ -67,6 +67,14 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+#: How far ahead the schedule must already reach for a tick to stop
+#: generating. A question costs about seven Gemini calls, and every published
+#: one is another row the idle pool sweep re-reads each minute — a third of
+#: the database's time on 2026-10-25, when the schedule ran nine months ahead
+#: and nobody had answered a question in 26 days. Below this, the tick
+#: generates as before; the autofill pool covers any day left open.
+SCHEDULE_HORIZON = timedelta(days=60)
+
 # draft → scripture_validated → doctrinal_reviewed → bilingual_reviewed →
 # pilot_passed (4 forward edges), matching the bootstrap.
 _PROMOTE_STAGES_FROM_DRAFT = 4
@@ -77,8 +85,9 @@ class ReplenishOutcome:
     """Worker tick result. ``status`` is one of ``scheduled`` (a new
     question was published + appended), ``no_survivors`` (generation ran
     but every candidate was rejected at a gate), ``error`` (generation or
-    persistence failed — try again next tick), or ``no_actor`` (no admin
-    user to attribute the editorial actions to)."""
+    persistence failed — try again next tick), ``no_actor`` (no admin
+    user to attribute the editorial actions to), or ``ahead`` (the schedule
+    already reaches past ``SCHEDULE_HORIZON``; nothing was generated)."""
 
     status: str
     question_id: str | None = None
@@ -167,6 +176,15 @@ def replenish_one_question(
     actor = actor_id or _system_actor_id(db)
     if actor is None:
         return ReplenishOutcome(status="no_actor", detail="no active admin user to attribute generation to")
+
+    today = start_date or datetime.now(UTC).date()
+    next_open = _next_unscheduled_date(db, start=today)
+    if next_open > today + SCHEDULE_HORIZON:
+        return ReplenishOutcome(
+            status="ahead",
+            challenge_date=next_open.isoformat(),
+            detail=f"schedule filled until {(next_open - timedelta(days=1)).isoformat()}",
+        )
 
     passage = _pick_passage(db)
     label = f"{passage['book']} {passage['chapter']}"
