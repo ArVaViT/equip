@@ -17,7 +17,8 @@ Two things it cannot see, and both arrive with scale:
 * **A pass that failed.** A provider outage, a deploy mid-flight, a job
   that hit its attempt cap. The course sits half-translated, and the
   only thing that would revive it is a coincidence: somebody happening
-  to edit it again.
+  to edit it again. That includes a held edit to a live course, which
+  waits in its own table where the completeness check does not look.
 
 So: events for speed, a sweep for certainty. The sweep walks the
 courses readers can reach, oldest-checked first, a few per worker tick,
@@ -60,6 +61,7 @@ from app.models.content_version import ContentVersion, ContentVersionStatus
 from app.models.course import Course, CourseStatus
 from app.schemas.locale import LOCALE_CODES, LocaleCode, normalize_locale
 from app.services.language_detection import detect_locale
+from app.services.staged_edits.read import staged_status_for_course
 from app.services.translation.completeness import (
     UNACTIONABLE_GAP_REASONS,
     completeness_of,
@@ -204,6 +206,29 @@ def sweep_courses(
     examined = queued = complete = stalled = 0
     for course in courses:
         examined += 1
+        # Held edits first, as in the worker. They live in their own
+        # table, so ``course_translation_completeness`` never sees them:
+        # a course whose live text is whole reads as complete with an
+        # edit still owed a language. A translation that failed for a
+        # moment is left ``failed`` "for the next tick", and a tick only
+        # comes from a queued job; the job that failed it closed
+        # ``done``. On 2026-10-24 the Bible service did not answer for
+        # Acts 15:28 in Ukrainian and German for one minute, and an edit
+        # to three lessons stayed out of sight of seventeen students for
+        # more than a day, with nothing left that would ever look again.
+        # An edit waiting on a person is not queued — the job could not
+        # move it.
+        owed = _held_edits_owed_a_translation(db, course)
+        if owed:
+            course.translations_checked_at = now
+            enqueue_course_translation(db, str(course.id))
+            queued += 1
+            logger.warning(
+                "sweep: course %s has %d held edit(s) still owed a translation; queued",
+                course.id,
+                owed,
+            )
+            continue
         completeness = course_translation_completeness(db, course)
         # Stamped whether or not there was a gap: the timestamp records
         # that the course was *looked at*, which is what keeps the cycle
@@ -301,6 +326,13 @@ def sweep_courses(
         stalled=stalled,
         announcement_rows=announcement_rows,
     )
+
+
+def _held_edits_owed_a_translation(db: Session, course: Course) -> int:
+    """How many of the course's held edits the machine still owes a
+    language. Edits blocked on a person (``needs_review``,
+    ``failed_permanent``) are not counted."""
+    return sum(1 for status in staged_status_for_course(db, course) if status.state == "translating")
 
 
 def _gaps_the_plan_can_close(db: Session, course: Course, gaps: list[TranslationGap]) -> list[TranslationGap]:
