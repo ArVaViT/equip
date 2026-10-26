@@ -569,3 +569,56 @@ class TestTheInviterMustStillSpeakForTheOrganization:
             _accept(db, invitation)
 
         assert refused.value.detail["code"] == "invitation.inviter_not_staff"
+
+
+def _suspend_the_school(db: Session) -> None:
+    db.query(Organization).filter(Organization.id == TEST_ORGANIZATION_ID).update({Organization.status: "suspended"})
+    db.commit()
+
+
+class TestASuspendedSchoolAdmitsNobody:
+    """Until 2026-10-25 an organization's status was read only by its public
+    page: a director of a school the platform had switched off kept
+    inviting, and the links kept admitting people to its courses."""
+
+    def test_a_directors_link_into_a_suspended_school_admits_nobody(self, db: Session, admin: User) -> None:
+        _invitee(db)
+        director = _staff(db, UserRole.DIRECTOR.value)
+        course = _course(db)
+        invitation = _invitation(db, scope=InvitationScope.COURSE.value, course_id=course.id, invited_by=director.id)
+        _suspend_the_school(db)
+
+        with pytest.raises(HTTPException) as refused:
+            _accept(db, invitation)
+
+        assert refused.value.status_code == 403
+        assert refused.value.detail["code"] == "invitation.inviter_not_staff"
+        assert _memberships(db) == {}
+        assert db.query(Enrollment).filter(Enrollment.user_id == INVITEE_ID).count() == 0
+        db.refresh(invitation)
+        assert invitation.status == InvitationStatus.PENDING.value
+
+    def test_a_suspended_school_writes_no_new_invitation(self, db: Session, admin: User) -> None:
+        director = _staff(db, UserRole.DIRECTOR.value)
+        _suspend_the_school(db)
+
+        with pytest.raises(HTTPException) as refused:
+            create_or_resend_invitation(
+                db,
+                email=INVITEE_EMAIL,
+                role=UserRole.STUDENT.value,
+                invited_by=director.id,
+                organization_id=TEST_ORGANIZATION_ID,
+            )
+
+        assert refused.value.status_code == 403
+        assert db.query(Invitation).count() == 0
+
+    def test_a_link_into_a_school_in_good_standing_still_opens(self, db: Session, admin: User) -> None:
+        _invitee(db)
+        director = _staff(db, UserRole.DIRECTOR.value)
+        invitation = _invitation(db, invited_by=director.id)
+
+        _accept(db, invitation)
+
+        assert _memberships(db) == {TEST_ORGANIZATION_ID: UserRole.STUDENT.value}

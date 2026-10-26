@@ -32,7 +32,7 @@ from app.core.errors import ErrorCode, equip_error
 from app.models.certificate import Certificate
 from app.models.course import Chapter, Course, CourseStatus
 from app.models.org_settings import OrgSettings
-from app.models.organization import Organization, OrganizationMember
+from app.models.organization import ORGANIZATION_SUSPENDED, Organization, OrganizationMember
 from app.models.user import User, UserRole
 from app.schemas.locale import LocaleCode, normalize_locale
 from app.schemas.organization import (
@@ -51,7 +51,7 @@ router = APIRouter(prefix="/organizations", tags=["organizations"])
 
 #: An organization that is no longer serving its courses. Its page stays
 #: up for the certificates that point at it.
-_INACTIVE = "suspended"
+_INACTIVE = ORGANIZATION_SUSPENDED
 
 #: Below these, a count says something about people rather than about the
 #: organization: "4 members" beside a director's name is nearly a list, and

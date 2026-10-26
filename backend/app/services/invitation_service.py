@@ -16,7 +16,7 @@ from app.core.errors import ErrorCode, equip_error
 from app.core.metrics import increment, timing
 from app.models.course import Course
 from app.models.invitation import INVITATION_LIFETIME, Invitation, InvitationScope, InvitationStatus
-from app.models.organization import STAFF_ROLES, MembershipSource
+from app.models.organization import ORGANIZATION_SUSPENDED, STAFF_ROLES, MembershipSource, Organization
 from app.models.user import User
 from app.services import auth_admin
 from app.services.audit_service import log_action
@@ -341,6 +341,13 @@ def create_or_resend_invitation(
     director as "already sent".
     """
     normalized_email = email.strip().lower()
+    if scope != InvitationScope.PLATFORM.value and not _organization_is_open(db, organization_id):
+        raise equip_error(
+            ErrorCode.AUTH_FORBIDDEN,
+            status_code=status.HTTP_403_FORBIDDEN,
+            message="This organization is suspended and takes nobody new",
+            context={"resource_type": "invitation"},
+        )
     if scope == InvitationScope.COURSE.value:
         # Raises 404 when the course is not this organization's to offer.
         course_of_organization(db, course_id or "", organization_id)
@@ -584,6 +591,12 @@ def _course_if_live(db: Session, invitation: Invitation) -> Course | None:
     )
 
 
+def _organization_is_open(db: Session, organization_id: UUID) -> bool:
+    """Whether the organization still lets people in: not suspended by the platform."""
+    standing = db.query(Organization.status).filter(Organization.id == organization_id).scalar()
+    return standing != ORGANIZATION_SUSPENDED
+
+
 def _inviter_speaks_for_it(db: Session, invitation: Invitation) -> bool:
     """Whether whoever wrote the invitation may still let people in by it.
 
@@ -607,9 +620,16 @@ def _inviter_speaks_for_it(db: Session, invitation: Invitation) -> bool:
 
     A platform invitation leads into no organization, so nobody has to
     speak for one.
+
+    Nobody speaks for a suspended organization either. Until 2026-10-25
+    its status was read only by its public page, so its director kept
+    inviting and its links kept admitting people to courses and
+    certificates of a school the platform had switched off.
     """
     if invitation.scope == InvitationScope.PLATFORM.value:
         return True
+    if not _organization_is_open(db, invitation.organization_id):
+        return False
     inviter = db.query(User).filter(User.id == invitation.invited_by).first() if invitation.invited_by else None
     speaks_for_it = directs if invitation.role in STAFF_ROLES else teaches_in
     return (
