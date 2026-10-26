@@ -169,6 +169,10 @@ MEMBERSHIP_RANK: dict[str, int] = {
 #: platform-wide twin is ``app.models.user.TEACHING_ROLES``.
 STAFF_ROLES: frozenset[str] = frozenset({MembershipRole.DIRECTOR.value, MembershipRole.TEACHER.value})
 
+#: An organization the platform has switched off. Its page stays up for the
+#: certificates that point at it; nobody new comes in through it.
+ORGANIZATION_SUSPENDED = "suspended"
+
 
 class OrganizationMember(Base):
     """One person in one organization, in one role.
