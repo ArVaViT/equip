@@ -16,15 +16,36 @@ from app.models.assignment import Assignment
 from app.models.course import Chapter, Course, Module
 from app.models.course_event import CourseEvent
 from app.models.enrollment import Enrollment
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.calendar import CalendarEvent
 from app.schemas.locale import LocaleCode, normalize_locale
+from app.services.chapter_gate import chapter_is_open_to
 from app.services.event_series import series_positions
 from app.services.staged_edits.visibility import chapter_awaits_first_release
 from app.services.translation.resolve_for_display import (
     fetch_course_titles_by_id,
     populate_module_texts,
 )
+
+
+def _chapters_closed_to(db: Session, user: User, course_ids: list[str], owned: set[str]) -> set[str]:
+    """The locked chapters of these courses that ``user`` may not open yet.
+
+    The same rule ``GET /blocks/chapter/{id}`` applies (``chapter_gate``):
+    the course's owner and platform staff are not gated.
+    """
+    if user.role == UserRole.ADMIN.value:
+        return set()
+    gated = [cid for cid in course_ids if cid not in owned]
+    if not gated:
+        return set()
+    locked = (
+        db.query(Chapter)
+        .filter(Chapter.course_id.in_(gated), Chapter.is_locked.is_(True), Chapter.deleted_at.is_(None))
+        .all()
+    )
+    return {str(ch.id) for ch in locked if not chapter_is_open_to(db, ch, user.id)}
+
 
 #: Event kinds with a label of their own (``event_type.*`` in ``app.core.i18n``).
 _EVENT_TYPE_LABELS = frozenset({"deadline", "live_session", "exam", "other"})
@@ -134,7 +155,8 @@ def build_calendar_events(
     if course_id:
         enrolled_q = enrolled_q.filter(Enrollment.course_id == course_id)
         owned_q = owned_q.filter(Course.id == course_id)
-    enrolled_course_ids = list(dict.fromkeys([row[0] for row in enrolled_q.all()] + [row[0] for row in owned_q.all()]))
+    owned_course_ids = {row[0] for row in owned_q.all()}
+    enrolled_course_ids = list(dict.fromkeys([row[0] for row in enrolled_q.all()] + list(owned_course_ids)))
 
     if not enrolled_course_ids:
         return []
@@ -154,6 +176,12 @@ def build_calendar_events(
     if not enrolled_course_ids:
         return []
     course_titles = fetch_course_titles_by_id(db, enrolled_course_ids, display_locale=display_locale)
+    # A deadline stays on the calendar while its lesson is locked — the date
+    # is real — but it links only to a lesson this reader can open. On
+    # 2026-10-25 a student pressed «Open the assignment» and got the lesson's
+    # 403 twice: the calendar knew which lessons were released, not which
+    # were open to them.
+    closed = _chapters_closed_to(db, user, enrolled_course_ids, owned_course_ids)
 
     events: list[CalendarEvent] = []
 
@@ -190,7 +218,8 @@ def build_calendar_events(
             .order_by(Chapter.module_id, Chapter.order_index, Chapter.id)
             .all()
         ):
-            first_chapter_of_module.setdefault(str(mod_id), str(ch_id))
+            if str(ch_id) not in closed:
+                first_chapter_of_module.setdefault(str(mod_id), str(ch_id))
     for m in modules:
         assert m.due_date is not None
         events.append(
@@ -288,7 +317,7 @@ def build_calendar_events(
                     description=asg_description,
                     event_type="deadline",
                     event_date=a.due_date,
-                    chapter_id=str(a.chapter_id),
+                    chapter_id=None if str(a.chapter_id) in closed else str(a.chapter_id),
                     assignment_id=aid,
                     course_id=crs_id,
                     course_title=course_titles.get(crs_id),
