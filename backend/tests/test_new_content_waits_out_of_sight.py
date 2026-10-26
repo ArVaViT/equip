@@ -345,3 +345,30 @@ def test_a_locked_lesson_waits_on_the_last_lesson_students_can_see(db: Session, 
     # The quiz before it, in the student's order, is the one they passed —
     # not the one nobody can open yet.
     assert chapter_is_open_to(db, locked, STUDENT_ID) is True
+
+
+def _module_ids_in_tree(course: dict[str, Any]) -> set[str]:
+    return {m["id"] for m in course["modules"]}
+
+
+def test_a_module_with_nothing_in_it_is_not_a_heading_in_the_students_tree(
+    c: TestClient, db: Session, teacher: User, student: User
+) -> None:
+    """2026-10-25: a live course showed its students four modules, three of
+    them with no lessons at all. A heading over nothing tells a student only
+    that something is missing; the author still sees it, to fill it."""
+    cid, mid, _released = _live_course(db)
+    empty = Module(id=f"mod-empty-{cid}", course_id=cid, order_index=1)
+    waiting = Module(id=f"mod-waiting-{cid}", course_id=cid, order_index=2)
+    db.add_all([empty, waiting])
+    db.flush()
+    for module in (empty, waiting):
+        record_human_version(db, entity_type="module", entity_id=module.id, field="title", locale="ru", text="Позже")
+    db.commit()
+    _held_chapter(db, cid, waiting.id, title="Ещё не выпущен", order_index=0)
+
+    _as(student)
+    assert _module_ids_in_tree(_ok(c.get(f"{API}/courses/{cid}"))) == {mid}
+
+    _as(teacher)
+    assert _module_ids_in_tree(_ok(c.get(f"{API}/courses/{cid}"))) == {mid, empty.id, waiting.id}
