@@ -108,7 +108,7 @@
     "typescript-eslint": "^8.70.0",
     "vite": "^8.3.4",
     "vitest": "^5.0.0",
-    "wait-on": "^9.1.0"
+    "wait-on": "^9.5.1"
   },
   "overrides": {
     "@aarkue/tiptap-math-extension": {
