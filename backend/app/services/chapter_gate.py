@@ -23,6 +23,7 @@ Owners and admins are not gated; the caller settles that before asking.
 
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import TYPE_CHECKING
 
 from app.constants import GRADABLE_CHAPTER_TYPES
@@ -37,8 +38,8 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
-def _predecessor(db: Session, chapter: Chapter) -> Chapter | None:
-    """The chapter a reader meets just before this one.
+def _predecessors(db: Session, chapters: list[Chapter]) -> dict[str, Chapter | None]:
+    """The chapter a reader meets just before each of these.
 
     Reading order is the course's one sequence (``course_structure``):
     modules and the lessons outside them in the places the teacher gave
@@ -49,38 +50,62 @@ def _predecessor(db: Session, chapter: Chapter) -> Chapter | None:
     A chapter held for its first release is not in the reader's order
     yet: a quiz nobody can open cannot be the thing a locked lesson waits
     on (2026-10-03).
+
+    One course's order is built once for all of its chapters asked about:
+    the calendar asks about every locked lesson of every course a reader
+    is in, on every load and every iCal poll.
     """
-    modules = db.query(Module).filter(Module.course_id == chapter.course_id, Module.deleted_at.is_(None)).all()
-    chapters = (
-        db.query(Chapter)
-        .filter(
-            Chapter.course_id == chapter.course_id,
-            Chapter.deleted_at.is_(None),
-            ~chapter_awaits_first_release(),
+    by_course: dict[str, list[Chapter]] = defaultdict(list)
+    for chapter in chapters:
+        by_course[chapter.course_id].append(chapter)
+    out: dict[str, Chapter | None] = {}
+    for course_id, asked in by_course.items():
+        modules = db.query(Module).filter(Module.course_id == course_id, Module.deleted_at.is_(None)).all()
+        order = (
+            db.query(Chapter)
+            .filter(
+                Chapter.course_id == course_id,
+                Chapter.deleted_at.is_(None),
+                ~chapter_awaits_first_release(),
+            )
+            .all()
         )
-        .all()
-    )
-    if all(c.id != chapter.id for c in chapters):
-        chapters.append(chapter)
-    return build_spine(modules, chapters).predecessor_of(chapter.id)
+        present = {c.id for c in order}
+        order.extend(c for c in asked if c.id not in present)
+        spine = build_spine(modules, order)
+        for chapter in asked:
+            out[str(chapter.id)] = spine.predecessor_of(chapter.id)
+    return out
+
+
+def chapters_closed_to(db: Session, chapters: list[Chapter], user_id: uuid.UUID) -> set[str]:
+    """Ids of the chapters among ``chapters`` this reader may not open yet.
+
+    The rule of the module docstring, asked of many chapters at once: one
+    reading order per course and one progress query for all of them.
+    """
+    locked = [c for c in chapters if c.is_locked]
+    if not locked:
+        return set()
+    previous = _predecessors(db, locked)
+    earnable = {
+        chapter_id: prev.id
+        for chapter_id, prev in previous.items()
+        if prev is not None and prev.chapter_type in GRADABLE_CHAPTER_TYPES
+    }
+    earned: set[str] = set()
+    if earnable:
+        earned = {
+            str(chapter_id)
+            for (chapter_id,) in db.query(ChapterProgress.chapter_id).filter(
+                ChapterProgress.user_id == user_id,
+                ChapterProgress.chapter_id.in_(set(earnable.values())),
+                ChapterProgress.completed.is_(True),
+            )
+        }
+    return {chapter_id for chapter_id in previous if str(earnable.get(chapter_id)) not in earned}
 
 
 def chapter_is_open_to(db: Session, chapter: Chapter, user_id: uuid.UUID) -> bool:
     """``False`` when this reader has not earned their way in yet."""
-    if not chapter.is_locked:
-        return True
-
-    previous = _predecessor(db, chapter)
-    if previous is None or previous.chapter_type not in GRADABLE_CHAPTER_TYPES:
-        return False
-
-    earned = (
-        db.query(ChapterProgress.chapter_id)
-        .filter(
-            ChapterProgress.user_id == user_id,
-            ChapterProgress.chapter_id == previous.id,
-            ChapterProgress.completed.is_(True),
-        )
-        .first()
-    )
-    return earned is not None
+    return str(chapter.id) not in chapters_closed_to(db, [chapter], user_id)

@@ -19,7 +19,7 @@ from app.models.enrollment import Enrollment
 from app.models.user import User, UserRole
 from app.schemas.calendar import CalendarEvent
 from app.schemas.locale import LocaleCode, normalize_locale
-from app.services.chapter_gate import chapter_is_open_to
+from app.services.chapter_gate import chapters_closed_to
 from app.services.event_series import series_positions
 from app.services.staged_edits.visibility import chapter_awaits_first_release
 from app.services.translation.resolve_for_display import (
@@ -44,7 +44,7 @@ def _chapters_closed_to(db: Session, user: User, course_ids: list[str], owned: s
         .filter(Chapter.course_id.in_(gated), Chapter.is_locked.is_(True), Chapter.deleted_at.is_(None))
         .all()
     )
-    return {str(ch.id) for ch in locked if not chapter_is_open_to(db, ch, user.id)}
+    return chapters_closed_to(db, locked, user.id)
 
 
 #: Event kinds with a label of their own (``event_type.*`` in ``app.core.i18n``).
