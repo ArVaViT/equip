@@ -795,6 +795,10 @@ def build_localized_course_response_with_tree(
         mt = loc.pick("module", str(mod.id), "title", mod.title)
         md = loc.pick("module", str(mod.id), "description", mod.description)
         new_chapters = [localized_chapter(ch) for ch in mod.chapters if str(ch.id) not in hidden]
+        # A module with nothing in it for this reader is a heading over
+        # nothing. The author still sees it (``hide_unreleased`` is off).
+        if hide_unreleased and not new_chapters:
+            continue
         new_modules.append(
             ModuleResponse.model_validate(
                 {
