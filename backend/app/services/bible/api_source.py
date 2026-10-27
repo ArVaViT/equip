@@ -47,6 +47,7 @@ import logging
 import os
 import re
 import threading
+import time
 from typing import TYPE_CHECKING
 
 import httpx
@@ -207,6 +208,14 @@ _cache_chars = 0
 _MISS = object()
 _lock = threading.Lock()
 
+#: Until when (``time.monotonic``) the publisher has asked us to stay away.
+#: A 429 comes with ``Retry-After``; until 2026-10-27 the next verse was
+#: asked anyway, and the next — one pass of one held block sent 122
+#: requests into a key that refused every one of them, every half hour,
+#: which is how a five-minute refusal became a day-long one.
+_refusing_until = 0.0
+_DEFAULT_RETRY_AFTER = 300.0
+
 
 #: A psalm's heading as Elberfelder prints it: a parenthesised group at
 #: the very start of the verse.
@@ -322,6 +331,16 @@ def _remember(key: tuple[str, str], text: str | None) -> None:
         _cache_chars += len(text or "")
 
 
+def _stay_away(retry_after: str | None) -> None:
+    """Hold every lookup in this process for as long as the publisher asked."""
+    global _refusing_until
+    try:
+        seconds = float(retry_after) if retry_after else _DEFAULT_RETRY_AFTER
+    except ValueError:  # an HTTP date rather than seconds: not worth parsing
+        seconds = _DEFAULT_RETRY_AFTER
+    _refusing_until = max(_refusing_until, time.monotonic() + min(max(seconds, 1.0), 3600.0))
+
+
 def _count_call(bible_id: int, status_code: int) -> None:
     """One data point per request to the publisher, whatever came back.
 
@@ -378,6 +397,10 @@ def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
         # No key in CI, preview and local development. Not worth a warning on
         # every quoted verse — the fallback is correct and visible.
         return None
+    if time.monotonic() < _refusing_until:
+        # Told to wait. Not cached, the same as the 429 itself: the verse
+        # exists, the publisher is just not answering yet.
+        return None
 
     text: str | None = None
     try:
@@ -433,6 +456,10 @@ def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
                     # stranded the whole verse goes back, rather than a
                     # verse that reads as sound and is not.
                     text = None if unmendable else mended
+        elif response.status_code == 429:
+            _stay_away(response.headers.get("retry-after"))
+            logger.info("Bible API 429 for %s in %s", usfm, locale)
+            return None
         elif response.status_code != 404:
             # Anything that is not 200 or 404 is the service having a
             # moment — rate limiting, a bad gateway, an expired key — and

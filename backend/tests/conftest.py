@@ -292,6 +292,15 @@ def _a_chapter_belongs_to_its_module_s_course(session, _flush_context, _instance
 
 
 @pytest.fixture(autouse=True)
+def _the_scripture_publisher_has_not_refused_us(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A 429 holds every lookup in the process (``api_source._refusing_until``);
+    one test's refusal must not reach the next."""
+    from app.services.bible import api_source
+
+    monkeypatch.setattr(api_source, "_refusing_until", 0.0)
+
+
+@pytest.fixture(autouse=True)
 def _disable_translation(monkeypatch: pytest.MonkeyPatch):
     """Default-disable the Gemini translation pipeline for every test.
 

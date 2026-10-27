@@ -30,7 +30,7 @@ without asking a service that is already refusing to answer.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import pytest
 
@@ -270,6 +270,7 @@ class TestNoTranslationIsPaidForWhileTheVerseIsWithheld:
     def _youversion_answers(monkeypatch: pytest.MonkeyPatch, status: int) -> None:
         class _Response:
             status_code = status
+            headers: ClassVar[dict[str, str]] = {}
 
             def json(self) -> dict[str, str]:
                 return {"content": "Бо під небом нема іншого ймення"}
