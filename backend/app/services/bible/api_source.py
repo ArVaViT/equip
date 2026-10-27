@@ -322,6 +322,30 @@ def _remember(key: tuple[str, str], text: str | None) -> None:
         _cache_chars += len(text or "")
 
 
+def _count_call(bible_id: int, status_code: int) -> None:
+    """One data point per request to the publisher, whatever came back.
+
+    Until 2026-10-27 only the verse of the day was counted, and the
+    publisher began answering every request with 429 while the lessons'
+    own lookups — most of the traffic — went unseen: nobody could say
+    whose requests had spent the key. ``status_code`` 0 is "no response".
+    A metric failure must never break a lookup.
+    """
+    try:
+        from app.core.metrics import increment
+
+        outcome = {200: "success", 404: "not_in_bible", 429: "rate_limited"}.get(status_code, "fatal")
+        increment(
+            "equip.youversion.api_calls_total",
+            caller="passage",
+            bible_id=str(bible_id),
+            outcome=outcome,
+            status_code=str(status_code),
+        )
+    except Exception:
+        pass
+
+
 def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
     """Canonical text for `ref` in `locale`, or `None` for any reason at all.
 
@@ -362,6 +386,7 @@ def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
                 f"{API_BASE}/bibles/{bible_id}/passages/{usfm}",
                 headers={"X-YVP-App-Key": api_key},
             )
+        _count_call(bible_id, response.status_code)
         if response.status_code == 200:
             content = response.json().get("content")
             if isinstance(content, str) and content.strip():
@@ -421,7 +446,9 @@ def fetch_verse(ref: BibleRef, locale: LocaleCode) -> str | None:
         # 404 means the verse is genuinely absent from this edition — a
         # versification difference, which is data rather than a fault, and
         # worth remembering so we do not ask again.
-    except (httpx.HTTPError, ValueError):
+    except (httpx.HTTPError, ValueError) as exc:
+        if isinstance(exc, httpx.HTTPError):
+            _count_call(bible_id, 0)  # a ValueError came after a response already counted
         logger.info("Bible API unreachable for %s in %s", usfm, locale)
         return None  # Not cached: a transient outage must not poison the verse.
 

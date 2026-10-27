@@ -459,6 +459,7 @@ def _fetch_passage(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
 
             increment(
                 "equip.youversion.api_calls_total",
+                caller="verse_of_the_day",
                 bible_id=str(bible_id),
                 outcome="fatal",
                 status_code="0",
@@ -479,6 +480,7 @@ def _fetch_passage(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
         )
         increment(
             "equip.youversion.api_calls_total",
+            caller="verse_of_the_day",
             bible_id=str(bible_id),
             outcome=outcome,
             status_code=str(response.status_code),
