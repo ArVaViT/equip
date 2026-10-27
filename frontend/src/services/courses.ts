@@ -1,5 +1,6 @@
 import api, { LONG_REQUEST_MS } from "./api"
 import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
+import { invalidateOfflineCourse } from "@/lib/offlineLessons"
 import type { Course, Module, Chapter } from "@/types"
 
 import { adminUsersService } from "./adminUsers"
@@ -40,6 +41,12 @@ import { analyticsService } from "./analytics"
 // lockstep — these three helpers centralize the "graph" so the picture
 // of which mutation invalidates what is in one place.
 
+function invalidateSavedCourse(courseId: string): void {
+  void invalidateOfflineCourse(courseId).catch((error: unknown) => {
+    console.error("Could not invalidate the offline course cache", error)
+  })
+}
+
 /** Course list pages (search-scoped and teacher-scoped). Touched by any course mutation. */
 function invalidateCourseLists(): void {
   cacheInvalidatePrefix("courses:list:")
@@ -50,6 +57,7 @@ function invalidateCourseLists(): void {
 function invalidateModuleScope(courseId: string, moduleId: string): void {
   cacheInvalidate(`courses:detail:${courseId}`)
   cacheInvalidate(`courses:module:${courseId}:${moduleId}`)
+  invalidateSavedCourse(courseId)
 }
 
 /**
@@ -65,6 +73,7 @@ function invalidateModuleScope(courseId: string, moduleId: string): void {
 function invalidateCourseScope(courseId: string): void {
   cacheInvalidate(`courses:detail:${courseId}`)
   cacheInvalidatePrefix(`courses:module:${courseId}:`)
+  invalidateSavedCourse(courseId)
 }
 
 const courseCrud = {
@@ -166,6 +175,7 @@ const courseCrud = {
     const response = await api.put<Course>(`/courses/${id}`, data)
     cacheInvalidate(`courses:detail:${id}`)
     invalidateCourseLists()
+    invalidateSavedCourse(id)
     return response.data
   },
 

@@ -1,4 +1,8 @@
 {
+  "offline": {
+    "online": "Online",
+    "offline": "Offline"
+  },
   "unsubscribe": {
     "title": "E-Mails von Equip",
     "ask": "Keine E-Mails „{{kind}}“ mehr senden?",

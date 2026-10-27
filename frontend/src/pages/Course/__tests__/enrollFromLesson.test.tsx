@@ -43,6 +43,7 @@ vi.mock("@/services/notes", () => ({
 vi.mock("@/context/useAuth", () => ({
   useAuth: () => ({ user: { id: "u-1", role: "student" } }),
 }))
+vi.mock("@/hooks/useOnlineStatus", () => ({ useOnlineStatus: () => true }))
 vi.mock("@/hooks/useUserTour", () => ({ useUserTour: () => {} }))
 vi.mock("@/lib/recentlyViewed", () => ({ recordCourseView: () => {} }))
 const toast = vi.fn()

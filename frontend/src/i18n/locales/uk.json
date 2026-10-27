@@ -1,4 +1,8 @@
 {
+  "offline": {
+    "online": "У мережі",
+    "offline": "Немає мережі"
+  },
   "unsubscribe": {
     "title": "Листи Equip",
     "ask": "Більше не надсилати листи «{{kind}}»?",
