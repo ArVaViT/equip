@@ -228,3 +228,92 @@ class TestTheRowIsAskedAgainRatherThanParked:
         row = db.query(ContentVersion).filter(ContentVersion.entity_id == "1", ContentVersion.locale == "de").one()
         assert row.status == "failed"
         assert row.attempts == 0
+
+
+class TestNoTranslationIsPaidForWhileTheVerseIsWithheld:
+    """2026-10-26: one held block of the Acts course was translated, paid
+    for and thrown away every half hour, 8 model calls at a time, while
+    YouVersion answered 429 for its Ukrainian and German verses. The
+    verses are asked for first now; the model only once they are had."""
+
+    _LESSON = (
+        "<blockquote>«Ибо нет другого имени под небом, данного человекам, которым надлежало бы нам спастись»"
+        "</blockquote><p> (Деян. 4:12). Это центральный стих урока.</p>"
+    )
+
+    @staticmethod
+    def _provider(asked: list[int]):
+        import httpx
+
+        from app.services.translation.gemini import GeminiTranslationProvider
+
+        def handler(_request: httpx.Request) -> httpx.Response:
+            asked.append(1)
+            return httpx.Response(
+                200,
+                json={
+                    "candidates": [{"content": {"parts": [{"text": "Бо немає іншого імені"}]}}],
+                    "usageMetadata": {"promptTokenCount": 10, "candidatesTokenCount": 10},
+                },
+            )
+
+        return GeminiTranslationProvider(
+            api_key="fake-key",
+            model="gemini-2.5-flash-lite",
+            timeout_seconds=5.0,
+            max_output_tokens=4096,
+            max_retries=0,
+            client=httpx.Client(transport=httpx.MockTransport(handler), timeout=5.0),
+        )
+
+    @staticmethod
+    def _youversion_answers(monkeypatch: pytest.MonkeyPatch, status: int) -> None:
+        class _Response:
+            status_code = status
+
+            def json(self) -> dict[str, str]:
+                return {"content": "Бо під небом нема іншого ймення"}
+
+        class _Client:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_exc):
+                return False
+
+            def get(self, *_args, **_kwargs):
+                return _Response()
+
+        monkeypatch.setattr(api_source.httpx, "Client", lambda **_kwargs: _Client())
+
+    def _translate(self, monkeypatch: pytest.MonkeyPatch, status: int) -> tuple[TranslationResult, list[int]]:
+        asked: list[int] = []
+        provider = self._provider(asked)  # its own client, built before the publisher is faked
+        self._youversion_answers(monkeypatch, status)
+        try:
+            result = provider.translate(
+                TranslationRequest(text=self._LESSON, source_locale="ru", target_locale="uk", content_kind="html")
+            )
+        finally:
+            provider.close()
+        return result, asked
+
+    def test_a_withheld_verse_costs_no_model_call(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        result, asked = self._translate(monkeypatch, 429)
+
+        assert asked == []
+        assert result.scripture_in_source_language is True
+
+    def test_a_verse_the_publisher_hands_over_lets_the_model_be_asked(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        result, asked = self._translate(monkeypatch, 200)
+
+        assert asked
+        assert result.scripture_in_source_language is False
+
+    def test_a_verse_this_edition_will_never_carry_does_not_hold_the_translation(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        result, asked = self._translate(monkeypatch, 404)
+
+        assert asked
+        assert result.scripture_in_source_language is False
