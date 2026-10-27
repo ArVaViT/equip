@@ -1,4 +1,8 @@
 {
+  "offline": {
+    "online": "В сети",
+    "offline": "Нет сети"
+  },
   "unsubscribe": {
     "title": "Письма Equip",
     "ask": "Больше не присылать письма «{{kind}}»?",

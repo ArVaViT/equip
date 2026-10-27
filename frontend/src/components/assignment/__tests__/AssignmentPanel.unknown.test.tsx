@@ -49,6 +49,7 @@ function Wrapper({ children }: { children: ReactNode }) {
       <AuthContext.Provider
         value={{
           user: STUDENT,
+          sessionUserId: "student-1",
           loading: false,
           login: vi.fn(),
           register: vi.fn(),

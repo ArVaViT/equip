@@ -1,5 +1,6 @@
 import api from "./api"
 import { cached, cacheInvalidate, cacheInvalidatePrefix, CACHE_TTL } from "@/lib/cache"
+import { invalidateOfflineBlock, invalidateOfflineChapter } from "@/lib/offlineLessons"
 import type { ChapterBlock, BlockType } from "@/types"
 
 type ChapterBlockCreateData = {
@@ -15,6 +16,12 @@ type ChapterBlockCreateData = {
 
 type ChapterBlockUpdateData = Partial<Omit<ChapterBlockCreateData, "block_type">> & {
   block_type?: BlockType
+}
+
+function invalidateSavedChapter(chapterId: string): void {
+  void invalidateOfflineChapter(chapterId).catch((error: unknown) => {
+    console.error("Could not invalidate the offline lesson cache", error)
+  })
 }
 
 export const blocksService = {
@@ -47,18 +54,23 @@ export const blocksService = {
   async createBlock(chapterId: string, data: ChapterBlockCreateData): Promise<ChapterBlock> {
     const response = await api.post<ChapterBlock>(`/blocks/chapter/${chapterId}`, data)
     cacheInvalidate(`blocks:chapter:${chapterId}`)
+    invalidateSavedChapter(chapterId)
     return response.data
   },
 
   async updateBlock(blockId: string, data: ChapterBlockUpdateData): Promise<ChapterBlock> {
     const response = await api.put<ChapterBlock>(`/blocks/${blockId}`, data)
     cacheInvalidatePrefix("blocks:chapter:")
+    invalidateSavedChapter(response.data.chapter_id)
     return response.data
   },
 
   async deleteBlock(blockId: string): Promise<void> {
     await api.delete(`/blocks/${blockId}`)
     cacheInvalidatePrefix("blocks:chapter:")
+    void invalidateOfflineBlock(blockId).catch((error: unknown) => {
+      console.error("Could not invalidate the offline lesson cache", error)
+    })
   },
 
   async reorderBlocks(
@@ -67,5 +79,6 @@ export const blocksService = {
   ): Promise<void> {
     await api.put(`/blocks/chapter/${chapterId}/reorder`, blocks)
     cacheInvalidate(`blocks:chapter:${chapterId}`)
+    invalidateSavedChapter(chapterId)
   },
 }

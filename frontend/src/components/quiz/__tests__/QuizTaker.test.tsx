@@ -410,6 +410,7 @@ describe("QuizTaker", () => {
           <AuthContext.Provider
             value={{
               user: { id: "student-1", email: "s@example.org" } as never,
+              sessionUserId: "student-1",
               loading: false,
               login: vi.fn(),
               register: vi.fn(),
