@@ -198,7 +198,7 @@ def _editions_verses(
     return tuple(found)
 
 
-def _verses_not_yet_had(subs: list[Substitution], locale: str) -> list[BibleRef]:
+def _verses_not_yet_had(subs: list[Substitution], locale: LocaleCode) -> list[BibleRef]:
     """Quoted verses whose ``locale`` text the publisher is withholding just now.
 
     Not the ones this edition will never carry: for those the author's own
