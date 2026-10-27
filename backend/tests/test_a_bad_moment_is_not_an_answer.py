@@ -25,9 +25,10 @@ REF = BibleRef("john", 3, 16)
 
 
 class _Response:
-    def __init__(self, status_code: int, content: str = "") -> None:
+    def __init__(self, status_code: int, content: str = "", headers: dict[str, str] | None = None) -> None:
         self.status_code = status_code
         self._content = content
+        self.headers = headers or {}
 
     def json(self) -> dict[str, str]:
         return {"content": self._content}
@@ -60,7 +61,7 @@ def _answer_with(monkeypatch, *responses: _Response) -> list[int]:
     return calls
 
 
-@pytest.mark.parametrize("status", [429, 500, 502, 401])
+@pytest.mark.parametrize("status", [500, 502, 401])
 def test_a_bad_status_is_asked_again(monkeypatch, status: int):
     calls = _answer_with(monkeypatch, _Response(status), _Response(200, "Denn also hat Gott die Welt geliebt"))
 
@@ -145,3 +146,48 @@ def test_a_remembered_answer_costs_no_request_and_is_not_counted(monkeypatch, ca
         api_source.fetch_verse(REF, "de")
 
     assert _counted(caplog) == []
+
+
+class TestARefusalIsRespected:
+    """2026-10-27: a 429 came with ``Retry-After: 300`` and the next verse
+    was asked anyway, and the next. One pass of one held block sent 122
+    requests into a key that refused all of them, every half hour, and a
+    five-minute refusal lasted a day."""
+
+    def test_after_a_429_nothing_is_asked_until_the_publisher_said(self, monkeypatch):
+        calls = _answer_with(monkeypatch, _Response(429, headers={"retry-after": "60"}), _Response(200, "Denn also"))
+
+        assert api_source.fetch_verse(REF, "de") is None
+        assert api_source.fetch_verse(BibleRef("acts", 4, 12), "uk") is None
+        assert len(calls) == 1, "the publisher asked us to wait and was asked again"
+
+    def test_the_wait_is_not_mistaken_for_a_missing_verse(self, monkeypatch):
+        _answer_with(monkeypatch, _Response(429))
+
+        api_source.fetch_verse(REF, "de")
+        api_source.fetch_verse(REF, "de")
+
+        assert not api_source.absence_is_remembered(REF, "de")
+
+    def test_once_the_wait_is_over_the_verse_is_asked_for_again(self, monkeypatch):
+        calls = _answer_with(monkeypatch, _Response(429, headers={"retry-after": "60"}), _Response(200, "Denn also"))
+        now = api_source.time.monotonic()
+        monkeypatch.setattr(api_source.time, "monotonic", lambda: now)
+        assert api_source.fetch_verse(REF, "de") is None
+
+        monkeypatch.setattr(api_source.time, "monotonic", lambda: now + 61)
+
+        assert api_source.fetch_verse(REF, "de") == "Denn also"
+        assert len(calls) == 2
+
+    def test_no_retry_after_means_five_minutes(self, monkeypatch):
+        calls = _answer_with(monkeypatch, _Response(429), _Response(200, "Denn also"))
+        now = api_source.time.monotonic()
+        monkeypatch.setattr(api_source.time, "monotonic", lambda: now)
+        api_source.fetch_verse(REF, "de")
+
+        monkeypatch.setattr(api_source.time, "monotonic", lambda: now + 299)
+        assert api_source.fetch_verse(REF, "de") is None
+        monkeypatch.setattr(api_source.time, "monotonic", lambda: now + 301)
+        assert api_source.fetch_verse(REF, "de") == "Denn also"
+        assert len(calls) == 2
