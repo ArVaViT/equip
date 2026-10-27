@@ -33,6 +33,7 @@ from app.schemas.locale import LOCALE_DISPLAY_NAMES
 from app.services.attribution import AttributionSpan
 from app.services.attribution import post_substitute as restore_attributions
 from app.services.attribution import pre_substitute as hide_attributions
+from app.services.bible.api_source import absence_is_remembered
 from app.services.bible.substitution import canonical_for_display, post_substitute, pre_substitute
 from app.services.translation.html_split import markup_correction_note, split_html_for_translation
 from app.services.translation.prompt import build_system_prompt, build_user_prompt
@@ -197,6 +198,19 @@ def _editions_verses(
     return tuple(found)
 
 
+def _verses_not_yet_had(subs: list[Substitution], locale: str) -> list[BibleRef]:
+    """Quoted verses whose ``locale`` text the publisher is withholding just now.
+
+    Not the ones this edition will never carry: for those the author's own
+    quotation is the answer (``absence_is_remembered``), and it is final.
+    """
+    return [
+        sub.ref
+        for sub in subs
+        if canonical_for_display(sub.ref, locale) is None and not absence_is_remembered(sub.ref, locale)
+    ]
+
+
 class GeminiTranslationProvider:
     """Synchronous Gemini provider with bounded retries.
 
@@ -313,6 +327,23 @@ class GeminiTranslationProvider:
         request_text = request.text
         if request.content_kind in _KINDS_THAT_CAN_QUOTE_SCRIPTURE:
             request_text, bible_subs = pre_substitute(request_text, request.source_locale)
+            # The verses first, the model second. A verse the publisher
+            # will not hand over this minute means the translation is
+            # thrown away on arrival (``scripture_in_source_language``),
+            # and from 2026-10-26 the sweep asked again every half hour:
+            # one held block of the Acts course was translated, paid for
+            # and discarded 8 calls at a time, around the clock, while
+            # YouVersion answered 429. Asking first costs nothing — an
+            # answer is cached and ``post_substitute`` reads it from there.
+            waiting = _verses_not_yet_had(bible_subs, request.target_locale)
+            if waiting:
+                logger.warning(
+                    "scripture_withheld locale=%s verses=%d kind=%s before_asking=true",
+                    request.target_locale,
+                    len(waiting),
+                    request.content_kind,
+                )
+                return TranslationResult(text=request.text, model=self._model, scripture_in_source_language=True)
             if bible_subs:
                 # ``replace`` rather than a fresh construction: the old
                 # spelling listed the fields by hand and silently dropped
