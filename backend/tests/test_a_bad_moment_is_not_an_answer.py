@@ -86,3 +86,62 @@ def test_a_verse_is_fetched_once(monkeypatch):
     assert api_source.fetch_verse(REF, "de") == "Denn also hat Gott die Welt geliebt"
     assert api_source.fetch_verse(REF, "de") == "Denn also hat Gott die Welt geliebt"
     assert len(calls) == 1
+
+
+def _counted(caplog) -> list[str]:
+    return [
+        r.getMessage()
+        for r in caplog.records
+        if r.name == "equip.metric" and "equip.youversion.api_calls_total" in r.getMessage()
+    ]
+
+
+@pytest.mark.parametrize(
+    ("status", "outcome"),
+    [(200, "success"), (404, "not_in_bible"), (429, "rate_limited"), (502, "fatal")],
+)
+def test_every_request_a_lesson_makes_is_counted(monkeypatch, caplog, status: int, outcome: str):
+    # 2026-10-27: the publisher answered every request with 429 and only
+    # the verse of the day was counted, so nobody could say whose requests
+    # had spent the key. A lesson's lookups are most of the traffic.
+    _answer_with(monkeypatch, _Response(status, "Denn also hat Gott die Welt geliebt"))
+
+    with caplog.at_level("INFO", logger="equip.metric"):
+        api_source.fetch_verse(REF, "de")
+
+    [line] = _counted(caplog)
+    assert "caller=passage" in line
+    assert f"outcome={outcome}" in line
+    assert f"status_code={status}" in line
+
+
+def test_a_request_that_never_got_an_answer_is_counted_too(monkeypatch, caplog):
+    class _Down:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def get(self, *_args, **_kwargs):
+            raise httpx.ConnectTimeout("timed out")
+
+    monkeypatch.setattr(httpx, "Client", lambda **_kwargs: _Down())
+
+    with caplog.at_level("INFO", logger="equip.metric"):
+        assert api_source.fetch_verse(REF, "de") is None
+
+    [line] = _counted(caplog)
+    assert "outcome=fatal" in line
+    assert "status_code=0" in line
+
+
+def test_a_remembered_answer_costs_no_request_and_is_not_counted(monkeypatch, caplog):
+    _answer_with(monkeypatch, _Response(404))
+    api_source.fetch_verse(REF, "de")
+    caplog.clear()
+
+    with caplog.at_level("INFO", logger="equip.metric"):
+        api_source.fetch_verse(REF, "de")
+
+    assert _counted(caplog) == []
