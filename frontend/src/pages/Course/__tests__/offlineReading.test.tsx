@@ -8,7 +8,6 @@ import type { ChapterBlock, Course } from "@/types"
 
 const mocks = vi.hoisted(() => ({
   auth: { user: null as { id: string; role: string } | null, sessionUserId: "account-a" as string | null },
-  online: false,
   getCourse: vi.fn(),
   getMyChapterProgress: vi.fn(),
   getChapterBlocks: vi.fn(),
@@ -19,7 +18,6 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock("@/context/useAuth", () => ({ useAuth: () => mocks.auth }))
-vi.mock("@/hooks/useOnlineStatus", () => ({ useOnlineStatus: () => mocks.online }))
 vi.mock("@/services/courses", () => ({
   coursesService: {
     getCourse: (...args: unknown[]) => mocks.getCourse(...args),
@@ -93,13 +91,15 @@ function Wrapper({ children }: { children: ReactNode }) {
 beforeEach(async () => {
   await i18n.changeLanguage("en")
   mocks.auth = { user: null, sessionUserId: "account-a" }
-  mocks.online = false
   vi.clearAllMocks()
   mocks.getOfflineLesson.mockResolvedValue({ course: COURSE, blocks: BLOCKS })
+  const unavailable = Object.assign(new Error("network unavailable"), { isAxiosError: true })
+  mocks.getCourse.mockRejectedValue(unavailable)
+  mocks.getChapterBlocks.mockRejectedValue(unavailable)
 })
 
 describe("offline chapter reading", () => {
-  it("restores a previously cached lesson for the active account without requesting private data", async () => {
+  it("restores a previously cached lesson for the active account after network requests fail", async () => {
     render(
       <MemoryRouter initialEntries={["/courses/course-1/chapters/lesson-1"]}>
         <Routes>
@@ -110,14 +110,15 @@ describe("offline chapter reading", () => {
     )
 
     expect(await screen.findByText("Saved reading body")).toBeInTheDocument()
+    expect(await screen.findByText("You're offline. This is a saved copy of the lesson.")).toBeInTheDocument()
     expect(mocks.getOfflineLesson).toHaveBeenCalledWith(
       "account-a",
       "en",
       "course-1",
       "lesson-1",
     )
-    expect(mocks.getCourse).not.toHaveBeenCalled()
-    expect(mocks.getChapterBlocks).not.toHaveBeenCalled()
+    expect(mocks.getCourse).toHaveBeenCalledWith("course-1")
+    expect(mocks.getChapterBlocks).toHaveBeenCalledWith("lesson-1")
     expect(screen.queryByRole("button", { name: /Mark as read/i })).not.toBeInTheDocument()
     expect(screen.queryByText("Add a note")).not.toBeInTheDocument()
   })

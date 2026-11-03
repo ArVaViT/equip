@@ -66,7 +66,6 @@ import { linkScriptureIn, textForScripture } from "@/lib/scriptureLinks"
 import { scriptureService, type Passage } from "@/services/scripture"
 import { VerseCard } from "@/components/chapter/VerseCard"
 import { LessonNote } from "@/components/chapter/LessonNote"
-import { useOnlineStatus } from "@/hooks/useOnlineStatus"
 import {
   getOfflineLesson,
   invalidateOfflineLesson,
@@ -572,7 +571,6 @@ export default function ChapterView() {
     chapterId: string
   }>()
   const { user, sessionUserId } = useAuth()
-  const isOnline = useOnlineStatus()
   const offlineAccountId = user?.id ?? sessionUserId
 
   const [course, setCourse] = useState<Course | null>(null)
@@ -644,18 +642,6 @@ export default function ChapterView() {
         let usedOfflineCopy = false
         const locale = currentAcceptLanguage()
         const loadCourse = async (): Promise<Course> => {
-          if (!isOnline) {
-            if (!offlineAccountId) throw new Error("Offline reading requires the original account")
-            const saved = await getOfflineLesson(
-              offlineAccountId,
-              locale,
-              courseId,
-              chapterId,
-            )
-            if (!saved) throw new Error("This lesson has no saved offline copy")
-            usedOfflineCopy = true
-            return saved.course
-          }
           const previous = courseSnapshot.current
           if (
             previous?.courseId === courseId &&
@@ -686,7 +672,7 @@ export default function ChapterView() {
           // same value. Here it only drives the read tick, which now simply
           // does not draw rather than drawing a false "not read".
           // A guest has no progress to fetch.
-          isOnline && user ? coursesService.getMyChapterProgress(courseId).catch(() => null) : Promise.resolve(null),
+          user ? coursesService.getMyChapterProgress(courseId).catch(() => null) : Promise.resolve(null),
         ])
         if (cancelled) return
         courseSnapshot.current = {
@@ -712,7 +698,7 @@ export default function ChapterView() {
               offlineAccountId,
               courseId,
             ).catch((cacheError: unknown) => {
-              console.error("Could not invalidate inaccessible offline course content", cacheError)
+              console.warn("Could not invalidate inaccessible offline course content", cacheError)
             })
           }
           setError(
@@ -727,11 +713,10 @@ export default function ChapterView() {
     }
     load()
     return () => { cancelled = true }
-    // ``i18n.language`` refreshes the localized course structure. `chapterId`
-    // is included so an offline route change can use only a lesson with its
-    // own saved record. Online reads remain in their short-lived service cache.
+    // ``i18n.language`` refreshes the localized course structure. Keep
+    // ``chapterId`` out so stepping through a course does not refetch progress.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, chapterId, user?.id, sessionUserId, isOnline, i18n.language, loadAttempt])
+  }, [courseId, user?.id, sessionUserId, i18n.language, loadAttempt])
 
   // Only a signed-in reader who is not enrolled yet is offered the button,
   // and only such a reader is sent a preview — so the cohorts are asked for
@@ -791,7 +776,7 @@ export default function ChapterView() {
   // lesson for exactly those readers. A guest on a course without one
   // previews nothing and meets the invitation on every lesson.
   const offlineAuthenticated =
-    !user && Boolean(sessionUserId) && (!isOnline || offlineCopy)
+    !user && Boolean(sessionUserId) && offlineCopy
   const previewing = (!user && !offlineAuthenticated) || Boolean(course?.preview_chapter_id)
   // For the blocks request only: a signed-in reader never waits on this
   // (the request starts with the course, see below); a guest asks once the
@@ -864,17 +849,6 @@ export default function ChapterView() {
     const locale = currentAcceptLanguage()
     const loadBlocks = async () => {
       try {
-        if (!isOnline) {
-          if (!offlineAccountId || !courseId) throw new Error("Offline reading requires the original account")
-          const saved = await getOfflineLesson(offlineAccountId, locale, courseId, chapterId)
-          if (!saved) throw new Error("This lesson has no saved offline copy")
-          if (cancelled) return
-          setChapterBlocks(saved.blocks)
-          setOfflineCopy(true)
-          setLoadingBlocks(false)
-          return
-        }
-
         const blocks = await coursesService.getChapterBlocks(chapterId)
         if (cancelled) return
         setChapterBlocks(blocks.sort((a, b) => a.order_index - b.order_index))
@@ -884,9 +858,10 @@ export default function ChapterView() {
           void (async () => {
             try {
               const fullCourse = course ?? await coursesService.getCourse(courseId)
+              if (cancelled) return
               await saveOfflineLesson(offlineAccountId, locale, fullCourse, chapterId, blocks)
             } catch (cacheError) {
-              console.error("Could not save an offline lesson copy", cacheError)
+              console.warn("Could not save an offline lesson copy", cacheError)
             }
           })()
         }
@@ -903,7 +878,7 @@ export default function ChapterView() {
               return
             }
           } catch (cacheError) {
-            console.error("Could not read the offline lesson copy", cacheError)
+            console.warn("Could not read the offline lesson copy", cacheError)
           }
         }
         if (
@@ -915,7 +890,7 @@ export default function ChapterView() {
             loadError.response?.status === 404)
         ) {
           void invalidateOfflineLesson(offlineAccountId, courseId, chapterId).catch((cacheError: unknown) => {
-            console.error("Could not invalidate inaccessible offline lesson content", cacheError)
+            console.warn("Could not invalidate inaccessible offline lesson content", cacheError)
           })
         }
         // A failed fetch is distinct from a legitimately empty lesson.
@@ -944,7 +919,6 @@ export default function ChapterView() {
     course,
     user?.id,
     sessionUserId,
-    isOnline,
     offlineAccountId,
     i18n.language,
     blocksReloadKey,
@@ -1154,6 +1128,12 @@ export default function ChapterView() {
           {orNotTranslated(t, chapter.title)}
         </h1>
       </header>
+
+      {offlineCopy && (
+        <p role="status" className="mb-5 rounded-md border border-edge bg-muted px-3 py-2 text-sm text-ink-muted">
+          {t("offline.savedCopy")}
+        </p>
+      )}
 
       <div
         data-tour="chapter-body"

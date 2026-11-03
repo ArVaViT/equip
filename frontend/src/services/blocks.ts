@@ -20,7 +20,7 @@ type ChapterBlockUpdateData = Partial<Omit<ChapterBlockCreateData, "block_type">
 
 function invalidateSavedChapter(chapterId: string): void {
   void invalidateOfflineChapter(chapterId).catch((error: unknown) => {
-    console.error("Could not invalidate the offline lesson cache", error)
+    console.warn("Could not invalidate the offline lesson cache", error)
   })
 }
 
@@ -69,7 +69,7 @@ export const blocksService = {
     await api.delete(`/blocks/${blockId}`)
     cacheInvalidatePrefix("blocks:chapter:")
     void invalidateOfflineBlock(blockId).catch((error: unknown) => {
-      console.error("Could not invalidate the offline lesson cache", error)
+      console.warn("Could not invalidate the offline lesson cache", error)
     })
   },
 

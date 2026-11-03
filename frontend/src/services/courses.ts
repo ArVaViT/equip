@@ -43,7 +43,7 @@ import { analyticsService } from "./analytics"
 
 function invalidateSavedCourse(courseId: string): void {
   void invalidateOfflineCourse(courseId).catch((error: unknown) => {
-    console.error("Could not invalidate the offline course cache", error)
+    console.warn("Could not invalidate the offline course cache", error)
   })
 }
 

@@ -11,6 +11,11 @@ let authHandler: AuthChangeHandler | null = null
 const unsubscribe = vi.fn()
 
 const from = vi.fn()
+const clearOfflineLessons = vi.fn().mockResolvedValue(undefined)
+
+vi.mock("@/lib/offlineLessons", () => ({
+  clearOfflineLessons: () => clearOfflineLessons(),
+}))
 
 vi.mock("@/lib/supabase", () => ({
   supabase: {
@@ -117,6 +122,7 @@ describe("AuthContext", () => {
     authHandler = null
     unsubscribe.mockReset()
     from.mockReset()
+    clearOfflineLessons.mockReset().mockResolvedValue(undefined)
     login.mockReset()
     register.mockReset()
     signInWithGoogle.mockReset()
@@ -283,6 +289,7 @@ describe("AuthContext", () => {
     })
     expect(screen.getByTestId("user").textContent).toBe("anon")
     expect(screen.getByTestId("session-user-id").textContent).toBe("-")
+    expect(clearOfflineLessons).toHaveBeenCalledTimes(2)
   })
 
   it("uses the stored session id for offline lesson lookup without inventing a profile", async () => {
@@ -350,6 +357,7 @@ describe("AuthContext", () => {
       expect(screen.getByTestId("user").textContent).toBe("b@b.com")
       expect(screen.getByTestId("session-user-id").textContent).toBe("user-2")
     })
+    expect(clearOfflineLessons).toHaveBeenCalledTimes(2)
   })
 
   it("forgets where the signed-out person was heading", async () => {
@@ -398,6 +406,7 @@ describe("AuthContext", () => {
     })
 
     expect(logout).toHaveBeenCalledTimes(1)
+    expect(clearOfflineLessons).toHaveBeenCalledTimes(2)
     await waitFor(() => {
       expect(screen.getByTestId("user").textContent).toBe("anon")
     })

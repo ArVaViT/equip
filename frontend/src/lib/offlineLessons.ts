@@ -4,6 +4,7 @@ import type { Chapter, ChapterBlock, Course, Module } from "@/types"
 const DATABASE_NAME = "equip-offline-learning"
 const DATABASE_VERSION = 1
 const STORE_NAME = "courses"
+const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 
 interface OfflineCourseRecord {
   key: string
@@ -21,11 +22,14 @@ export interface OfflineLessonSnapshot {
 }
 
 let databasePromise: Promise<IDBDatabase> | null = null
+let databaseClearPromise: Promise<void> | null = null
+let databaseGeneration = 0
 
 function openDatabase(): Promise<IDBDatabase> {
   if (typeof indexedDB === "undefined") {
     return Promise.reject(new Error("IndexedDB is unavailable"))
   }
+  if (databaseClearPromise) return databaseClearPromise.then(() => openDatabase())
   if (databasePromise) return databasePromise
 
   const opening = new Promise<IDBDatabase>((resolve, reject) => {
@@ -204,9 +208,11 @@ export async function saveOfflineLesson(
 
   const content = safeTextBlocks(blocks, chapterId)
   const key = courseKey(userId, locale, course.id)
+  const generation = databaseGeneration
   await requestWithStore<IDBValidKey>("readwrite", (store) => {
     const request = store.get(key)
     request.onsuccess = () => {
+      if (generation !== databaseGeneration) return
       const existing = request.result as OfflineCourseRecord | undefined
       const allowedIds = liveReadingChapterIds(course)
       const lessons: Record<string, ChapterBlock[]> = {}
@@ -242,9 +248,41 @@ export async function getOfflineLesson(
     "readonly",
     (store) => store.get(courseKey(userId, locale, courseId)),
   )
+  if (record && Date.now() - record.updatedAt > MAX_AGE_MS) {
+    await requestWithStore<undefined>("readwrite", (store) => store.delete(record.key))
+    return null
+  }
   const blocks = record?.lessons[chapterId]
   if (!record || !blocks) return null
   return { course: record.course, blocks }
+}
+
+export function clearOfflineLessons(): Promise<void> {
+  if (typeof indexedDB === "undefined") {
+    return Promise.reject(new Error("IndexedDB is unavailable"))
+  }
+  if (databaseClearPromise) return databaseClearPromise
+
+  databaseGeneration += 1
+  const openPromise = databasePromise
+  databasePromise = null
+  const clearing = Promise.resolve().then(async () => {
+    await openPromise?.then(
+      (database) => database.close(),
+      () => undefined,
+    )
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.deleteDatabase(DATABASE_NAME)
+      request.onsuccess = () => resolve()
+      request.onerror = () => reject(request.error ?? new Error("Could not clear offline lesson storage"))
+      request.onblocked = () => reject(new Error("Clearing offline lesson storage was blocked"))
+    })
+  })
+  databaseClearPromise = clearing.finally(() => {
+    databaseClearPromise = null
+    databasePromise = null
+  })
+  return databaseClearPromise
 }
 
 async function updateRecords(

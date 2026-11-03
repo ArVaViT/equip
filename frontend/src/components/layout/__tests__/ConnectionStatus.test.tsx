@@ -17,7 +17,7 @@ describe("ConnectionStatus", () => {
   it("announces both current connectivity states", () => {
     setOnline(true)
     const { rerender } = render(<ConnectionStatus />)
-    expect(screen.getByRole("status").textContent).toContain("Online")
+    expect(screen.queryByRole("status")).not.toBeInTheDocument()
 
     setOnline(false)
     fireEvent(window, new Event("offline"))
@@ -27,6 +27,6 @@ describe("ConnectionStatus", () => {
     setOnline(true)
     fireEvent(window, new Event("online"))
     rerender(<ConnectionStatus />)
-    expect(screen.getByRole("status").textContent).toContain("Online")
+    expect(screen.queryByRole("status")).not.toBeInTheDocument()
   })
 })

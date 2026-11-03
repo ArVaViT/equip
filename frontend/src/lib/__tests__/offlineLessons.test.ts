@@ -84,10 +84,21 @@ class FakeDatabase {
   transaction() {
     return new FakeTransaction(this.records)
   }
+
+  close() {}
 }
 
 class FakeIndexedDB {
   private database: FakeDatabase | null = null
+
+  deleteDatabase() {
+    const request = new FakeRequest<undefined>()
+    queueMicrotask(() => {
+      this.database = null
+      request.succeed(undefined)
+    })
+    return request
+  }
 
   open() {
     const request = new FakeRequest<FakeDatabase>()
@@ -109,9 +120,8 @@ const {
   getOfflineLesson,
   invalidateOfflineBlock,
   invalidateOfflineChapter,
-  invalidateOfflineCourse,
   invalidateOfflineLesson,
-  invalidateOfflineUserCourse,
+  clearOfflineLessons,
   saveOfflineLesson,
 } =
   await import("@/lib/offlineLessons")
@@ -246,7 +256,16 @@ describe("offline lesson storage", () => {
     await expect(getOfflineLesson("account-g", "en", "course-1", "lesson-1")).resolves.not.toBeNull()
   })
 
-  it("retains each account's copy across logout and clears only the requested account/course", async () => {
+  it("expires offline lesson copies after 30 days", async () => {
+    const course = makeCourse([makeChapter("lesson-1", "reading")])
+    const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() - 31 * 24 * 60 * 60 * 1000)
+    await saveOfflineLesson("account-h", locale, course, "lesson-1", [makeBlock("text-old", "lesson-1", "text")])
+    clock.mockRestore()
+
+    await expect(getOfflineLesson("account-h", locale, "course-1", "lesson-1")).resolves.toBeNull()
+  })
+
+  it("deletes all accounts' offline copies on sign-out", async () => {
     const course = makeCourse([makeChapter("lesson-1", "reading")])
     const block = [makeBlock("text-retained", "lesson-1", "text")]
     await saveOfflineLesson("account-a", locale, course, "lesson-1", block)
@@ -257,12 +276,24 @@ describe("offline lesson storage", () => {
     await expect(getOfflineLesson("account-a", locale, "course-1", "lesson-1")).resolves.not.toBeNull()
     await expect(getOfflineLesson("account-b", locale, "course-1", "lesson-1")).resolves.not.toBeNull()
 
-    await invalidateOfflineUserCourse("account-a", "course-1")
+    await clearOfflineLessons()
     await expect(getOfflineLesson("account-a", locale, "course-1", "lesson-1")).resolves.toBeNull()
     await expect(getOfflineLesson("account-a", "ru", "course-1", "lesson-1")).resolves.toBeNull()
-    await expect(getOfflineLesson("account-b", locale, "course-1", "lesson-1")).resolves.not.toBeNull()
-
-    await invalidateOfflineCourse("course-1")
     await expect(getOfflineLesson("account-b", locale, "course-1", "lesson-1")).resolves.toBeNull()
+  })
+
+  it("does not persist a lesson write that was still pending when sign-out cleared storage", async () => {
+    const course = makeCourse([makeChapter("lesson-1", "reading")])
+    const save = saveOfflineLesson(
+      "account-c",
+      locale,
+      course,
+      "lesson-1",
+      [makeBlock("text-pending", "lesson-1", "text")],
+    )
+    const clear = clearOfflineLessons()
+
+    await Promise.all([save, clear])
+    await expect(getOfflineLesson("account-c", locale, "course-1", "lesson-1")).resolves.toBeNull()
   })
 })

@@ -6,6 +6,7 @@ import type { User } from "@/types"
 import { AuthContext } from "./auth-context"
 import { setDatadogUser, clearDatadogUser } from "@/lib/datadog"
 import { cacheClear } from "@/lib/cache"
+import { clearOfflineLessons } from "@/lib/offlineLessons"
 import { takeReturnPath } from "@/lib/authRedirect"
 import { setDisplayTimeZone } from "@/i18n/timeZone"
 import { hasStoredSupabaseSession } from "@/lib/storedSession"
@@ -25,6 +26,12 @@ import { publishAccountDeleted } from "@/lib/accountDeleted"
 
 /** How long the profile read after sign-in may take before it counts as failed. */
 export const PROFILE_READ_TIMEOUT_MS = 30_000
+
+function clearOfflineStorage(): void {
+  void clearOfflineLessons().catch((error: unknown) => {
+    console.warn("Could not clear offline lesson storage", error)
+  })
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -206,6 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // the previous user's (or the guest's) API payloads — clear it so
           // nothing bleeds across accounts on a shared device.
           cacheClear()
+          clearOfflineStorage()
           setUser(null)
           clearDatadogUser()
           setDisplayTimeZone(null)
@@ -239,6 +247,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Drop the signed-out user's cached API payloads so the next
           // account on this device starts from a cold cache.
           cacheClear()
+          clearOfflineStorage()
           // And where they were heading: a password sign-in returns by router
           // state and never reads the remembered path, so it outlived them
           // and sent the tab's next Google or emailed sign-in there.
@@ -366,6 +375,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setDisplayTimeZone(null)
     setUser(null)
     clearDatadogUser()
+    clearOfflineStorage()
   }, [])
 
   const value = useMemo(

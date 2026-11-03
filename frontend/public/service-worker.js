@@ -1,4 +1,6 @@
-const SHELL_CACHE = "equip-offline-shell-v1"
+const BUILD_ID =
+  new URL(self.location.href).searchParams.get("v")?.replace(/[^A-Za-z0-9._-]/g, "_") || "dev"
+const SHELL_CACHE = `equip-offline-shell-${BUILD_ID}`
 const COURSE_IMAGE_CACHE = "equip-course-images-v1"
 const CACHE_PREFIX = "equip-"
 
@@ -9,15 +11,21 @@ self.addEventListener("install", (event) => {
 })
 
 self.addEventListener("activate", (event) => {
+  const enableNavigationPreload = self.registration.navigationPreload
+    ? self.registration.navigationPreload.enable().catch((error) => {
+        console.warn("Navigation preload could not be enabled", error)
+      })
+    : Promise.resolve()
   event.waitUntil(
     Promise.all([
       caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key.startsWith(CACHE_PREFIX) && key !== SHELL_CACHE && key !== COURSE_IMAGE_CACHE)
-          .map((key) => caches.delete(key)),
+        Promise.all(
+          keys
+            .filter((key) => key.startsWith(CACHE_PREFIX) && key !== SHELL_CACHE && key !== COURSE_IMAGE_CACHE)
+            .map((key) => caches.delete(key)),
+        ),
       ),
-      ),
+      enableNavigationPreload,
       self.clients.claim(),
     ]),
   )
@@ -32,11 +40,16 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
+      (async () => {
+        const preloaded = await event.preloadResponse
+        return preloaded ?? fetch(request)
+      })()
         .then((response) => {
           if (response.ok && response.headers.get("content-type")?.includes("text/html")) {
             const copy = response.clone()
-            void caches.open(SHELL_CACHE).then((cache) => cache.put("/", copy))
+            void caches.open(SHELL_CACHE).then((cache) => cache.put("/", copy)).catch((error) => {
+              console.warn("Could not update the offline app shell", error)
+            })
           }
           return response
         })
@@ -52,16 +65,38 @@ self.addEventListener("fetch", (event) => {
     return
   }
 
-  if (
-    url.search === "" &&
-    (url.pathname.startsWith("/assets/") || url.pathname === "/locale-boot.js")
-  ) {
+  if (url.search === "" && url.pathname === "/locale-boot.js") {
+    event.respondWith(
+      caches.open(SHELL_CACHE).then(async (cache) => {
+        try {
+          const response = await fetch(request)
+          if (response.ok && response.type === "basic") {
+            void cache.put(request, response.clone()).catch((error) => {
+              console.warn("Could not update the offline locale boot script", error)
+            })
+          }
+          return response
+        } catch (error) {
+          const cached = await cache.match(request)
+          if (cached) return cached
+          throw error
+        }
+      }),
+    )
+    return
+  }
+
+  if (url.search === "" && url.pathname.startsWith("/assets/")) {
     event.respondWith(
       caches.open(SHELL_CACHE).then(async (cache) => {
         const cached = await cache.match(request)
         if (cached) return cached
         const response = await fetch(request)
-        if (response.ok && response.type === "basic") await cache.put(request, response.clone())
+        if (response.ok && response.type === "basic") {
+          void cache.put(request, response.clone()).catch((error) => {
+            console.warn("Could not cache a static app asset", error)
+          })
+        }
         return response
       }),
     )

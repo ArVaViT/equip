@@ -20,8 +20,9 @@ import '@fontsource-variable/golos-text/index.css'
 import './index.css'
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  void navigator.serviceWorker.register('/service-worker.js').catch((error: unknown) => {
-    console.error('Service worker registration failed', error)
+  const workerUrl = `/service-worker.js?v=${encodeURIComponent(import.meta.env.VITE_APP_VERSION ?? 'dev')}`
+  void navigator.serviceWorker.register(workerUrl).catch((error: unknown) => {
+    console.warn('Service worker registration failed', error)
   })
 }
 

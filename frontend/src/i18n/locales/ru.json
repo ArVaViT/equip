@@ -1,7 +1,8 @@
 {
   "offline": {
     "online": "В сети",
-    "offline": "Нет сети"
+    "offline": "Нет сети",
+    "savedCopy": "Нет подключения к интернету. Это сохранённая копия урока."
   },
   "unsubscribe": {
     "title": "Письма Equip",
