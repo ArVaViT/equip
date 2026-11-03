@@ -172,10 +172,17 @@ describe("key screens have no axe violations and a walkable outline", () => {
   })
 
   it("the calendar", async () => {
-    render(<Wrap at="/calendar"><CalendarPage /></Wrap>)
-    await screen.findByRole("heading", { level: 1 })
-    await screen.findAllByText("Занятие по Деяниям")
-    await expectCleanPage()
+    // The calendar opens on the current month; the event must be in it.
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-10-20T12:00:00Z"))
+    try {
+      render(<Wrap at="/calendar"><CalendarPage /></Wrap>)
+      await screen.findByRole("heading", { level: 1 })
+      await screen.findAllByText("Занятие по Деяниям")
+      await expectCleanPage()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("the profile, on the personal tab", async () => {

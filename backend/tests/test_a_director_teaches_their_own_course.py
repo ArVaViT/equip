@@ -29,6 +29,7 @@ from app.main import app
 from app.models.assignment import Assignment
 from app.models.course import Course
 from app.models.user import User, UserRole
+from app.services.translation.resolve_for_display import populate_spine_texts
 from tests._cv_helpers import make_course_with_text
 from tests.conftest import TEST_ORGANIZATION_ID
 
@@ -231,6 +232,10 @@ class TestTheDoorDidNotSwingTooFar:
         db.expire_all()
         course = db.get(Course, course_id)
         assert course is not None
+        # The title lives in the text store, not on the row. Read it from
+        # there: the instance the fixture built may already be collected,
+        # and a fresh one has no title until it is hydrated.
+        populate_spine_texts(db, [course])
         assert (course.access_mode, course.title) == ("institute", "The Teacher's Course")
 
     def test_the_owner_still_cannot_set_the_access_mode(self, client: TestClient, db: Session, teacher: User) -> None:
