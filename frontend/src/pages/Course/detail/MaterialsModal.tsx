@@ -1,6 +1,5 @@
 import { useTranslation } from "react-i18next"
 import { EmptyState, Modal } from "@/components/patterns"
-import { Button } from "@/components/ui/button"
 import { Download, Loader2, Paperclip } from "lucide-react"
 import type { CourseMaterial } from "./types"
 
@@ -31,26 +30,26 @@ export function MaterialsModal({
       ) : (
         <div className="divide-y rounded-md border text-sm">
           {materials.map((file) => (
-            <div
+            // The whole row downloads: RUM saw students tap the file's name
+            // over and over while only the small icon on the right answered
+            // (2026-10-24 → 11-03, every new student of one course).
+            <button
               key={file.path}
-              className="flex items-center justify-between gap-2 px-3 py-3 transition-colors hover:bg-muted/40"
+              type="button"
+              disabled={downloadingPath === file.path}
+              onClick={() => onDownload(file.path)}
+              aria-label={t("teacherEditor.modals.materials.downloadAria", { name: file.name })}
+              className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand disabled:cursor-wait"
             >
               <span className="min-w-0 flex-1 break-words">{file.name}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="shrink-0 h-7 text-xs"
-                disabled={downloadingPath === file.path}
-                onClick={() => onDownload(file.path)}
-                aria-label={t("teacherEditor.modals.materials.downloadAria", { name: file.name })}
-              >
+              <span className="inline-flex h-7 shrink-0 items-center px-2 text-ink-muted" aria-hidden>
                 {downloadingPath === file.path ? (
-                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
+                  <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} />
                 ) : (
-                  <Download className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                  <Download className="h-4 w-4" strokeWidth={1.75} />
                 )}
-              </Button>
-            </div>
+              </span>
+            </button>
           ))}
         </div>
       )}

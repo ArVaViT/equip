@@ -35,4 +35,15 @@ describe("CourseRecordings", () => {
     expect(items()).toHaveLength(4)
     expect(items()[3]).toContain("Урок 1")
   })
+
+  it("opens the recording from anywhere on the row, not only its button", () => {
+    wrap([ev("1", "2026-09-12T00:00:00Z", "https://youtu.be/1")])
+    const link = screen.getByRole("link")
+    expect(link).toHaveAttribute("href", "https://youtu.be/1")
+    // The link's cover spans the row (RUM, 2026-10: the title was tapped,
+    // only the small button answered); the row is what it is laid out in.
+    expect(link.className).toMatch(/(?<![\w-])after:absolute(?![\w-])/)
+    expect(link.className).toMatch(/(?<![\w-])after:inset-0(?![\w-])/)
+    expect(screen.getByRole("listitem").className).toMatch(/(?<![\w-])relative(?![\w-])/)
+  })
 })
