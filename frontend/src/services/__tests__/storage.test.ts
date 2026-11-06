@@ -148,7 +148,8 @@ describe("storageService.listCourseMaterials", () => {
 
     expect(materials).toHaveLength(1)
     expect(materials[0]).toMatchObject({
-      name: "1725580800000-Propoved.pdf",
+      // The upload's stamp stays in the path, not in the name a person reads.
+      name: "Propoved.pdf",
       path: `${COURSE_ID}/1725580800000-Propoved.pdf`,
       size: 1234,
     })
