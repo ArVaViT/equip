@@ -341,6 +341,21 @@ def _stay_away(retry_after: str | None) -> None:
     _refusing_until = max(_refusing_until, time.monotonic() + min(max(seconds, 1.0), 3600.0))
 
 
+def publisher_is_refusing() -> bool:
+    """Whether the publisher asked this process to wait, and the wait is not over.
+
+    One key serves every caller of YouVersion here — lessons, the Daily
+    Challenge and the verse of the day — so a refusal heard by one is a
+    refusal for all of them.
+    """
+    return time.monotonic() < _refusing_until
+
+
+def publisher_refused(retry_after: str | None) -> None:
+    """Record a 429 heard outside this module (see ``publisher_is_refusing``)."""
+    _stay_away(retry_after)
+
+
 def _count_call(bible_id: int, status_code: int) -> None:
     """One data point per request to the publisher, whatever came back.
 
