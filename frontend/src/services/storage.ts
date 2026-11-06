@@ -337,7 +337,11 @@ export const storageService = {
     return (data ?? [])
       .filter((f) => f.id !== null)
       .map((f) => ({
-        name: f.name,
+        // The object is stored as ``<ms timestamp>-<name>`` (see
+        // ``uploadCourseMaterial``), and students were shown
+        // ``1789274605316-Lesson_1.pdf``. The path keeps the stamp; only
+        // the name a person reads drops it.
+        name: f.name.replace(/^\d{13}-/, ""),
         path: `${courseId}/${f.name}`,
         size: f.metadata?.size as number | undefined,
         created: f.created_at,

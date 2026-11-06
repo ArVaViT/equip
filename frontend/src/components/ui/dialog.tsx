@@ -36,8 +36,14 @@ const DialogContent = React.forwardRef<
           // Mobile-first: bottom-sheet drawer that slides up from the
           // bottom edge, full-width, rounded top only, safe-area aware.
           //
+          // ``grid-cols-1`` is ``minmax(0, 1fr)``: without it the one column
+          // is as wide as its longest unbreakable word. A file named
+          // ``_OceanofPDF_com_The_Seven_Laws…`` made the course materials
+          // sheet 627px on a 390px phone, title and download buttons off
+          // the right edge (found on the live site, 2026-11-06).
+          //
           // ADR-0011 Wave 5 — bg-surface -> bg-surface.
-          "fixed inset-x-0 bottom-0 z-50 grid w-full max-h-[90dvh] gap-4 overflow-y-auto rounded-t-xl border bg-surface p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+          "fixed inset-x-0 bottom-0 z-50 grid w-full grid-cols-1 max-h-[90dvh] gap-4 overflow-y-auto rounded-t-xl border bg-surface p-6 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
           // sm+: classic centered modal restored, capped at 85% of the
           // viewport and scrolling inside. It used to be ``max-h-none
           // overflow-visible`` here with the cap added by ``Modal`` — and

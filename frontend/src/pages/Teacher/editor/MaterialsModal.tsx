@@ -107,7 +107,7 @@ export function MaterialsModal({
               >
                 <Paperclip className="h-4 w-4 text-ink-muted shrink-0" strokeWidth={1.75} />
                 <div className="min-w-0 flex-1">
-                  <p className="break-words text-sm">{m.name}</p>
+                  <p className="text-sm [overflow-wrap:anywhere]">{m.name}</p>
                   {m.size && (
                     <p className="text-xs text-ink-muted">{formatFileSize(m.size, t)}</p>
                   )}

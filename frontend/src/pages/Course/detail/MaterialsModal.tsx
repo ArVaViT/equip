@@ -41,7 +41,7 @@ export function MaterialsModal({
               aria-label={t("teacherEditor.modals.materials.downloadAria", { name: file.name })}
               className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand disabled:cursor-wait"
             >
-              <span className="min-w-0 flex-1 break-words">{file.name}</span>
+              <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{file.name}</span>
               <span className="inline-flex h-7 shrink-0 items-center px-2 text-ink-muted" aria-hidden>
                 {downloadingPath === file.path ? (
                   <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} />
