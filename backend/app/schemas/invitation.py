@@ -188,3 +188,11 @@ class InvitationAcceptResponse(BaseModel):
     #: The address the account holds, so a page that has just created it can
     #: sign in under it without trusting what it had on screen.
     email: str
+
+
+class ClaimedInvitation(InvitationAcceptResponse):
+    """An invitation accepted by signing in under its address."""
+
+    #: Who it came from, so the page can say where the person now belongs.
+    #: ``None`` for a platform invitation, which leads into no organization.
+    organization_name: str | None = None

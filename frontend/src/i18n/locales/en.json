@@ -3098,6 +3098,10 @@
       "revoked": "This invitation was withdrawn.",
       "course_gone": "The course this invitation was for no longer exists.",
       "inviter_left": "The person who sent this invitation no longer speaks for the organization. Ask its director for a new one."
+    },
+    "claimed": {
+      "teach": "You've joined {{organization}} as a teacher.",
+      "study": "You've joined {{organization}}."
     }
   },
   "myGrade": {

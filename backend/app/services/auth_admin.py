@@ -50,6 +50,9 @@ class AuthAccount:
     #: by an administrator. Only an unconfirmed account may be taken over by
     #: somebody holding an invitation to its address.
     confirmed: bool
+    #: The address the account holds now. With a change of address pending
+    #: it is still the old one, the one that was proven.
+    email: str = ""
 
 
 class EmailTaken(Exception):
@@ -126,7 +129,11 @@ def get_account(user_id: UUID) -> AuthAccount | None:
     if response.status_code != status.HTTP_200_OK:
         raise _refuse(response, "read")
     body = response.json()
-    return AuthAccount(id=UUID(body["id"]), confirmed=bool(body.get("email_confirmed_at")))
+    return AuthAccount(
+        id=UUID(body["id"]),
+        confirmed=bool(body.get("email_confirmed_at")),
+        email=str(body.get("email") or ""),
+    )
 
 
 @dataclass(frozen=True)

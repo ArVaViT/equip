@@ -21,6 +21,7 @@ import ScrollToTop from "./components/layout/ScrollToTop";
 import { MobileTabBar } from "./components/layout/MobileTabBar";
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useGrandTour } from "@/hooks/useGrandTour"
+import { useClaimInvitations } from "@/hooks/useClaimInvitations"
 import { peekReturnPath, returnPathFrom, takeReturnPath } from "@/lib/authRedirect"
 import { canDirect, canTeach, isPlatformStaff } from "@/lib/roles"
 import { DeniedRedirect } from "@/components/auth/DeniedRedirect"
@@ -208,6 +209,7 @@ function AppRoutes() {
   useCanonicalUrl()
   useLocaleSync()
   useTimeZoneSync()
+  useClaimInvitations(!isAuthPage)
   useRouteFocus()
   // Grand tour lives here so it has access to React Router (for
   // programmatic navigation between steps) and AuthContext (for the
