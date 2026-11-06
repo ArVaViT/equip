@@ -621,6 +621,7 @@ export type NotificationType =
   | 'recording_ready'
   | 'event_reminder'
   | 'retake_requested'
+  | 'invitation_unanswered'
 
 export interface Notification {
   id: string

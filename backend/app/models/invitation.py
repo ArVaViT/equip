@@ -118,6 +118,9 @@ class Invitation(Base):
     #: "send again" within minutes of it is not mailed twice; a letter the
     #: provider refused leaves this alone, so the next press does mail.
     mailed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
+    #: When the sender was told, close to the expiry, that nobody had answered
+    #: yet (``invitation_watch``). Once per week of life: a resend clears it.
+    unanswered_noticed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), default=None)
     #: When the inviter said this person is thirteen or older, and who said it.
     #:
     #: A school administrator can bring somebody in who is too young to sign

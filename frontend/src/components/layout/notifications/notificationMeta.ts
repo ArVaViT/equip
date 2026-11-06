@@ -5,6 +5,7 @@ import {
   CalendarClock,
   CalendarPlus,
   ClipboardCheck,
+  MailWarning,
   Megaphone,
   RotateCcw,
   XCircle,
@@ -31,6 +32,7 @@ const NOTIFICATION_ICONS: Record<NotificationType, typeof Bell> = {
   recording_ready: PlayCircle,
   event_reminder: AlarmClock,
   retake_requested: RotateCcw,
+  invitation_unanswered: MailWarning,
 }
 
 const NOTIFICATION_COLORS: Record<NotificationType, string> = {
@@ -43,6 +45,7 @@ const NOTIFICATION_COLORS: Record<NotificationType, string> = {
   recording_ready: "text-info",
   event_reminder: "text-warning",
   retake_requested: "text-warning",
+  invitation_unanswered: "text-warning",
 }
 
 /**
