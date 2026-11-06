@@ -27,7 +27,7 @@ import httpx
 from app.core.config import settings
 from app.core.sanitize import html_to_plain_text
 from app.schemas.locale import LocaleCode  # noqa: TC001 — annotations are evaluated at runtime here
-from app.services.bible.api_source import API_BIBLE_IDS
+from app.services.bible.api_source import API_BIBLE_IDS, publisher_is_refusing, publisher_refused
 from app.services.bible.psalm_numbering import remap_usfm
 
 logger = logging.getLogger(__name__)
@@ -475,9 +475,7 @@ def _fetch_passage(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
     try:
         from app.core.metrics import increment
 
-        outcome = (
-            "success" if response.status_code == 200 else ("not_in_bible" if response.status_code == 404 else "fatal")
-        )
+        outcome = {200: "success", 404: "not_in_bible", 429: "rate_limited"}.get(response.status_code, "fatal")
         increment(
             "equip.youversion.api_calls_total",
             caller="verse_of_the_day",
@@ -489,6 +487,13 @@ def _fetch_passage(api_key: str, bible_id: int, ref: str) -> tuple[str, str]:
         pass
     if response.status_code == 404:
         raise VerseNotInBible(f"YouVersion has no {ref} for bible {bible_id}")
+    if response.status_code == 429:
+        # Asked to wait. Every reader's dashboard asked again until
+        # 2026-11: four refusals in five minutes for one reader on
+        # 26.10, each spent from the key the lessons share. Now the whole
+        # process waits as long as the publisher said.
+        publisher_refused(response.headers.get("Retry-After"))
+        raise VerseOfTheDayUnavailable(f"YouVersion asked us to wait (429) for {ref} (bible {bible_id})")
     if response.status_code != 200:
         raise VerseOfTheDayUnavailable(f"YouVersion responded {response.status_code} for {ref} (bible {bible_id})")
     payload = response.json()
@@ -527,6 +532,42 @@ def get_verse_of_the_day(locale: LocaleCode, *, today: dt.date | None = None) ->
     cached = _CACHE.get(cache_key)
     if cached is not None:
         return cached
+
+    try:
+        verse = _fetch_today(api_key, bible_id, locale, today)
+    except VerseOfTheDayUnavailable:
+        # The publisher is not answering. The last verse this process
+        # had for the language is better than a card that disappears:
+        # it carries its own date, and today's replaces it the moment
+        # YouVersion answers again.
+        earlier = _latest_cached(locale)
+        if earlier is not None:
+            return earlier
+        raise
+
+    with _CACHE_LOCK:
+        # Bound the cache: only ever keep entries for "today" — that's
+        # at most one per locale, two total. Drop yesterday's entries
+        # whenever we add today's. Tiny cost; no risk of unbounded growth.
+        for k in list(_CACHE):
+            if k[0] != date_iso:
+                _CACHE.pop(k, None)
+        _CACHE[cache_key] = verse
+
+    return verse
+
+
+def _latest_cached(locale: LocaleCode) -> VerseOfTheDay | None:
+    """The most recent verse this process holds for ``locale``, if any."""
+    with _CACHE_LOCK:
+        mine = [verse for (_, cached_locale), verse in _CACHE.items() if cached_locale == locale]
+    return max(mine, key=lambda verse: verse.date, default=None)
+
+
+def _fetch_today(api_key: str, bible_id: int, locale: LocaleCode, today: dt.date) -> VerseOfTheDay:
+    """Ask YouVersion for today's verse, walking past references it lacks."""
+    if publisher_is_refusing():
+        raise VerseOfTheDayUnavailable("YouVersion asked us to wait; not asking again yet")
 
     # Septuagint/Masoretic Psalm numbering differs between Russian
     # NRT and our canonical-English (Hebrew-numbered) catalog. For the
@@ -567,24 +608,13 @@ def get_verse_of_the_day(locale: LocaleCode, *, today: dt.date | None = None) ->
             f"No reference in catalog available in bible {bible_id}; last error: {last_not_in_bible}"
         )
 
-    verse = VerseOfTheDay(
+    return VerseOfTheDay(
         reference=localized_ref,
         text=text,
         version=_VERSION_NAME.get(bible_id, ""),
         locale=locale,
-        date=date_iso,
+        date=today.isoformat(),
     )
-
-    with _CACHE_LOCK:
-        # Bound the cache: only ever keep entries for "today" — that's
-        # at most one per locale, two total. Drop yesterday's entries
-        # whenever we add today's. Tiny cost; no risk of unbounded growth.
-        for k in list(_CACHE):
-            if k[0] != date_iso:
-                _CACHE.pop(k, None)
-        _CACHE[cache_key] = verse
-
-    return verse
 
 
 def _reset_cache_for_tests() -> None:
