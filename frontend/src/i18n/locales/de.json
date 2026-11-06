@@ -3288,8 +3288,8 @@
       "saveFailed": "Ihre Zustimmung konnte nicht gespeichert werden. Prüfen Sie die Verbindung und versuchen Sie es erneut."
     },
     "notice": {
-      "body": "Für das Dokument „{{document}}“ gilt ab dem {{date}} eine neue Fassung. An dem, dem Sie zugestimmt haben, hat sich nichts geändert — es ist nichts zu unterschreiben.",
-      "read": "Nachlesen, was sich geändert hat",
+      "body": "„{{document}}“: neue Fassung ab {{date}}, nichts zu unterschreiben.",
+      "read": "Was sich ändert",
       "dismiss": "Schließen"
     },
     "upload": {

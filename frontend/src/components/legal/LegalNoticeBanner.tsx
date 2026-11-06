@@ -90,9 +90,12 @@ export function LegalNoticeBanner() {
   return (
     <div
       role="status"
-      className="flex items-start gap-3 border-b border-edge bg-muted/30 px-4 py-2.5 text-sm text-ink-muted sm:px-6"
+      // A strip, and a thin one: at text-sm with the long sentence it took a
+      // third of a phone screen on every page (2026-11-06), over a notice
+      // that asks for nothing.
+      className="flex items-center gap-2 border-b border-edge bg-muted/30 px-4 py-1.5 text-xs leading-snug text-ink-muted sm:px-6"
     >
-      <p className="flex-1">
+      <p className="min-w-0 flex-1">
         {/* `effective` is a calendar day ("2026-12-15"): printed as one, in
             the reader's language, never as the raw ISO string it arrives as. */}
         {t("legalGate.notice.body", { document: name, date: formatDayLong(notice.effective) || notice.effective })}{" "}
@@ -104,7 +107,7 @@ export function LegalNoticeBanner() {
         type="button"
         onClick={dismiss}
         aria-label={t("legalGate.notice.dismiss")}
-        className="shrink-0 rounded-md p-1 text-ink-muted transition-colors hover:text-ink"
+        className="-my-1 shrink-0 rounded-md p-2 text-ink-muted transition-colors hover:text-ink"
       >
         <X className="h-4 w-4" strokeWidth={1.75} aria-hidden />
       </button>
