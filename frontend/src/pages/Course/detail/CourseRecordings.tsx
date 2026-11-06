@@ -37,13 +37,19 @@ export function CourseRecordings({ events }: { events: CalendarEvent[] }) {
         {shown.map((evt) => (
           <li
             key={evt.id}
-            className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md border border-edge px-3 py-2 text-sm"
+            className="relative flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md border border-edge px-3 py-2 text-sm transition-colors hover:bg-muted/40"
           >
             <span className="min-w-0 flex-1 truncate">{evt.title}</span>
             <time dateTime={evt.event_date} className="whitespace-nowrap text-xs tabular-nums text-ink-muted">
               {formatDateLong(evt.event_date, { year: undefined, month: "long", day: "numeric", weekday: "short" })}
             </time>
-            <RecordingLink url={evt.recording_url} title={evt.title} />
+            {/* Stretched over the row: the title was what people tapped, and
+                only the small «Recording» button answered (RUM, 2026-10). */}
+            <RecordingLink
+              url={evt.recording_url}
+              title={evt.title}
+              className="after:absolute after:inset-0 after:rounded-md"
+            />
           </li>
         ))}
       </ul>

@@ -243,10 +243,14 @@ describe("a course that does group its lessons", () => {
     expect(screen.getByText("The road out")).toBeInTheDocument()
     // The lessons stay behind their module's own page, as they were.
     expect(screen.queryByText("Pentecost")).not.toBeInTheDocument()
-    expect(screen.getAllByRole("link", { name: /Open/ })[0]).toHaveAttribute(
-      "href",
-      "/courses/c1/modules/m1",
-    )
+    const way = screen.getByRole("link", { name: "Beginnings" })
+    expect(way).toHaveAttribute("href", "/courses/c1/modules/m1")
+    // Stretched over the card: the title, the description and the lesson
+    // count were what students tapped, and only «Open» used to answer.
+    expect(way.className).toMatch(/(?<![\w-])after:absolute(?![\w-])/)
+    expect(way.className).toMatch(/(?<![\w-])after:inset-0(?![\w-])/)
+    // «Open» is drawn, not a second link to the same place.
+    expect(screen.queryByRole("link", { name: /Open/ })).not.toBeInTheDocument()
   })
 
   it("still locks a module behind the one before it", () => {
@@ -254,10 +258,8 @@ describe("a course that does group its lessons", () => {
 
     expect(screen.getByText("Locked")).toBeInTheDocument()
     expect(screen.getByText(/Complete all assessments in the previous module/)).toBeInTheDocument()
-    expect(screen.queryByRole("link", { name: /^Open/ })).toHaveAttribute(
-      "href",
-      "/courses/c1/modules/m1",
-    )
+    expect(screen.getByRole("link", { name: "Beginnings" })).toHaveAttribute("href", "/courses/c1/modules/m1")
+    expect(screen.queryByRole("link", { name: "The road out" })).not.toBeInTheDocument()
   })
 
   it("unlocks it once that module's assessments are done", () => {

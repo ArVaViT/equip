@@ -12,7 +12,7 @@ import {
   Lock,
   NotebookPen,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { buttonVariants } from "@/components/ui/buttonVariants"
 import {
   Card,
   CardDescription,
@@ -288,7 +288,7 @@ const ModuleRow = memo(function ModuleRow({
       : gradable.filter((ch) => completedChapterIds.has(ch.id)).length
 
   return (
-    <Card className={`group transition-colors ${isLocked ? "opacity-60" : "hover:border-brand/25"}`}>
+    <Card className={`group relative transition-colors ${isLocked ? "opacity-60" : "hover:border-brand/25"}`}>
       <CardHeader className="py-3 px-4">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="flex min-w-0 items-start gap-2 text-sm sm:items-center">
@@ -296,7 +296,20 @@ const ModuleRow = memo(function ModuleRow({
             {/* On a phone the title wraps and the numbers sit under it. */}
             <span className="block min-w-0 flex-1 sm:flex sm:items-center sm:gap-2">
               <span className="block text-wrap-safe sm:min-w-0 sm:flex-1 sm:truncate">
-                {orNotTranslated(t, module.title)}
+                {isLocked ? (
+                  orNotTranslated(t, module.title)
+                ) : (
+                  // The whole card is the way in: RUM saw students tap the
+                  // title, the description and the lesson count, and only
+                  // the small «Open» answer (2026-10). One link — the title,
+                  // stretched over the card, as on `ContinueCard`.
+                  <Link
+                    to={`/courses/${courseId}/modules/${module.id}`}
+                    className="after:absolute after:inset-0 after:rounded-card focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-brand"
+                  >
+                    {orNotTranslated(t, module.title)}
+                  </Link>
+                )}
               </span>
               <span className="mt-1 flex items-center gap-2 empty:hidden sm:mt-0 sm:shrink-0">
                 <ReadingMinutes minutes={minutes} />
@@ -309,15 +322,13 @@ const ModuleRow = memo(function ModuleRow({
             </span>
           </CardTitle>
           {!isLocked && (
-            <Link
-              to={`/courses/${courseId}/modules/${module.id}`}
-              className="-my-2 inline-flex shrink-0 sm:my-0"
-            >
-              <Button variant="ghost" size="sm" className="h-11 text-xs sm:h-7">
-                {t("courseDetail.openModule")}
-                <ArrowRight className="ml-1 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-              </Button>
-            </Link>
+            // Drawn, not a second link: the title's cover takes the tap. A
+            // real button here would scale on press and pull the cover in
+            // with it (see `ContinueCard`).
+            <span aria-hidden className={buttonVariants({ variant: "ghost", size: "sm", className: "-my-2 h-11 shrink-0 text-xs sm:my-0 sm:h-7" })}>
+              {t("courseDetail.openModule")}
+              <ArrowRight className="ml-1 h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            </span>
           )}
           {isLocked && (
             <span className="text-xs text-ink-muted flex items-center gap-1">
