@@ -3098,6 +3098,10 @@
       "revoked": "Diese Einladung wurde zurückgezogen.",
       "course_gone": "Den Kurs, zu dem diese Einladung führte, gibt es nicht mehr.",
       "inviter_left": "Die Person, die diese Einladung geschickt hat, spricht nicht mehr für die Organisation. Bitten Sie deren Leitung um eine neue."
+    },
+    "claimed": {
+      "teach": "Sie sind {{organization}} als Lehrkraft beigetreten.",
+      "study": "Sie sind {{organization}} beigetreten."
     }
   },
   "myGrade": {

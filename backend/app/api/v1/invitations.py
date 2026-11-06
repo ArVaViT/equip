@@ -19,6 +19,7 @@ from app.models.invitation import Invitation, InvitationScope
 from app.models.organization import MembershipRole, Organization
 from app.models.user import User, UserRole
 from app.schemas.invitation import (
+    ClaimedInvitation,
     InvitationAcceptRequest,
     InvitationAcceptResponse,
     InvitationCreate,
@@ -34,6 +35,7 @@ from app.schemas.locale import normalize_locale
 from app.services.invitation_service import (
     accept_invitation,
     account_for_address,
+    claim_invitations,
     course_title_for_invitation,
     create_or_resend_invitation,
     get_invitation_by_id,
@@ -405,6 +407,36 @@ def accept_invitation_route(
         current_user_email=current_user.email,
     )
     return _accepted(invitation)
+
+
+@router.post("/claim", response_model=list[ClaimedInvitation])
+def claim_invitations_route(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[ClaimedInvitation]:
+    """Accept the open invitations to the caller's proven address, without a link.
+
+    Called once a session by the app. An empty list — the common answer —
+    means there was nothing to accept. See ``claim_invitations``.
+    """
+    claimed = claim_invitations(db, current_user)
+    names: dict[UUID, str] = {}
+    if claimed:
+        rows = (
+            db.query(Organization.id, Organization.public_name)
+            .filter(Organization.id.in_({i.organization_id for i in claimed}))
+            .all()
+        )
+        names = {row.id: row.public_name for row in rows}
+    return [
+        ClaimedInvitation(
+            **_accepted(invitation).model_dump(),
+            organization_name=None
+            if invitation.scope == InvitationScope.PLATFORM.value
+            else names.get(invitation.organization_id),
+        )
+        for invitation in claimed
+    ]
 
 
 @router.post("/register", response_model=InvitationAcceptResponse, status_code=201)

@@ -118,7 +118,7 @@ MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 #:     it, and the promise has no "after you have accepted the documents"
 #:     clause. The route is authorised by its signed token, not by a session,
 #:     and can only turn one kind of mail off.
-#: ``/api/v1/invitations/preview``, ``/accept`` and ``/register``
+#: ``/api/v1/invitations/preview``, ``/accept``, ``/register`` and ``/claim``
 #:     Arriving by invitation. The preview is a read that travels as a POST
 #:     only to keep the token out of request logs; gated, it answered 403 to
 #:     a person who had just signed in to accept, and the page could not
@@ -131,6 +131,10 @@ MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 #:     to Equip pressed "Accept" and met a 403 they could do nothing about.
 #:     What the person then does under the school is gated as before: the
 #:     consent screen is the first thing the application shows them.
+#:     ``/claim`` is the same arrival without the link: the app asks it
+#:     once a session, and a newcomer reaches the app before the consent
+#:     screen is done with them. Gated, it was refused for exactly them and
+#:     not asked again until the next visit.
 EXEMPT_PREFIXES: tuple[str, ...] = (
     "/api/v1/legal/",
     "/api/v1/auth/",
@@ -141,6 +145,7 @@ EXEMPT_PREFIXES: tuple[str, ...] = (
     "/api/v1/invitations/preview",
     "/api/v1/invitations/accept",
     "/api/v1/invitations/register",
+    "/api/v1/invitations/claim",
 )
 
 #: Paths exempt exactly, not as a prefix.

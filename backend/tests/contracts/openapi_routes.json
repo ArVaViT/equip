@@ -2800,6 +2800,15 @@
   },
   {
     "method": "POST",
+    "path": "/api/v1/invitations/claim",
+    "params": [],
+    "responses": [
+      "200"
+    ],
+    "body": false
+  },
+  {
+    "method": "POST",
     "path": "/api/v1/invitations/preview",
     "params": [
       [

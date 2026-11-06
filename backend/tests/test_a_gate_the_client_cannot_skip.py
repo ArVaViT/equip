@@ -125,6 +125,18 @@ def test_the_way_out_of_the_gate_is_not_behind_the_gate(student_client: TestClie
     assert response.status_code == 201, response.text
 
 
+def test_an_invitation_waiting_for_a_newcomer_is_not_behind_the_gate(student_client: TestClient) -> None:
+    """A newcomer reaches the app before the consent screen is done with them.
+
+    The app claims their invitation on arrival; refused here, it was not
+    asked again until the next visit, and the invitation they came for sat
+    pending behind a dialog about something else.
+    """
+    response = student_client.post("/api/v1/invitations/claim")
+
+    assert response.status_code == 200, response.text
+
+
 def test_a_caller_with_no_session_is_not_this_gate_s_business(anon_client: TestClient) -> None:
     """The uptime checks and the Datadog Synthetics runs are anonymous.
 

@@ -11,6 +11,12 @@ export interface AcceptedInvitation {
   email: string
 }
 
+/** An invitation accepted by signing in under its address, without the link. */
+export interface ClaimedInvitation extends AcceptedInvitation {
+  /** `null` for a platform invitation, which leads into no organization. */
+  organization_name: string | null
+}
+
 /** Why a link admits nobody now. Mirrors `UnusableReasonLiteral` on the server. */
 export type InvitationUnusableReason = "expired" | "used" | "revoked" | "inviter_left" | "course_gone"
 
@@ -92,6 +98,15 @@ export const invitationsService = {
    */
   async previewInvitation(token: string): Promise<InvitationPreview> {
     const response = await api.post<InvitationPreview>("/invitations/preview", { token })
+    return response.data
+  },
+
+  /**
+   * Accept every open invitation to the signed-in person's address. The
+   * server checks the address is proven; an empty list is the usual answer.
+   */
+  async claimInvitations(): Promise<ClaimedInvitation[]> {
+    const response = await api.post<ClaimedInvitation[]>("/invitations/claim")
     return response.data
   },
 

@@ -8,7 +8,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Literal
 
-from fastapi import status
+from fastapi import HTTPException, status
 from sqlalchemy import func
 
 from app.core.config import settings
@@ -753,7 +753,6 @@ def accept_invitation(
     """
     invitation = get_invitation_by_token(db, token)
     _refuse_unless_open(invitation)
-    is_fulfilled = invitation.status == InvitationStatus.FULFILLED.value
     if invitation.email != current_user_email.strip().lower():
         increment("equip.invitations.refused_total", reason="email_mismatch", scope=invitation.scope)
         raise equip_error(
@@ -763,6 +762,30 @@ def accept_invitation(
             context={"resource_type": "invitation"},
         )
     course = _refuse_unless_standing(db, invitation)
+    return _redeem(db, invitation, course=course, current_user_id=current_user_id, via="link")
+
+
+#: How an invitation came to be accepted: its link was opened, or its person
+#: signed in under the address it was sent to without ever opening it.
+AcceptedVia = Literal["link", "sign_in"]
+
+
+def _redeem(
+    db: Session,
+    invitation: Invitation,
+    *,
+    course: Course | None,
+    current_user_id: UUID,
+    via: AcceptedVia,
+) -> Invitation:
+    """Grant what an open, standing invitation offers, to the person it was for.
+
+    The caller has already established that the invitation is open, that its
+    course and sender still stand, and that ``current_user_id`` is the person
+    at its address — by the token (``accept_invitation``) or by a proven
+    address (``claim_invitations``).
+    """
+    is_fulfilled = invitation.status == InvitationStatus.FULFILLED.value
 
     # Single-use guard: only flips a row still 'pending'. A concurrent
     # accept (double click, retried request) loses the race here rather
@@ -858,6 +881,7 @@ def accept_invitation(
         "equip.invitations.accepted_total",
         scope=invitation.scope,
         role=granted_role,
+        via=via,
         # Whether the invitation actually moved the person's role, which
         # is the difference between "a new teacher" and "somebody who
         # was already one accepting a course invitation".
@@ -885,6 +909,8 @@ def accept_invitation(
         details={
             "scope": invitation.scope,
             "role": granted_role,
+            # The link, or signing in under the invited address without it.
+            "via": via,
             # Both sides of every move, because "what did accepting this
             # actually change" is the question an audit row is kept for.
             "previous_role": previous_role,
@@ -973,6 +999,67 @@ def register_by_invitation(
     db.expire_all()
     increment("equip.invitations.registered_total", scope=invitation.scope, existing=str(account is not None).lower())
     return accept_invitation(db, token=token, current_user_id=user_id, current_user_email=invitation.email)
+
+
+def claim_invitations(db: Session, user: User) -> list[Invitation]:
+    """Accept every open invitation to the signed-in person's proven address.
+
+    The link was the only way in. A person who read the email and came to
+    the site on their own — signed up on ``/register``, signed in with
+    Google, or already had an account — got a bare student account, and the
+    invitation sat pending until it quietly expired. Every teacher invited
+    in October 2026 ended up there. Nothing told them, and nothing told the
+    person who invited them.
+
+    What the token proves — that whoever holds it reads the invited mailbox
+    — a confirmed address proves too. So signing in under it is enough,
+    with the same checks the link gets: open, unexpired, course and sender
+    still standing. An invitation that fails one stays as it is, for its
+    link to explain.
+
+    The address is read from Supabase Auth, not the profile: only an
+    account whose address is confirmed, and is the invited one, claims
+    anything. With a change of address pending, the account still holds the
+    old address, which is the proven one.
+
+    Cheap when there is nothing to claim — one indexed read, no call to
+    Auth — which is every sign-in but the first after an invitation.
+    """
+    email = (user.email or "").strip().lower()
+    if not email:
+        return []
+    candidates = (
+        db.query(Invitation)
+        .filter(
+            Invitation.email == email,
+            Invitation.status == InvitationStatus.PENDING.value,
+            Invitation.expires_at > datetime.now(UTC),
+        )
+        .order_by(Invitation.created_at)
+        .all()
+    )
+    if not candidates:
+        return []
+    account = auth_admin.get_account(user.id)
+    if account is None or not account.confirmed or account.email.strip().lower() != email:
+        increment("equip.invitations.refused_total", reason="address_unproven", scope="claim")
+        return []
+
+    claimed: list[Invitation] = []
+    for invitation in candidates:
+        # An earlier grant in this loop moves the person's role and
+        # membership, and the database may answer that by closing this
+        # one as fulfilled. Read it as it is now.
+        db.refresh(invitation)
+        if invitation.status != InvitationStatus.PENDING.value or unusable_reason(db, invitation) is not None:
+            continue
+        course = _course_if_live(db, invitation) if invitation.scope == InvitationScope.COURSE.value else None
+        try:
+            claimed.append(_redeem(db, invitation, course=course, current_user_id=user.id, via="sign_in"))
+        except HTTPException:
+            # Accepted by its link in the same moment, on another device.
+            db.rollback()
+    return claimed
 
 
 def account_for_address(db: Session, email: str) -> auth_admin.AuthAccount | None:
