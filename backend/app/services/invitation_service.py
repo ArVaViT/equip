@@ -394,6 +394,8 @@ def create_or_resend_invitation(
         standing.age_attested_at = datetime.now(UTC)
         standing.age_attested_by = invited_by
         standing.expires_at = datetime.now(UTC) + INVITATION_LIFETIME
+        # A fresh week, so a fresh notice if this one goes unanswered too.
+        standing.unanswered_noticed_at = None
         token = issue_token(standing)
         db.commit()
         increment("equip.invitations.created_total", scope=scope, role=role, kind="resend")

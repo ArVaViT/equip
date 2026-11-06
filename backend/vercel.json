@@ -24,6 +24,10 @@
     {
       "path": "/api/v1/internal/event-reminders",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/v1/internal/invitation-watch",
+      "schedule": "17 * * * *"
     }
   ]
 }
