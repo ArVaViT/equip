@@ -617,6 +617,10 @@ CREATE TABLE public.assignment_submissions (
     feedback text,
     graded_by uuid,
     graded_at timestamp with time zone,
+    file_bucket text,
+    file_path text,
+    file_name text,
+    CONSTRAINT assignment_submissions_file_all_or_none CHECK ((((file_bucket IS NULL) AND (file_path IS NULL) AND (file_name IS NULL)) OR ((file_bucket IS NOT NULL) AND (file_path IS NOT NULL) AND (file_name IS NOT NULL)))),
     CONSTRAINT assignment_submissions_grade_nonneg CHECK (((grade IS NULL) OR (grade >= 0))),
     CONSTRAINT assignment_submissions_status_check CHECK (((status)::text = ANY (ARRAY[('submitted'::character varying)::text, ('graded'::character varying)::text, ('returned'::character varying)::text])))
 );
