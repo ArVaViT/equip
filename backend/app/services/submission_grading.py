@@ -33,6 +33,23 @@ if TYPE_CHECKING:
     from app.models.assignment import Assignment, AssignmentSubmission
 
 
+def refuse_if_no_longer_waiting(submission: AssignmentSubmission, *, expect_waiting: bool) -> None:
+    """409 when the marking run expected waiting work and it is not any more.
+
+    Two teachers on one course, or the same teacher on a laptop and a phone:
+    the run was loaded before the other one marked or returned the work.
+    Writing over that would replace a judgement the student may already have
+    read. Off unless asked for — the course screens re-mark on purpose.
+    """
+    if expect_waiting and (submission.status != "submitted" or submission.grade is not None):
+        raise equip_error(
+            ErrorCode.GRADING_ALREADY_MARKED,
+            status_code=http_status.HTTP_409_CONFLICT,
+            message="This work was already marked",
+            context={"resource_type": "submission", "submission_id": str(submission.id), "status": submission.status},
+        )
+
+
 def apply_grade(
     db: Session,
     *,

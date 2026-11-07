@@ -398,6 +398,10 @@ class QuizAnswerGradeRequest(RequestModel):
 
     points_earned: int = Field(..., ge=0, le=100)
     grader_comment: str | None = Field(None, max_length=5_000)
+    #: Sent by the marking run on work it believes is still waiting. If it
+    #: was marked or returned meanwhile the request is refused (409) instead
+    #: of overwriting somebody else's judgement.
+    expect_waiting: bool = False
 
 
 class PendingAnswerInfo(BaseModel):

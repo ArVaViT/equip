@@ -202,6 +202,16 @@ def grade_answer(
     quiz = get_quiz_or_404(db, attempt.quiz_id)
     verify_quiz_owner(db, quiz, teacher.id)
 
+    # The marking run's guard: it loaded this answer as unread, and somebody
+    # has read and marked it since. Refused rather than overwritten.
+    if data.expect_waiting and answer.graded_at is not None:
+        raise equip_error(
+            ErrorCode.GRADING_ALREADY_MARKED,
+            status_code=status.HTTP_409_CONFLICT,
+            message="This answer was already marked",
+            context={"resource_type": "quiz_answer", "answer_id": str(answer_id)},
+        )
+
     if data.points_earned > int(question.points):
         raise equip_error(
             ErrorCode.VALIDATION_FAILED,

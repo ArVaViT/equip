@@ -41,7 +41,7 @@ from app.services import rubric_service
 from app.services.audit_service import log_action
 from app.services.content_versions import dual_write_entity_content
 from app.services.domain_access import resolve_chapter_course_id
-from app.services.submission_grading import apply_grade
+from app.services.submission_grading import apply_grade, refuse_if_no_longer_waiting
 from app.services.translation.pipeline_hooks import run_course_translation_pipeline_if_published
 from app.services.translation.protocol import EntityType
 
@@ -302,6 +302,7 @@ def set_submission_marks(
         )
     assignment = _get_assignment_or_404(db, submission.assignment_id)
     verify_chapter_owner(db, assignment.chapter_id, teacher)
+    refuse_if_no_longer_waiting(submission, expect_waiting=data.expect_waiting)
 
     rubric = rubric_service.rubric_for_assignment(db, assignment.id)
     if rubric is None:

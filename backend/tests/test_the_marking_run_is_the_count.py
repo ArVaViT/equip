@@ -131,7 +131,7 @@ def _two_courses(db: Session) -> dict:
 def test_the_run_is_every_piece_the_count_counts(client, db: Session, teacher, student) -> None:
     _two_courses(db)
 
-    run = client.get(RUN).json()
+    run = client.get(RUN).json()["items"]
     pending = client.get(PENDING).json()
 
     assert len(run) == pending["total"] == 3
@@ -146,7 +146,7 @@ def test_the_run_goes_by_question_oldest_first(client, db: Session, teacher, stu
     together — the standard loaded once — before the next item starts."""
     seeded = _two_courses(db)
 
-    run = client.get(RUN).json()
+    run = client.get(RUN).json()["items"]
 
     assert [i["id"] for i in run] == [
         str(seeded["old_answer"].id),
@@ -167,7 +167,7 @@ def test_each_piece_carries_what_it_takes_to_mark_it(client, db: Session, teache
     )
     db.commit()
 
-    first, _, last = client.get(RUN, headers={"Accept-Language": "ru"}).json()
+    first, _, last = client.get(RUN, headers={"Accept-Language": "ru"}).json()["items"]
 
     # An answer read without its question cannot be judged.
     assert first["kind"] == "quiz_answer"
@@ -196,7 +196,7 @@ def test_marked_through_the_existing_routes_it_leaves_both(client, db: Session, 
 
     assert answered.status_code == 200, answered.text
     assert graded.status_code == 200, graded.text
-    run = client.get(RUN).json()
+    run = client.get(RUN).json()["items"]
     assert [i["id"] for i in run] == [str(seeded["new_answer"].id)]
     assert client.get(PENDING).json()["total"] == 1
 
@@ -209,7 +209,7 @@ def test_another_teachers_work_is_not_in_my_run(client, db: Session, teacher, st
     _hand_in(db, _assignment(db, module, index=0), STUDENT_ID, minutes_ago=5)
     db.commit()
 
-    assert client.get(RUN).json() == []
+    assert client.get(RUN).json()["items"] == []
     assert client.get(PENDING).json()["total"] == 0
 
 
@@ -221,7 +221,16 @@ def test_a_student_cannot_read_the_run(student_client) -> None:
 # the reason, it has to leave the count and the run together.
 @pytest.mark.parametrize(
     "case",
-    ["marked", "handed_back", "student_deactivated", "lesson_deleted", "course_deleted", "answer_read"],
+    [
+        "marked",
+        "handed_back",
+        "student_deactivated",
+        "lesson_deleted",
+        "course_deleted",
+        "answer_read",
+        "resubmitted",
+        "second_version_marked",
+    ],
 )
 def test_the_count_and_the_run_never_disagree(client, db: Session, teacher, student, case: str) -> None:
     seeded = _two_courses(db)
@@ -238,11 +247,98 @@ def test_the_count_and_the_run_never_disagree(client, db: Session, teacher, stud
         db.get(Course, "run-two").deleted_at = datetime.now(UTC)
     elif case == "answer_read":
         db.get(QuizAnswer, seeded["old_answer"].id).graded_at = datetime.now(UTC)
+    elif case in ("resubmitted", "second_version_marked"):
+        # A second version of the same student's work: only the latest counts.
+        newer = _hand_in(db, db.get(Assignment, submission.assignment_id), STUDENT_ID, minutes_ago=5, content="v2")
+        if case == "second_version_marked":
+            newer.status, newer.grade = "graded", 19
     db.commit()
 
-    run = client.get(RUN).json()
+    run = client.get(RUN).json()["items"]
     pending = client.get(PENDING).json()
     groups = client.get("/api/v1/grades/queue").json()
 
     assert len(run) == pending["total"] == sum(g["waiting"] for g in groups)
-    assert pending["total"] < 3
+    if case == "resubmitted":
+        assert pending["total"] == 3
+        assert "v2" in [i["content"] for i in run]
+        assert str(submission.id) not in [i["id"] for i in run]
+    else:
+        assert pending["total"] < 3
+
+
+def test_the_student_and_the_teacher_agree_on_which_version_waits(client, db: Session, teacher, student) -> None:
+    """The student is told «not marked yet» about exactly the work the teacher
+    has in the queue — the same latest version, not a stale first draft."""
+    from app.services.grading_queue import work_awaiting_marking
+
+    seeded = _two_courses(db)
+    assignment = db.get(Assignment, seeded["submission"].assignment_id)
+    newer = _hand_in(db, assignment, STUDENT_ID, minutes_ago=5, content="v2")
+    newer.status, newer.grade = "graded", 19
+    db.commit()
+
+    awaiting = work_awaiting_marking(db, STUDENT_ID, course_id="run-two", quizzes=[], assignments=[assignment])
+    assert awaiting == set()
+    assert client.get(PENDING).json()["by_course"].get("run-two") is None
+
+
+def test_a_long_run_is_sent_in_part_and_counted_in_full(db: Session, teacher, student) -> None:
+    from app.services.grading_queue import waiting_work
+
+    _two_courses(db)
+
+    run = waiting_work(db, TEACHER_ID, display_locale="ru", limit=2)
+
+    # The whole first question (two answers), then the cap; the count is whole.
+    assert len(run["items"]) == 2
+    assert run["total"] == 3
+
+
+def test_an_assignment_says_what_was_asked(client, db: Session, teacher, student) -> None:
+    seeded = _two_courses(db)
+    assignment_id = str(seeded["submission"].assignment_id)
+    for field, text in (("title", "Письмо церкви в Фессалониках"), ("description", "Напишите письмо на страницу.")):
+        record_human_version(db, entity_type="assignment", entity_id=assignment_id, field=field, locale="ru", text=text)
+    db.commit()
+
+    last = client.get(RUN, headers={"Accept-Language": "ru"}).json()["items"][-1]
+
+    assert last["title"] == "Письмо церкви в Фессалониках"
+    assert last["prompt"] == "Напишите письмо на страницу."
+
+
+def test_ready_comments_know_the_students_language(client, db: Session, teacher, student) -> None:
+    _two_courses(db)
+    db.get(User, STUDENT_ID).preferred_locale = "uk"
+    db.commit()
+
+    last = client.get(RUN).json()["items"][-1]
+
+    assert last["student_locale"] == "uk"
+
+
+def test_the_run_will_not_mark_over_work_marked_meanwhile(client, db: Session, teacher, student) -> None:
+    """Loaded as waiting, marked by somebody else since: refused, not overwritten."""
+    seeded = _two_courses(db)
+    submission = db.get(AssignmentSubmission, seeded["submission"].id)
+    submission.status, submission.grade = "returned", 10
+    db.get(QuizAnswer, seeded["old_answer"].id).graded_at = datetime.now(UTC)
+    db.commit()
+
+    graded = client.put(
+        f"/api/v1/assignments/submissions/{submission.id}/grade",
+        json={"grade": 18, "status": "graded", "expect_waiting": True},
+    )
+    answered = client.patch(
+        f"/api/v1/quizzes/answers/{seeded['old_answer'].id}", json={"points_earned": 4, "expect_waiting": True}
+    )
+
+    assert graded.status_code == 409
+    assert graded.json()["detail"]["code"] == "grading.already_marked"
+    assert answered.status_code == 409
+    db.refresh(submission)
+    assert (submission.status, submission.grade) == ("returned", 10)
+    # Without the flag the course screens re-mark on purpose, as before.
+    again = client.put(f"/api/v1/assignments/submissions/{submission.id}/grade", json={"grade": 18, "status": "graded"})
+    assert again.status_code == 200

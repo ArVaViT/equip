@@ -78,6 +78,10 @@ class RubricMarksRequest(RequestModel):
     #: Feedback on the whole piece of work. Omitted leaves whatever is there —
     #: an autosave of one criterion must not wipe what the teacher already wrote.
     feedback: str | None = Field(None, max_length=5000)
+    #: Sent by the marking run on work it believes is still waiting. If it
+    #: was marked or returned meanwhile the request is refused (409) instead
+    #: of overwriting somebody else's judgement.
+    expect_waiting: bool = False
 
 
 class RubricMarkOut(BaseModel):

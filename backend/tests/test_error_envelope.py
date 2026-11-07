@@ -66,6 +66,7 @@ def test_enum_values_are_stable_strings():
         "quiz.attempts_exhausted",
         "quiz.not_translated",
         "quiz.question_already_answered",
+        "grading.already_marked",
         "quiz.has_attempts",
         "quiz.already_exists",
         "quiz.options_changed",

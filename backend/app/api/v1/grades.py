@@ -60,8 +60,8 @@ from app.schemas.grade import (
     StudentCalculatedGrade,
     StudentGradeResponse,
     WaitingGroup,
+    WaitingRun,
     WaitingSubmission,
-    WaitingWork,
 )
 from app.schemas.locale import normalize_locale
 from app.services.audit_service import log_action
@@ -1223,7 +1223,7 @@ def get_grading_queue(
     return waiting_groups(db, teacher.id, display_locale=normalize_locale(accept_language) if accept_language else None)
 
 
-@router.get("/queue/work", response_model=list[WaitingWork])
+@router.get("/queue/work", response_model=WaitingRun)
 def get_grading_run(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db),

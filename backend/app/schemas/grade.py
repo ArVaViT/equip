@@ -630,6 +630,9 @@ class WaitingWork(BaseModel):
     #: question cannot be judged.
     prompt: str | None = None
     student_name: str | None = None
+    #: The student's own language: ready-made comments go in it, since they
+    #: are written to the student, not to the teacher.
+    student_locale: str = "en"
     submitted_at: datetime | None = None
     content: str | None = None
     file_url: str | None = None
@@ -639,6 +642,17 @@ class WaitingWork(BaseModel):
     #: What a mark is out of; both grade routes refuse more.
     max_points: int | None = None
     is_late: bool = False
+
+
+class WaitingRun(BaseModel):
+    """The first stretch of the run, and how much is waiting in all.
+
+    ``total`` is the dashboard's number. When it is larger than ``items``,
+    the rest comes with the next load — the screen says how many.
+    """
+
+    items: list[WaitingWork]
+    total: int
 
 
 class RetakeRequest(BaseModel):
