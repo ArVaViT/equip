@@ -276,7 +276,7 @@ export default function TeacherDashboard() {
               replaces counted courses the list below already shows. */}
           {pendingGrading > 0 && (
             <Button asChild variant="outline" size="sm" className="h-11 sm:h-9">
-              <Link to="/teach/grading">
+              <Link to="/teacher/review">
                 <ClipboardCheck className="h-4 w-4 mr-1.5" strokeWidth={1.75} aria-hidden />
                 {t("teacherDashboard.toGrade", { count: pendingGrading })}
               </Link>
