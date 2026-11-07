@@ -1057,6 +1057,34 @@ export interface WaitingSubmission {
 }
 
 /**
+ * One piece of work in the marking run, with what it takes to mark it.
+ * `id` is what the existing grade route takes: the answer id for an open quiz
+ * answer, the submission id for an assignment.
+ */
+export interface WaitingWork {
+  kind: "quiz_answer" | "assignment"
+  id: string
+  /** The question or assignment it answers — the group it belongs to. */
+  item_id: string
+  course_id: string
+  course_title: string
+  chapter_id: string
+  title: string
+  /** What was asked, for an open quiz answer. */
+  prompt: string | null
+  student_name: string | null
+  submitted_at: string | null
+  content: string | null
+  file_url?: string | null
+  file_bucket?: string | null
+  file_path?: string | null
+  file_name?: string | null
+  /** What a mark is out of; the grade routes refuse more. */
+  max_points: number | null
+  is_late: boolean
+}
+
+/**
  * What a course allows a student to use (§4.1).
  *
  * Disclosure is the default rather than a ban: a ban nobody can enforce is

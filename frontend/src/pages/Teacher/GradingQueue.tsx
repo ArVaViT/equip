@@ -1,52 +1,77 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Link, useSearchParams } from "react-router-dom"
-import { ArrowLeft, ClipboardCheck, Loader2 } from "lucide-react"
+import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { EmptyState, ErrorState } from "@/components/patterns"
+import { ErrorState } from "@/components/patterns"
+import { Section } from "@/components/layout/Section"
 import { gradesService } from "@/services/grades"
 import { getErrorDetail } from "@/lib/errorDetail"
-import { relativeTime } from "@/pages/Teacher/progress/helpers"
-import type { WaitingGroup } from "@/types"
+import { formatRelative } from "@/i18n/format"
+import type { WaitingWork } from "@/types"
 import { MarkOneByOne } from "./grading/MarkOneByOne"
-import { Section } from "@/components/layout/Section"
-import { PageHeader } from "@/components/patterns"
+
+type Group = {
+  key: string
+  title: string
+  courseTitle: string
+  count: number
+  oldest: string | null
+  start: number
+}
+
+/** The run as lessons: consecutive pieces answering the same thing. The
+ *  server already orders them so each question's answers sit together. */
+function groupsOf(items: WaitingWork[]): Group[] {
+  const groups: Group[] = []
+  items.forEach((item, i) => {
+    const key = `${item.kind}:${item.course_id}:${item.item_id}`
+    const last = groups[groups.length - 1]
+    if (last?.key === key) {
+      last.count++
+      return
+    }
+    groups.push({
+      key,
+      title: item.title,
+      courseTitle: item.course_title,
+      count: 1,
+      oldest: item.submitted_at,
+      start: i,
+    })
+  })
+  return groups
+}
 
 /**
- * Where a teacher marks.
+ * «На проверку»: everything waiting on this teacher, across every course.
  *
- * Until now the grading interface lived inside the course editor — dashboard,
- * course, editor, module, chapter, quiz editor, submissions tab. Grading is the
- * thing a teacher does weekly for years; authoring is what they do once, and
- * the weekly task sat seven levels inside the occasional one. The count shipped
- * in #961 had nowhere good to lead.
+ * The same set the dashboard counts — built on the same queries server-side —
+ * so the number that led here is the number of pieces in the run, and marking
+ * them all is what brings it to zero.
  *
- * Grouped by item, not by student: thirty answers to one prompt in a row, the
- * standard loaded once instead of thirty times. Marking a whole paper at a time
- * lets the standard drift between question one and question four, which is the
- * drift a rubric exists to prevent and a queue can prevent for free.
+ * Grouped by what was asked, not by student: thirty answers to one prompt in a
+ * row, the standard loaded once instead of thirty times.
  */
 export default function GradingQueue() {
   const { t } = useTranslation()
   const [params, setParams] = useSearchParams()
-  const openItem = params.get("assignment")
-  const [groups, setGroups] = useState<WaitingGroup[] | null>(null)
-  const [loading, setLoading] = useState(true)
+  const courseFilter = params.get("course")
+  const running = params.has("run")
+  const [all, setAll] = useState<WaitingWork[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [startAt, setStartAt] = useState(0)
+  const [finished, setFinished] = useState<number | null>(null)
 
   const load = useCallback(async () => {
-    setLoading(true)
     setLoadError(null)
     try {
-      setGroups(await gradesService.getQueue())
+      setAll(await gradesService.getRun())
     } catch (err) {
-      // A toast fades; «Всё проверено» would have stayed. The failure has to
-      // be the thing that stays, with the way to try again next to it.
-      setGroups(null)
+      // Not `[]`: an empty run reads «Всё проверено», and a run that did not
+      // load is not one the teacher has finished.
+      setAll(null)
       setLoadError(getErrorDetail(err, t("grading.loadFailed")))
-    } finally {
-      setLoading(false)
     }
   }, [t])
 
@@ -54,44 +79,34 @@ export default function GradingQueue() {
     void load()
   }, [load])
 
-  const open = (group: WaitingGroup) => {
+  const items = useMemo(
+    () => (all && courseFilter ? all.filter((i) => i.course_id === courseFilter) : all),
+    [all, courseFilter],
+  )
+  const groups = useMemo(() => groupsOf(items ?? []), [items])
+
+  const start = (at: number) => {
+    setStartAt(at)
+    setFinished(null)
     const next = new URLSearchParams(params)
-    next.set("assignment", group.item_id)
-    // PUSH, so the back button returns to the list rather than leaving the
-    // page — a teacher works down the queue and back out of it constantly.
+    next.set("run", "1")
+    // PUSH, so the phone's back gesture returns to the list rather than
+    // leaving the page.
     setParams(next)
   }
 
-  const closeItem = () => {
+  const leaveRun = (marked: number | null) => {
     const next = new URLSearchParams(params)
-    next.delete("assignment")
-    setParams(next)
+    next.delete("run")
+    setParams(next, { replace: true })
+    setFinished(marked)
+    setAll(null)
     void load()
   }
 
-  if (openItem) {
-    const group = groups?.find((g) => g.item_id === openItem)
+  if (loadError) {
     return (
       <Section width="reading">
-        <Button variant="ghost" size="sm" onClick={closeItem} className="mb-3 -ml-2">
-          <ArrowLeft className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
-          {t("grading.backToQueue")}
-        </Button>
-        <MarkOneByOne assignmentId={openItem} title={group?.title} maxScore={group?.max_score ?? null} onDone={closeItem} />
-      </Section>
-    )
-  }
-
-  return (
-    <Section width="reading">
-      <PageHeader title={t("grading.title")} description={t("grading.subtitle")} />
-
-      {loading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-ink-muted">
-          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
-          {t("common.loading")}
-        </div>
-      ) : loadError ? (
         <ErrorState
           description={loadError}
           action={
@@ -100,52 +115,112 @@ export default function GradingQueue() {
             </Button>
           }
         />
-      ) : groups && groups.length === 0 ? (
-        // An empty queue is worth saying out loud. A teacher who cleared it
-        // should be told so, not shown a blank page that reads as a failure.
-        <EmptyState
-          icon={<ClipboardCheck strokeWidth={1.75} />}
-          title={t("grading.emptyTitle")}
-          description={t("grading.emptyBody")}
-        />
-      ) : (
-        <div className="space-y-2">
-          {groups?.map((group) => (
-            <Card key={`${group.kind}:${group.item_id}`}>
-              <CardContent className="flex items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  {/* Two lines, not one: on a phone the button takes half the
-                      row, and «Эссе: что изменилос…» does not say which essay. */}
-                  <p className="line-clamp-2 break-words font-medium">{group.title}</p>
-                  <p className="mt-0.5 text-xs text-ink-muted">
-                    {/* Age, not size. The essay waiting three weeks is the one
-                        somebody is upset about. */}
-                    {t("grading.waitingSince", { when: relativeTime(group.oldest, t) })}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <span className="rounded-md bg-warning/15 px-2 py-0.5 text-sm font-medium tabular-nums text-warning-ink">
-                    {group.waiting}
-                  </span>
-                  {group.kind === "assignment" ? (
-                    <Button size="sm" onClick={() => open(group)}>
-                      {t("grading.mark")}
-                    </Button>
-                  ) : (
-                    // Quiz answers are still marked on the quiz screen. Listing
-                    // them here with a link is honest; pretending they open in
-                    // the same flow would be a button that goes somewhere else.
-                    <Link to={`/teacher/courses/${group.course_id}`}>
-                      <Button size="sm" variant="outline">
-                        {t("grading.openCourse")}
-                      </Button>
-                    </Link>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+      </Section>
+    )
+  }
+
+  if (items === null) {
+    return (
+      <Section width="reading">
+        <div className="flex items-center gap-2 py-8 text-sm text-ink-muted">
+          <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
+          {t("common.loading")}
         </div>
+      </Section>
+    )
+  }
+
+  if (running && items.length > 0) {
+    return (
+      <Section width="reading">
+        <MarkOneByOne
+          items={items}
+          startAt={startAt}
+          onExit={() => leaveRun(null)}
+          onFinish={(marked) => leaveRun(marked)}
+        />
+      </Section>
+    )
+  }
+
+  const courseTitle = courseFilter ? items[0]?.course_title : null
+  const othersWaiting = courseFilter && all ? all.length - items.length : 0
+
+  if (items.length === 0) {
+    // Calm, and not a dead end: where to go next is right under it.
+    return (
+      <Section width="reading">
+        <div className="animate-fade-in flex flex-col items-center gap-4 px-4 py-16 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success/15 text-success">
+            <CheckCircle2 className="h-7 w-7" strokeWidth={1.75} aria-hidden />
+          </span>
+          <div className="space-y-1">
+            <h1 className="font-serif text-2xl font-semibold">{t("grading.emptyTitle")}</h1>
+            {finished ? <p className="text-ink-muted">{t("grading.markedNow", { count: finished })}</p> : null}
+          </div>
+          <div className="flex w-full max-w-xs flex-col gap-2 pt-2">
+            {othersWaiting > 0 && (
+              <Button asChild className="h-12 text-base">
+                <Link to="/teacher/review">{t("grading.otherCourses", { count: othersWaiting })}</Link>
+              </Button>
+            )}
+            <Button asChild variant={othersWaiting > 0 ? "outline" : "default"} className="h-12 text-base">
+              <Link to="/teacher">{t("grading.toDashboard")}</Link>
+            </Button>
+          </div>
+        </div>
+      </Section>
+    )
+  }
+
+  return (
+    <Section width="reading">
+      <div className="mb-6 space-y-1">
+        <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">{t("grading.title")}</h1>
+        <p className="text-ink-muted">
+          {courseTitle ? `${courseTitle} · ` : ""}
+          {t("grading.waitingCount", { count: items.length })}
+        </p>
+        {finished != null && finished > 0 && (
+          <p className="text-sm text-success-ink">{t("grading.markedNow", { count: finished })}</p>
+        )}
+      </div>
+
+      <Button onClick={() => start(0)} className="mb-6 h-12 w-full text-base">
+        {t("grading.start")}
+        <ChevronRight className="ml-1 h-4 w-4" strokeWidth={1.75} aria-hidden />
+      </Button>
+
+      <ul className="space-y-2">
+        {groups.map((group) => (
+          <li key={group.key}>
+            <button
+              type="button"
+              onClick={() => start(group.start)}
+              className="flex min-h-16 w-full items-center gap-3 rounded-card border border-edge bg-surface p-4 text-left transition-colors hover:bg-heritage focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="line-clamp-2 break-words font-medium">{group.title}</span>
+                <span className="mt-0.5 block truncate text-sm text-ink-muted">
+                  {/* Age, not size. The essay waiting three weeks is the one
+                      somebody is upset about. */}
+                  {courseFilter ? "" : `${group.courseTitle} · `}
+                  {formatRelative(group.oldest)}
+                </span>
+              </span>
+              <span className="shrink-0 rounded-md bg-warning/15 px-2 py-0.5 text-sm font-medium tabular-nums text-warning-ink">
+                {group.count}
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {courseFilter && othersWaiting > 0 && (
+        <Button asChild variant="ghost" className="mt-4 h-11 w-full">
+          <Link to="/teacher/review">{t("grading.otherCourses", { count: othersWaiting })}</Link>
+        </Button>
       )}
     </Section>
   )

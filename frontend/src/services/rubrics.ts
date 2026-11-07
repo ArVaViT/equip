@@ -1,4 +1,5 @@
 import api from "./api"
+import { cacheInvalidatePrefix } from "@/lib/cache"
 import type { Rubric, RubricCreatePayload, SubmissionRubric } from "@/types"
 
 /**
@@ -47,6 +48,8 @@ export const rubricsService = {
       marks,
       feedback,
     })
+    // A complete rubric is a mark: the dashboard's count must drop with it.
+    cacheInvalidatePrefix("grades:pending")
     return response.data
   },
 }

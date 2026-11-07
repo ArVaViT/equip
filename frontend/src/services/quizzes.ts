@@ -219,6 +219,9 @@ export const quizzesService = {
     cacheInvalidatePrefix("progress:students:")
     cacheInvalidatePrefix("progress:gradebook:")
     cacheInvalidatePrefix("progress:detail:")
+    // The dashboard's «на проверку» number: marked work leaves it now, not
+    // thirty seconds later on a dashboard that still says one is waiting.
+    cacheInvalidatePrefix("grades:pending")
     return response.data
   },
 

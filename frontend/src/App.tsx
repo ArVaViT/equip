@@ -358,7 +358,9 @@ function AppRoutes() {
               <Route path="/teacher/courses/:courseId/analytics" element={<Gate mode="teacher"><TeacherAnalytics /></Gate>} />
               <Route path="/certificates/transcript" element={<Gate mode="private"><TranscriptPage /></Gate>} />
               <Route path="/certificates/:certificateId" element={<Gate mode="private"><CertificateDocument /></Gate>} />
-              <Route path="/teach/grading" element={<Gate mode="teacher"><GradingQueue /></Gate>} />
+              <Route path="/teacher/review" element={<Gate mode="teacher"><GradingQueue /></Gate>} />
+              {/* The queue's first address, kept so a bookmark still lands. */}
+              <Route path="/teach/grading" element={<Navigate to="/teacher/review" replace />} />
               <Route path="/teacher/courses/:courseId/gradebook" element={<Gate mode="teacher"><TeacherGradebook /></Gate>} />
               <Route path="/teacher/courses/:courseId/progress" element={<Gate mode="teacher"><StudentProgress /></Gate>} />
               <Route path="/teacher/courses/:courseId/vedomost" element={<Gate mode="teacher"><VedomostPage /></Gate>} />
