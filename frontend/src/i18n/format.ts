@@ -201,18 +201,23 @@ export function localInputToIso(value: string, tz: string = getDisplayTimeZone()
 }
 
 /**
- * A moment people plan around — a deadline, a live lesson — as
- * ``YYYY-MM-DD HH:mm`` on the reader's clock, with the zone named:
- * ``2026-10-01 23:59 EDT``. The name is what tells a student in Berlin
- * that the 23:59 is already theirs.
+ * A moment people plan around — a deadline, a live lesson — on the reader's
+ * clock, with the zone named: «1 октября, 23:59 EDT». The name is what tells
+ * a student in Berlin that the 23:59 is already theirs. It used to read
+ * ``2026-10-01 23:59 EDT``, which is a machine's date: on 2026-11-06 a
+ * student's assignment said «Срок: 2026-12-05 20:00 GMT-5».
  */
 export function formatDateTimeZoned(date: Date | string | number | null | undefined): string {
   if (date == null) return ""
   const d = toDate(date)
   if (!d) return ""
-  const p = zonedParts(d)
+  const tz = getDisplayTimeZone()
   const locale = activeIntlTag(i18n.resolvedLanguage ?? i18n.language)
-  return `${p.year}-${pad(p.month)}-${pad(p.day)} ${pad(p.hour)}:${pad(p.minute)} ${timeZoneLabel(locale, getDisplayTimeZone(), d)}`
+  // The year only when it is not this one: «5 декабря», not «5 декабря 2026 г.».
+  const thisYear = zonedParts(new Date()).year === zonedParts(d).year
+  const day = d.toLocaleString(locale, { day: "numeric", month: "long", year: thisYear ? undefined : "numeric", timeZone: tz })
+  const time = d.toLocaleString(locale, { hour: "2-digit", minute: "2-digit", timeZone: tz })
+  return `${day}, ${time} ${timeZoneLabel(locale, tz, d)}`
 }
 
 const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/

@@ -15,6 +15,7 @@ import {
   type AssignmentFormState,
 } from "./types"
 import { formatDateTimeZoned } from "@/i18n/format"
+import { asPlainText } from "@/lib/plainText"
 
 interface Props {
   assignment: Assignment
@@ -150,7 +151,7 @@ export function AssignmentItem({ assignment, courseId, onDelete, onUpdate }: Pro
       {expanded && (
         <div className="border-t px-4 pb-4">
           {assignment.description && (
-            <p className="text-xs text-ink-muted py-2">{assignment.description}</p>
+            <p className="whitespace-pre-line text-xs text-ink-muted py-2">{asPlainText(assignment.description)}</p>
           )}
 
           {/* The marking standard, defined where the work is defined. Until
