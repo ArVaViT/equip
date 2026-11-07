@@ -665,6 +665,15 @@ def update_grading_scheme(
     course.grading_scheme = data.grading_scheme
     course.pass_threshold = data.pass_threshold
 
+    # «With honors» names the top band. A scheme without bands has none, so
+    # the switch goes off with the change rather than sitting on silently,
+    # ready to come back on its own if the school ever returns to letters.
+    honors_cleared = course.with_honors and not effective_bands(
+        get_org_settings(db, course.organization_id), data.grading_scheme
+    )
+    if honors_cleared:
+        course.with_honors = False
+
     # Quizzes carry their own pass line, inherited from the course's when they
     # were written (D3). Moving the course's leaves them where they were, and
     # the drift is invisible from here: raise the line and a student clears
@@ -692,6 +701,7 @@ def update_grading_scheme(
                 "grading_scheme": data.grading_scheme,
                 "pass_threshold": float(data.pass_threshold),
             },
+            "with_honors_cleared": honors_cleared,
             "reason": data.reason,
             "quizzes_off_the_new_line": drifted,
         },

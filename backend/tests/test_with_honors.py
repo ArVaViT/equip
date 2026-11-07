@@ -14,18 +14,26 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 import pytest
+from fastapi.testclient import TestClient
 
+from app.api.dependencies import get_current_user, get_optional_user
+from app.core.database import get_db
+from app.main import app
 from app.models.audit_log import AuditLog
 from app.models.certificate import Certificate, CertificateStatus
 from app.models.course import Chapter, Course, Module
 from app.models.enrollment import Enrollment
+from app.models.organization import Organization
 from app.models.quiz import Quiz, QuizAttempt
 from app.models.student_grade import StudentGrade
+from app.models.user import User, UserRole
 from app.services.certificate_grade_snapshot import snapshot_certificate_grade
 
-from .conftest import STUDENT_ID
+from .conftest import STUDENT_ID, TEST_ORGANIZATION_ID
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from sqlalchemy.orm import Session
 
 HONORS_URL = "/api/v1/grades/course/{course_id}/honors"
@@ -232,3 +240,136 @@ def test_my_certificates_carry_the_snapshot_the_transcript_prints(student_client
     assert row["official_code"] == "A"
     assert row["with_honors"] is True
     assert row["academic_hours"] == 24
+
+
+# --------------------------------------------------------------------------
+# Who may flip it
+# --------------------------------------------------------------------------
+
+
+def _signed_in_as(db: Session, user: User) -> Iterator[TestClient]:
+    def _db():
+        yield db
+
+    app.dependency_overrides[get_db] = _db
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_optional_user] = lambda: user
+    with TestClient(app, raise_server_exceptions=False) as tc:
+        yield tc
+    app.dependency_overrides.clear()
+
+
+def _person(db: Session, email: str, role: UserRole, organization_id: uuid.UUID) -> User:
+    user = User(
+        id=uuid.uuid5(uuid.NAMESPACE_DNS, email),
+        email=email,
+        full_name=email.split("@")[0],
+        role=role.value,
+        organization_id=organization_id,
+    )
+    db.add(user)
+    db.commit()
+    return user
+
+
+@pytest.fixture()
+def own_director_client(db: Session, teacher, student) -> Iterator[TestClient]:
+    yield from _signed_in_as(db, _person(db, "director@example.com", UserRole.DIRECTOR, TEST_ORGANIZATION_ID))
+
+
+@pytest.fixture()
+def other_schools_director_client(db: Session, teacher, student) -> Iterator[TestClient]:
+    other = Organization(slug="honors-other-school", public_name="Other School")
+    db.add(other)
+    db.flush()
+    yield from _signed_in_as(db, _person(db, "director@other-school.example.com", UserRole.DIRECTOR, other.id))
+
+
+@pytest.fixture()
+def other_teacher_client(db: Session, teacher, student) -> Iterator[TestClient]:
+    yield from _signed_in_as(db, _person(db, "colleague@example.com", UserRole.TEACHER, TEST_ORGANIZATION_ID))
+
+
+def test_a_director_of_the_school_may_flip_it(own_director_client: TestClient, db: Session, teacher) -> None:
+    course = _course(db, teacher, "c-hon-own-director", score=None, with_honors=False)
+
+    resp = own_director_client.put(HONORS_URL.format(course_id=course.id), json={"with_honors": True})
+
+    assert resp.status_code == 200, resp.text
+    db.refresh(course)
+    assert course.with_honors is True
+
+
+def test_another_schools_director_is_not_told_the_course_exists(
+    other_schools_director_client: TestClient, db: Session, teacher
+) -> None:
+    course = _course(db, teacher, "c-hon-other-director", score=None, with_honors=False)
+
+    resp = other_schools_director_client.put(HONORS_URL.format(course_id=course.id), json={"with_honors": True})
+
+    assert resp.status_code == 404, resp.text
+    db.refresh(course)
+    assert course.with_honors is False
+
+
+def test_a_teacher_of_another_course_may_not(other_teacher_client: TestClient, db: Session, teacher) -> None:
+    course = _course(db, teacher, "c-hon-other-teacher", score=None, with_honors=False)
+
+    resp = other_teacher_client.put(HONORS_URL.format(course_id=course.id), json={"with_honors": True})
+
+    assert resp.status_code == 403, resp.text
+    db.refresh(course)
+    assert course.with_honors is False
+
+
+@pytest.mark.parametrize("scheme", ["percent", "pass_fail"], ids=["to-percent", "to-pass-fail"])
+def test_leaving_the_bands_switches_it_off_and_says_so(
+    admin_client, db: Session, teacher, student, scheme: str
+) -> None:
+    """A scheme with no top band cannot honour one; the switch must not sit on
+    silently, ready to come back by itself if the school returns to letters."""
+    course = _course(db, teacher, f"c-hon-leave-{scheme}", score=None, with_honors=True)
+
+    resp = admin_client.put(
+        SCHEME_URL.format(course_id=course.id), json={"grading_scheme": scheme, "pass_threshold": 70}
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["with_honors"] is False
+    db.refresh(course)
+    assert course.with_honors is False
+    entry = db.query(AuditLog).filter(AuditLog.action == "grading_scheme_changed").one()
+    assert entry.details["with_honors_cleared"] is True
+
+
+def test_moving_between_band_schemes_keeps_it(admin_client, db: Session, teacher, student) -> None:
+    course = _course(db, teacher, "c-hon-keep", score=None, with_honors=True)
+
+    resp = admin_client.put(
+        SCHEME_URL.format(course_id=course.id), json={"grading_scheme": "five_point", "pass_threshold": 70}
+    )
+
+    assert resp.status_code == 200, resp.text
+    db.refresh(course)
+    assert course.with_honors is True
+
+
+# --------------------------------------------------------------------------
+# The public check
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(("score", "expected"), [(95, True), (85, False)], ids=["A-with-honors", "B-without"])
+def test_verify_confirms_what_the_paper_says(client, db: Session, teacher, student, score: int, expected: bool) -> None:
+    """A stranger holding a certificate that says «with honors» has to be able
+    to confirm that line, and to see it is absent when it is."""
+    course = _course(db, teacher, f"c-hon-verify-{score}", score=score)
+    cert = _issue(db, course)
+    cert.certificate_number = f"EQ-HONORS-V{score}"
+    cert.issued_at = datetime.now(UTC)
+    db.commit()
+
+    body = client.get(f"/api/v1/certificates/verify/{cert.certificate_number}").json()
+
+    assert body["valid"] is True
+    assert body["with_honors"] is expected
