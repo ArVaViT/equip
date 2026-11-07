@@ -1,18 +1,22 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { coursesService } from "@/services/courses"
+import { storageService } from "@/services/storage"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { answerWasLost, newestUnseen } from "@/lib/lostResponse"
+import { describeUploadError, preflightUpload } from "@/lib/uploadError"
+import { acceptAttribute, maxMb, MB, SUBMISSIONS } from "@/lib/uploadLimits"
 import { rubricsService } from "@/services/rubrics"
 import { useAuth } from "@/context/useAuth"
 import { useLocalDraft } from "@/hooks/useLocalDraft"
 import { assignmentDraftKey } from "@/lib/storageKeys"
-import { SubmissionDeclaration, type DeclarationState } from "./SubmissionDeclaration"
-import { declarationStatement } from "./declarationStatement"
+import { SubmissionDeclaration } from "./SubmissionDeclaration"
+import { BLANK_DECLARATION, type DeclarationState, declarationStatement } from "./declarationStatement"
+import { SubmissionFileChip } from "./SubmissionFileChip"
 import { RubricGrid } from "@/components/rubric/RubricGrid"
 import { ErrorState, LateBadge } from "@/components/patterns"
 import { toast } from "@/lib/toast"
@@ -20,6 +24,7 @@ import { repeatsTitle } from "@/lib/repeatsTitle"
 import type { AiPolicy, Assignment, AssignmentSubmission, SubmissionRubric } from "@/types"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { formatDateTimeZoned } from "@/i18n/format"
+import { formatNumber } from "@/i18n/number"
 import { asPlainText } from "@/lib/plainText"
 import { orNotTranslated } from "@/lib/untranslated"
 import {
@@ -32,7 +37,8 @@ import {
   RotateCcw,
   Loader2,
   MessageSquare,
-  Link as LinkIcon,
+  Paperclip,
+  X,
   AlertTriangle,
 } from "lucide-react"
 import { ScriptureText } from "@/components/chapter/ScriptureText"
@@ -50,6 +56,10 @@ interface AssignmentPanelProps {
   /** The course's AI policy, passed down so the declaration says the right
    *  thing on the screen where the work is actually handed in. */
   aiPolicy?: AiPolicy
+  /** The course the chapter belongs to. A handed-in file is filed under
+   *  `<course>/<assignment>/<student>/` in the bucket, and both the bucket's
+   *  RLS and the API hold the key to that shape. */
+  courseId: string
   chapterId: string
   /** Filter down to a single assignment when rendered from a ChapterBlock. */
   assignmentId?: string
@@ -62,7 +72,7 @@ interface AssignmentPanelProps {
   pageTitle?: string
 }
 
-export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, onCountLoaded, aiPolicy, pageTitle }: AssignmentPanelProps) {
+export default function AssignmentPanel({ courseId, chapterId, assignmentId, onSubmitted, onCountLoaded, aiPolicy, pageTitle }: AssignmentPanelProps) {
   const { t } = useTranslation()
   const [assignments, setAssignments] = useState<Assignment[]>([])
   // Three values, not two. `null` means the student has not handed anything in;
@@ -170,6 +180,7 @@ export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, 
       {assignments.map((assignment) => (
         <SingleAssignment
           key={assignment.id}
+          courseId={courseId}
           assignment={assignment}
           initialSubmission={submissionsMap[assignment.id] ?? null}
           onRetry={() => setReloadKey((k) => k + 1)}
@@ -182,7 +193,21 @@ export default function AssignmentPanel({ chapterId, assignmentId, onSubmitted, 
   )
 }
 
+/**
+ * The file between «choose» and «hand in».
+ *
+ * `uploading` while the bytes travel (with how far they got), `ready` once
+ * the bucket has them and the key can go in with the work, `failed` when
+ * Storage or the network refused -- the chip stays so the student can see
+ * which file it was and try again or remove it.
+ */
+type PendingFile =
+  | { state: "uploading"; name: string; size: number; progress: number }
+  | { state: "ready"; name: string; size: number; bucket: string; path: string }
+  | { state: "failed"; name: string; size: number; message: string }
+
 function SingleAssignment({
+  courseId,
   assignment,
   initialSubmission,
   onSubmitted,
@@ -191,6 +216,7 @@ function SingleAssignment({
   pageTitle,
 }: {
   pageTitle?: string
+  courseId: string
   assignment: Assignment
   initialSubmission: AssignmentSubmission | null | typeof UNKNOWN
   onSubmitted?: () => void
@@ -216,17 +242,21 @@ function SingleAssignment({
   useEffect(() => {
     if (restored) setContent(restored)
   }, [restored])
+  const [file, setFile] = useState<PendingFile | null>(null)
+  // The link field is hidden until asked for: a student with a photo of
+  // their notebook does not need to know what a URL is. It comes out on
+  // «или вставить ссылку», or on its own when the file cannot go in the
+  // bucket (too big, wrong kind) -- the link is the way round that.
+  const [linkShown, setLinkShown] = useState(false)
   const [fileUrl, setFileUrl] = useState("")
+  const [fileIssue, setFileIssue] = useState<string | null>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
   const [submitting, setSubmitting] = useState(false)
   // The same grid the teacher marked on. Not a summary of it: a student's
   // «summary of your rubric» drifts from the thing the mark came from, and the
   // drift is exactly where «почему у меня 70» stops having an answer.
   const [rubric, setRubric] = useState<SubmissionRubric | null>(null)
-  const [declaration, setDeclaration] = useState<DeclarationState>({
-    confirmed: false,
-    usedAi: false,
-    note: "",
-  })
+  const [declaration, setDeclaration] = useState<DeclarationState>(BLANK_DECLARATION)
 
   useEffect(() => {
     setSubmission(initialSubmission === UNKNOWN ? null : initialSubmission)
@@ -254,14 +284,70 @@ function SingleAssignment({
   const policy = aiPolicy ?? "ai_with_disclosure"
   const declarationNeeded = policy !== "ai_open"
 
+  const chooseFile = async (chosen: File | undefined) => {
+    // The same input can be used again for the same file: clear it.
+    if (fileInput.current) fileInput.current.value = ""
+    if (!chosen || !user) return
+    setFileIssue(null)
+    const issue = preflightUpload(chosen, SUBMISSIONS)
+    if (issue) {
+      // One sentence, and the link field, which is the way round both a
+      // file too big for the bucket and one of a kind it does not take. An
+      // iPhone's HEIC keeps its own sentence: it is the phone's setting, not
+      // the file, that has to change.
+      setFileIssue(
+        issue.kind === "size"
+          ? t("assignment.file.tooLarge", { maxMb: maxMb(SUBMISSIONS) })
+          : issue.kind === "heic"
+            ? issue.message
+            : t("assignment.file.unsupported"),
+      )
+      setLinkShown(true)
+      return
+    }
+    setFile({ state: "uploading", name: chosen.name, size: chosen.size, progress: 0 })
+    try {
+      const uploaded = await storageService.uploadSubmissionFile(
+        courseId,
+        assignment.id,
+        user.id,
+        chosen,
+        (fraction) =>
+          setFile((f) => (f?.state === "uploading" ? { ...f, progress: fraction } : f)),
+      )
+      setFile({ state: "ready", name: chosen.name, size: chosen.size, bucket: uploaded.bucket, path: uploaded.path })
+    } catch (error: unknown) {
+      setFile({ state: "failed", name: chosen.name, size: chosen.size, message: describeUploadError(error, SUBMISSIONS) })
+    }
+  }
+
+  const removeFile = () => {
+    if (file?.state === "ready") {
+      // Best-effort: an orphan in the bucket is nothing the student needs
+      // to hear about.
+      void storageService.removeSubmissionFile(file.path).catch(() => undefined)
+    }
+    setFile(null)
+  }
+
+  const hasWork = Boolean(content.trim() || fileUrl.trim() || file?.state === "ready")
+  const canSubmit =
+    hasWork &&
+    !submitting &&
+    file?.state !== "uploading" &&
+    (!declarationNeeded || declaration.aiUse !== null)
+
   const handleSubmit = async () => {
-    if (!content.trim() && !fileUrl.trim()) return
-    if (declarationNeeded && !declaration.confirmed) return
+    if (!canSubmit) return
     setSubmitting(true)
     const landed = (sub: AssignmentSubmission) => {
       setSubmission(sub)
       setContent("")
       setFileUrl("")
+      setFile(null)
+      setLinkShown(false)
+      setFileIssue(null)
+      setDeclaration(BLANK_DECLARATION)
       clearDraft()
       onSubmitted?.()
     }
@@ -270,14 +356,16 @@ function SingleAssignment({
         await coursesService.submitAssignment(assignment.id, {
           content: content.trim() || undefined,
           file_url: fileUrl.trim() || undefined,
-          declaration: declarationNeeded
-            ? {
-                ai_use: declaration.usedAi ? "assisted" : "none",
-                // The text as displayed, not a pointer to it.
-                statement: declarationStatement(policy, t),
-                note: declaration.usedAi ? declaration.note.trim() || undefined : undefined,
-              }
-            : undefined,
+          file: file?.state === "ready" ? { path: file.path, name: file.name } : undefined,
+          declaration:
+            declarationNeeded && declaration.aiUse !== null
+              ? {
+                  ai_use: declaration.aiUse,
+                  // The text as displayed, not a pointer to it.
+                  statement: declarationStatement(policy, declaration.aiUse, t),
+                  note: declaration.aiUse === "assisted" ? declaration.note.trim() || undefined : undefined,
+                }
+              : undefined,
         }),
       )
     } catch (error: unknown) {
@@ -456,12 +544,22 @@ function SingleAssignment({
               </div>
             )}
 
-            {submission.content && (
+            {(submission.content || submission.file_path) && (
               <div className="rounded-md bg-muted/20 p-4">
                 <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                   {t("assignment.yourSubmission")}
                 </p>
-                <p className="text-sm leading-relaxed text-wrap-safe whitespace-pre-wrap">{submission.content}</p>
+                {submission.content && (
+                  <p className="text-sm leading-relaxed text-wrap-safe whitespace-pre-wrap">{submission.content}</p>
+                )}
+                {submission.file_bucket && submission.file_path && submission.file_name && (
+                  <SubmissionFileChip
+                    bucket={submission.file_bucket}
+                    path={submission.file_path}
+                    name={submission.file_name}
+                    className={submission.content ? "mt-3" : ""}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -469,24 +567,22 @@ function SingleAssignment({
 
         {showForm && (
           <div className="space-y-4">
-            {/* Before the work, not after it: the reminder that was found to
-                work in unproctored settings is one shown ahead of the act. */}
-            <SubmissionDeclaration policy={policy} value={declaration} onChange={setDeclaration} />
             {canResubmit && (
               <div className="rounded-md border border-warning/30 border-l-stripe border-l-warning bg-warning/10 px-3 py-2 text-xs font-medium text-warning-ink">
                 {t("assignment.returnedHint")}
               </div>
             )}
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
+              <Label htmlFor={`answer-${assignment.id}`} className="text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
                 {t("assignment.yourResponse")}
               </Label>
               <Textarea
+                id={`answer-${assignment.id}`}
                 fieldSize="default"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder={t("assignment.responsePlaceholder")}
-                className="min-h-[160px] leading-relaxed"
+                className="min-h-[120px] leading-relaxed"
               />
               {/* Quiet, and only once there is something to say. A student who
                   has typed one word does not need reassurance; one who comes
@@ -497,36 +593,120 @@ function SingleAssignment({
                 </p>
               )}
             </div>
-            <div className="space-y-1.5">
-              <Label className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.18em] text-ink-muted">
-                <LinkIcon className="h-3 w-3" strokeWidth={1.75} aria-hidden />
-                {t("assignment.fileLinkOptional")}
-              </Label>
-              <Input
-                value={fileUrl}
-                onChange={(e) => setFileUrl(e.target.value)}
-                placeholder={t("assignment.fileLinkPlaceholder")}
-                fieldSize="sm"
-                className="text-sm"
+
+            {/* The file. One large button; the phone offers the camera, the
+                gallery and the files behind it, and the upload starts the
+                moment a file is chosen so that «Отправить» has nothing left
+                to wait for. */}
+            <div className="space-y-2">
+              <input
+                ref={fileInput}
+                type="file"
+                accept={acceptAttribute(SUBMISSIONS)}
+                className="sr-only"
+                aria-label={t("assignment.file.attach")}
+                tabIndex={-1}
+                onChange={(e) => void chooseFile(e.target.files?.[0])}
               />
-            </div>
-            <Button
-              onClick={handleSubmit}
-              // Never pre-ticked, and the button does nothing until it is —
-              // the same rule the legal agreements follow, for the same reason.
-              disabled={
-                submitting ||
-                (!content.trim() && !fileUrl.trim()) ||
-                (declarationNeeded && !declaration.confirmed)
-              }
-            >
-              {submitting ? (
-                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />
+              {file === null ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-12 w-full justify-center text-base"
+                  onClick={() => fileInput.current?.click()}
+                >
+                  <Paperclip className="mr-2 h-5 w-5" strokeWidth={1.75} aria-hidden />
+                  {t("assignment.file.attach")}
+                </Button>
               ) : (
-                <Send className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                <div
+                  className={`rounded-lg border px-3 py-2 ${
+                    file.state === "failed" ? "border-destructive/40 bg-destructive/10" : "border-edge bg-surface"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {file.state === "uploading" ? (
+                      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-ink-muted" strokeWidth={1.75} aria-hidden />
+                    ) : (
+                      <Paperclip className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} aria-hidden />
+                    )}
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{file.name}</span>
+                    <span className="shrink-0 text-xs tabular-nums text-ink-muted">
+                      {t("assignment.file.sizeMb", { mb: formatNumber(file.size / MB, 1) })}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={removeFile}
+                      aria-label={t("assignment.file.remove")}
+                      className="-mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-ink-muted hover:bg-muted/40 hover:text-ink"
+                    >
+                      <X className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                    </button>
+                  </div>
+                  {file.state === "uploading" && (
+                    <div
+                      role="progressbar"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={Math.round(file.progress * 100)}
+                      aria-label={t("assignment.file.uploading")}
+                      className="mt-2 h-1 overflow-hidden rounded-full bg-muted"
+                    >
+                      <div
+                        className="h-full rounded-full bg-brand transition-[width] duration-200"
+                        style={{ width: `${Math.max(2, Math.round(file.progress * 100))}%` }}
+                      />
+                    </div>
+                  )}
+                  {file.state === "failed" && (
+                    <p className="mt-1.5 text-xs text-destructive-ink" role="alert">
+                      {file.message}
+                    </p>
+                  )}
+                </div>
               )}
-              {submitting ? t("assignment.submitting") : canResubmit ? t("assignment.resubmit") : t("assignment.submit")}
-            </Button>
+              {fileIssue && (
+                <p className="text-sm text-ink-muted" role="alert">
+                  {fileIssue}
+                </p>
+              )}
+              {linkShown ? (
+                <Input
+                  value={fileUrl}
+                  onChange={(e) => setFileUrl(e.target.value)}
+                  placeholder={t("assignment.fileLinkPlaceholder")}
+                  aria-label={t("assignment.fileLinkOptional")}
+                  inputMode="url"
+                  fieldSize="default"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setLinkShown(true)}
+                  className="min-h-11 text-sm text-ink-muted underline-offset-4 hover:text-ink hover:underline"
+                >
+                  {t("assignment.file.orPasteLink")}
+                </button>
+              )}
+            </div>
+
+            {/* Before the button, not after it: the reminder that was found to
+                work in unproctored settings is one shown ahead of the act. */}
+            <SubmissionDeclaration policy={policy} value={declaration} onChange={setDeclaration} />
+
+            <div className="space-y-2">
+              {declarationNeeded && (
+                <p className="text-xs text-ink-muted">{t("declaration.bySubmitting")}</p>
+              )}
+              <Button onClick={handleSubmit} disabled={!canSubmit} className="h-12 w-full text-base sm:w-auto">
+                {submitting ? (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" strokeWidth={1.75} aria-hidden />
+                ) : (
+                  <Send className="mr-2 h-5 w-5" strokeWidth={1.75} aria-hidden />
+                )}
+                {submitting ? t("assignment.submitting") : canResubmit ? t("assignment.resubmit") : t("assignment.submit")}
+              </Button>
+            </div>
           </div>
         )}
       </div>

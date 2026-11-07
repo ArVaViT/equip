@@ -32,7 +32,7 @@ const block = (over: Partial<ChapterBlock>): ChapterBlock =>
 function renderBody(blocks: ChapterBlock[]) {
   return render(
     <I18nextProvider i18n={i18n}>
-      <ChapterBodyBlocks blocks={blocks} loading={false} loadError={false} onRetry={() => {}} />
+      <ChapterBodyBlocks courseId="c-1" blocks={blocks} loading={false} loadError={false} onRetry={() => {}} />
     </I18nextProvider>,
   )
 }

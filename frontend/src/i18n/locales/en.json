@@ -1492,7 +1492,7 @@
   "assignment": {
     "eyebrow": "Assignment",
     "loadFailed": "Failed to load assignments. Please try refreshing.",
-    "statusSubmitted": "Submitted — Awaiting Review",
+    "statusSubmitted": "Submitted · awaiting review",
     "statusGraded": "Graded",
     "statusReturned": "Returned — Resubmission Requested",
     "maxPoints": "Max: {{max}} pts",
@@ -1519,7 +1519,18 @@
     "statusUnknownHelp": "The form is hidden on purpose: if the work is already submitted, a second copy only confuses you and whoever marks it. Check your connection and try again.",
     "statusUnknownRetry": "Check again",
     "draftSaved": "Draft saved on this device",
-    "draftRestored": "Draft restored from this device"
+    "draftRestored": "Draft restored from this device",
+    "file": {
+      "attach": "Attach a file",
+      "remove": "Remove file",
+      "uploading": "Uploading the file",
+      "open": "open",
+      "openAria": "Open file {{name}}",
+      "sizeMb": "{{mb}} MB",
+      "tooLarge": "The file is over {{maxMb}} MB. Upload it to YouTube or Google Drive and paste the link.",
+      "unsupported": "This file will not do. Photos, PDF, audio, video and Word documents work — or paste a link.",
+      "orPasteLink": "or paste a link"
+    }
   },
   "certificates": {
     "transcript": {
@@ -3224,22 +3235,17 @@
     "saveFailed": "Could not save"
   },
   "declaration": {
-    "heading": "Before you hand it in",
     "ai_forbidden": {
-      "policy": "This work must be written by you. AI is not allowed.",
-      "example": "Reading, thinking, arguing with the text and writing it in your own words — that is the work.",
-      "consequence": "If the rule is broken your teacher deals with it personally: a conversation, not an automatic zero."
+      "rule": "AI is not allowed in this course: the work is written in your own words."
     },
     "ai_with_disclosure": {
-      "policy": "You may use AI if you say where and how.",
-      "example": "«Asked it to rephrase my introduction», «checked what a word means» — that is enough.",
-      "consequence": "Hidden use is a question of honesty. Declared use is an ordinary part of the work."
+      "rule": "AI may be used in this course — say what for."
     },
-    "confirm": "I confirm the above",
-    "usedAi": "I used AI",
-    "note": "Where and how exactly",
-    "notePlaceholder": "Asked it to rephrase two paragraphs of the introduction",
-    "required": "Tick the confirmation to hand your work in"
+    "withoutAi": "Without AI",
+    "withAi": "With AI",
+    "note": "What for?",
+    "notePlaceholder": "For example: rephrasing the introduction",
+    "bySubmitting": "By submitting you confirm that you have answered honestly."
   },
   "rubricEditor": {
     "defaultTitle": "Essay rubric",

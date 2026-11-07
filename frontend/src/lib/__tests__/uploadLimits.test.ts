@@ -11,6 +11,7 @@ import {
   isHeic,
   MB,
   resolveContentType,
+  SUBMISSIONS,
 } from "@/lib/uploadLimits"
 
 /**
@@ -51,6 +52,29 @@ describe("bucket specs match the migration", () => {
     }
     expect(policyTypes("course_assets_teacher_insert")).toEqual(COURSE_ASSETS.mimeTypes)
     expect(policyTypes("course_materials_teacher_insert")).toEqual(COURSE_MATERIALS.mimeTypes)
+  })
+
+  // The student's bucket: its row in the migration is the list the client
+  // checks against, wildcards included.
+  it("submissions: 50 MB, private, the migration's own list", () => {
+    const here = dirname(fileURLToPath(import.meta.url))
+    const sql = readFileSync(
+      resolve(here, "../../../../supabase/migrations/20261107030001_a_submission_can_carry_a_file.sql"),
+      "utf-8",
+    )
+    const row = sql.slice(sql.indexOf("('submissions', 'submissions', false, 52428800, ARRAY["))
+    const array = /ARRAY\[([^\]]*)\]/.exec(row)?.[1] ?? ""
+    const bucketTypes = [...array.matchAll(/'([^']+)'/g)].map((m) => m[1] ?? "")
+    expect(bucketTypes).toEqual(SUBMISSIONS.mimeTypes)
+    expect(SUBMISSIONS.maxBytes).toBe(50 * MB)
+    // A phone's recorder and camera, under whatever name the make gives them.
+    expect(resolveContentType({ name: "memo.amr", type: "audio/amr" }, SUBMISSIONS)).toBe("audio/amr")
+    expect(resolveContentType({ name: "IMG_1.heic", type: "image/heic" }, SUBMISSIONS)).toBe("image/heic")
+    expect(resolveContentType({ name: "clip.mov", type: "video/quicktime" }, SUBMISSIONS)).toBe("video/quicktime")
+    // The INSERT policy refuses these, so the client refuses them first.
+    expect(resolveContentType({ name: "x.svg", type: "image/svg+xml" }, SUBMISSIONS)).toBeNull()
+    expect(resolveContentType({ name: "x.zip", type: "application/zip" }, SUBMISSIONS)).toBeNull()
+    expect(resolveContentType({ name: "x.html", type: "text/html" }, SUBMISSIONS)).toBeNull()
   })
 
   it("the picker filter does not offer .mp4 and does offer .m4a", () => {

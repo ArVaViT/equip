@@ -13,6 +13,7 @@ import { coursesService } from "@/services/courses"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { toast } from "@/lib/toast"
 import { isHttpUrl } from "@/lib/url"
+import { SubmissionFileChip } from "@/components/assignment/SubmissionFileChip"
 import type { RubricMark, SubmissionRubric, WaitingSubmission } from "@/types"
 
 /**
@@ -257,7 +258,12 @@ export function MarkOneByOne({
               course text: the essay a teacher must actually read was set at
               14px at full card width, which is the one surface where an
               unreadable line length costs somebody an hour every week. */}
-          <div className="prose whitespace-pre-wrap text-wrap-safe">{current.content}</div>
+          {current.content && <div className="prose whitespace-pre-wrap text-wrap-safe">{current.content}</div>}
+          {/* The file the student uploaded: a photo of the notebook, a voice
+              memo. Signed on click, never stored. */}
+          {current.file_bucket && current.file_path && current.file_name && (
+            <SubmissionFileChip bucket={current.file_bucket} path={current.file_path} name={current.file_name} />
+          )}
           {/* The file the student linked. This screen never showed it, so
               work handed in as a document read as an empty essay. */}
           {current.file_url && isHttpUrl(current.file_url) && (
