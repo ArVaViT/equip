@@ -3235,17 +3235,22 @@
     "saveFailed": "Speichern nicht möglich"
   },
   "declaration": {
+    "heading": "Bevor Sie einreichen",
     "ai_forbidden": {
-      "rule": "In diesem Kurs ist KI nicht erlaubt: Die Arbeit wird in eigenen Worten geschrieben."
+      "policy": "Diese Arbeit muss von Ihnen geschrieben sein. KI ist nicht erlaubt.",
+      "example": "Lesen, denken, mit dem Text ringen und ihn in eigenen Worten schreiben — das ist die Arbeit.",
+      "consequence": "Wird die Regel gebrochen, klärt Ihr Dozent das persönlich: ein Gespräch, keine automatische Null."
     },
     "ai_with_disclosure": {
-      "rule": "In diesem Kurs darf KI genutzt werden — sagen Sie, wofür."
+      "policy": "Sie dürfen KI nutzen, wenn Sie sagen, wo und wie.",
+      "example": "«Habe die Einleitung umformulieren lassen», «habe die Bedeutung eines Wortes nachgeschlagen» — das genügt.",
+      "consequence": "Verschwiegene Nutzung ist eine Frage der Ehrlichkeit. Offengelegte Nutzung ist ein ganz normaler Teil der Arbeit."
     },
-    "withoutAi": "Ohne KI",
-    "withAi": "Mit KI",
-    "note": "Wofür?",
-    "notePlaceholder": "Zum Beispiel: die Einleitung umformulieren",
-    "bySubmitting": "Mit dem Einreichen bestätigen Sie, dass Sie ehrlich geantwortet haben."
+    "confirm": "Ich bestätige das Obenstehende",
+    "usedAi": "Ich habe KI genutzt",
+    "note": "Wo und wie genau",
+    "notePlaceholder": "Habe zwei Absätze der Einleitung umformulieren lassen",
+    "required": "Setzen Sie das Häkchen, um Ihre Arbeit einzureichen"
   },
   "rubricEditor": {
     "defaultTitle": "Bewertungsraster für Aufsätze",
