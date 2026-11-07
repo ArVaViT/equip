@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
@@ -72,6 +73,17 @@ class CertificateResponse(BaseModel):
     school_name: str | None = None
     school_city: str | None = None
     teacher_name: str | None = None
+
+    #: The result this certificate was issued on, frozen at issuance (M6) —
+    #: what the transcript prints, never recomputed. NULL on certificates
+    #: issued before the platform kept it.
+    grading_scheme: str | None = None
+    official_code: str | None = None
+    official_score: Decimal | None = None
+    graded_via: str | None = None
+    #: «With honors», decided at issuance; and the hours the course carried then.
+    with_honors: bool = False
+    academic_hours: int | None = None
 
 
 class CertificateVerifyResponse(BaseModel):

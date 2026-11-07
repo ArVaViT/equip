@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 from app.services.grade_calculator import calculate_student_grade_for_course
 from app.services.grade_override import resolve_official_row
-from app.services.grading_scheme import get_org_settings
+from app.services.grading_scheme import BAND_SCHEMES, effective_bands, get_org_settings, score_to_symbol
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -38,7 +38,10 @@ _NO_NUMBER_STATES = {"completion_pass", "not_graded_yet", "zero_weighted", "not_
 
 
 def snapshot_certificate_grade(db: Session, cert: Certificate, course: Course | None) -> None:
-    """Freeze the official grade onto *cert*. Called once, at admin approval.
+    """Freeze the official grade, the hours and «with honors» onto *cert*.
+
+    Called once, at admin approval. Everything here is read by the transcript
+    as it was written, never recomputed.
 
     Deliberately silent when there is nothing to record: a certificate whose
     course has since been deleted keeps a NULL snapshot rather than a guess.
@@ -47,7 +50,47 @@ def snapshot_certificate_grade(db: Session, cert: Certificate, course: Course | 
     """
     if course is None:
         return
+    _snapshot_grade(db, cert, course)
+    cert.academic_hours = course.academic_hours
+    cert.with_honors = earns_honors(db, cert, course)
 
+
+def top_band_symbol(db: Session, course: Course, scheme: str) -> str | None:
+    """The highest symbol of *scheme* («A», «5»), or ``None`` where honors cannot apply.
+
+    Honors needs a top band to point at. ``pass_fail`` has no bands and
+    ``percent`` has no symbols, so neither ever earns it — and the switch is
+    not offered for them.
+    """
+    if scheme not in BAND_SCHEMES:
+        return None
+    bands = effective_bands(get_org_settings(db, course.organization_id), scheme)
+    return bands[0][1] if bands else None
+
+
+def earns_honors(db: Session, cert: Certificate, course: Course) -> bool:
+    """Whether the frozen grade on *cert* is in the top band of a course that offers honors.
+
+    Reads the snapshot just written, so the honors line and the grade on the
+    transcript can never disagree. A certificate issued on completion alone
+    (no grade was ever computed) does not earn it: honors is a statement about
+    a grade.
+    """
+    if not course.with_honors or not cert.grading_scheme:
+        return False
+    top = top_band_symbol(db, course, cert.grading_scheme)
+    if top is None:
+        return False
+    code = cert.official_code
+    if code is None and cert.official_score is not None:
+        # A hand-set percentage in a band course still reads as a band.
+        bands = effective_bands(get_org_settings(db, course.organization_id), cert.grading_scheme)
+        code = score_to_symbol(cert.official_score, cert.grading_scheme, bands)
+    return code == top
+
+
+def _snapshot_grade(db: Session, cert: Certificate, course: Course) -> None:
+    """Freeze the official grade onto *cert*."""
     settings = get_org_settings(db, course.organization_id)
     cert.grading_scheme = course.grading_scheme or settings.default_grading_scheme
     cert.pass_threshold = course.pass_threshold

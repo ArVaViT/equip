@@ -86,6 +86,7 @@ def test_the_copy_starts_without_last_terms_dates(client: TestClient, db: Sessio
 def test_the_copy_keeps_who_may_see_it_and_its_ai_policy(client: TestClient, db: Session, admin: User) -> None:
     course = _published(db, access_mode="institute")
     course.ai_policy = "ai_forbidden"
+    course.with_honors = True
     db.commit()
 
     resp = client.post(f"{PREFIX}/{course.id}/clone")
@@ -94,6 +95,7 @@ def test_the_copy_keeps_who_may_see_it_and_its_ai_policy(client: TestClient, db:
     clone = db.query(Course).filter(Course.id == resp.json()["id"]).one()
     assert clone.access_mode == "institute"
     assert clone.ai_policy == "ai_forbidden"
+    assert clone.with_honors is True, "«with honors» travels with the course like the rest of its grading"
 
 
 def test_the_copy_is_marked_by_the_same_rubric(client: TestClient, db: Session, admin: User) -> None:
