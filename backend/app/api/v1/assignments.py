@@ -25,6 +25,7 @@ from app.models.rubric import AssignmentRubric
 from app.models.submission_declaration import SubmissionDeclaration
 from app.models.user import User, can_teach
 from app.schemas.assignment import (
+    SUBMISSIONS_BUCKET,
     AssignmentCreate,
     AssignmentResponse,
     AssignmentUpdate,
@@ -378,11 +379,27 @@ def submit_assignment(
             context={"resource_type": "assignment", "assignment_id": str(assignment_id), "ai_policy": policy},
         )
 
+    if data.file is not None:
+        # The bucket's policy already keeps a student inside their own folder;
+        # the route holds the row to the same shape, for *this* assignment,
+        # so a key handed in here is one the bucket will show the teacher.
+        own_folder = f"{course_id}/{assignment_id}/{current_user.id}/"
+        if not data.file.path.startswith(own_folder) or len(data.file.path) == len(own_folder):
+            raise equip_error(
+                ErrorCode.VALIDATION_FAILED,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="The file is not in your folder for this assignment. Attach it again.",
+                context={"resource_type": "assignment", "assignment_id": str(assignment_id)},
+            )
+
     submission = AssignmentSubmission(
         assignment_id=assignment_id,
         student_id=current_user.id,
         content=data.content,
         file_url=data.file_url,
+        file_bucket=SUBMISSIONS_BUCKET if data.file is not None else None,
+        file_path=data.file.path if data.file is not None else None,
+        file_name=data.file.name if data.file is not None else None,
     )
     db.add(submission)
     db.flush()
