@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useId } from "react"
 import { useTranslation } from "react-i18next"
+import { Link } from "react-router-dom"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ErrorState } from "@/components/patterns"
@@ -7,7 +8,7 @@ import { coursesService } from "@/services/courses"
 import { useAuth } from "@/context/useAuth"
 import { toast } from "@/lib/toast"
 import type { Certificate } from "@/types"
-import { Award, Copy, CheckCircle, Sparkles, Clock, XCircle, RefreshCw, Star } from "lucide-react"
+import { Award, Copy, CheckCircle, Sparkles, Clock, XCircle, RefreshCw, Star, ScrollText } from "lucide-react"
 import { documentDay, formatDayLong } from "@/i18n/format"
 
 interface Props {
@@ -215,6 +216,9 @@ export default function CertificateCard({ courseId, progress, blocked = false, c
                 <h3 className="font-serif text-xl font-semibold tracking-tight">
                   {t("certificates.card.approvedTitle")}
                 </h3>
+                {certificate.with_honors && (
+                  <p className="mt-1 font-serif text-base italic text-accent">{t("certificates.card.withHonors")}</p>
+                )}
                 <p className="mt-1 text-sm text-ink-muted">
                   {t("certificates.card.approvedDescription")}
                 </p>
@@ -253,6 +257,21 @@ export default function CertificateCard({ courseId, progress, blocked = false, c
                       t("certificates.card.issuePending")}
                   </p>
                 </div>
+              </div>
+
+              {/* Where the certificate lives, and every grade on one sheet. */}
+              <div className="flex flex-wrap gap-2">
+                <Link to={`/certificates/${certificate.id}`}>
+                  <Button size="sm" variant="outline">
+                    <ScrollText className="mr-1.5 h-4 w-4" strokeWidth={1.75} aria-hidden />
+                    {t("certificates.document.open")}
+                  </Button>
+                </Link>
+                <Link to="/certificates/transcript">
+                  <Button size="sm" variant="ghost">
+                    {t("certificates.transcript.open")}
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>

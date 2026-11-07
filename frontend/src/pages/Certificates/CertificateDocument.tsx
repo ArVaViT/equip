@@ -141,6 +141,10 @@ export default function CertificateDocument() {
         <p className="mt-2 text-center font-serif text-2xl">
           {cert.course_title ?? cert.archived_course_title ?? "—"}
         </p>
+        {/* The one distinction the tradition accepts (Q3), frozen at issuance. */}
+        {cert.with_honors && (
+          <p className="mt-3 text-center font-serif text-xl italic">{t("certificates.document.withHonors")}</p>
+        )}
 
         <p className="mt-10 text-center text-sm text-ink-muted">
           {t("certificates.document.issued", { date: issuedLong })}

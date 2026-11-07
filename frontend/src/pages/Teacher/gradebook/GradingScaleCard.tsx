@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { isAxiosError } from "axios"
 import { Scale } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -117,6 +118,16 @@ export function GradingScaleCard({ courseId, canChange, onChanged }: Props) {
           })}
         </p>
         {bands.length > 0 && <p className="text-ink-muted">{describeBands(bands, whole)}</p>}
+        {/* «With honors» needs a top band to point at; pass/fail and percent
+            have none, so the switch is simply not there for them. */}
+        {bands[0] && (
+          <HonorsSwitch
+            courseId={courseId}
+            top={bands[0][1]}
+            on={scheme.with_honors === true}
+            onSaved={setScheme}
+          />
+        )}
         {/* Who decides — said to the teacher; the director is the answer. */}
         {!canChange && <p className="text-xs text-ink-muted">{t("gradebook.scale.directorDecides")}</p>}
       </div>
@@ -139,6 +150,61 @@ export function GradingScaleCard({ courseId, canChange, onChanged }: Props) {
           />
         </>
       )}
+    </div>
+  )
+}
+
+interface HonorsProps {
+  courseId: string
+  /** The top band's symbol — «A», «5». */
+  top: string
+  on: boolean
+  onSaved: (next: GradingSchemeResponse) => void
+}
+
+/**
+ * The teacher's one switch (Q3): «with honors» for a top-band result.
+ *
+ * Saves on click — one checkbox does not need a form. Certificates already
+ * issued keep what they were issued with; the hint says so in one line,
+ * because that is the question a teacher asks before touching it.
+ */
+function HonorsSwitch({ courseId, top, on, onSaved }: HonorsProps) {
+  const { t } = useTranslation()
+  const id = useId()
+  const hintId = useId()
+  const [saving, setSaving] = useState(false)
+
+  const toggle = async (next: boolean) => {
+    if (saving) return
+    setSaving(true)
+    try {
+      onSaved(await gradesService.updateHonors(courseId, next))
+    } catch {
+      toast({ title: t("gradebook.scale.honorsFailed"), variant: "destructive" })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="pt-2">
+      <div className="flex items-center gap-2.5">
+        <Checkbox
+          id={id}
+          checked={on}
+          disabled={saving}
+          onCheckedChange={(v) => void toggle(v === true)}
+          aria-describedby={hintId}
+          className="h-5 w-5"
+        />
+        <Label htmlFor={id} className="cursor-pointer text-sm font-normal">
+          {t("gradebook.scale.honors", { top })}
+        </Label>
+      </div>
+      <p id={hintId} className="mt-0.5 pl-[1.875rem] text-xs text-ink-muted">
+        {t("gradebook.scale.honorsHint")}
+      </p>
     </div>
   )
 }

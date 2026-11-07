@@ -276,6 +276,8 @@ export interface GradingSchemeResponse {
   grading_scheme: string
   pass_threshold: string
   bands: [string, string][]
+  /** «With honors» for a top-band result. Meaningful only when `bands` is non-empty. */
+  with_honors?: boolean
 }
 
 /** Scheme and pass line, written together or not at all (D8.1). */
@@ -508,7 +510,18 @@ export interface Certificate {
    *  renames itself does not rewrite what it already certified. */
   school_name?: string | null
   school_city?: string | null
-  teacher_name?: string | null  /** What still stands between this student and the certificate they asked
+  teacher_name?: string | null
+  /** The result this certificate was issued on, frozen at issuance (M6).
+   *  NULL on certificates issued before the platform kept it. */
+  grading_scheme?: string | null
+  official_code?: string | null
+  official_score?: string | number | null
+  graded_via?: 'computed' | 'override' | 'completion' | null
+  /** «With honors», decided at issuance and never recomputed. */
+  with_honors?: boolean
+  /** Hours the course carried when this was issued. */
+  academic_hours?: number | null
+  /** What still stands between this student and the certificate they asked
    *  for (D9). Present only on the pending listings a reviewer sees; empty
    *  means the request is earned. */
   blockers?: CertificateBlocker[]

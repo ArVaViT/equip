@@ -1543,7 +1543,27 @@
       "number": "Certificate no.",
       "verify_one": "The certificate can be verified at equipbible.com/verify by its number.",
       "verify_other": "Each certificate can be verified at equipbible.com/verify by its number.",
-      "open": "Transcript"
+      "open": "All my grades",
+      "grade": "Grade",
+      "hours": "Hours",
+      "withHonors": "with honors",
+      "pass": "Pass",
+      "completedOnly": "Completed",
+      "scaleNote": "Grades: {{scheme}}, unless marked otherwise.",
+      "schemeName": {
+        "letter": "letter scale A–F",
+        "five_point": "five-point scale 5–2",
+        "percent": "percentage",
+        "pass_fail": "pass / fail"
+      },
+      "fivePoint": {
+        "5": "excellent",
+        "4": "good",
+        "3": "satisfactory",
+        "2": "unsatisfactory"
+      },
+      "scaleNoteAll": "Grades: {{scheme}}.",
+      "total": "Total"
     },
     "share": {
       "share": "Share",
@@ -1606,7 +1626,8 @@
         "submitted": "Review submitted",
         "submitFailed": "Failed to submit review"
       },
-      "blocked": "The certificate opens once the points above are cleared"
+      "blocked": "The certificate opens once the points above are cleared",
+      "withHonors": "With honors"
     },
     "document": {
       "print": "Print",
@@ -1621,7 +1642,8 @@
       "issued": "Issued {{date}}",
       "instructor": "Instructor",
       "director": "Director",
-      "verifyAt": "Verify at equipbible.com/verify/{{number}}"
+      "verifyAt": "Verify at equipbible.com/verify/{{number}}",
+      "withHonors": "with honors"
     }
   },
   "studentProgress": {
@@ -2410,7 +2432,10 @@
       "fivePointMax": "On the five-point scale the pass mark is 75 or lower, otherwise a «3» is unreachable.",
       "handSetGrades_one": "{{count}} grade in this course was set by hand under the old scale. Clear or re-enter it first, then change the scale.",
       "handSetGrades_other": "{{count}} grades in this course were set by hand under the old scale. Clear or re-enter them first, then change the scale.",
-      "handSetGradesUnknown": "This course has grades set by hand under the old scale. Clear or re-enter them first, then change the scale."
+      "handSetGradesUnknown": "This course has grades set by hand under the old scale. Clear or re-enter them first, then change the scale.",
+      "honors": "Mark grade {{top}} “with honors”",
+      "honorsHint": "Printed on the certificate. Ones already issued stay as they are.",
+      "honorsFailed": "Could not save. Try again."
     },
     "summary": {
       "title": "Student Grades",
@@ -2787,6 +2812,7 @@
         "grade_sheet_finalized": "Grade sheet closed",
         "grade_sheet_reopened": "Grade sheet reopened",
         "grading_scheme_changed": "Grading scheme changed",
+        "with_honors_changed": "«With honors» switched",
         "permanent_delete": "Permanent deletion",
         "publish": "Published",
         "purge_orphan_translations": "Orphan translations purged",

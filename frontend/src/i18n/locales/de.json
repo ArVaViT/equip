@@ -1543,7 +1543,27 @@
       "number": "Certificate no.",
       "verify_one": "The certificate can be verified at equipbible.com/verify by its number.",
       "verify_other": "Each certificate can be verified at equipbible.com/verify by its number.",
-      "open": "Leistungsnachweis"
+      "open": "Alle meine Noten",
+      "grade": "Grade",
+      "hours": "Hours",
+      "withHonors": "with honors",
+      "pass": "Pass",
+      "completedOnly": "Completed",
+      "scaleNote": "Grades: {{scheme}}, unless marked otherwise.",
+      "schemeName": {
+        "letter": "letter scale A–F",
+        "five_point": "five-point scale 5–2",
+        "percent": "percentage",
+        "pass_fail": "pass / fail"
+      },
+      "fivePoint": {
+        "5": "excellent",
+        "4": "good",
+        "3": "satisfactory",
+        "2": "unsatisfactory"
+      },
+      "scaleNoteAll": "Grades: {{scheme}}.",
+      "total": "Total"
     },
     "share": {
       "share": "Teilen",
@@ -1606,7 +1626,8 @@
         "submitted": "Bewertung gesendet",
         "submitFailed": "Bewertung konnte nicht gesendet werden"
       },
-      "blocked": "Das Zertifikat öffnet sich, sobald die Punkte oben erledigt sind"
+      "blocked": "Das Zertifikat öffnet sich, sobald die Punkte oben erledigt sind",
+      "withHonors": "Mit Auszeichnung"
     },
     "document": {
       "print": "Drucken",
@@ -1621,7 +1642,8 @@
       "issued": "Issued {{date}}",
       "instructor": "Instructor",
       "director": "Director",
-      "verifyAt": "Verify at equipbible.com/verify/{{number}}"
+      "verifyAt": "Verify at equipbible.com/verify/{{number}}",
+      "withHonors": "with honors"
     }
   },
   "studentProgress": {
@@ -2410,7 +2432,10 @@
       "fivePointMax": "Bei der Fünf-Punkte-Skala liegt die Bestehensgrenze bei höchstens 75, sonst ist die «3» unerreichbar.",
       "handSetGrades_one": "{{count}} Note in diesem Kurs wurde von Hand nach der alten Skala gesetzt. Entfernen oder erfassen Sie sie zuerst neu, dann ändern Sie die Skala.",
       "handSetGrades_other": "{{count}} Noten in diesem Kurs wurden von Hand nach der alten Skala gesetzt. Entfernen oder erfassen Sie sie zuerst neu, dann ändern Sie die Skala.",
-      "handSetGradesUnknown": "In diesem Kurs gibt es Noten, die von Hand nach der alten Skala gesetzt wurden. Entfernen oder erfassen Sie sie zuerst neu, dann ändern Sie die Skala."
+      "handSetGradesUnknown": "In diesem Kurs gibt es Noten, die von Hand nach der alten Skala gesetzt wurden. Entfernen oder erfassen Sie sie zuerst neu, dann ändern Sie die Skala.",
+      "honors": "Note {{top}} „mit Auszeichnung“ vermerken",
+      "honorsHint": "Steht auf dem Zertifikat. Bereits ausgestellte bleiben, wie sie sind.",
+      "honorsFailed": "Speichern fehlgeschlagen. Bitte erneut versuchen."
     },
     "summary": {
       "title": "Noten der Studierenden",
@@ -2787,6 +2812,7 @@
         "grade_sheet_finalized": "Notenliste geschlossen",
         "grade_sheet_reopened": "Notenliste wieder geöffnet",
         "grading_scheme_changed": "Notenschema geändert",
+        "with_honors_changed": "„Mit Auszeichnung“ umgeschaltet",
         "permanent_delete": "Endgültig gelöscht",
         "publish": "Veröffentlicht",
         "purge_orphan_translations": "Verwaiste Übersetzungen entfernt",
