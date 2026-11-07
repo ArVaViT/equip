@@ -609,6 +609,38 @@ class WaitingSubmission(BaseModel):
     is_late: bool = False
 
 
+class WaitingWork(BaseModel):
+    """One piece of work in the marking run, with everything needed to mark it.
+
+    ``id`` is what the existing grade route takes: the answer id for an open
+    quiz answer (``PATCH /quizzes/answers/{id}``), the submission id for an
+    assignment (``PUT /assignments/submissions/{id}/grade``). The run has no
+    grading path of its own.
+    """
+
+    kind: Literal["quiz_answer", "assignment"]
+    id: str
+    #: The question or the assignment this answers — the group it belongs to.
+    item_id: str
+    course_id: str
+    course_title: str = ""
+    chapter_id: str
+    title: str
+    #: What was asked, for an open quiz answer. An answer read without its
+    #: question cannot be judged.
+    prompt: str | None = None
+    student_name: str | None = None
+    submitted_at: datetime | None = None
+    content: str | None = None
+    file_url: str | None = None
+    file_bucket: str | None = None
+    file_path: str | None = None
+    file_name: str | None = None
+    #: What a mark is out of; both grade routes refuse more.
+    max_points: int | None = None
+    is_late: bool = False
+
+
 class RetakeRequest(BaseModel):
     """One open «запросить пересдачу», as the teacher's course pages see it."""
 

@@ -2583,6 +2583,21 @@
     "body": false
   },
   {
+    "method": "GET",
+    "path": "/api/v1/grades/queue/work",
+    "params": [
+      [
+        "Accept-Language",
+        "header"
+      ]
+    ],
+    "responses": [
+      "200",
+      "422"
+    ],
+    "body": false
+  },
+  {
     "method": "POST",
     "path": "/api/v1/grades/sheet/{sheet_id}/reopen",
     "params": [

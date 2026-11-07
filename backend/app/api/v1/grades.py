@@ -61,6 +61,7 @@ from app.schemas.grade import (
     StudentGradeResponse,
     WaitingGroup,
     WaitingSubmission,
+    WaitingWork,
 )
 from app.schemas.locale import normalize_locale
 from app.services.audit_service import log_action
@@ -85,7 +86,7 @@ from app.services.grade_override import (
     validate_override,
 )
 from app.services.grade_sheet_service import UnmarkedWork, active_sheet, finalize_sheet, reopen_sheet
-from app.services.grading_queue import assignment_work, pending_summary, waiting_groups
+from app.services.grading_queue import assignment_work, pending_summary, waiting_groups, waiting_work
 from app.services.grading_scheme import effective_bands, get_org_settings, validate_scheme_threshold
 from app.services.my_grade_service import build_my_course_grade, latest_enrollment
 from app.services.notification_service import create_notification, notification_text
@@ -1220,6 +1221,22 @@ def get_grading_queue(
     count had nowhere good to lead.
     """
     return waiting_groups(db, teacher.id, display_locale=normalize_locale(accept_language) if accept_language else None)
+
+
+@router.get("/queue/work", response_model=list[WaitingWork])
+def get_grading_run(
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
+):
+    """Everything waiting on this teacher, one piece at a time, across courses.
+
+    The run behind the review queue: open the first, mark it, «Дальше». Built on
+    the same queries as ``GET /grades/pending``, so the dashboard number and
+    the length of this list cannot disagree. Marking goes through the grade
+    routes that already exist; this only says what is next.
+    """
+    return waiting_work(db, teacher.id, display_locale=normalize_locale(accept_language or teacher.preferred_locale))
 
 
 @router.get("/queue/assignment/{assignment_id}", response_model=list[WaitingSubmission])

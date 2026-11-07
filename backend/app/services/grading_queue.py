@@ -34,10 +34,10 @@ from app.models.assignment import Assignment, AssignmentSubmission
 from app.models.course import Chapter, Course
 from app.models.quiz import Quiz, QuizAnswer, QuizAttempt, QuizQuestion
 from app.models.user import User
-from app.schemas.locale import normalize_locale
+from app.schemas.locale import LocaleCode, normalize_locale
 from app.services import quiz_service
 from app.services.grade_exemption_service import excused_item_ids
-from app.services.late_work import first_handed_in, is_late
+from app.services.late_work import first_handed_in, is_late, module_due_date_for_chapter
 from app.services.zachet import latest_submissions
 
 if TYPE_CHECKING:
@@ -129,28 +129,23 @@ def work_awaiting_marking(
     return awaiting - excused
 
 
-def pending_by_course(db: Session, teacher_id: UUID) -> dict[str, int]:
-    """``{course_id: count}`` of work awaiting this teacher, courses they own.
+def waiting_answers(db: Session, teacher_id: UUID):
+    """Every open quiz answer waiting on this teacher, as one query to build on.
 
-    Two queries for every course they teach, not two per course: a dashboard
-    that costs a round trip per row is a dashboard that gets removed the first
-    time somebody teaches twenty courses.
+    The one definition of "an unread answer is waiting on me". The dashboard
+    count, the grouped list and the marking run each select different columns
+    from it, and none of them adds a filter of its own: a badge counting work
+    the grading page would not show is a badge that can never reach zero.
+
+    The question-type filter (inside ``unread_answer_filters``) has no test
+    that fails without it, and that is deliberate: a CHECK constraint limits
+    the column to the four known types, so the row it would exclude cannot
+    exist today. It is parity with the quiz page, for the day a fifth type is
+    added — and ``test_every_question_type_is_either_auto_marked_or_hand_marked``
+    is what actually fires on that day.
     """
-    counts: dict[str, int] = {}
-
-    # Open quiz answers: an essay or short answer submitted and unread. The
-    # attempt must be finished — a quiz still being taken is not waiting on
-    # anybody. The filters mirror the pending-answers page exactly.
-    #
-    # The question-type filter has no test that fails without it, and that is
-    # deliberate: a CHECK constraint limits the column to the four known types,
-    # so the row it would exclude cannot exist today. It is here as parity with
-    # the page, for the day a fifth type is added — and
-    # ``test_every_question_type_is_either_auto_marked_or_hand_marked`` is what
-    # actually fires on that day.
-    quiz_rows = (
-        db.query(Chapter.course_id, sqlfunc.count(QuizAnswer.id))
-        .select_from(QuizAnswer)
+    return (
+        db.query(QuizAnswer)
         .join(QuizQuestion, QuizQuestion.id == QuizAnswer.question_id)
         .join(QuizAttempt, QuizAttempt.id == QuizAnswer.attempt_id)
         .join(User, User.id == QuizAttempt.user_id)
@@ -166,17 +161,17 @@ def pending_by_course(db: Session, teacher_id: UUID) -> dict[str, int]:
             # they must drop out of the count of it too.
             User.deactivated_at.is_(None),
         )
-        .group_by(Chapter.course_id)
-        .all()
     )
-    for course_id, count in quiz_rows:
-        counts[course_id] = counts.get(course_id, 0) + int(count or 0)
 
-    # Submitted assignments with no mark. `returned` is excluded: it has been
-    # read, and the ball is with the student.
-    assignment_rows = (
-        db.query(Chapter.course_id, sqlfunc.count(AssignmentSubmission.id))
-        .select_from(AssignmentSubmission)
+
+def waiting_submissions(db: Session, teacher_id: UUID):
+    """Every submitted, unmarked assignment waiting on this teacher.
+
+    The twin of ``waiting_answers``. ``returned`` is excluded: it has been
+    read, and the ball is with the student.
+    """
+    return (
+        db.query(AssignmentSubmission)
         .join(Assignment, Assignment.id == AssignmentSubmission.assignment_id)
         .join(User, User.id == AssignmentSubmission.student_id)
         .join(Chapter, Chapter.id == Assignment.chapter_id)
@@ -189,12 +184,24 @@ def pending_by_course(db: Session, teacher_id: UUID) -> dict[str, int]:
             AssignmentSubmission.grade.is_(None),
             User.deactivated_at.is_(None),
         )
-        .group_by(Chapter.course_id)
-        .all()
     )
-    for course_id, count in assignment_rows:
-        counts[course_id] = counts.get(course_id, 0) + int(count or 0)
 
+
+def pending_by_course(db: Session, teacher_id: UUID) -> dict[str, int]:
+    """``{course_id: count}`` of work awaiting this teacher, courses they own.
+
+    Two queries for every course they teach, not two per course: a dashboard
+    that costs a round trip per row is a dashboard that gets removed the first
+    time somebody teaches twenty courses.
+    """
+    counts: dict[str, int] = {}
+    for base, counted in (
+        (waiting_answers(db, teacher_id), QuizAnswer.id),
+        (waiting_submissions(db, teacher_id), AssignmentSubmission.id),
+    ):
+        rows = base.with_entities(Chapter.course_id, sqlfunc.count(counted)).group_by(Chapter.course_id).all()
+        for course_id, count in rows:
+            counts[course_id] = counts.get(course_id, 0) + int(count or 0)
     return counts
 
 
@@ -218,6 +225,13 @@ def pending_summary(db: Session, teacher_id: UUID) -> dict[str, Any]:
 # answer has to fit on a phone screen.
 
 
+def _oldest_first(groups: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    # Oldest first. A queue sorted by size buries the essay that has been
+    # waiting three weeks under the assignment twelve people just handed in,
+    # and the three-week-old one is the one somebody is upset about.
+    return sorted(groups, key=lambda g: (g["oldest"] is None, g["oldest"]))
+
+
 def waiting_groups(db: Session, teacher_id: UUID, *, display_locale: str | None = None) -> list[dict[str, Any]]:
     """Every piece of work waiting on this teacher, gathered by the item it answers.
 
@@ -227,27 +241,14 @@ def waiting_groups(db: Session, teacher_id: UUID, *, display_locale: str | None 
     groups: list[dict[str, Any]] = []
 
     quiz_rows = (
-        db.query(
+        waiting_answers(db, teacher_id)
+        .with_entities(
             Chapter.course_id,
             QuizQuestion.id.label("item_id"),
             Chapter.id.label("chapter_id"),
             Chapter.title.label("chapter_title"),
             sqlfunc.count(QuizAnswer.id).label("waiting"),
             sqlfunc.min(QuizAttempt.completed_at).label("oldest"),
-        )
-        .select_from(QuizAnswer)
-        .join(QuizQuestion, QuizQuestion.id == QuizAnswer.question_id)
-        .join(QuizAttempt, QuizAttempt.id == QuizAnswer.attempt_id)
-        .join(User, User.id == QuizAttempt.user_id)
-        .join(Quiz, Quiz.id == QuizAttempt.quiz_id)
-        .join(Chapter, Chapter.id == Quiz.chapter_id)
-        .join(Course, Course.id == Chapter.course_id)
-        .filter(
-            Course.created_by == teacher_id,
-            Course.deleted_at.is_(None),
-            Chapter.deleted_at.is_(None),
-            *unread_answer_filters(),
-            User.deactivated_at.is_(None),
         )
         .group_by(Chapter.course_id, QuizQuestion.id, Chapter.id, Chapter.title)
         .all()
@@ -266,7 +267,8 @@ def waiting_groups(db: Session, teacher_id: UUID, *, display_locale: str | None 
         )
 
     assignment_rows = (
-        db.query(
+        waiting_submissions(db, teacher_id)
+        .with_entities(
             Chapter.course_id,
             Assignment.id.label("item_id"),
             Chapter.id.label("chapter_id"),
@@ -274,19 +276,6 @@ def waiting_groups(db: Session, teacher_id: UUID, *, display_locale: str | None 
             Assignment.max_score,
             sqlfunc.count(AssignmentSubmission.id).label("waiting"),
             sqlfunc.min(AssignmentSubmission.submitted_at).label("oldest"),
-        )
-        .select_from(AssignmentSubmission)
-        .join(Assignment, Assignment.id == AssignmentSubmission.assignment_id)
-        .join(User, User.id == AssignmentSubmission.student_id)
-        .join(Chapter, Chapter.id == Assignment.chapter_id)
-        .join(Course, Course.id == Chapter.course_id)
-        .filter(
-            Course.created_by == teacher_id,
-            Course.deleted_at.is_(None),
-            Chapter.deleted_at.is_(None),
-            AssignmentSubmission.status == "submitted",
-            AssignmentSubmission.grade.is_(None),
-            User.deactivated_at.is_(None),
         )
         .group_by(Chapter.course_id, Assignment.id, Assignment.max_score, Chapter.id, Chapter.title)
         .all()
@@ -308,10 +297,176 @@ def waiting_groups(db: Session, teacher_id: UUID, *, display_locale: str | None 
     if display_locale:
         _localize_titles(db, groups, display_locale)
 
-    # Oldest first. A queue sorted by size buries the essay that has been
-    # waiting three weeks under the assignment twelve people just handed in,
-    # and the three-week-old one is the one somebody is upset about.
-    return sorted(groups, key=lambda g: (g["oldest"] is None, g["oldest"]))
+    return _oldest_first(groups)
+
+
+def waiting_work(db: Session, teacher_id: UUID, *, display_locale: LocaleCode) -> list[dict[str, Any]]:
+    """Every piece of work waiting on this teacher, one by one, in marking order.
+
+    The run a teacher sits down to on a phone: open the first, mark it,
+    «Дальше», and the next one is already there — across every course they
+    teach, not one assignment at a time. Built on the same two queries the
+    dashboard count is, so the number on the button and the length of the run
+    are the same number by construction.
+
+    Order: the item that has waited longest first, and inside one item the
+    oldest answer first — thirty answers to the same prompt in a row, the
+    standard loaded once.
+    """
+    items: list[dict[str, Any]] = []
+
+    answer_rows = (
+        waiting_answers(db, teacher_id)
+        .with_entities(
+            QuizAnswer.id,
+            QuizAnswer.text_answer,
+            QuizQuestion.id.label("question_id"),
+            QuizQuestion.points,
+            QuizAttempt.completed_at,
+            User.id.label("student_id"),
+            User.full_name,
+            User.email,
+            Chapter.id.label("chapter_id"),
+            Chapter.title.label("chapter_title"),
+            Chapter.course_id,
+        )
+        .all()
+    )
+    module_due: dict[str, Any] = {}
+    for row in answer_rows:
+        if row.chapter_id not in module_due:
+            module_due[row.chapter_id] = module_due_date_for_chapter(db, row.chapter_id)
+        items.append(
+            {
+                "kind": "quiz_answer",
+                "id": str(row.id),
+                "item_id": str(row.question_id),
+                "course_id": row.course_id,
+                "chapter_id": row.chapter_id,
+                "title": row.chapter_title,
+                "prompt": None,
+                "student_name": row.full_name or row.email,
+                "submitted_at": row.completed_at,
+                "content": row.text_answer,
+                "max_points": int(row.points),
+                "is_late": is_late(row.completed_at, module_due[row.chapter_id]),
+            }
+        )
+
+    submission_rows = (
+        waiting_submissions(db, teacher_id)
+        .with_entities(
+            AssignmentSubmission,
+            User.full_name,
+            User.email,
+            Assignment.max_score,
+            Assignment.due_date,
+            Chapter.id.label("chapter_id"),
+            Chapter.title.label("chapter_title"),
+            Chapter.course_id,
+        )
+        .all()
+    )
+    students_by_assignment: dict[Any, set] = {}
+    for row in submission_rows:
+        students_by_assignment.setdefault(row[0].assignment_id, set()).add(row[0].student_id)
+    first = {
+        assignment_id: first_handed_in(db, assignment_id, list(student_ids))
+        for assignment_id, student_ids in students_by_assignment.items()
+    }
+    for submission, full_name, email, max_score, due_date, chapter_id, chapter_title, course_id in submission_rows:
+        handed_in = first[submission.assignment_id].get(str(submission.student_id), submission.submitted_at)
+        items.append(
+            {
+                "kind": "assignment",
+                "id": str(submission.id),
+                "item_id": str(submission.assignment_id),
+                "course_id": course_id,
+                "chapter_id": chapter_id,
+                "title": chapter_title,
+                "prompt": None,
+                "student_name": full_name or email,
+                "submitted_at": submission.submitted_at,
+                "content": submission.content,
+                "file_url": submission.file_url,
+                "file_bucket": submission.file_bucket,
+                "file_path": submission.file_path,
+                "file_name": submission.file_name,
+                "max_points": max_score,
+                "is_late": is_late(handed_in, due_date),
+            }
+        )
+
+    if not items:
+        return []
+
+    from app.services.translation.resolve_for_display import fetch_course_titles_by_id
+
+    _localize_titles(db, items, display_locale)
+    _attach_questions(db, items, display_locale)
+    titles = fetch_course_titles_by_id(
+        db, sorted({i["course_id"] for i in items}), display_locale=display_locale, fallback="source_then_any"
+    )
+    for item in items:
+        item["course_title"] = titles.get(item["course_id"]) or ""
+
+    # Each item's place is the age of its group's oldest piece of work, then
+    # its own age inside the group; the id breaks ties so the run is the same
+    # run on every reload.
+    group_oldest: dict[tuple, Any] = {}
+    for item in items:
+        key = (item["kind"], item["course_id"], item["item_id"])
+        when, known = item["submitted_at"], group_oldest.get(key)
+        group_oldest[key] = when if known is None or (when is not None and when < known) else known
+
+    def order(item: dict[str, Any]) -> tuple:
+        key = (item["kind"], item["course_id"], item["item_id"])
+        oldest = group_oldest[key]
+        return (
+            oldest is None,
+            oldest or item["submitted_at"] or 0,
+            key,
+            item["submitted_at"] is None,
+            item["submitted_at"] or 0,
+            item["id"],
+        )
+
+    return sorted(items, key=order)
+
+
+def _attach_questions(db: Session, items: list[dict[str, Any]], display_locale: str) -> None:
+    """The question an open answer answers, in the teacher's language.
+
+    A chapter title says which quiz; it does not say what was asked, and an
+    answer read without its question cannot be judged. Falls back to the
+    author's words, never to nothing — the same rule as the quiz page.
+    """
+    from app.services.content_versions.read import fetch_cv_entity_texts_with_fallback
+
+    answers = [i for i in items if i["kind"] == "quiz_answer"]
+    if not answers:
+        return
+    course_ids = sorted({i["course_id"] for i in answers})
+    source_of = {
+        row.id: row.source_locale for row in db.query(Course.id, Course.source_locale).filter(Course.id.in_(course_ids))
+    }
+    by_source: dict[str, set[str]] = {}
+    for item in answers:
+        by_source.setdefault(normalize_locale(source_of.get(item["course_id"])), set()).add(item["item_id"])
+    texts: dict[str, str] = {}
+    for source_locale, question_ids in by_source.items():
+        found = fetch_cv_entity_texts_with_fallback(
+            db,
+            entity_type="quiz_question",
+            entity_ids=sorted(question_ids),
+            fields=["question_text"],
+            display_locale=display_locale,
+            source_locale=source_locale,
+            fallback="source_then_any",
+        )
+        texts.update({entity_id: text for (entity_id, _field), text in found.items() if text})
+    for item in answers:
+        item["prompt"] = texts.get(item["item_id"])
 
 
 def _localize_titles(db: Session, groups: list[dict[str, Any]], display_locale: str) -> None:
@@ -357,19 +512,9 @@ def assignment_work(db: Session, teacher_id: UUID, assignment_id: UUID) -> list[
     leaks somebody's essay.
     """
     rows = (
-        db.query(AssignmentSubmission, User.full_name, User.email, Assignment.due_date)
-        .join(Assignment, Assignment.id == AssignmentSubmission.assignment_id)
-        .join(User, User.id == AssignmentSubmission.student_id)
-        .join(Chapter, Chapter.id == Assignment.chapter_id)
-        .join(Course, Course.id == Chapter.course_id)
-        .filter(
-            Assignment.id == assignment_id,
-            Course.created_by == teacher_id,
-            Course.deleted_at.is_(None),
-            AssignmentSubmission.status == "submitted",
-            AssignmentSubmission.grade.is_(None),
-            User.deactivated_at.is_(None),
-        )
+        waiting_submissions(db, teacher_id)
+        .with_entities(AssignmentSubmission, User.full_name, User.email, Assignment.due_date)
+        .filter(Assignment.id == assignment_id)
         .order_by(AssignmentSubmission.submitted_at.asc(), AssignmentSubmission.id.asc())
         .all()
     )
