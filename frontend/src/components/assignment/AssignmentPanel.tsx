@@ -14,8 +14,8 @@ import { rubricsService } from "@/services/rubrics"
 import { useAuth } from "@/context/useAuth"
 import { useLocalDraft } from "@/hooks/useLocalDraft"
 import { assignmentDraftKey } from "@/lib/storageKeys"
-import { SubmissionDeclaration } from "./SubmissionDeclaration"
-import { BLANK_DECLARATION, type DeclarationState, declarationStatement } from "./declarationStatement"
+import { SubmissionDeclaration, type DeclarationState } from "./SubmissionDeclaration"
+import { declarationStatement } from "./declarationStatement"
 import { SubmissionFileChip } from "./SubmissionFileChip"
 import { RubricGrid } from "@/components/rubric/RubricGrid"
 import { ErrorState, LateBadge } from "@/components/patterns"
@@ -71,6 +71,8 @@ interface AssignmentPanelProps {
    *  eyebrow, and the name too when it only repeats the page's. */
   pageTitle?: string
 }
+
+const BLANK_DECLARATION: DeclarationState = { confirmed: false, usedAi: false, note: "" }
 
 export default function AssignmentPanel({ courseId, chapterId, assignmentId, onSubmitted, onCountLoaded, aiPolicy, pageTitle }: AssignmentPanelProps) {
   const { t } = useTranslation()
@@ -259,6 +261,8 @@ function SingleAssignment({
   // «summary of your rubric» drifts from the thing the mark came from, and the
   // drift is exactly where «почему у меня 70» stops having an answer.
   const [rubric, setRubric] = useState<SubmissionRubric | null>(null)
+  // Never pre-ticked, and the button does nothing until it is — the same
+  // rule the legal agreements follow, for the same reason.
   const [declaration, setDeclaration] = useState<DeclarationState>(BLANK_DECLARATION)
 
   useEffect(() => {
@@ -354,7 +358,7 @@ function SingleAssignment({
     hasWork &&
     !submitting &&
     file?.state !== "uploading" &&
-    (!declarationNeeded || declaration.aiUse !== null)
+    (!declarationNeeded || declaration.confirmed)
 
   const handleSubmit = async () => {
     if (!canSubmit) return
@@ -376,15 +380,14 @@ function SingleAssignment({
           content: content.trim() || undefined,
           file_url: fileUrl.trim() || undefined,
           file: file?.state === "ready" ? { path: file.path, name: file.name } : undefined,
-          declaration:
-            declarationNeeded && declaration.aiUse !== null
-              ? {
-                  ai_use: declaration.aiUse,
-                  // The text as displayed, not a pointer to it.
-                  statement: declarationStatement(policy, declaration.aiUse, t),
-                  note: declaration.aiUse === "assisted" ? declaration.note.trim() || undefined : undefined,
-                }
-              : undefined,
+          declaration: declarationNeeded
+            ? {
+                ai_use: declaration.usedAi ? "assisted" : "none",
+                // The text as displayed, not a pointer to it.
+                statement: declarationStatement(policy, t),
+                note: declaration.usedAi ? declaration.note.trim() || undefined : undefined,
+              }
+            : undefined,
         }),
       )
     } catch (error: unknown) {
@@ -714,9 +717,6 @@ function SingleAssignment({
             <SubmissionDeclaration policy={policy} value={declaration} onChange={setDeclaration} />
 
             <div className="space-y-2">
-              {declarationNeeded && (
-                <p className="text-xs text-ink-muted">{t("declaration.bySubmitting")}</p>
-              )}
               <Button onClick={handleSubmit} disabled={!canSubmit} className="h-12 w-full text-base sm:w-auto">
                 {submitting ? (
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" strokeWidth={1.75} aria-hidden />

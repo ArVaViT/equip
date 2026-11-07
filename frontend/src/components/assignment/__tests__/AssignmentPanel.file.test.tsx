@@ -274,9 +274,9 @@ describe("AssignmentPanel — handing in a file from the phone", () => {
     // The work is there; the answer is not.
     expect(screen.getByRole("button", { name: /Отправить/ })).toBeDisabled()
 
-    await userEvent.click(screen.getByRole("radio", { name: "С ИИ" }))
-    await userEvent.type(screen.getByRole("textbox", { name: "Для чего?" }), "перефразировать введение")
-    expect(screen.getByText(/Отправляя, вы подтверждаете/)).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("checkbox", { name: i18n.t("declaration.confirm") }))
+    await userEvent.click(screen.getByRole("checkbox", { name: i18n.t("declaration.usedAi") }))
+    await userEvent.type(screen.getByRole("textbox", { name: i18n.t("declaration.note") }), "перефразировать введение")
     await userEvent.click(screen.getByRole("button", { name: /Отправить/ }))
 
     expect(submit).toHaveBeenCalledWith(
@@ -286,9 +286,10 @@ describe("AssignmentPanel — handing in a file from the phone", () => {
         declaration: {
           ai_use: "assisted",
           statement: [
-            i18n.t("declaration.ai_with_disclosure.rule"),
-            i18n.t("declaration.withAi"),
-            i18n.t("declaration.bySubmitting"),
+            i18n.t("declaration.ai_with_disclosure.policy"),
+            i18n.t("declaration.ai_with_disclosure.example"),
+            i18n.t("declaration.ai_with_disclosure.consequence"),
+            i18n.t("declaration.confirm"),
           ].join("\n"),
           note: "перефразировать введение",
         },
@@ -301,7 +302,7 @@ describe("AssignmentPanel — handing in a file from the phone", () => {
     show("ai_forbidden")
     await screen.findByRole("button", { name: "Прикрепить файл" })
 
-    await userEvent.click(screen.getByRole("radio", { name: "Без ИИ" }))
+    await userEvent.click(screen.getByRole("checkbox", { name: i18n.t("declaration.confirm") }))
 
     // A declaration alone is not the work (2026-10-03).
     expect(screen.getByRole("button", { name: /Отправить/ })).toBeDisabled()

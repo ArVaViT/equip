@@ -3235,17 +3235,22 @@
     "saveFailed": "Could not save"
   },
   "declaration": {
+    "heading": "Before you hand it in",
     "ai_forbidden": {
-      "rule": "AI is not allowed in this course: the work is written in your own words."
+      "policy": "This work must be written by you. AI is not allowed.",
+      "example": "Reading, thinking, arguing with the text and writing it in your own words — that is the work.",
+      "consequence": "If the rule is broken your teacher deals with it personally: a conversation, not an automatic zero."
     },
     "ai_with_disclosure": {
-      "rule": "AI may be used in this course — say what for."
+      "policy": "You may use AI if you say where and how.",
+      "example": "«Asked it to rephrase my introduction», «checked what a word means» — that is enough.",
+      "consequence": "Hidden use is a question of honesty. Declared use is an ordinary part of the work."
     },
-    "withoutAi": "Without AI",
-    "withAi": "With AI",
-    "note": "What for?",
-    "notePlaceholder": "For example: rephrasing the introduction",
-    "bySubmitting": "By submitting you confirm that you have answered honestly."
+    "confirm": "I confirm the above",
+    "usedAi": "I used AI",
+    "note": "Where and how exactly",
+    "notePlaceholder": "Asked it to rephrase two paragraphs of the introduction",
+    "required": "Tick the confirmation to hand your work in"
   },
   "rubricEditor": {
     "defaultTitle": "Essay rubric",
