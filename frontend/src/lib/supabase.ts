@@ -7,6 +7,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set")
 }
 
+/** Where Storage answers, for the one upload that reports its progress
+ *  (`storageService.uploadSubmissionFile`); supabase-js keeps its own copy
+ *  private. The anon key is the `apikey` header every request carries. */
+export const SUPABASE_URL: string = supabaseUrl
+export const SUPABASE_ANON_KEY: string = supabaseAnonKey
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     // PKCE, not the implicit default: a redirect back from Google carries a

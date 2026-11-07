@@ -37,7 +37,7 @@ describe("a block withheld from the preview", () => {
   it("says which kind of thing enrolling would open here", () => {
     render(
       <I18nextProvider i18n={i18n}>
-        <ChapterBodyBlocks
+        <ChapterBodyBlocks courseId="c-1"
           loading={false}
           loadError={false}
           onRetry={() => {}}

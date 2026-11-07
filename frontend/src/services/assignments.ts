@@ -55,6 +55,9 @@ export const assignmentsService = {
     data: {
       content?: string
       file_url?: string
+      /** The file already uploaded into the `submissions` bucket under the
+       *  student's own folder for this assignment (`storageService.uploadSubmissionFile`). */
+      file?: { path: string; name: string }
       /** What the student says about this piece of work (§4.2). `statement` is
        *  the text they were shown, sent back so the record holds that rather
        *  than a key into a catalogue somebody edits next month. */

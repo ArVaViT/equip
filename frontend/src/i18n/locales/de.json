@@ -1492,7 +1492,7 @@
   "assignment": {
     "eyebrow": "Aufgabe",
     "loadFailed": "Aufgaben konnten nicht geladen werden. Bitte neu laden.",
-    "statusSubmitted": "Eingereicht — wartet auf Bewertung",
+    "statusSubmitted": "Eingereicht · wartet auf Bewertung",
     "statusGraded": "Bewertet",
     "statusReturned": "Zurückgegeben — Überarbeitung erbeten",
     "maxPoints": "Höchstens {{max}} Punkte",
@@ -1519,7 +1519,18 @@
     "statusUnknownHelp": "Das Formular ist absichtlich verborgen: Ist die Arbeit bereits eingereicht, verwirrt eine zweite Fassung nur Sie und die Person, die bewertet. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
     "statusUnknownRetry": "Erneut prüfen",
     "draftSaved": "Entwurf auf diesem Gerät gespeichert",
-    "draftRestored": "Entwurf von diesem Gerät wiederhergestellt"
+    "draftRestored": "Entwurf von diesem Gerät wiederhergestellt",
+    "file": {
+      "attach": "Datei anhängen",
+      "remove": "Datei entfernen",
+      "uploading": "Datei wird hochgeladen",
+      "open": "öffnen",
+      "openAria": "Datei {{name}} öffnen",
+      "sizeMb": "{{mb}} MB",
+      "tooLarge": "Die Datei ist größer als {{maxMb}} MB. Laden Sie sie auf YouTube oder Google Drive hoch und fügen Sie den Link ein.",
+      "unsupported": "Diese Datei passt nicht. Fotos, PDF, Audio, Video und Word-Dokumente gehen — oder fügen Sie einen Link ein.",
+      "orPasteLink": "oder Link einfügen"
+    }
   },
   "certificates": {
     "transcript": {
@@ -3224,22 +3235,17 @@
     "saveFailed": "Speichern nicht möglich"
   },
   "declaration": {
-    "heading": "Bevor Sie einreichen",
     "ai_forbidden": {
-      "policy": "Diese Arbeit muss von Ihnen geschrieben sein. KI ist nicht erlaubt.",
-      "example": "Lesen, denken, mit dem Text ringen und ihn in eigenen Worten schreiben — das ist die Arbeit.",
-      "consequence": "Wird die Regel gebrochen, klärt Ihr Dozent das persönlich: ein Gespräch, keine automatische Null."
+      "rule": "In diesem Kurs ist KI nicht erlaubt: Die Arbeit wird in eigenen Worten geschrieben."
     },
     "ai_with_disclosure": {
-      "policy": "Sie dürfen KI nutzen, wenn Sie sagen, wo und wie.",
-      "example": "«Habe die Einleitung umformulieren lassen», «habe die Bedeutung eines Wortes nachgeschlagen» — das genügt.",
-      "consequence": "Verschwiegene Nutzung ist eine Frage der Ehrlichkeit. Offengelegte Nutzung ist ein ganz normaler Teil der Arbeit."
+      "rule": "In diesem Kurs darf KI genutzt werden — sagen Sie, wofür."
     },
-    "confirm": "Ich bestätige das Obenstehende",
-    "usedAi": "Ich habe KI genutzt",
-    "note": "Wo und wie genau",
-    "notePlaceholder": "Habe zwei Absätze der Einleitung umformulieren lassen",
-    "required": "Setzen Sie das Häkchen, um Ihre Arbeit einzureichen"
+    "withoutAi": "Ohne KI",
+    "withAi": "Mit KI",
+    "note": "Wofür?",
+    "notePlaceholder": "Zum Beispiel: die Einleitung umformulieren",
+    "bySubmitting": "Mit dem Einreichen bestätigen Sie, dass Sie ehrlich geantwortet haben."
   },
   "rubricEditor": {
     "defaultTitle": "Bewertungsraster für Aufsätze",
