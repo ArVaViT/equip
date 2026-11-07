@@ -302,6 +302,7 @@ async function putWithProgress(
   path: string,
   file: File,
   onProgress?: (fraction: number) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   const { data } = await supabase.auth.getSession()
   const token = data.session?.access_token
@@ -321,6 +322,12 @@ async function putWithProgress(
     }
     xhr.onerror = () => reject(new TypeError("Failed to fetch"))
     xhr.onabort = () => reject(new TypeError("Failed to fetch"))
+    // The student took the file back while it was still going up.
+    if (signal?.aborted) {
+      reject(new DOMException("Aborted", "AbortError"))
+      return
+    }
+    signal?.addEventListener("abort", () => xhr.abort(), { once: true })
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         onProgress?.(1)
@@ -483,9 +490,10 @@ export const storageService = {
     studentId: string,
     file: File,
     onProgress?: (fraction: number) => void,
+    signal?: AbortSignal,
   ): Promise<UploadedBlockFile> {
     const path = `${courseId}/${assignmentId}/${studentId}/${Date.now()}-${sanitizeFileName(file.name)}`
-    await putWithProgress(SUBMISSIONS_BUCKET, path, withBucketContentType(file, SUBMISSIONS), onProgress)
+    await putWithProgress(SUBMISSIONS_BUCKET, path, withBucketContentType(file, SUBMISSIONS), onProgress, signal)
     return { bucket: SUBMISSIONS_BUCKET, path, name: file.name }
   },
 

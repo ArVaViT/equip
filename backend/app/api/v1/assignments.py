@@ -43,6 +43,7 @@ from app.services.course_service import sync_enrollment_progress
 from app.services.domain_access import course_source_locale_for_chapter as _course_source_locale_for_chapter
 from app.services.late_work import first_handed_in, is_late
 from app.services.rubric_service import sync_assignment_max_score
+from app.services.submission_files import key_is_in_own_folder, uploaded_by
 from app.services.submission_grading import apply_grade
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import (
@@ -383,8 +384,10 @@ def submit_assignment(
         # The bucket's policy already keeps a student inside their own folder;
         # the route holds the row to the same shape, for *this* assignment,
         # so a key handed in here is one the bucket will show the teacher.
-        own_folder = f"{course_id}/{assignment_id}/{current_user.id}/"
-        if not data.file.path.startswith(own_folder) or len(data.file.path) == len(own_folder):
+        in_own_folder = key_is_in_own_folder(
+            data.file.path, course_id=str(course_id), assignment_id=str(assignment_id), student_id=str(current_user.id)
+        )
+        if not in_own_folder or uploaded_by(db, bucket=SUBMISSIONS_BUCKET, path=data.file.path) != str(current_user.id):
             raise equip_error(
                 ErrorCode.VALIDATION_FAILED,
                 status_code=status.HTTP_400_BAD_REQUEST,

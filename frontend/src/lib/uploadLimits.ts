@@ -132,6 +132,9 @@ const MIME_ALIASES: Readonly<Record<string, string>> = {
   "application/ogg": "audio/ogg",
   "image/jpg": "image/jpeg",
   "image/pjpeg": "image/jpeg",
+  // Android calls a recorder's .3gp a video whatever is in it; the
+  // submissions bucket takes it as audio. No other bucket lists either.
+  "video/3gpp": "audio/3gpp",
 }
 
 /** For a file the browser could not type at all (``type === ""``). */

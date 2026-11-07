@@ -2212,6 +2212,7 @@ END $$;
 RESET ROLE;
 
 \ir ../migrations/20261107030001_a_submission_can_carry_a_file.sql
+\ir ../migrations/20261107030002_a_submitted_image_is_never_svg.sql
 
 INSERT INTO public.chapters (id, title, course_id, chapter_type)
 VALUES ('chapter-m-sermon', 'Sermon', 'course-m-materials', 'assignment');
@@ -2443,6 +2444,10 @@ BEGIN
   FOR c IN SELECT * FROM (VALUES
     ('photo.jpg', 'image/jpeg', true),
     ('photo.heic', 'image/heic', true),
+    ('photo2.jpg', 'image/jpeg; charset=binary', true),
+    ('y.svg', 'image/svg+xml; charset=utf-8', false),
+    ('z.svg', 'IMAGE/SVG+XML', false),
+    ('w.svg', ' image/svg+xml ', false),
     ('memo.amr', 'audio/amr', true),
     ('memo.3gp', 'audio/3gpp', true),
     ('clip.mov', 'video/quicktime', true),

@@ -251,6 +251,9 @@ function SingleAssignment({
   const [fileUrl, setFileUrl] = useState("")
   const [fileIssue, setFileIssue] = useState<string | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
+  const upload = useRef<AbortController | null>(null)
+  // Leaving the page mid-upload ends it rather than leaving it running.
+  useEffect(() => () => upload.current?.abort(), [])
   const [submitting, setSubmitting] = useState(false)
   // The same grid the teacher marked on. Not a summary of it: a student's
   // «summary of your rubric» drifts from the thing the mark came from, and the
@@ -305,6 +308,11 @@ function SingleAssignment({
       setLinkShown(true)
       return
     }
+    // One upload at a time: a new choice, or the cross, ends the one before,
+    // and whatever it still reports afterwards is ignored.
+    upload.current?.abort()
+    const attempt = new AbortController()
+    upload.current = attempt
     setFile({ state: "uploading", name: chosen.name, size: chosen.size, progress: 0 })
     try {
       const uploaded = await storageService.uploadSubmissionFile(
@@ -312,16 +320,27 @@ function SingleAssignment({
         assignment.id,
         user.id,
         chosen,
-        (fraction) =>
-          setFile((f) => (f?.state === "uploading" ? { ...f, progress: fraction } : f)),
+        (fraction) => {
+          if (upload.current === attempt) setFile((f) => (f?.state === "uploading" ? { ...f, progress: fraction } : f))
+        },
+        attempt.signal,
       )
+      if (upload.current !== attempt) {
+        // Taken back after the last byte was already sent: the file is in
+        // the bucket, and it must not be handed in.
+        void storageService.removeSubmissionFile(uploaded.path).catch(() => undefined)
+        return
+      }
       setFile({ state: "ready", name: chosen.name, size: chosen.size, bucket: uploaded.bucket, path: uploaded.path })
     } catch (error: unknown) {
+      if (upload.current !== attempt) return
       setFile({ state: "failed", name: chosen.name, size: chosen.size, message: describeUploadError(error, SUBMISSIONS) })
     }
   }
 
   const removeFile = () => {
+    upload.current?.abort()
+    upload.current = null
     if (file?.state === "ready") {
       // Best-effort: an orphan in the bucket is nothing the student needs
       // to hear about.

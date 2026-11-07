@@ -105,7 +105,7 @@ describe("AssignmentPanel — handing in a file from the phone", () => {
 
     await attach(photo())
 
-    expect(upload).toHaveBeenCalledWith("c-1", "a-1", "student-1", expect.any(File), expect.any(Function))
+    expect(upload).toHaveBeenCalledWith("c-1", "a-1", "student-1", expect.any(File), expect.any(Function), expect.any(AbortSignal))
     expect(await screen.findByText("проповедь.jpg")).toBeInTheDocument()
     expect(screen.getByText(/^2(,0)? МБ$/)).toBeInTheDocument()
     // The big button gives way to the chip: one file, one place.
@@ -184,6 +184,32 @@ describe("AssignmentPanel — handing in a file from the phone", () => {
     expect(remove).toHaveBeenCalledWith(UPLOADED.path)
     expect(screen.queryByText("проповедь.jpg")).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Прикрепить файл" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Отправить/ })).toBeDisabled()
+  })
+
+  it("a file taken back while it is going up stays gone, and is removed if it landed anyway", async () => {
+    let finish: (() => void) | undefined
+    let signal: AbortSignal | undefined
+    vi.spyOn(storageService, "uploadSubmissionFile").mockImplementation(
+      (_c, _a, _s, _f, _onProgress, abortSignal) =>
+        new Promise((resolve) => {
+          signal = abortSignal
+          finish = () => resolve(UPLOADED)
+        }),
+    )
+    const remove = vi.spyOn(storageService, "removeSubmissionFile").mockResolvedValue(undefined)
+    show("ai_open")
+    await screen.findByRole("button", { name: "Прикрепить файл" })
+
+    await attach(photo())
+    await waitFor(() => expect(finish).toBeDefined())
+    await userEvent.click(screen.getByRole("button", { name: "Убрать файл" }))
+    expect(signal?.aborted).toBe(true)
+
+    // The last bytes had already gone: the upload reports success anyway.
+    finish!()
+    await waitFor(() => expect(remove).toHaveBeenCalledWith(UPLOADED.path))
+    expect(screen.queryByText("проповедь.jpg")).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: /Отправить/ })).toBeDisabled()
   })
 
