@@ -67,6 +67,13 @@ class SubmissionFileIn(RequestModel):
     path: str = Field(..., min_length=1, max_length=1024)
     name: str = Field(..., min_length=1, max_length=255)
 
+    @field_validator("name", mode="before")
+    @classmethod
+    def _a_long_name_is_shortened(cls, value: object) -> object:
+        # Only shown on the chip; a long name from a phone is not a reason
+        # to refuse work that is already uploaded.
+        return value.strip()[:255] if isinstance(value, str) else value
+
     @field_validator("path")
     @classmethod
     def _a_key_inside_the_bucket(cls, value: str) -> str:
@@ -81,7 +88,7 @@ class SubmissionFileIn(RequestModel):
     @classmethod
     def _a_name_not_a_path(cls, value: str) -> str:
         value = value.strip()
-        if not value or "/" in value or "\\" in value or ".." in value:
+        if not value or "/" in value or "\\" in value or any(ord(ch) < 32 for ch in value):
             raise ValueError("file.name must be a file name, not a path")
         return value
 

@@ -38,6 +38,24 @@ DECLARED = {"ai_use": "none", "statement": "Без ИИ."}
 COURSE = "sermon-course"
 
 
+#: What the bucket holds, as ``{key: uploader}``. The route asks the real
+#: ``storage.objects``; SQLite has none, so the tests stand in for it. By
+#: default every key was uploaded by the student handing it in.
+_BUCKET: dict[str, str | None] = {}
+
+
+@pytest.fixture(autouse=True)
+def _the_bucket(monkeypatch: pytest.MonkeyPatch) -> dict[str, str | None]:
+    _BUCKET.clear()
+
+    def uploaded_by(_db: object, *, bucket: str, path: str) -> str | None:
+        assert bucket == "submissions"
+        return _BUCKET.get(path, str(STUDENT_ID))
+
+    monkeypatch.setattr("app.api.v1.assignments.uploaded_by", uploaded_by)
+    return _BUCKET
+
+
 def _as_teacher(db: Session, teacher) -> TestClient:
     def _db():
         yield db
@@ -160,6 +178,12 @@ class TestTheKeyIsTheStudentsOwn:
             f"/{COURSE}/{{assignment}}/{STUDENT_ID}/1-x.pdf",
             f"{COURSE}/{{assignment}}/{STUDENT_ID}//1-x.pdf",
             f"{COURSE}\\{{assignment}}\\{STUDENT_ID}\\1-x.pdf",
+            # Spellings a browser folds into ``..`` when the teacher's client
+            # signs the URL: they would open another student's file.
+            f"{COURSE}/{{assignment}}/{STUDENT_ID}/%2e%2e/22222222-2222-2222-2222-222222222222/1762480000000-x.pdf",
+            f"{COURSE}/{{assignment}}/{STUDENT_ID}/%2e/1762480000000-x.pdf",
+            # Not the shape the client writes.
+            f"{COURSE}/{{assignment}}/{STUDENT_ID}/x.pdf",
         ],
     )
     def test_a_key_that_is_not_a_key_is_refused(
@@ -172,19 +196,60 @@ class TestTheKeyIsTheStudentsOwn:
             json={"file": {"path": path.format(assignment=assignment.id), "name": "x.pdf"}, "declaration": DECLARED},
         )
 
-        assert resp.status_code == 422, resp.text
+        assert resp.status_code in (400, 422), resp.text
+        assert student_client.get(f"/api/v1/assignments/{assignment.id}/my-submissions").json() == []
 
-    def test_a_name_longer_than_the_bucket_allows_is_refused(
+    def test_a_key_nobody_uploaded_is_refused(
+        self, student_client: TestClient, db: Session, teacher, student, _the_bucket: dict[str, str | None]
+    ) -> None:
+        """Handing in a key on time and uploading to it after the deadline."""
+        assignment = _assignment(db)
+        _the_bucket[_own_key(assignment)] = None
+
+        resp = student_client.post(
+            SUBMIT.format(assignment.id),
+            json={"file": {"path": _own_key(assignment), "name": "x.pdf"}, "declaration": DECLARED},
+        )
+
+        assert resp.status_code == 400, resp.text
+        assert student_client.get(f"/api/v1/assignments/{assignment.id}/my-submissions").json() == []
+
+    def test_a_key_someone_else_uploaded_is_refused(
+        self, student_client: TestClient, db: Session, teacher, student, _the_bucket: dict[str, str | None]
+    ) -> None:
+        assignment = _assignment(db)
+        _the_bucket[_own_key(assignment)] = "22222222-2222-2222-2222-222222222222"
+
+        resp = student_client.post(
+            SUBMIT.format(assignment.id),
+            json={"file": {"path": _own_key(assignment), "name": "x.pdf"}, "declaration": DECLARED},
+        )
+
+        assert resp.status_code == 400, resp.text
+
+    def test_a_long_name_is_shortened_not_refused(
         self, student_client: TestClient, db: Session, teacher, student
     ) -> None:
+        """The file is already uploaded; the name is only for the chip."""
         assignment = _assignment(db)
 
         resp = student_client.post(
             SUBMIT.format(assignment.id),
-            json={"file": {"path": _own_key(assignment), "name": "a" * 256 + ".pdf"}, "declaration": DECLARED},
+            json={"file": {"path": _own_key(assignment), "name": "a" * 300 + ".pdf"}, "declaration": DECLARED},
         )
 
-        assert resp.status_code == 422, resp.text
+        assert resp.status_code == 201, resp.text
+        assert len(resp.json()["file_name"]) == 255
+
+    def test_dots_inside_a_name_are_fine(self, student_client: TestClient, db: Session, teacher, student) -> None:
+        assignment = _assignment(db)
+
+        resp = student_client.post(
+            SUBMIT.format(assignment.id),
+            json={"file": {"path": _own_key(assignment), "name": "Римлянам 13..14.pdf"}, "declaration": DECLARED},
+        )
+
+        assert resp.status_code == 201, resp.text
 
     def test_a_name_that_is_a_path_is_refused(self, student_client: TestClient, db: Session, teacher, student) -> None:
         assignment = _assignment(db)

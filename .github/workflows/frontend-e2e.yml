@@ -212,6 +212,7 @@ jobs:
             supabase/migrations/20261024033327_an_organization_has_a_logo_folder.sql \
             supabase/migrations/20261024142623_a_bucket_admits_only_its_own_types_however_the_file_arrives.sql \
             supabase/migrations/20261107030001_a_submission_can_carry_a_file.sql \
+            supabase/migrations/20261107030002_a_submitted_image_is_never_svg.sql \
           ; do
             $PSQL -f "$f"
           done
