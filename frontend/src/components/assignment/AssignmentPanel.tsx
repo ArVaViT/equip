@@ -20,6 +20,7 @@ import { repeatsTitle } from "@/lib/repeatsTitle"
 import type { AiPolicy, Assignment, AssignmentSubmission, SubmissionRubric } from "@/types"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { formatDateTimeZoned } from "@/i18n/format"
+import { asPlainText } from "@/lib/plainText"
 import { orNotTranslated } from "@/lib/untranslated"
 import {
   FileText,
@@ -351,7 +352,7 @@ function SingleAssignment({
         {assignment.description && (
           <p className="prose-verse mt-1.5 text-sm leading-relaxed text-ink-muted text-wrap-safe whitespace-pre-line">
             {/* A cited verse opens over the page, as it does in a lesson. */}
-            <ScriptureText text={assignment.description} />
+            <ScriptureText text={asPlainText(assignment.description)} />
           </p>
         )}
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
