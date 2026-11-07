@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, func, text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Numeric, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -129,6 +129,10 @@ class Course(Base):
     # «Объём в часах» printed on the ведомость and the transcript. Nullable —
     # only schools issuing hour-bearing documents fill it in.
     academic_hours: Mapped[int | None] = mapped_column()
+    # «With honors» on the certificate of a student whose official grade is in
+    # the top band. The teacher's one switch, off by default; meaningless for
+    # schemes without bands (pass_fail, percent), where it is never consulted.
+    with_honors: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
     # Authoring language for this course's content. Every translatable
     # string lives in ``content_versions`` keyed by

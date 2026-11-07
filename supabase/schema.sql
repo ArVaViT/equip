@@ -685,6 +685,9 @@ CREATE TABLE public.certificates (
     teacher_name text,
     course_title text,
     organization_id uuid,
+    with_honors boolean DEFAULT false NOT NULL,
+    academic_hours integer,
+    CONSTRAINT certificates_academic_hours_check CHECK ((academic_hours > 0)),
     CONSTRAINT certificates_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('teacher_approved'::character varying)::text, ('approved'::character varying)::text, ('rejected'::character varying)::text]))),
     CONSTRAINT ck_certificates_graded_via CHECK (((graded_via IS NULL) OR (graded_via = ANY (ARRAY['computed'::text, 'override'::text, 'completion'::text])))),
     CONSTRAINT ck_certificates_one_official_grade CHECK (((
@@ -697,6 +700,13 @@ CASE
     ELSE 1
 END) <= 1))
 );
+
+
+--
+-- Name: COLUMN certificates.with_honors; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.certificates.with_honors IS 'Frozen at approval: the course offered honors and the official grade was in the top band. Never recomputed. See 20261107040000.';
 
 
 --
@@ -909,6 +919,7 @@ CREATE TABLE public.courses (
     ai_policy text DEFAULT 'ai_with_disclosure'::text NOT NULL,
     translations_checked_at timestamp with time zone,
     organization_id uuid NOT NULL,
+    with_honors boolean DEFAULT false NOT NULL,
     CONSTRAINT chk_courses_status CHECK ((status = ANY (ARRAY['draft'::text, 'publishing'::text, 'published'::text]))),
     CONSTRAINT ck_courses_participation_retired CHECK ((participation_weight = 0)),
     CONSTRAINT ck_courses_scheme_threshold CHECK (((grading_scheme <> 'five_point'::text) OR (pass_threshold <= (75)::numeric))),
@@ -920,6 +931,13 @@ CREATE TABLE public.courses (
     CONSTRAINT courses_pass_threshold_check CHECK (((pass_threshold >= (0)::numeric) AND (pass_threshold <= (100)::numeric))),
     CONSTRAINT courses_source_locale_check CHECK (((source_locale)::text = ANY (ARRAY['ru'::text, 'en'::text, 'de'::text, 'uk'::text])))
 );
+
+
+--
+-- Name: COLUMN courses.with_honors; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.courses.with_honors IS 'Teacher switch: a top-band official grade earns «with honors» on the certificate. Ignored for pass_fail and percent. See 20261107040000.';
 
 
 --

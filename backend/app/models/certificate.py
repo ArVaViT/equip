@@ -4,6 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -55,6 +56,7 @@ class Certificate(Base):
             " + CASE WHEN official_score IS NULL THEN 0 ELSE 1 END) <= 1",
             name="ck_certificates_one_official_grade",
         ),
+        CheckConstraint("academic_hours > 0", name="certificates_academic_hours_check"),
         CheckConstraint(
             "graded_via IS NULL OR graded_via IN ('computed', 'override', 'completion')",
             name="ck_certificates_graded_via",
@@ -133,3 +135,10 @@ class Certificate(Base):
     #: certificates from one course disagree. ``computed`` | ``override`` |
     #: ``completion``.
     graded_via: Mapped[str | None] = mapped_column(Text)
+    #: «With honors», decided once at issuance: the course offered it and the
+    #: official grade sat in the top band. Frozen like the grade, so a teacher
+    #: who switches honors off next year does not take it back from anyone.
+    with_honors: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    #: Hours the course carried when this was issued — the transcript prints it
+    #: from here, not from the course, which may since have been edited.
+    academic_hours: Mapped[int | None] = mapped_column()
