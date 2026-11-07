@@ -73,6 +73,18 @@ describe("VerifyCertificatePage", () => {
     expect(screen.getByText("A Glossary in Your Pocket")).toBeInTheDocument();
   });
 
+  it("confirms «with honors» when the certificate carries it, and only then", async () => {
+    behaviour = async () => ({ ...GENUINE, with_honors: true });
+    const { unmount } = renderAt("/verify/CERT-9EA8AA9729A7");
+    expect(await screen.findByText(i18n.t("certificates.card.withHonors"))).toBeInTheDocument();
+    unmount();
+
+    behaviour = async () => ({ ...GENUINE, with_honors: false });
+    renderAt("/verify/CERT-9EA8AA9729A7");
+    await screen.findByText("A Glossary in Your Pocket");
+    expect(screen.queryByText(i18n.t("certificates.card.withHonors"))).toBeNull();
+  });
+
   it("asks for a number when the URL carries none", () => {
     renderAt("/verify");
     expect(calls).toEqual([]);

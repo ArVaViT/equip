@@ -94,3 +94,6 @@ class CertificateVerifyResponse(BaseModel):
     issued_at: datetime | None = None
     #: The day on the issuing school's clock, as the document prints it.
     issued_on: date | None = None
+    #: «With honors», as frozen on the certificate — the line a stranger
+    #: checking the paper has to be able to confirm.
+    with_honors: bool = False
