@@ -25,6 +25,7 @@ from app.models.rubric import AssignmentRubric
 from app.models.submission_declaration import SubmissionDeclaration
 from app.models.user import User, can_teach
 from app.schemas.assignment import (
+    SUBMISSIONS_BUCKET,
     AssignmentCreate,
     AssignmentResponse,
     AssignmentUpdate,
@@ -42,6 +43,7 @@ from app.services.course_service import sync_enrollment_progress
 from app.services.domain_access import course_source_locale_for_chapter as _course_source_locale_for_chapter
 from app.services.late_work import first_handed_in, is_late
 from app.services.rubric_service import sync_assignment_max_score
+from app.services.submission_files import key_is_in_own_folder, uploaded_by
 from app.services.submission_grading import apply_grade
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import (
@@ -378,11 +380,29 @@ def submit_assignment(
             context={"resource_type": "assignment", "assignment_id": str(assignment_id), "ai_policy": policy},
         )
 
+    if data.file is not None:
+        # The bucket's policy already keeps a student inside their own folder;
+        # the route holds the row to the same shape, for *this* assignment,
+        # so a key handed in here is one the bucket will show the teacher.
+        in_own_folder = key_is_in_own_folder(
+            data.file.path, course_id=str(course_id), assignment_id=str(assignment_id), student_id=str(current_user.id)
+        )
+        if not in_own_folder or uploaded_by(db, bucket=SUBMISSIONS_BUCKET, path=data.file.path) != str(current_user.id):
+            raise equip_error(
+                ErrorCode.VALIDATION_FAILED,
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message="The file is not in your folder for this assignment. Attach it again.",
+                context={"resource_type": "assignment", "assignment_id": str(assignment_id)},
+            )
+
     submission = AssignmentSubmission(
         assignment_id=assignment_id,
         student_id=current_user.id,
         content=data.content,
         file_url=data.file_url,
+        file_bucket=SUBMISSIONS_BUCKET if data.file is not None else None,
+        file_path=data.file.path if data.file is not None else None,
+        file_name=data.file.name if data.file is not None else None,
     )
     db.add(submission)
     db.flush()

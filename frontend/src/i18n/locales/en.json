@@ -1492,7 +1492,7 @@
   "assignment": {
     "eyebrow": "Assignment",
     "loadFailed": "Failed to load assignments. Please try refreshing.",
-    "statusSubmitted": "Submitted — Awaiting Review",
+    "statusSubmitted": "Submitted · awaiting review",
     "statusGraded": "Graded",
     "statusReturned": "Returned — Resubmission Requested",
     "maxPoints": "Max: {{max}} pts",
@@ -1519,7 +1519,18 @@
     "statusUnknownHelp": "The form is hidden on purpose: if the work is already submitted, a second copy only confuses you and whoever marks it. Check your connection and try again.",
     "statusUnknownRetry": "Check again",
     "draftSaved": "Draft saved on this device",
-    "draftRestored": "Draft restored from this device"
+    "draftRestored": "Draft restored from this device",
+    "file": {
+      "attach": "Attach a file",
+      "remove": "Remove file",
+      "uploading": "Uploading the file",
+      "open": "open",
+      "openAria": "Open file {{name}}",
+      "sizeMb": "{{mb}} MB",
+      "tooLarge": "The file is over {{maxMb}} MB. Upload it to YouTube or Google Drive and paste the link.",
+      "unsupported": "This file will not do. Photos, PDF, audio, video and Word documents work — or paste a link.",
+      "orPasteLink": "or paste a link"
+    }
   },
   "certificates": {
     "transcript": {

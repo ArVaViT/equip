@@ -20,6 +20,7 @@ import { RubricGrid } from "@/components/rubric/RubricGrid"
 import { LateBadge } from "@/components/patterns"
 import { toast } from "@/lib/toast"
 import { isHttpUrl } from "@/lib/url"
+import { SubmissionFileChip } from "@/components/assignment/SubmissionFileChip"
 import type { AssignmentSubmission, SubmissionRubric } from "@/types"
 
 interface Props {
@@ -157,6 +158,15 @@ export function SubmissionGrader({ submission, maxScore, onUpdate }: Props) {
           <div className="rounded border bg-surface p-2 text-sm whitespace-pre-wrap text-wrap-safe">
             {submission.content}
           </div>
+        )}
+
+        {/* The file the student uploaded: signed on click, never stored. */}
+        {submission.file_bucket && submission.file_path && submission.file_name && (
+          <SubmissionFileChip
+            bucket={submission.file_bucket}
+            path={submission.file_path}
+            name={submission.file_name}
+          />
         )}
 
         {submission.file_url && isHttpUrl(submission.file_url) && (

@@ -1,10 +1,18 @@
-import { supabase } from "@/lib/supabase"
-import { type BucketSpec, COURSE_ASSETS, COURSE_MATERIALS, ORGANIZATION_LOGOS, resolveContentType } from "@/lib/uploadLimits"
+import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from "@/lib/supabase"
+import {
+  type BucketSpec,
+  COURSE_ASSETS,
+  COURSE_MATERIALS,
+  ORGANIZATION_LOGOS,
+  SUBMISSIONS,
+  resolveContentType,
+} from "@/lib/uploadLimits"
 
 const AVATARS_BUCKET = "avatars"
 const COURSE_ASSETS_BUCKET = "course-assets"
 const COURSE_MATERIALS_BUCKET = "course-materials"
 const ORGANIZATION_LOGOS_BUCKET = "organization-logos"
+const SUBMISSIONS_BUCKET = "submissions"
 const LOGO_EXTENSION: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -266,6 +274,82 @@ interface UploadedBlockFile {
   name: string
 }
 
+/** A Storage refusal, in the shape `describeUploadError` reads
+ *  (`StorageApiError` carries `statusCode` as a string). */
+interface StorageRefusal {
+  statusCode: string
+  error: string
+  message: string
+}
+
+/**
+ * Upload a plain body to a bucket and report progress along the way.
+ *
+ * storage-js uploads through `fetch`, which cannot say how much has gone;
+ * a 30 MB voice memo on 3G is minutes of nothing on the screen, and a
+ * student who sees nothing presses the button again. `XMLHttpRequest`
+ * reports `upload.progress`, so this one path uses it, against the same
+ * endpoint storage-js posts to (`POST /storage/v1/object/<bucket>/<key>`),
+ * with the session's own token: the bucket's RLS decides, as everywhere.
+ *
+ * `onProgress` gets 0..1. A refusal rejects with Storage's own JSON body
+ * (`{statusCode, error, message}`), which `describeUploadError` already
+ * speaks; a request that never got an answer rejects with a `TypeError`,
+ * which it reads as the network.
+ */
+async function putWithProgress(
+  bucket: string,
+  path: string,
+  file: File,
+  onProgress?: (fraction: number) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  if (!token) {
+    throw { statusCode: "401", error: "Unauthorized", message: "no session" } satisfies StorageRefusal
+  }
+  const key = path.split("/").map(encodeURIComponent).join("/")
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open("POST", `${SUPABASE_URL}/storage/v1/object/${bucket}/${key}`)
+    xhr.setRequestHeader("Authorization", `Bearer ${token}`)
+    xhr.setRequestHeader("apikey", SUPABASE_ANON_KEY)
+    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream")
+    xhr.setRequestHeader("x-upsert", "false")
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && e.total > 0) onProgress?.(Math.min(1, e.loaded / e.total))
+    }
+    xhr.onerror = () => reject(new TypeError("Failed to fetch"))
+    xhr.onabort = () => reject(new TypeError("Failed to fetch"))
+    // The student took the file back while it was still going up.
+    if (signal?.aborted) {
+      reject(new DOMException("Aborted", "AbortError"))
+      return
+    }
+    signal?.addEventListener("abort", () => xhr.abort(), { once: true })
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress?.(1)
+        resolve()
+        return
+      }
+      let body: Partial<StorageRefusal> = {}
+      try {
+        body = JSON.parse(xhr.responseText) as Partial<StorageRefusal>
+      } catch {
+        // A proxy's HTML page, or nothing at all.
+      }
+      reject({
+        statusCode: String(body.statusCode ?? xhr.status),
+        error: body.error ?? "StorageError",
+        message: body.message ?? xhr.statusText,
+      } satisfies StorageRefusal)
+    }
+    xhr.send(file)
+  })
+}
+
 export const storageService = {
   async uploadAvatar(userId: string, file: File): Promise<string> {
     const path = `${userId}/avatar-${crypto.randomUUID().slice(0, 8)}.${fileExtension(file.name)}`
@@ -388,6 +472,39 @@ export const storageService = {
 
   /** Mint a short-lived signed URL for a block-attached file. */
   async getSignedBlockFileUrl(bucket: string, path: string): Promise<string> {
+    return createSignedDownloadUrl(bucket, path)
+  },
+
+  /**
+   * A student's file for an assignment, into the private `submissions`
+   * bucket. The key is the one shape the bucket's RLS and the API accept:
+   * `<course>/<assignment>/<student>/<ms>-<safe_name>` -- the student's own
+   * folder is the third segment, and `POST /assignments/{id}/submit`
+   * refuses a `file.path` outside it. The caller hands the returned
+   * `{ bucket, path, name }` in with the work; the teacher signs a URL on
+   * click (`getSignedSubmissionFileUrl`).
+   */
+  async uploadSubmissionFile(
+    courseId: string,
+    assignmentId: string,
+    studentId: string,
+    file: File,
+    onProgress?: (fraction: number) => void,
+    signal?: AbortSignal,
+  ): Promise<UploadedBlockFile> {
+    const path = `${courseId}/${assignmentId}/${studentId}/${Date.now()}-${sanitizeFileName(file.name)}`
+    await putWithProgress(SUBMISSIONS_BUCKET, path, withBucketContentType(file, SUBMISSIONS), onProgress, signal)
+    return { bucket: SUBMISSIONS_BUCKET, path, name: file.name }
+  },
+
+  /** The «remove» cross between choosing a file and handing it in. The
+   *  bucket refuses this once a submission names the key; best-effort. */
+  async removeSubmissionFile(path: string): Promise<void> {
+    await supabase.storage.from(SUBMISSIONS_BUCKET).remove([path])
+  },
+
+  /** Mint a short-lived signed URL for a student's handed-in file. */
+  async getSignedSubmissionFileUrl(bucket: string, path: string): Promise<string> {
     return createSignedDownloadUrl(bucket, path)
   },
 

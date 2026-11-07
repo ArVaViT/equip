@@ -1492,7 +1492,7 @@
   "assignment": {
     "eyebrow": "Aufgabe",
     "loadFailed": "Aufgaben konnten nicht geladen werden. Bitte neu laden.",
-    "statusSubmitted": "Eingereicht — wartet auf Bewertung",
+    "statusSubmitted": "Eingereicht · wartet auf Bewertung",
     "statusGraded": "Bewertet",
     "statusReturned": "Zurückgegeben — Überarbeitung erbeten",
     "maxPoints": "Höchstens {{max}} Punkte",
@@ -1519,7 +1519,18 @@
     "statusUnknownHelp": "Das Formular ist absichtlich verborgen: Ist die Arbeit bereits eingereicht, verwirrt eine zweite Fassung nur Sie und die Person, die bewertet. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
     "statusUnknownRetry": "Erneut prüfen",
     "draftSaved": "Entwurf auf diesem Gerät gespeichert",
-    "draftRestored": "Entwurf von diesem Gerät wiederhergestellt"
+    "draftRestored": "Entwurf von diesem Gerät wiederhergestellt",
+    "file": {
+      "attach": "Datei anhängen",
+      "remove": "Datei entfernen",
+      "uploading": "Datei wird hochgeladen",
+      "open": "öffnen",
+      "openAria": "Datei {{name}} öffnen",
+      "sizeMb": "{{mb}} MB",
+      "tooLarge": "Die Datei ist größer als {{maxMb}} MB. Laden Sie sie auf YouTube oder Google Drive hoch und fügen Sie den Link ein.",
+      "unsupported": "Diese Datei passt nicht. Fotos, PDF, Audio, Video und Word-Dokumente gehen — oder fügen Sie einen Link ein.",
+      "orPasteLink": "oder Link einfügen"
+    }
   },
   "certificates": {
     "transcript": {
