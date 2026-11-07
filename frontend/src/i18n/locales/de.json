@@ -1543,7 +1543,7 @@
       "number": "Certificate no.",
       "verify_one": "The certificate can be verified at equipbible.com/verify by its number.",
       "verify_other": "Each certificate can be verified at equipbible.com/verify by its number.",
-      "open": "Alle meine Noten",
+      "open": "Leistungsnachweis",
       "grade": "Grade",
       "hours": "Hours",
       "withHonors": "with honors",

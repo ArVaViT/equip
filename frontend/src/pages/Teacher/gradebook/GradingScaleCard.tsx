@@ -118,6 +118,9 @@ export function GradingScaleCard({ courseId, canChange, onChanged }: Props) {
           })}
         </p>
         {bands.length > 0 && <p className="text-ink-muted">{describeBands(bands, whole)}</p>}
+        {/* Who decides the scale — said to the teacher, and said before the
+            honors switch, which is the teacher's own and not the director's. */}
+        {!canChange && <p className="text-xs text-ink-muted">{t("gradebook.scale.directorDecides")}</p>}
         {/* «With honors» needs a top band to point at; pass/fail and percent
             have none, so the switch is simply not there for them. */}
         {bands[0] && (
@@ -128,8 +131,6 @@ export function GradingScaleCard({ courseId, canChange, onChanged }: Props) {
             onSaved={setScheme}
           />
         )}
-        {/* Who decides — said to the teacher; the director is the answer. */}
-        {!canChange && <p className="text-xs text-ink-muted">{t("gradebook.scale.directorDecides")}</p>}
       </div>
       {canChange && (
         <>

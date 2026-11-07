@@ -1206,7 +1206,7 @@
       "number": "Certificate no.",
       "verify_one": "The certificate can be verified at equipbible.com/verify by its number.",
       "verify_other": "Each certificate can be verified at equipbible.com/verify by its number.",
-      "open": "Все мои оценки",
+      "open": "Выписка",
       "verify_few": "Each certificate can be verified at equipbible.com/verify by its number.",
       "verify_many": "Each certificate can be verified at equipbible.com/verify by its number.",
       "grade": "Grade",

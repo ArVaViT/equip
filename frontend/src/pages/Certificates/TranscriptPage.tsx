@@ -69,6 +69,9 @@ export default function TranscriptPage() {
   const scaleMark = (r: (typeof rows)[number]) =>
     r.grade.symbolScheme && r.grade.symbolScheme !== main ? schemeName(r.grade.symbolScheme, t) : null
   const anyMarked = rows.some((r) => scaleMark(r) !== null)
+  // «Grades: letter scale A–F.» is a claim about every line, so it is made
+  // only when every line is in that scale. Otherwise the marks speak.
+  const allMain = rows.every((r) => r.grade.symbolScheme === main)
 
   const withHours = issued.some((c) => c.academic_hours)
   const totalHours =
@@ -215,13 +218,10 @@ export default function TranscriptPage() {
 
         {issued.length > 0 && (
           <footer className="mt-10 space-y-1 text-center text-xs text-ink-muted">
-            {main && (
-              <p>
-                {t(anyMarked ? "certificates.transcript.scaleNote" : "certificates.transcript.scaleNoteAll", {
-                  scheme: schemeName(main, t),
-                })}
-              </p>
+            {main && anyMarked && (
+              <p>{t("certificates.transcript.scaleNote", { scheme: schemeName(main, t) })}</p>
             )}
+            {main && allMain && <p>{t("certificates.transcript.scaleNoteAll", { scheme: schemeName(main, t) })}</p>}
             <p>{t("certificates.transcript.verify", { count: issued.length })}</p>
           </footer>
         )}

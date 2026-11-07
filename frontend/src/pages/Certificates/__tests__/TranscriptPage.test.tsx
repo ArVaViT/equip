@@ -92,4 +92,31 @@ describe("TranscriptPage", () => {
     expect(rows[2]?.textContent).not.toContain("with honors")
     expect(screen.getByText("Grades: letter scale A–F, unless marked otherwise.")).toBeInTheDocument()
   })
+
+  it("names one scale for the whole sheet only when every line is in it", async () => {
+    const letter = (n: string, code: string, at: string) =>
+      cert({ certificate_number: n, course_title: n, issued_at: at, grading_scheme: "letter", official_code: code, graded_via: "computed" })
+    const renderWith = async (certs: Certificate[]) => {
+      vi.spyOn(coursesService, "getMyCertificates").mockResolvedValue(certs)
+      const view = render(
+        <I18nextProvider i18n={i18n}>
+          <MemoryRouter>
+            <TranscriptPage />
+          </MemoryRouter>
+        </I18nextProvider>,
+      )
+      await screen.findByRole("heading", { name: "Anna Petrenko" })
+      return view
+    }
+
+    const all = await renderWith([letter("EQ-A", "A", "2026-01-01T10:00:00Z"), letter("EQ-B", "B", "2026-02-01T10:00:00Z")])
+    expect(screen.getByText("Grades: letter scale A–F.")).toBeInTheDocument()
+    all.unmount()
+
+    await renderWith([
+      letter("EQ-A", "A", "2026-01-01T10:00:00Z"),
+      cert({ certificate_number: "EQ-OLD", course_title: "Old", issued_at: "2024-01-01T10:00:00Z" }),
+    ])
+    expect(screen.queryByText(/^Grades:/)).toBeNull()
+  })
 })
