@@ -319,6 +319,8 @@ describe("GradingQueue", () => {
     expect(next()).toBeDisabled()
     releases.forEach((release) => release())
     await waitFor(() => expect(next()).toBeEnabled())
+    // The total counts the level not yet sent; late answers did not undo it.
+    expect(screen.getByText("15 / 15")).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole("button", { name: "Структура ясная." }))
     setMarks.mockResolvedValue({ rubric: RUBRIC, marks: [], earned: 15, out_of: 15 })

@@ -171,7 +171,15 @@ export function MarkOneByOne({
     if (!current || !onRubric) return
     const next: RubricMark[] = [
       ...marksRef.current.filter((m) => m.criterion_id !== criterionId),
-      { criterion_id: criterionId, level_id: levelId, points: 0, comment: null },
+      {
+        criterion_id: criterionId,
+        level_id: levelId,
+        // The level's own points, so «Итого» is right before any answer —
+        // the tap that completes the grid is not sent until «Дальше».
+        points:
+          onRubric.criteria.find((c) => c.id === criterionId)?.levels.find((l) => l.id === levelId)?.points ?? 0,
+        comment: null,
+      },
     ]
     marksRef.current = next
     setRubric((prev) => (prev ? { ...prev, marks: next } : prev))
