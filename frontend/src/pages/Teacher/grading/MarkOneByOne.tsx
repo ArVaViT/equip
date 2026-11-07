@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
-import { ChevronLeft, ChevronRight, FileText, Loader2, X } from "lucide-react"
+import { Check, ChevronLeft, ChevronRight, FileText, Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -20,7 +20,7 @@ import type { RubricMark, SubmissionRubric, WaitingWork } from "@/types"
 /** A few ready words a teacher can tap instead of typing on a phone. Fixed on
  *  purpose: a comment bank with its own settings screen is a second thing to
  *  learn before marking the first essay. */
-const COMMENT_BANK = ["coveredWell", "clearStructure", "addScripture", "moreExamples", "thoughtThrough"] as const
+const COMMENT_BANK = ["coveredWell", "clearStructure", "addScripture", "moreExamples"] as const
 
 /** Up to this many points the mark is a row of buttons, not a keyboard. */
 const TAP_SCALE_MAX = 10
@@ -367,7 +367,9 @@ export function MarkOneByOne({
       )}
 
       <div className="space-y-2">
-        <div className="flex flex-wrap gap-2">
+        {/* Two by two: four short phrases fit a phone without a long column
+            of pills between the work and the note. */}
+        <div className="grid grid-cols-2 gap-2">
           {COMMENT_BANK.map((key) => {
             const phrase = t(`grading.commentBank.${key}`)
             const used = feedback.includes(phrase)
@@ -377,8 +379,9 @@ export function MarkOneByOne({
                 type="button"
                 disabled={used}
                 onClick={() => insertComment(phrase)}
-                className="min-h-11 rounded-full border border-edge bg-surface px-3.5 py-2 text-left text-sm text-ink transition-colors hover:bg-heritage focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:border-transparent disabled:bg-brand-quiet disabled:text-ink-muted"
+                className="flex min-h-11 items-center gap-1.5 rounded-lg border border-edge bg-surface px-3 py-2 text-left text-sm leading-snug text-ink transition-colors hover:bg-heritage focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:border-brand/30 disabled:bg-brand-quiet"
               >
+                {used && <Check className="h-4 w-4 shrink-0 text-brand" strokeWidth={2} aria-hidden />}
                 {phrase}
               </button>
             )
@@ -397,14 +400,23 @@ export function MarkOneByOne({
       </div>
 
       {/* Fixed to the bottom of the screen: the thumb finds «Дальше» in the
-          same place on every essay, however long the essay is. */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-edge bg-surface/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+          same place on every essay, however long the essay is. On a phone it
+          sits on top of the tab bar (3.5rem, the same figure the page shell
+          pads by), not under it. */}
+      <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-edge bg-surface/95 px-4 py-3 backdrop-blur md:bottom-0 md:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="mx-auto flex max-w-[680px] gap-3">
           <Button variant="outline" onClick={back} disabled={index === 0 || saving} className="h-12 px-4">
             <ChevronLeft className="mr-1 h-4 w-4" strokeWidth={1.75} aria-hidden />
             {t("grading.back")}
           </Button>
-          <Button onClick={saveAndNext} disabled={saving || blocked} className="h-12 flex-1 text-base">
+          <Button
+            onClick={saveAndNext}
+            disabled={saving || blocked}
+            // Until a mark is chosen, choosing it is the main thing to do on
+            // this screen; skipping is there, but it does not shout.
+            variant={untouched ? "outline" : "default"}
+            className="h-12 flex-1 text-base"
+          >
             {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />}
             {untouched ? t("grading.skip") : isLast ? t("grading.finish") : t("grading.next")}
             {!saving && !isLast && <ChevronRight className="ml-1 h-4 w-4" strokeWidth={1.75} aria-hidden />}

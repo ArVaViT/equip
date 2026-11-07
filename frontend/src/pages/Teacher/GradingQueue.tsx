@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next"
 import { Link, useSearchParams } from "react-router-dom"
 import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { ErrorState } from "@/components/patterns"
+import { EmptyState, ErrorState, PageHeader } from "@/components/patterns"
 import { Section } from "@/components/layout/Section"
 import { gradesService } from "@/services/grades"
 import { getErrorDetail } from "@/lib/errorDetail"
@@ -150,41 +150,38 @@ export default function GradingQueue() {
     // Calm, and not a dead end: where to go next is right under it.
     return (
       <Section width="reading">
-        <div className="animate-fade-in flex flex-col items-center gap-4 px-4 py-16 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success/15 text-success">
-            <CheckCircle2 className="h-7 w-7" strokeWidth={1.75} aria-hidden />
-          </span>
-          <div className="space-y-1">
-            <h1 className="font-serif text-2xl font-semibold">{t("grading.emptyTitle")}</h1>
-            {finished ? <p className="text-ink-muted">{t("grading.markedNow", { count: finished })}</p> : null}
-          </div>
-          <div className="flex w-full max-w-xs flex-col gap-2 pt-2">
-            {othersWaiting > 0 && (
-              <Button asChild className="h-12 text-base">
-                <Link to="/teacher/review">{t("grading.otherCourses", { count: othersWaiting })}</Link>
+        <EmptyState
+          titleAs="h1"
+          className="border-none bg-transparent py-16"
+          icon={<CheckCircle2 strokeWidth={1.75} className="text-success-ink" />}
+          title={t("grading.emptyTitle")}
+          description={finished ? t("grading.markedNow", { count: finished }) : undefined}
+          action={
+            <div className="flex w-64 max-w-full flex-col gap-2">
+              {othersWaiting > 0 && (
+                <Button asChild className="h-12 text-base">
+                  <Link to="/teacher/review">{t("grading.otherCourses", { count: othersWaiting })}</Link>
+                </Button>
+              )}
+              <Button asChild variant={othersWaiting > 0 ? "outline" : "default"} className="h-12 text-base">
+                <Link to="/teacher">{t("grading.toDashboard")}</Link>
               </Button>
-            )}
-            <Button asChild variant={othersWaiting > 0 ? "outline" : "default"} className="h-12 text-base">
-              <Link to="/teacher">{t("grading.toDashboard")}</Link>
-            </Button>
-          </div>
-        </div>
+            </div>
+          }
+        />
       </Section>
     )
   }
 
   return (
     <Section width="reading">
-      <div className="mb-6 space-y-1">
-        <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">{t("grading.title")}</h1>
-        <p className="text-ink-muted">
-          {courseTitle ? `${courseTitle} · ` : ""}
-          {t("grading.waitingCount", { count: items.length })}
-        </p>
-        {finished != null && finished > 0 && (
-          <p className="text-sm text-success-ink">{t("grading.markedNow", { count: finished })}</p>
-        )}
-      </div>
+      <PageHeader
+        title={t("grading.title")}
+        description={`${courseTitle ? `${courseTitle} · ` : ""}${t("grading.waitingCount", { count: items.length })}`}
+      />
+      {finished != null && finished > 0 && (
+        <p className="-mt-2 mb-4 text-sm text-success-ink">{t("grading.markedNow", { count: finished })}</p>
+      )}
 
       <Button onClick={() => start(0)} className="mb-6 h-12 w-full text-base">
         {t("grading.start")}
