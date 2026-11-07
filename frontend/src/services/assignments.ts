@@ -85,7 +85,8 @@ export const assignmentsService = {
 
   async gradeSubmission(
     submissionId: string,
-    data: { grade: number; feedback?: string; status: string },
+    /** `expect_waiting`: from the marking run — refuse (409) if marked meanwhile. */
+    data: { grade: number; feedback?: string; status: string; expect_waiting?: boolean },
   ): Promise<AssignmentSubmission> {
     const response = await api.put<AssignmentSubmission>(
       `/assignments/submissions/${submissionId}/grade`,

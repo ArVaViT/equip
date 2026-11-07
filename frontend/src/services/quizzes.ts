@@ -204,10 +204,13 @@ export const quizzesService = {
     answerId: string,
     pointsEarned: number,
     graderComment?: string | null,
+    /** From the marking run: refuse (409) if the answer was marked meanwhile. */
+    opts: { expectWaiting?: boolean } = {},
   ): Promise<QuizAnswerResult> {
     const response = await api.patch<QuizAnswerResult>(`/quizzes/answers/${answerId}`, {
       points_earned: pointsEarned,
       grader_comment: graderComment ?? null,
+      ...(opts.expectWaiting ? { expect_waiting: true } : {}),
     })
     // Grading an essay/short-answer changes the same aggregates assignment
     // grading does — keep the invalidation set in sync with gradeSubmission

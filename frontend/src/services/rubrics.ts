@@ -43,10 +43,13 @@ export const rubricsService = {
     submissionId: string,
     marks: { criterion_id: string; level_id: string; comment?: string }[],
     feedback?: string,
+    /** From the marking run: refuse (409) if the work was marked meanwhile. */
+    opts: { expectWaiting?: boolean } = {},
   ): Promise<SubmissionRubric> {
     const response = await api.put<SubmissionRubric>(`/rubrics/submission/${submissionId}/marks`, {
       marks,
       feedback,
+      ...(opts.expectWaiting ? { expect_waiting: true } : {}),
     })
     // A complete rubric is a mark: the dashboard's count must drop with it.
     cacheInvalidatePrefix("grades:pending")

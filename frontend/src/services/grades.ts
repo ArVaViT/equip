@@ -6,7 +6,7 @@ import type {
   PendingGrading,
   MyCourseGrade,
   GradeHistoryEntry,
-  WaitingWork,
+  WaitingRun,
   RetakeRequest,
   RetakeRequestResult,
   GradingConfig,
@@ -164,8 +164,8 @@ export const gradesService = {
   /** Everything waiting on this teacher, one piece at a time, across courses —
    *  the same set `getPendingGrading` counts. Never cached: a teacher marking
    *  down the list must not be handed a stale copy of it. */
-  async getRun(): Promise<WaitingWork[]> {
-    const response = await api.get<WaitingWork[]>("/grades/queue/work")
+  async getRun(): Promise<WaitingRun> {
+    const response = await api.get<WaitingRun>("/grades/queue/work")
     return response.data
   },
 

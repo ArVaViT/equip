@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Link, useSearchParams } from "react-router-dom"
 import { CheckCircle2, ChevronRight, Loader2 } from "lucide-react"
@@ -59,14 +59,18 @@ export default function GradingQueue() {
   const courseFilter = params.get("course")
   const running = params.has("run")
   const [all, setAll] = useState<WaitingWork[] | null>(null)
+  const [total, setTotal] = useState(0)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [startAt, setStartAt] = useState(0)
-  const [finished, setFinished] = useState<number | null>(null)
+  // Marked on this visit, across runs — said on the list and on «Всё проверено».
+  const [marked, setMarked] = useState(0)
 
   const load = useCallback(async () => {
     setLoadError(null)
     try {
-      setAll(await gradesService.getRun())
+      const run = await gradesService.getRun()
+      setAll(run.items)
+      setTotal(run.total)
     } catch (err) {
       // Not `[]`: an empty run reads «Всё проверено», and a run that did not
       // load is not one the teacher has finished.
@@ -79,6 +83,18 @@ export default function GradingQueue() {
     void load()
   }, [load])
 
+  // Leaving the run by any road — «К списку», the end of it, or the phone's
+  // back gesture — lands on a list asked for again. The back gesture used to
+  // return to the list as it was before the marking, every mark still on it.
+  const wasRunning = useRef(running)
+  useEffect(() => {
+    if (wasRunning.current && !running) {
+      setAll(null)
+      void load()
+    }
+    wasRunning.current = running
+  }, [running, load])
+
   const items = useMemo(
     () => (all && courseFilter ? all.filter((i) => i.course_id === courseFilter) : all),
     [all, courseFilter],
@@ -87,7 +103,6 @@ export default function GradingQueue() {
 
   const start = (at: number) => {
     setStartAt(at)
-    setFinished(null)
     const next = new URLSearchParams(params)
     next.set("run", "1")
     // PUSH, so the phone's back gesture returns to the list rather than
@@ -95,13 +110,10 @@ export default function GradingQueue() {
     setParams(next)
   }
 
-  const leaveRun = (marked: number | null) => {
+  const leaveRun = () => {
     const next = new URLSearchParams(params)
     next.delete("run")
     setParams(next, { replace: true })
-    setFinished(marked)
-    setAll(null)
-    void load()
   }
 
   if (loadError) {
@@ -136,8 +148,9 @@ export default function GradingQueue() {
         <MarkOneByOne
           items={items}
           startAt={startAt}
-          onExit={() => leaveRun(null)}
-          onFinish={(marked) => leaveRun(marked)}
+          onExit={leaveRun}
+          onFinish={leaveRun}
+          onMarked={() => setMarked((n) => n + 1)}
         />
       </Section>
     )
@@ -145,6 +158,9 @@ export default function GradingQueue() {
 
   const courseTitle = courseFilter ? items[0]?.course_title : null
   const othersWaiting = courseFilter && all ? all.length - items.length : 0
+  // Past the stretch one load carries: counted, not sent; the next load
+  // after this run brings them.
+  const afterThese = all ? Math.max(total - all.length, 0) : 0
 
   if (items.length === 0) {
     // Calm, and not a dead end: where to go next is right under it.
@@ -155,7 +171,7 @@ export default function GradingQueue() {
           className="border-none bg-transparent py-16"
           icon={<CheckCircle2 strokeWidth={1.75} className="text-success-ink" />}
           title={t("grading.emptyTitle")}
-          description={finished ? t("grading.markedNow", { count: finished }) : undefined}
+          description={marked ? t("grading.markedNow", { count: marked }) : undefined}
           action={
             <div className="flex w-64 max-w-full flex-col gap-2">
               {othersWaiting > 0 && (
@@ -177,11 +193,9 @@ export default function GradingQueue() {
     <Section width="reading">
       <PageHeader
         title={t("grading.title")}
-        description={`${courseTitle ? `${courseTitle} · ` : ""}${t("grading.waitingCount", { count: items.length })}`}
+        description={`${courseTitle ? `${courseTitle} · ` : ""}${t("grading.waitingCount", { count: courseFilter ? items.length : total })}`}
       />
-      {finished != null && finished > 0 && (
-        <p className="-mt-2 mb-4 text-sm text-success-ink">{t("grading.markedNow", { count: finished })}</p>
-      )}
+      {marked > 0 && <p className="-mt-2 mb-4 text-sm text-success-ink">{t("grading.markedNow", { count: marked })}</p>}
 
       <Button onClick={() => start(0)} className="mb-6 h-12 w-full text-base">
         {t("grading.start")}
@@ -213,6 +227,10 @@ export default function GradingQueue() {
           </li>
         ))}
       </ul>
+
+      {afterThese > 0 && (
+        <p className="mt-4 text-center text-sm text-ink-muted">{t("grading.moreAfter", { count: afterThese })}</p>
+      )}
 
       {courseFilter && othersWaiting > 0 && (
         <Button asChild variant="ghost" className="mt-4 h-11 w-full">

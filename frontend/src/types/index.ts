@@ -1073,6 +1073,8 @@ export interface WaitingWork {
   /** What was asked, for an open quiz answer. */
   prompt: string | null
   student_name: string | null
+  /** The student's language — ready comments are written in it. */
+  student_locale: string
   submitted_at: string | null
   content: string | null
   file_url?: string | null
@@ -1082,6 +1084,12 @@ export interface WaitingWork {
   /** What a mark is out of; the grade routes refuse more. */
   max_points: number | null
   is_late: boolean
+}
+
+/** The first stretch of the run; `total` is the dashboard's whole number. */
+export interface WaitingRun {
+  items: WaitingWork[]
+  total: number
 }
 
 /**
