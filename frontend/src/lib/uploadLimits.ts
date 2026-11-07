@@ -152,6 +152,17 @@ const MIME_BY_EXTENSION: Readonly<Record<string, string>> = {
   png: "image/png",
   webp: "image/webp",
   gif: "image/gif",
+  heic: "image/heic",
+  heif: "image/heif",
+  aac: "audio/aac",
+  amr: "audio/amr",
+  "3gp": "audio/3gpp",
+  flac: "audio/flac",
+  opus: "audio/ogg",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+  odt: "application/vnd.oasis.opendocument.text",
 }
 
 /** The part of a file we need to reason about a type; `File` satisfies it. */

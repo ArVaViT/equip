@@ -72,6 +72,12 @@ describe("bucket specs match the migration", () => {
     expect(resolveContentType({ name: "IMG_1.heic", type: "image/heic" }, SUBMISSIONS)).toBe("image/heic")
     expect(resolveContentType({ name: "clip.mov", type: "video/quicktime" }, SUBMISSIONS)).toBe("video/quicktime")
     // The INSERT policy refuses these, so the client refuses them first.
+    // An Android picker that names no type: the extension decides.
+    expect(resolveContentType({ name: "memo.amr", type: "" }, SUBMISSIONS)).toBe("audio/amr")
+    expect(resolveContentType({ name: "rec.3gp", type: "application/octet-stream" }, SUBMISSIONS)).toBe("audio/3gpp")
+    expect(resolveContentType({ name: "IMG_2.HEIC", type: "" }, SUBMISSIONS)).toBe("image/heic")
+    expect(resolveContentType({ name: "clip.mov", type: "" }, SUBMISSIONS)).toBe("video/quicktime")
+    expect(resolveContentType({ name: "plan.odt", type: "" }, SUBMISSIONS)).toBe("application/vnd.oasis.opendocument.text")
     expect(resolveContentType({ name: "x.svg", type: "image/svg+xml" }, SUBMISSIONS)).toBeNull()
     expect(resolveContentType({ name: "x.zip", type: "application/zip" }, SUBMISSIONS)).toBeNull()
     expect(resolveContentType({ name: "x.html", type: "text/html" }, SUBMISSIONS)).toBeNull()
