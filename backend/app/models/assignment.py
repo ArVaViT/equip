@@ -50,6 +50,12 @@ class AssignmentSubmission(Base):
             name="assignment_submissions_status_check",
         ),
         CheckConstraint("grade IS NULL OR grade >= 0", name="assignment_submissions_grade_nonneg"),
+        # A file is three facts or none (20261107030001).
+        CheckConstraint(
+            "(file_bucket IS NULL AND file_path IS NULL AND file_name IS NULL)"
+            " OR (file_bucket IS NOT NULL AND file_path IS NOT NULL AND file_name IS NOT NULL)",
+            name="assignment_submissions_file_all_or_none",
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
@@ -57,6 +63,13 @@ class AssignmentSubmission(Base):
     student_id: Mapped[uuid.UUID] = mapped_column()
     content: Mapped[str | None] = mapped_column(Text)
     file_url: Mapped[str | None] = mapped_column(Text)
+    # The file the student uploaded into the private ``submissions`` bucket:
+    # ``<course_id>/<assignment_id>/<student_id>/<ms>-<safe_name>``. The client
+    # signs a URL on every click; nothing secret-dependent is stored. ``file_url``
+    # stays for a pasted link when the file is too large for the bucket.
+    file_bucket: Mapped[str | None] = mapped_column(Text)
+    file_path: Mapped[str | None] = mapped_column(Text)
+    file_name: Mapped[str | None] = mapped_column(Text)
     submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     status: Mapped[str] = mapped_column(String(20), default="submitted")
     grade: Mapped[int | None] = mapped_column()

@@ -592,6 +592,10 @@ class WaitingSubmission(BaseModel):
     submitted_at: datetime | None = None
     content: str | None = None
     file_url: str | None = None
+    #: The uploaded file, all three or none; the client signs a URL on click.
+    file_bucket: str | None = None
+    file_path: str | None = None
+    file_name: str | None = None
     #: After the assignment's deadline — see ``SubmissionResponse.is_late``.
     is_late: bool = False
 

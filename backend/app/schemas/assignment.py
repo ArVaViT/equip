@@ -50,9 +50,47 @@ class SubmissionDeclarationIn(RequestModel):
     note: str | None = Field(None, max_length=2000)
 
 
+#: Where a student's file lives. The one bucket a submission may name; the
+#: route refuses a path outside the caller's own folder for the assignment.
+SUBMISSIONS_BUCKET = "submissions"
+
+
+class SubmissionFileIn(RequestModel):
+    """The file the student uploaded before pressing submit.
+
+    ``path`` is the object key the client wrote into the ``submissions``
+    bucket; ``name`` is what the file was called on their phone, kept for the
+    chip the teacher reads. The key is checked against the caller here for
+    shape and in the route for ownership (``<course>/<assignment>/<student>/``).
+    """
+
+    path: str = Field(..., min_length=1, max_length=1024)
+    name: str = Field(..., min_length=1, max_length=255)
+
+    @field_validator("path")
+    @classmethod
+    def _a_key_inside_the_bucket(cls, value: str) -> str:
+        value = value.strip()
+        if not value or value.startswith("/") or "\\" in value:
+            raise ValueError("file.path must be a relative object key")
+        if any(segment in ("", ".", "..") for segment in value.split("/")):
+            raise ValueError("file.path must not contain empty or dot segments")
+        return value
+
+    @field_validator("name")
+    @classmethod
+    def _a_name_not_a_path(cls, value: str) -> str:
+        value = value.strip()
+        if not value or "/" in value or "\\" in value or ".." in value:
+            raise ValueError("file.name must be a file name, not a path")
+        return value
+
+
 class SubmissionCreate(RequestModel):
     content: str | None = Field(None, max_length=50_000)
     file_url: str | None = Field(None, max_length=2048)
+    #: A file uploaded into the ``submissions`` bucket by the student.
+    file: SubmissionFileIn | None = None
     #: Required when the course has a policy to declare against. Absent on an
     #: ``ai_open`` course, where there is nothing to declare.
     declaration: SubmissionDeclarationIn | None = None
@@ -83,7 +121,7 @@ class SubmissionCreate(RequestModel):
     def _something_to_submit(self) -> "SubmissionCreate":
         # A declaration alone, or a blank text box, was accepted as the work
         # and marked the lesson done (2026-10-03).
-        if not (self.content or "").strip() and not self.file_url:
+        if not (self.content or "").strip() and not self.file_url and self.file is None:
             raise ValueError("A submission needs text or a file")
         return self
 
@@ -96,6 +134,10 @@ class SubmissionResponse(BaseModel):
     student_id: UUID
     content: str | None = None
     file_url: str | None = None
+    #: The uploaded file, all three or none. The client signs a URL on click.
+    file_bucket: str | None = None
+    file_path: str | None = None
+    file_name: str | None = None
     submitted_at: datetime
     status: str
     grade: int | None = None
