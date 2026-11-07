@@ -133,7 +133,7 @@ class TestTheKeyIsTheStudentsOwn:
             # Another course.
             f"other-course/{{assignment}}/{STUDENT_ID}/1-x.pdf",
             # Another assignment of the same course.
-            f"{COURSE}/{uuid.uuid4()}/{STUDENT_ID}/1-x.pdf",
+            f"{COURSE}/33333333-3333-3333-3333-333333333333/{STUDENT_ID}/1-x.pdf",
             # The folder itself, no file.
             f"{COURSE}/{{assignment}}/{STUDENT_ID}/",
             # The right prefix as a prefix of something else.
