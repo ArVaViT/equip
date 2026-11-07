@@ -465,6 +465,11 @@ export interface AssignmentSubmission {
   student_id: string
   content: string | null
   file_url: string | null
+  /** The file uploaded into the private `submissions` bucket — all three or
+   *  none. The client signs a URL on every click; nothing is stored. */
+  file_bucket?: string | null
+  file_path?: string | null
+  file_name?: string | null
   submitted_at: string
   status: 'submitted' | 'graded' | 'returned'
   grade: number | null
@@ -1030,6 +1035,10 @@ export interface WaitingSubmission {
   submitted_at: string | null
   content: string | null
   file_url: string | null
+  /** See `AssignmentSubmission.file_bucket`. */
+  file_bucket?: string | null
+  file_path?: string | null
+  file_name?: string | null
   /** After the assignment's deadline — see `AssignmentSubmission.is_late`. */
   is_late?: boolean
 }

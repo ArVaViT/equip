@@ -67,7 +67,7 @@ function Wrapper({ children }: { children: ReactNode }) {
 }
 
 function show() {
-  return render(<AssignmentPanel chapterId="ch-1" assignmentId="a-1" />, { wrapper: Wrapper })
+  return render(<AssignmentPanel courseId="c-1" chapterId="ch-1" assignmentId="a-1" />, { wrapper: Wrapper })
 }
 
 describe("AssignmentPanel — a failed lookup is not an empty one", () => {
@@ -111,7 +111,7 @@ describe("AssignmentPanel — a failed lookup is not an empty one", () => {
     await userEvent.click(await screen.findByRole("button", { name: /Проверить снова/ }))
 
     await waitFor(() => expect(screen.queryByText(/Не удалось проверить/)).not.toBeInTheDocument())
-    expect(await screen.findByText(/Отправлено|На проверке/)).toBeInTheDocument()
+    expect(await screen.findByText(/Сдано/)).toBeInTheDocument()
     expect(fetch).toHaveBeenCalledTimes(2)
   })
 
@@ -177,12 +177,12 @@ describe("AssignmentPanel — a failed lookup is not an empty one", () => {
     const submit = vi
       .spyOn(coursesService, "submitAssignment")
       .mockRejectedValue(Object.assign(new Error("Network Error"), { isAxiosError: true }))
-    render(<AssignmentPanel chapterId="ch-1" assignmentId="a-1" aiPolicy="ai_open" />, { wrapper: Wrapper })
+    render(<AssignmentPanel courseId="c-1" chapterId="ch-1" assignmentId="a-1" aiPolicy="ai_open" />, { wrapper: Wrapper })
 
     await userEvent.type((await screen.findAllByRole("textbox"))[0]!, "Уже сдано")
     await userEvent.click(screen.getByRole("button", { name: /Отправить/i }))
 
-    expect(await screen.findByText(/Отправлено|На проверке/)).toBeInTheDocument()
+    expect(await screen.findByText(/Сдано/)).toBeInTheDocument()
     expect(submit).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole("button", { name: /Отправить/i })).not.toBeInTheDocument()
   })
@@ -202,7 +202,7 @@ describe("AssignmentPanel — a failed lookup is not an empty one", () => {
     const submit = vi
       .spyOn(coursesService, "submitAssignment")
       .mockRejectedValue(Object.assign(new Error("Network Error"), { isAxiosError: true }))
-    render(<AssignmentPanel chapterId="ch-1" assignmentId="a-1" aiPolicy="ai_open" />, { wrapper: Wrapper })
+    render(<AssignmentPanel courseId="c-1" chapterId="ch-1" assignmentId="a-1" aiPolicy="ai_open" />, { wrapper: Wrapper })
 
     const box = (await screen.findAllByRole("textbox"))[0]!
     await userEvent.type(box, "Переделал")

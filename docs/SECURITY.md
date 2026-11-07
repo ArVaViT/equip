@@ -369,6 +369,27 @@ director and anon; the `/img/` proxy (`frontend/vercel.json`,
 the infrastructure exists and every logo stays empty, like a new profile's
 photo (decided 2026-10-23).
 
+**`submissions` is the fifth bucket** (2026-11-07,
+`20261107030001_a_submission_can_carry_a_file`): private, 50 MB, what a
+phone produces -- `image/*` (SVG refused by the INSERT policy), `audio/*`,
+the three video containers, PDF, Word, OpenDocument text, plain text. One
+key shape, `<course_id>/<assignment_id>/<student_id>/<ms>-<safe_name>`, and
+the INSERT policy requires exactly those three folders. A student with an
+open account (`is_open_account()`) adds into their own folder (third
+segment = `auth.uid()`) of a course they are enrolled in (first segment in
+their `enrollments`), reads their own folder, and deletes a file of theirs
+that no `assignment_submissions` row names yet -- the subquery runs under
+the student's own SELECT policy on that table. The course's owner
+(`courses.created_by`, behind `is_open_account()`) and platform staff read;
+nobody else reads, nobody but the student writes, and there is no UPDATE
+policy. `POST /assignments/{id}/submit` refuses a `file.path` outside the
+caller's own folder for that assignment, and the row stores
+`{file_bucket, file_path, file_name}` (all three or none, by CHECK); the
+client signs a URL on every click and nothing secret-dependent is stored.
+Section 22 of `rls_assertions.sql` probes the bucket as a student, another
+student, the course owner, a director who owns no course, staff, a closed
+student and anon.
+
 ## Dependency scanning
 
 - Backend: `pip-audit --requirement requirements.txt --strict` runs in

@@ -382,6 +382,9 @@ def assignment_work(db: Session, teacher_id: UUID, assignment_id: UUID) -> list[
             "submitted_at": submission.submitted_at,
             "content": submission.content,
             "file_url": submission.file_url,
+            "file_bucket": submission.file_bucket,
+            "file_path": submission.file_path,
+            "file_name": submission.file_name,
             # The queue is where the teacher meets the work; it is the one
             # place «handed in late» must not be a click away (2026-10-03).
             "is_late": is_late(first.get(str(submission.student_id), submission.submitted_at), due_date),

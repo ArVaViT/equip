@@ -186,10 +186,13 @@ function TextBlockRender({ html }: { html: string }) {
 
 const BlockRenderer = memo(function BlockRenderer({
   block,
+  courseId,
   onProgressChanged,
   onAssignmentCountLoaded,
 }: {
   block: ChapterBlock
+  /** The course the chapter belongs to: a handed-in file is filed under it. */
+  courseId: string
   onProgressChanged?: () => void
   onAssignmentCountLoaded?: (count: number) => void
 }) {
@@ -232,6 +235,7 @@ const BlockRenderer = memo(function BlockRenderer({
     case "assignment":
       return block.assignment_id ? (
         <AssignmentPanel
+          courseId={courseId}
           chapterId={block.chapter_id}
           assignmentId={block.assignment_id}
           onSubmitted={onProgressChanged}
@@ -314,6 +318,7 @@ function FileBlockLink({
 export function ChapterBodyBlocks({
   loading,
   blocks,
+  courseId,
   loadError,
   onRetry,
   onProgressChanged,
@@ -321,6 +326,7 @@ export function ChapterBodyBlocks({
 }: {
   loading: boolean
   blocks: ChapterBlock[]
+  courseId: string
   loadError: boolean
   onRetry: () => void
   onProgressChanged?: () => void
@@ -379,6 +385,7 @@ export function ChapterBodyBlocks({
         >
           <BlockRenderer
             block={block}
+            courseId={courseId}
             onProgressChanged={onProgressChanged}
             onAssignmentCountLoaded={onAssignmentCountLoaded}
           />
@@ -1011,6 +1018,7 @@ export default function ChapterView() {
           <ChapterBodyBlocks
             loading={loadingBlocks}
             blocks={chapterBlocks}
+            courseId={courseId}
             loadError={blocksLoadError}
             onRetry={retryBlocks}
             onProgressChanged={refreshCompletion}
@@ -1026,6 +1034,7 @@ export default function ChapterView() {
 
         {chapterType === "assignment" && (
           <AssignmentPanel
+            courseId={courseId}
             chapterId={chapter.id}
             pageTitle={orNotTranslated(t, chapter.title)}
             onSubmitted={refreshCompletion}

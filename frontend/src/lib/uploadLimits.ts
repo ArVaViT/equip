@@ -67,6 +67,33 @@ export const COURSE_MATERIALS: BucketSpec = {
 }
 
 /**
+ * Private bucket: what a student hands in -- a photo of the notebook, a
+ * voice memo, a PDF, a Word file, a short video. `image/*` and `audio/*`
+ * are the bucket's own wildcards (`20261107030001_a_submission_can_carry_a_file.sql`):
+ * a phone's recorder says `audio/x-m4a`, `audio/aac`, `audio/amr` or
+ * `audio/3gpp` depending on the make, and every one is the sermon. The
+ * picker lists no extensions: on a phone, a bare `accept` of types is what
+ * offers the camera, the gallery and the recorder side by side.
+ */
+export const SUBMISSIONS: BucketSpec = {
+  maxBytes: 50 * MB,
+  mimeTypes: [
+    "image/*",
+    "audio/*",
+    "video/mp4",
+    "video/quicktime",
+    "video/webm",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.oasis.opendocument.text",
+    "text/plain",
+  ],
+  extensions: [],
+  formatLabels: ["JPG", "PNG", "MP3", "M4A", "MP4", "PDF", "DOC", "DOCX", "ODT", "TXT"],
+}
+
+/**
  * The `accept` attribute for a file input: the bucket's MIME types plus
  * their extensions. Both, because pickers disagree — macOS matches on
  * MIME, Windows on extension, and iOS uses the MIME list to decide whether
@@ -125,6 +152,17 @@ const MIME_BY_EXTENSION: Readonly<Record<string, string>> = {
   png: "image/png",
   webp: "image/webp",
   gif: "image/gif",
+  heic: "image/heic",
+  heif: "image/heif",
+  aac: "audio/aac",
+  amr: "audio/amr",
+  "3gp": "audio/3gpp",
+  flac: "audio/flac",
+  opus: "audio/ogg",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+  odt: "application/vnd.oasis.opendocument.text",
 }
 
 /** The part of a file we need to reason about a type; `File` satisfies it. */
@@ -150,9 +188,24 @@ export function resolveContentType(file: FileLike, spec: BucketSpec): string | n
     candidates.push(MIME_BY_EXTENSION[extensionOf(file.name)])
   }
   for (const type of candidates) {
-    if (type && spec.mimeTypes.includes(type)) return type
+    if (type && bucketAccepts(type, spec)) return type
   }
   return null
+}
+
+/**
+ * The bucket's own comparison: an exact entry, or a `type/*` wildcard
+ * matching the first half (storage-api `validateMimeType`). Only the
+ * `submissions` bucket carries wildcards today; the others compare exactly.
+ * SVG is kept out of a wildcard image match on purpose: its INSERT policy
+ * refuses it, so the client refuses it first.
+ */
+function bucketAccepts(type: string, spec: BucketSpec): boolean {
+  if (type === "image/svg+xml") return spec.mimeTypes.includes(type)
+  const slash = type.indexOf("/")
+  if (slash === -1) return false
+  const wildcard = `${type.slice(0, slash)}/*`
+  return spec.mimeTypes.includes(type) || spec.mimeTypes.includes(wildcard)
 }
 
 /**

@@ -2190,4 +2190,375 @@ BEGIN
   RAISE NOTICE 'OK: organization-logos has three authenticated-only policies, no UPDATE, the avatars bucket''s limits, and an INSERT that asks the type';
 END $$;
 
+-- ---------------------------------------------------------------------
+-- 22) A submission can carry a file (20261107030001).
+--
+-- `submissions` is a private bucket with one key shape:
+-- `<course>/<assignment>/<student>/<file>`. A student with an open account
+-- adds into their own folder of a course they attend, reads their own
+-- folder, and removes a file of theirs that no submission names yet. The
+-- owner of the course and platform staff read; nobody else reads and
+-- nobody but the student writes. No UPDATE policy. A closed account
+-- touches nothing. No student reads another student's work.
+--
+-- The stand-ins of storage.objects (section 19) and storage.buckets
+-- (section 21) are reused. The people: the student (enrolled in M), the
+-- other student from section 1 (enrolled nowhere), S (owner of M), the
+-- director of A (owns no course), the open administrator, and anon.
+-- An assignment in M and one submission row of the student's, naming one
+-- of their files, so the DELETE policy has a handed-in file to refuse.
+-- ---------------------------------------------------------------------
+
+RESET ROLE;
+
+\ir ../migrations/20261107030001_a_submission_can_carry_a_file.sql
+
+INSERT INTO public.chapters (id, title, course_id, chapter_type)
+VALUES ('chapter-m-sermon', 'Sermon', 'course-m-materials', 'assignment');
+INSERT INTO public.assignments (id, chapter_id)
+VALUES ('a5a50000-0000-4000-8000-000000000001', 'chapter-m-sermon');
+
+INSERT INTO storage.objects (bucket_id, name, owner_id, metadata) VALUES
+  ('submissions', 'course-m-materials/a5a50000-0000-4000-8000-000000000001/11111111-1111-1111-1111-111111111111/1-handed-in.pdf',
+   '11111111-1111-1111-1111-111111111111', '{"mimetype": "application/pdf"}'),
+  ('submissions', 'course-m-materials/a5a50000-0000-4000-8000-000000000001/11111111-1111-1111-1111-111111111111/2-chosen.jpg',
+   '11111111-1111-1111-1111-111111111111', '{"mimetype": "image/jpeg"}'),
+  ('submissions', 'course-m-materials/a5a50000-0000-4000-8000-000000000001/22222222-2222-2222-2222-222222222222/1-other.pdf',
+   '22222222-2222-2222-2222-222222222222', '{"mimetype": "application/pdf"}'),
+  ('submissions', 'course-a-institute/a5a50000-0000-4000-8000-000000000002/11111111-1111-1111-1111-111111111111/1-elsewhere.pdf',
+   '11111111-1111-1111-1111-111111111111', '{"mimetype": "application/pdf"}');
+
+INSERT INTO public.assignment_submissions (assignment_id, student_id, file_bucket, file_path, file_name)
+VALUES ('a5a50000-0000-4000-8000-000000000001', :'student', 'submissions',
+        'course-m-materials/a5a50000-0000-4000-8000-000000000001/11111111-1111-1111-1111-111111111111/1-handed-in.pdf',
+        'Sermon.pdf');
+
+-- The row: three facts or none.
+DO $$
+BEGIN
+  INSERT INTO public.assignment_submissions (assignment_id, student_id, file_path)
+  VALUES ('a5a50000-0000-4000-8000-000000000001', '11111111-1111-1111-1111-111111111111', 'course-m-materials/x/y/z.pdf');
+  RAISE EXCEPTION 'BROKEN: a submission names a file path without its bucket and name';
+EXCEPTION
+  WHEN check_violation THEN RAISE NOTICE 'OK: a submission carries a file as three facts or none';
+END $$;
+
+-- The open administrator: every file.
+SET request.jwt.claim.sub = '77777777-7777-7777-7777-777777777777';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'submissions';
+  IF n <> 4 THEN
+    RAISE EXCEPTION 'BROKEN: an administrator reads % of the 4 submission files', n;
+  END IF;
+  RAISE NOTICE 'OK: an open administrator reads every submission file';
+END $$;
+
+-- The owner of M: the files handed in to M, from every student, and nothing
+-- from another course. Reads only.
+RESET ROLE;
+SET request.jwt.claim.sub = '55555555-5555-5555-5555-555555555555';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'submissions';
+  IF n <> 3 THEN
+    RAISE EXCEPTION 'BROKEN: the owner of M reads % submission files, expected M''s 3', n;
+  END IF;
+  SELECT count(*) INTO n FROM storage.objects WHERE name LIKE 'course-a-institute/%' AND bucket_id = 'submissions';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a teacher reads the submissions of a course they do not own';
+  END IF;
+  DELETE FROM storage.objects WHERE bucket_id = 'submissions'
+    AND name = 'course-m-materials/a5a50000-0000-4000-8000-000000000001/22222222-2222-2222-2222-222222222222/1-other.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a teacher removes a student''s handed-in file';
+  END IF;
+  UPDATE storage.objects SET name = name WHERE bucket_id = 'submissions';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a teacher changes a submission file (% rows) -- the bucket has an UPDATE policy', n;
+  END IF;
+  RAISE NOTICE 'OK: the owner of M reads the files handed in to M and changes none';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('submissions', 'course-m-materials/a5a50000-0000-4000-8000-000000000001/55555555-5555-5555-5555-555555555555/1-by-teacher.pdf',
+          '55555555-5555-5555-5555-555555555555', '{"mimetype": "application/pdf"}');
+  RAISE EXCEPTION 'SECURITY HOLE: a teacher who is not enrolled uploads into the submissions bucket';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a teacher uploads nothing into the submissions bucket';
+END $$;
+
+-- The director of A: directs a school, owns no course, attends none. Nothing.
+RESET ROLE;
+SET request.jwt.claim.sub = '33333333-3333-3333-3333-333333333333';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'submissions';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a director who owns no course reads % submission file(s)', n;
+  END IF;
+  RAISE NOTICE 'OK: a director who owns no course reads no submission file';
+END $$;
+
+-- The other student: their own folder, enrolled or not, and nobody else's.
+RESET ROLE;
+SET request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'submissions';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: a student reads % submission files, expected their own 1', n;
+  END IF;
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'submissions' AND name LIKE '%/11111111-1111-1111-1111-111111111111/%';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a student reads another student''s handed-in work';
+  END IF;
+  RAISE NOTICE 'OK: a student reads their own submission files and no one else''s';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('submissions', 'course-m-materials/a5a50000-0000-4000-8000-000000000001/22222222-2222-2222-2222-222222222222/2-not-enrolled.pdf',
+          '22222222-2222-2222-2222-222222222222', '{"mimetype": "application/pdf"}');
+  RAISE EXCEPTION 'SECURITY HOLE: a student uploads into a course they are not enrolled in';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: an upload into a course one does not attend is refused';
+END $$;
+
+-- The student: own folder of M -- reads, adds, removes what is not yet
+-- handed in; the handed-in file stays.
+RESET ROLE;
+SET request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'submissions';
+  IF n <> 3 THEN
+    RAISE EXCEPTION 'BROKEN: the student reads % submission files, expected their own 3', n;
+  END IF;
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'submissions' AND name LIKE '%/22222222-2222-2222-2222-222222222222/%';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a student reads another student''s handed-in work';
+  END IF;
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('submissions', 'course-m-materials/a5a50000-0000-4000-8000-000000000001/11111111-1111-1111-1111-111111111111/3-memo.m4a',
+          '11111111-1111-1111-1111-111111111111', '{"mimetype": "audio/x-m4a"}');
+  UPDATE storage.objects SET name = name
+   WHERE name = 'course-m-materials/a5a50000-0000-4000-8000-000000000001/11111111-1111-1111-1111-111111111111/3-memo.m4a';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a submission file is renamed in place -- the bucket has an UPDATE policy (% rows)', n;
+  END IF;
+  DELETE FROM storage.objects
+   WHERE name = 'course-m-materials/a5a50000-0000-4000-8000-000000000001/11111111-1111-1111-1111-111111111111/3-memo.m4a';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: the student cannot remove the file they just chose (% rows)', n;
+  END IF;
+  DELETE FROM storage.objects
+   WHERE name = 'course-m-materials/a5a50000-0000-4000-8000-000000000001/11111111-1111-1111-1111-111111111111/2-chosen.jpg';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'BROKEN: the student cannot remove a file no submission names (% rows)', n;
+  END IF;
+  DELETE FROM storage.objects
+   WHERE name = 'course-m-materials/a5a50000-0000-4000-8000-000000000001/11111111-1111-1111-1111-111111111111/1-handed-in.pdf';
+  GET DIAGNOSTICS n = ROW_COUNT;
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a student removes a file their submission names (% rows)', n;
+  END IF;
+  RAISE NOTICE 'OK: the student reads, adds to and tidies their own folder, and the handed-in file stays';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('submissions', 'course-m-materials/a5a50000-0000-4000-8000-000000000001/22222222-2222-2222-2222-222222222222/2-planted.pdf',
+          '11111111-1111-1111-1111-111111111111', '{"mimetype": "application/pdf"}');
+  RAISE EXCEPTION 'SECURITY HOLE: a student uploads into another student''s folder';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: an upload into another student''s folder is refused';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('submissions', 'course-a-institute/a5a50000-0000-4000-8000-000000000002/11111111-1111-1111-1111-111111111111/2-planted.pdf',
+          '11111111-1111-1111-1111-111111111111', '{"mimetype": "application/pdf"}');
+  RAISE EXCEPTION 'SECURITY HOLE: a student uploads into their folder of a course they do not attend';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: an upload into a course one does not attend is refused, own folder or not';
+END $$;
+
+-- The key has exactly three folders: not two, not four.
+DO $$
+DECLARE c record; ok boolean; holes text := '';
+BEGIN
+  FOR c IN SELECT * FROM (VALUES
+    ('course-m-materials/11111111-1111-1111-1111-111111111111/x.pdf'),
+    ('course-m-materials/a5a50000-0000-4000-8000-000000000001/11111111-1111-1111-1111-111111111111/deeper/x.pdf'),
+    ('11111111-1111-1111-1111-111111111111/x.pdf'),
+    ('x.pdf')
+  ) AS t(key) LOOP
+    BEGIN
+      INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+      VALUES ('submissions', c.key, '11111111-1111-1111-1111-111111111111', '{"mimetype": "application/pdf"}');
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'rollback';
+    EXCEPTION
+      WHEN insufficient_privilege THEN ok := false;
+      WHEN raise_exception THEN ok := true;
+    END;
+    IF ok THEN holes := holes || ' ' || c.key; END IF;
+  END LOOP;
+  IF holes <> '' THEN RAISE EXCEPTION 'SECURITY HOLE: a submission key of the wrong depth is admitted:%', holes; END IF;
+  RAISE NOTICE 'OK: a submission key is exactly <course>/<assignment>/<student>/<file>';
+END $$;
+
+-- The type, in the own folder: any image but SVG, any audio, the three
+-- video containers, PDF, Word, OpenDocument text, plain text -- and nothing
+-- else, however the row arrives. Each probe is the INSERT Storage tests,
+-- rolled back.
+DO $$
+DECLARE c record; ok boolean; holes text := ''; broken text := '';
+BEGIN
+  FOR c IN SELECT * FROM (VALUES
+    ('photo.jpg', 'image/jpeg', true),
+    ('photo.heic', 'image/heic', true),
+    ('memo.amr', 'audio/amr', true),
+    ('memo.3gp', 'audio/3gpp', true),
+    ('clip.mov', 'video/quicktime', true),
+    ('notes.pdf', 'application/pdf', true),
+    ('notes.odt', 'application/vnd.oasis.opendocument.text', true),
+    ('notes.txt', 'text/plain', true),
+    ('x.svg', 'image/svg+xml', false),
+    ('x.html', 'text/html', false),
+    ('x/.emptyFolderPlaceholder', 'application/xhtml+xml', false),
+    ('x.js', 'text/javascript', false),
+    ('x.zip', 'application/zip', false),
+    ('x', NULL, false)
+  ) AS t(file, mime, want) LOOP
+    BEGIN
+      INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+      VALUES ('submissions', 'course-m-materials/a5a50000-0000-4000-8000-000000000001/11111111-1111-1111-1111-111111111111/' || c.file,
+              '11111111-1111-1111-1111-111111111111',
+              CASE WHEN c.mime IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('mimetype', c.mime) END);
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = 'rollback';
+    EXCEPTION
+      WHEN insufficient_privilege THEN ok := false;
+      WHEN raise_exception THEN ok := true;
+    END;
+    IF ok AND NOT c.want THEN holes := holes || ' ' || coalesce(c.mime, '(no type)'); END IF;
+    IF c.want AND NOT ok THEN broken := broken || ' ' || c.mime; END IF;
+  END LOOP;
+  IF holes <> '' THEN RAISE EXCEPTION 'SECURITY HOLE: a student adds a submission file of type%', holes; END IF;
+  IF broken <> '' THEN RAISE EXCEPTION 'BROKEN: a student cannot add a submission file of type%', broken; END IF;
+  RAISE NOTICE 'OK: the submissions bucket takes what a phone produces and nothing script-bearing';
+END $$;
+
+-- Switched off: the student keeps the enrollment, the folder and the
+-- session; reads and writes nothing.
+RESET ROLE;
+UPDATE public.profiles SET deactivated_at = now() WHERE id = '11111111-1111-1111-1111-111111111111';
+SET request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+SET ROLE authenticated;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'submissions';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: a closed student reads % of their submission files', n;
+  END IF;
+  RAISE NOTICE 'OK: a closed student reads no submission file';
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO storage.objects (bucket_id, name, owner_id, metadata)
+  VALUES ('submissions', 'course-m-materials/a5a50000-0000-4000-8000-000000000001/11111111-1111-1111-1111-111111111111/4-closed.pdf',
+          '11111111-1111-1111-1111-111111111111', '{"mimetype": "application/pdf"}');
+  RAISE EXCEPTION 'SECURITY HOLE: a closed student uploads a submission file';
+EXCEPTION
+  WHEN insufficient_privilege THEN RAISE NOTICE 'OK: a closed student''s upload is refused';
+END $$;
+
+RESET ROLE;
+UPDATE public.profiles SET deactivated_at = NULL WHERE id = '11111111-1111-1111-1111-111111111111';
+
+-- Anonymous: zero rows, no error.
+SET request.jwt.claim.sub = '';
+SET ROLE anon;
+
+DO $$
+DECLARE n int;
+BEGIN
+  SELECT count(*) INTO n FROM storage.objects WHERE bucket_id = 'submissions';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: anon reads % submission file(s)', n;
+  END IF;
+  RAISE NOTICE 'OK: anon reads no submission file, without an error';
+END $$;
+
+-- The shape of what the migration left.
+RESET ROLE;
+
+DO $$
+DECLARE n int; b record;
+BEGIN
+  SELECT count(*) INTO n FROM pg_policies
+  WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND policyname LIKE 'submissions\_%';
+  IF n <> 4 THEN
+    RAISE EXCEPTION 'BROKEN: % submissions policies, expected 4', n;
+  END IF;
+  SELECT count(*) INTO n FROM pg_policies
+  WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND cmd = 'UPDATE'
+    AND (coalesce(qual, '') || coalesce(with_check, '')) LIKE '%''submissions''%';
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: the submissions bucket has an UPDATE policy (a move goes through it)';
+  END IF;
+  SELECT count(*) INTO n FROM pg_policies
+  WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND policyname LIKE 'submissions\_%'
+    AND roles <> ARRAY['authenticated']::name[];
+  IF n <> 0 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: % submissions policies not limited to authenticated', n;
+  END IF;
+  SELECT * INTO b FROM storage.buckets WHERE id = 'submissions';
+  IF b IS NULL OR b.public OR b.file_size_limit <> 52428800
+     OR NOT (b.allowed_mime_types @> ARRAY['image/*', 'audio/*', 'application/pdf']) THEN
+    RAISE EXCEPTION 'BROKEN: the submissions bucket is not private, 50 MB, images, audio and PDF';
+  END IF;
+  SELECT count(*) INTO n FROM pg_policies
+  WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND policyname = 'submissions_student_insert'
+    AND with_check LIKE '%''mimetype''%'
+    AND with_check LIKE '%image/svg+xml%'
+    AND with_check LIKE '%''application/pdf''%';
+  IF n <> 1 THEN
+    RAISE EXCEPTION 'SECURITY HOLE: submissions_student_insert does not ask metadata->>''mimetype'' and keep SVG out';
+  END IF;
+  RAISE NOTICE 'OK: submissions has four authenticated-only policies, no UPDATE, a private 50 MB bucket, and an INSERT that asks the type';
+END $$;
+
 SELECT 'RLS policy assertions passed' AS result;
