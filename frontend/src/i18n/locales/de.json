@@ -946,7 +946,8 @@
       "validation_failed": "Etwas an Ihrer Eingabe stimmt nicht.",
       "legal_consent_required": "Bitte akzeptieren Sie die aktuellen Nutzungsbedingungen und die Datenschutzerklärung, bevor Sie etwas ändern.",
       "legal_document_changed": "Dieses Dokument hat sich geändert. Bitte laden Sie die Seite neu und lesen Sie es erneut.",
-      "grade_sheet_work_unmarked": "Es gibt noch unbewertete Arbeiten. Die Notenliste lässt sich abschließen, sobald die Lehrkraft des Kurses sie bewertet oder die Personen davon befreit hat."
+      "grade_sheet_work_unmarked": "Es gibt noch unbewertete Arbeiten. Die Notenliste lässt sich abschließen, sobald die Lehrkraft des Kurses sie bewertet oder die Personen davon befreit hat.",
+      "grading_already_marked": "Diese Arbeit wurde bereits bewertet und deshalb so belassen."
     },
     "byStatus": {
       "400": "Die Anfrage konnte nicht verarbeitet werden. Prüfen Sie Ihre Eingaben.",
@@ -3242,23 +3243,44 @@
     "yourGrid": "So wurde Ihre Arbeit bewertet"
   },
   "grading": {
-    "title": "Bewertungsliste",
-    "subtitle": "Nach Aufgabe gruppiert: dreißig Antworten auf eine Frage hintereinander, nicht dreißig ganze Arbeiten.",
-    "emptyTitle": "Nichts offen",
-    "emptyBody": "Sie sind auf dem aktuellen Stand.",
-    "waitingSince": "Das Älteste wartet seit {{when}}",
-    "mark": "Bewerten",
-    "openCourse": "Kurs öffnen",
-    "backToQueue": "Zurück zur Liste",
-    "groupDoneTitle": "Diese Aufgabe ist bewertet",
-    "saveAndNext": "Speichern und weiter",
-    "saveAndFinish": "Speichern und beenden",
-    "feedbackPlaceholder": "Was gelungen ist, was zu ändern ist und wie",
+    "title": "Zu bewerten",
+    "emptyTitle": "Alles bewertet",
+    "start": "Bewertung beginnen",
+    "toList": "Zur Liste",
+    "position": "{{n}} von {{total}}",
+    "markLabel": "Bewertung",
+    "back": "Zurück",
+    "next": "Weiter",
+    "skip": "Überspringen",
+    "finish": "Fertig",
+    "toDashboard": "Zur Startseite",
+    "feedbackPlaceholder": "Ein Wort an den Studenten — freiwillig",
+    "feedbackAria": "Kommentar für den Studenten",
     "points": "Punkte",
     "outOf": "von {{max}}",
-    "gradeAria": "Note",
-    "loadFailed": "Die Liste konnte nicht geladen werden",
-    "saveFailed": "Speichern nicht möglich"
+    "gradeAria": "Bewertung",
+    "loadFailed": "Die Arbeiten konnten nicht geladen werden",
+    "saveFailed": "Speichern nicht möglich",
+    "waitingCount_one": "{{count}} Arbeit wartet",
+    "waitingCount_other": "{{count}} Arbeiten warten",
+    "markedNow_one": "Gerade bewertet: {{count}}",
+    "markedNow_other": "Gerade bewertet: {{count}}",
+    "otherCourses_one": "{{count}} weitere in anderen Kursen",
+    "otherCourses_other": "{{count}} weitere in anderen Kursen",
+    "commentBank": {
+      "coveredWell": "Das Thema ist gut entfaltet.",
+      "clearStructure": "Klare Gliederung.",
+      "addScripture": "Fügen Sie Bibelstellen hinzu.",
+      "moreExamples": "Es braucht mehr Beispiele."
+    },
+    "hint": {
+      "allCriteria": "Wählen Sie für jedes Kriterium eine Stufe: {{done}} von {{total}}",
+      "needScore": "Geben Sie eine Bewertung",
+      "notMore": "Nicht mehr als {{max}} Punkte"
+    },
+    "alreadyMarked": "Diese Arbeit wurde bereits bewertet",
+    "moreAfter_one": "Danach wartet noch {{count}} — sie kommt als Nächstes",
+    "moreAfter_other": "Danach warten noch {{count}} — sie kommen als Nächstes"
   },
   "declaration": {
     "heading": "Bevor Sie einreichen",

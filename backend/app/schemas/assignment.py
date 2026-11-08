@@ -171,3 +171,7 @@ class GradeSubmissionRequest(RequestModel):
     # but writing it would trip the CHECK on Postgres and return a 409 to the
     # teacher. ``returned`` is what the UI sends for "return for revision".
     status: Literal["graded", "returned"] = "graded"
+    #: Sent by the marking run on work it believes is still waiting. If it
+    #: was marked or returned meanwhile the request is refused (409) instead
+    #: of overwriting somebody else's judgement.
+    expect_waiting: bool = False

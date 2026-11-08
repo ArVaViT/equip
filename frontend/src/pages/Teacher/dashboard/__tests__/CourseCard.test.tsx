@@ -60,14 +60,14 @@ describe("CourseCard — in the page outline", () => {
 })
 
 describe("CourseCard — work waiting on the teacher", () => {
-  it("says how much is waiting and links straight to the gradebook", async () => {
+  it("says how much is waiting and opens that course's marking", async () => {
     await i18n.changeLanguage("ru")
     renderCard(3)
 
     // The header count answers "do I owe anyone anything today". This answers
     // "where" — without the link the teacher still has to hunt for the course.
     const link = screen.getByRole("link", { name: /на проверку/i })
-    expect(link).toHaveAttribute("href", "/teacher/courses/c-1/gradebook")
+    expect(link).toHaveAttribute("href", "/teacher/review?course=c-1")
   })
 
   it("says nothing when nothing is waiting", async () => {

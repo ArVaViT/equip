@@ -6,8 +6,7 @@ import type {
   PendingGrading,
   MyCourseGrade,
   GradeHistoryEntry,
-  WaitingGroup,
-  WaitingSubmission,
+  WaitingRun,
   RetakeRequest,
   RetakeRequestResult,
   GradingConfig,
@@ -162,16 +161,11 @@ export const gradesService = {
     return response.data
   },
 
-  /** What is waiting on this teacher, gathered by the item it answers. */
-  async getQueue(): Promise<WaitingGroup[]> {
-    const response = await api.get<WaitingGroup[]>("/grades/queue")
-    return response.data
-  },
-
-  /** The work waiting on one assignment, oldest first. Never cached: a teacher
-   *  marking down the list must not be handed a stale copy of it. */
-  async getAssignmentQueue(assignmentId: string): Promise<WaitingSubmission[]> {
-    const response = await api.get<WaitingSubmission[]>(`/grades/queue/assignment/${assignmentId}`)
+  /** Everything waiting on this teacher, one piece at a time, across courses —
+   *  the same set `getPendingGrading` counts. Never cached: a teacher marking
+   *  down the list must not be handed a stale copy of it. */
+  async getRun(): Promise<WaitingRun> {
+    const response = await api.get<WaitingRun>("/grades/queue/work")
     return response.data
   },
 

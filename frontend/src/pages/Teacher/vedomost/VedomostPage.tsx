@@ -159,7 +159,7 @@ function VedomostPage() {
                     <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning-ink" strokeWidth={1.75} aria-hidden />
                     <div>
                       <p>{t("vedomost.unmarked.body", { count: unmarked })}</p>
-                      <Link to="/teach/grading" className="mt-1.5 inline-block underline underline-offset-2 hover:text-ink">
+                      <Link to={`/teacher/review?course=${courseId}`} className="mt-1.5 inline-block underline underline-offset-2 hover:text-ink">
                         {t("vedomost.unmarked.openQueue")}
                       </Link>
                     </div>

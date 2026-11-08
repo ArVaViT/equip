@@ -35,7 +35,9 @@ export default function ScrollToTop({ aboveTabBar = false }: { aboveTabBar?: boo
     });
   };
 
-  if (guestHome) return null;
+  // Not in the marking queue either: its own bar of «Назад / Дальше» is
+  // fixed to the bottom where this button would sit, on top of «Дальше».
+  if (guestHome || pathname === "/teacher/review") return null;
 
   return (
     <button

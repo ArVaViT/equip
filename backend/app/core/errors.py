@@ -145,6 +145,12 @@ class ErrorCode(enum.StrEnum):
     would sit under a question it no longer fits. Create a new question
     instead."""
 
+    GRADING_ALREADY_MARKED = "grading.already_marked"
+    """The marking run asked to mark work it expected to be waiting, and it
+    no longer is: somebody marked or returned it meanwhile. Refused rather
+    than overwritten — the other judgement may be the one the student has
+    already read."""
+
     QUIZ_HAS_ATTEMPTS = "quiz.has_attempts"
     """Deleting the quiz would take every attempt on it along — the cascade
     on ``quiz_attempts.quiz_id`` is the whole class's graded work. Refused

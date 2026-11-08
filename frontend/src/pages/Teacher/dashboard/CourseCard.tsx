@@ -115,7 +115,7 @@ export function CourseCard({
             </Badge>
             {pendingGrading > 0 && (
               <Link
-                to={`/teacher/courses/${course.id}/gradebook`}
+                to={`/teacher/review?course=${course.id}`}
                 className="relative z-10 shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
               >
                 {/* The number on the dashboard header answers "do I owe anyone

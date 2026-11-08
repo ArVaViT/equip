@@ -36,6 +36,7 @@ export function matchTitleKey(pathname: string): string | null {
     "/verify": "verify.title",
     "/unsubscribe": "unsubscribe.title",
     "/invite/accept": "invite.heading",
+    "/teacher/review": "grading.title",
     "/teach/grading": "grading.title",
     "/daily-challenge/archive": "dailyChallenge.archive.title",
     "/organizations": "organizations.title",

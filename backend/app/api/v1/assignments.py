@@ -44,7 +44,7 @@ from app.services.domain_access import course_source_locale_for_chapter as _cour
 from app.services.late_work import first_handed_in, is_late
 from app.services.rubric_service import sync_assignment_max_score
 from app.services.submission_files import key_is_in_own_folder, uploaded_by
-from app.services.submission_grading import apply_grade
+from app.services.submission_grading import apply_grade, refuse_if_no_longer_waiting
 from app.services.translation.pipeline_hooks import reconcile_entity_if_course_published
 from app.services.translation.resolve_for_display import (
     localize_assignment_rows,
@@ -566,6 +566,7 @@ def grade_submission(
         )
     assignment = _get_assignment_or_404(db, submission.assignment_id)
     verify_chapter_owner(db, assignment.chapter_id, teacher)
+    refuse_if_no_longer_waiting(submission, expect_waiting=data.expect_waiting)
 
     if data.grade > assignment.max_score:
         raise equip_error(

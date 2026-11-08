@@ -108,7 +108,7 @@ describe("VedomostPage", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(i18n.t("vedomost.unmarked.body", { count: 3 }))
     expect(screen.getByRole("link", { name: i18n.t("vedomost.unmarked.openQueue") })).toHaveAttribute(
       "href",
-      "/teach/grading",
+      "/teacher/review?course=c1",
     )
     expect(screen.getByRole("button", { name: i18n.t("vedomost.close") })).toBeEnabled()
   })
