@@ -190,6 +190,7 @@ def clone_course(
         quiz_weight=original.quiz_weight,
         assignment_weight=original.assignment_weight,
         academic_hours=original.academic_hours,
+        with_honors=original.with_honors,
         # Who may see it and what it allows travel too: a closed course
         # cloned for the next cohort came out public, and published that way
         # with nobody told (2026-10-03).

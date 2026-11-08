@@ -139,6 +139,9 @@ export default function VerifyCertificatePage() {
                     {t("verify.courseLabel")}
                   </dt>
                   <dd className="mt-1 text-ink">{result.course_title}</dd>
+                  {result.with_honors && (
+                    <dd className="mt-0.5 font-serif italic text-accent">{t("certificates.card.withHonors")}</dd>
+                  )}
                 </div>
                 {result.issued_at && (
                   <div>

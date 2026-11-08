@@ -50,6 +50,7 @@ from app.schemas.grade import (
     GradingConfigUpdate,
     GradingSchemeResponse,
     GradingSchemeUpdate,
+    HonorsUpdate,
     MyCourseGrade,
     PendingGradingSummary,
     RetakeRequest,
@@ -540,6 +541,56 @@ def get_grading_scheme(
         grading_scheme=scheme,
         pass_threshold=course.pass_threshold,
         bands=effective_bands(settings, scheme),
+        with_honors=course.with_honors,
+    )
+
+
+@router.put("/course/{course_id}/honors", response_model=GradingSchemeResponse)
+def update_honors(
+    course_id: str,
+    data: HonorsUpdate,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db),
+):
+    """Turn «with honors» on or off for a course — the teacher's call (Q3).
+
+    Unlike the scheme, this is not an institutional decision: it does not
+    change what any grade means, only whether the top band is named on the
+    certificate. Certificates already issued keep what they were issued with
+    (the flag is frozen onto each at approval), so switching it is a decision
+    about the future only.
+
+    Refused for a scheme without bands — there is no top band to honour.
+    """
+    course = verify_course_in_own_school(db, course_id, teacher)
+    settings = get_org_settings(db, course.organization_id)
+    scheme = course.grading_scheme or settings.default_grading_scheme
+    bands = effective_bands(settings, scheme)
+    if data.with_honors and not bands:
+        raise equip_error(
+            ErrorCode.VALIDATION_FAILED,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            message="«With honors» needs a scheme with grade bands (letter or five-point).",
+            context={"resource_type": "course", "resource_id": course_id, "grading_scheme": scheme},
+        )
+    previous = course.with_honors
+    course.with_honors = data.with_honors
+    db.commit()
+    db.refresh(course)
+    if previous != data.with_honors:
+        log_action(
+            db,
+            user_id=teacher.id,
+            action="with_honors_changed",
+            resource_type="course",
+            resource_id=course_id,
+            details={"previous": previous, "new": data.with_honors},
+        )
+    return GradingSchemeResponse(
+        grading_scheme=scheme,
+        pass_threshold=course.pass_threshold,
+        bands=bands,
+        with_honors=course.with_honors,
     )
 
 
@@ -614,6 +665,15 @@ def update_grading_scheme(
     course.grading_scheme = data.grading_scheme
     course.pass_threshold = data.pass_threshold
 
+    # «With honors» names the top band. A scheme without bands has none, so
+    # the switch goes off with the change rather than sitting on silently,
+    # ready to come back on its own if the school ever returns to letters.
+    honors_cleared = course.with_honors and not effective_bands(
+        get_org_settings(db, course.organization_id), data.grading_scheme
+    )
+    if honors_cleared:
+        course.with_honors = False
+
     # Quizzes carry their own pass line, inherited from the course's when they
     # were written (D3). Moving the course's leaves them where they were, and
     # the drift is invisible from here: raise the line and a student clears
@@ -641,6 +701,7 @@ def update_grading_scheme(
                 "grading_scheme": data.grading_scheme,
                 "pass_threshold": float(data.pass_threshold),
             },
+            "with_honors_cleared": honors_cleared,
             "reason": data.reason,
             "quizzes_off_the_new_line": drifted,
         },
@@ -651,6 +712,7 @@ def update_grading_scheme(
         grading_scheme=course.grading_scheme,
         pass_threshold=course.pass_threshold,
         bands=effective_bands(settings, course.grading_scheme),
+        with_honors=course.with_honors,
     )
 
 

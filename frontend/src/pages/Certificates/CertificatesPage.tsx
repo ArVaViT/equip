@@ -175,9 +175,14 @@ export default function CertificatesPage() {
                     </span>
                   </div>
 
-                  <h3 className="mb-4 line-clamp-2 font-serif text-lg font-semibold leading-snug tracking-tight transition-colors group-hover:text-brand">
+                  <h3 className={`line-clamp-2 font-serif text-lg font-semibold leading-snug tracking-tight transition-colors group-hover:text-brand ${
+                    isApproved && cert.with_honors ? "mb-1" : "mb-4"
+                  }`}>
                     {courseTitle(cert)}
                   </h3>
+                  {isApproved && cert.with_honors && (
+                    <p className="mb-4 font-serif text-sm italic text-accent">{t("certificates.card.withHonors")}</p>
+                  )}
 
                   <div className="mt-auto space-y-3 border-t border-edge pt-3 text-xs">
                     {cert.certificate_number && (

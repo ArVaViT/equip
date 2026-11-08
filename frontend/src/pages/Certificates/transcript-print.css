@@ -26,6 +26,25 @@
     color: #000;
   }
 
+  /* The app shell is at least one screen tall (min-h-screen) and keeps room
+   * for the phone's bottom bar. On paper the screen is the sheet including
+   * its margins, so the shell alone overflowed onto a second, empty page
+   * carrying the canvas gradient. */
+  body:has(.transcript-sheet) .app-shell,
+  body:has(.transcript-sheet) main {
+    min-height: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  body:has(.transcript-sheet) .app-shell > :not(main) {
+    display: none !important;
+  }
+
+  .transcript-sheet .text-ink-muted {
+    color: #444 !important;
+  }
+
   .transcript-sheet {
     max-width: none;
     padding: 0;

@@ -11,6 +11,8 @@ export interface CertificateVerification {
   issued_at: string | null
   /** `YYYY-MM-DD` on the issuing school's clock. */
   issued_on?: string | null
+  /** «With honors», as frozen on the certificate at issuance. */
+  with_honors?: boolean
 }
 
 export const certificatesService = {

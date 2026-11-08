@@ -252,6 +252,18 @@ export const gradesService = {
     return response.data
   },
 
+  /**
+   * «With honors» on or off — the teacher's one switch. Issued certificates
+   * keep what they were issued with; this only decides the next ones.
+   */
+  async updateHonors(courseId: string, withHonors: boolean): Promise<GradingSchemeResponse> {
+    const response = await api.put<GradingSchemeResponse>(`/grades/course/${courseId}/honors`, {
+      with_honors: withHonors,
+    })
+    cacheInvalidate(`grades:scheme:${courseId}`)
+    return response.data
+  },
+
   async getGradeSummary(courseId: string): Promise<GradeSummaryResponse> {
     return cached(`grades:summary:${courseId}`, CACHE_TTL.ONE_MINUTE, async () => {
       const response = await api.get<GradeSummaryResponse>(

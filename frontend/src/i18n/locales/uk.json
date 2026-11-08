@@ -1599,7 +1599,27 @@
       "verify_other": "Each certificate can be verified at equipbible.com/verify by its number.",
       "open": "Виписка",
       "verify_few": "Each certificate can be verified at equipbible.com/verify by its number.",
-      "verify_many": "Each certificate can be verified at equipbible.com/verify by its number."
+      "verify_many": "Each certificate can be verified at equipbible.com/verify by its number.",
+      "grade": "Grade",
+      "hours": "Hours",
+      "withHonors": "with honors",
+      "pass": "Pass",
+      "completedOnly": "Completed",
+      "scaleNote": "Grades: {{scheme}}, unless marked otherwise.",
+      "schemeName": {
+        "letter": "letter scale A–F",
+        "five_point": "five-point scale 5–2",
+        "percent": "percentage",
+        "pass_fail": "pass / fail"
+      },
+      "fivePoint": {
+        "5": "excellent",
+        "4": "good",
+        "3": "satisfactory",
+        "2": "unsatisfactory"
+      },
+      "scaleNoteAll": "Grades: {{scheme}}.",
+      "total": "Total"
     },
     "share": {
       "share": "Поділитися",
@@ -1664,7 +1684,8 @@
         "submitted": "Відгук надіслано",
         "submitFailed": "Не вдалося надіслати відгук"
       },
-      "blocked": "Сертифікат відкриється, щойно буде залагоджено пункти вище"
+      "blocked": "Сертифікат відкриється, щойно буде залагоджено пункти вище",
+      "withHonors": "З відзнакою"
     },
     "document": {
       "print": "Друк",
@@ -1679,7 +1700,8 @@
       "issued": "Issued {{date}}",
       "instructor": "Instructor",
       "director": "Director",
-      "verifyAt": "Verify at equipbible.com/verify/{{number}}"
+      "verifyAt": "Verify at equipbible.com/verify/{{number}}",
+      "withHonors": "with honors"
     }
   },
   "studentProgress": {
@@ -2510,7 +2532,10 @@
       "handSetGrades_few": "У курсі {{count}} оцінки виставлені вручну за попередньою шкалою. Зніміть їх або введіть заново, потім змінюйте шкалу.",
       "handSetGrades_many": "У курсі {{count}} оцінок виставлено вручну за попередньою шкалою. Зніміть їх або введіть заново, потім змінюйте шкалу.",
       "handSetGrades_other": "У курсі {{count}} оцінок виставлено вручну за попередньою шкалою. Зніміть їх або введіть заново, потім змінюйте шкалу.",
-      "handSetGradesUnknown": "У курсі є оцінки, виставлені вручну за попередньою шкалою. Зніміть їх або введіть заново, потім змінюйте шкалу."
+      "handSetGradesUnknown": "У курсі є оцінки, виставлені вручну за попередньою шкалою. Зніміть їх або введіть заново, потім змінюйте шкалу.",
+      "honors": "Позначати оцінку {{top}} «з відзнакою»",
+      "honorsHint": "Пишеться в сертифікаті. Уже видані не змінюються.",
+      "honorsFailed": "Не вдалося зберегти. Спробуйте ще раз."
     },
     "summary": {
       "title": "Оцінки студентів",
@@ -2895,6 +2920,7 @@
         "grade_sheet_finalized": "Відомість закрито",
         "grade_sheet_reopened": "Відомість відкрито знову",
         "grading_scheme_changed": "Шкалу оцінок змінено",
+        "with_honors_changed": "«З відзнакою» перемкнено",
         "permanent_delete": "Видалення назавжди",
         "publish": "Опубліковано",
         "purge_orphan_translations": "Очищення осиротілих перекладів",

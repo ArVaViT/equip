@@ -153,6 +153,15 @@ class GradingSchemeResponse(BaseModel):
     #: institution's settings. Exported so the client renders from the
     #: backend's answer instead of a copy of the scale.
     bands: list[tuple[Decimal, str]] = []
+    #: Whether a top-band result earns «with honors» on the certificate. Only
+    #: meaningful when ``bands`` is non-empty; the switch is not offered otherwise.
+    with_honors: bool = False
+
+
+class HonorsUpdate(RequestModel):
+    """The teacher's one switch: «with honors» for a top-band result."""
+
+    with_honors: bool
 
 
 class ExemptionCreate(RequestModel):

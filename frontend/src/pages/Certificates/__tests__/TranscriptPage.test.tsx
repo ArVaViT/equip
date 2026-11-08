@@ -40,4 +40,83 @@ describe("TranscriptPage", () => {
     ])
     expect(screen.queryByText("Psalms")).toBeNull()
   })
+
+  it("prints each line from its own snapshot: mixed scales, honors, hours", async () => {
+    vi.spyOn(coursesService, "getMyCertificates").mockResolvedValue([
+      cert({
+        certificate_number: "EQ-OLD",
+        course_title: "Pentateuch",
+        issued_at: "2025-05-01T10:00:00Z",
+        grading_scheme: "five_point",
+        official_code: "4",
+        graded_via: "computed",
+        academic_hours: 30,
+      }),
+      cert({
+        certificate_number: "EQ-NEW",
+        course_title: "Romans",
+        issued_at: "2026-06-01T10:00:00Z",
+        grading_scheme: "letter",
+        official_code: "A",
+        graded_via: "computed",
+        with_honors: true,
+        academic_hours: 36,
+      }),
+      cert({
+        certificate_number: "EQ-LETTER",
+        course_title: "Acts",
+        issued_at: "2026-03-01T10:00:00Z",
+        grading_scheme: "letter",
+        official_code: "B",
+        graded_via: "computed",
+        academic_hours: 24,
+      }),
+      cert({ certificate_number: "EQ-NULL", course_title: "Psalms", issued_at: "2024-03-01T10:00:00Z", academic_hours: null }),
+    ])
+    render(
+      <I18nextProvider i18n={i18n}>
+        <MemoryRouter>
+          <TranscriptPage />
+        </MemoryRouter>
+      </I18nextProvider>,
+    )
+    await screen.findByRole("heading", { name: "Anna Petrenko" })
+    const rows = screen.getAllByRole("row").slice(1, 5)
+    expect(rows.map((r) => r.textContent)).toEqual([
+      expect.stringContaining("Completed"),
+      expect.stringMatching(/4 \(good\)five-point scale 5–2/),
+      expect.stringContaining("B"),
+      expect.stringMatching(/Awith honors/),
+    ])
+    // Only the line with honors carries it.
+    expect(rows[2]?.textContent).not.toContain("with honors")
+    expect(screen.getByText("Grades: letter scale A–F, unless marked otherwise.")).toBeInTheDocument()
+  })
+
+  it("names one scale for the whole sheet only when every line is in it", async () => {
+    const letter = (n: string, code: string, at: string) =>
+      cert({ certificate_number: n, course_title: n, issued_at: at, grading_scheme: "letter", official_code: code, graded_via: "computed" })
+    const renderWith = async (certs: Certificate[]) => {
+      vi.spyOn(coursesService, "getMyCertificates").mockResolvedValue(certs)
+      const view = render(
+        <I18nextProvider i18n={i18n}>
+          <MemoryRouter>
+            <TranscriptPage />
+          </MemoryRouter>
+        </I18nextProvider>,
+      )
+      await screen.findByRole("heading", { name: "Anna Petrenko" })
+      return view
+    }
+
+    const all = await renderWith([letter("EQ-A", "A", "2026-01-01T10:00:00Z"), letter("EQ-B", "B", "2026-02-01T10:00:00Z")])
+    expect(screen.getByText("Grades: letter scale A–F.")).toBeInTheDocument()
+    all.unmount()
+
+    await renderWith([
+      letter("EQ-A", "A", "2026-01-01T10:00:00Z"),
+      cert({ certificate_number: "EQ-OLD", course_title: "Old", issued_at: "2024-01-01T10:00:00Z" }),
+    ])
+    expect(screen.queryByText(/^Grades:/)).toBeNull()
+  })
 })

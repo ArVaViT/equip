@@ -605,4 +605,5 @@ def verify_certificate(
         course_title=course_title,
         issued_at=cert.issued_at,
         issued_on=SchoolClocks(db).day(cert.organization_id, cert.issued_at),
+        with_honors=bool(cert.with_honors),
     )
