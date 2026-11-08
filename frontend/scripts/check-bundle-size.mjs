@@ -66,7 +66,11 @@ const BUDGETS_GZIP_KB = {
   supabase: 61, // supabase-js v2 client.
   motion: 47, // motion / motion-dom / motion-utils, pinned out of the shell.
   ChapterList: 35, // student lesson list route.
-  schemas: 20, // zod schemas shared across forms.
+  // 2026-11-07: 20 → 25 kB. zod 4.4.3 → 4.6.7 for GHSA (memory exhaustion on
+  // oversized constrained collections; fixed only from 4.6.6). 4.6 bundles its
+  // JSON Schema processors and memoizer into the classic API whether or not
+  // they are used: 17.6 → 23.5 kB, nothing of ours changed.
+  schemas: 25, // zod schemas shared across forms.
   config: 19, // i18next config + bundled namespaces.
   // 2026-10-19: 14.0 → 14.5 kB with the lesson-note draft and the lost-response
   // check after a submission (fix/error-paths).
