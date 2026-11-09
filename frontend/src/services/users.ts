@@ -1,3 +1,4 @@
+import { activeViewAs, refuseWhileViewingAs } from "@/lib/viewAs"
 import { supabase } from "@/lib/supabase"
 import api from "./api"
 import type { MailKind, Profile } from "@/types"
@@ -19,6 +20,7 @@ export interface ProfileUpdate {
 export const usersService = {
   /** Only the fields a person may write themselves; `phone`, `role`, `email` are refused by the database. */
   async updateProfile(data: ProfileUpdate): Promise<Profile> {
+    refuseWhileViewingAs()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) throw new Error("Not authenticated")
 
@@ -40,6 +42,7 @@ export const usersService = {
    * would quietly turn that back on.
    */
   async setEmailKind(kind: MailKind, on: boolean): Promise<MailKind[]> {
+    refuseWhileViewingAs()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) throw new Error("Not authenticated")
     const { data: row, error: readError } = await supabase
@@ -69,6 +72,9 @@ export const usersService = {
    * means the row already holds a chosen zone and nothing was written.
    */
   async reportDetectedTimeZone(zone: string): Promise<Profile | null> {
+    // In a "view as" the session is the admin's: writing here would set the
+    // admin's own zone. Say nothing was written, which is what happened.
+    if (activeViewAs()) return null
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) throw new Error("Not authenticated")
 
