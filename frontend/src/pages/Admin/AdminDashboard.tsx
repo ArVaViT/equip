@@ -12,6 +12,7 @@ import { SchoolSettingsTab } from "./dashboard/SchoolSettingsTab"
 import { OverviewStats } from "./dashboard/OverviewStats"
 import { PendingCertsCard } from "./dashboard/PendingCertsCard"
 import { UsersCard } from "./dashboard/UsersCard"
+import { ViewAsCard } from "@/components/viewAs/ViewAsCard"
 import { useAdminOverview } from "./dashboard/useAdminOverview"
 import { useAdminAudit } from "./dashboard/useAdminAudit"
 import { Section } from "@/components/layout/Section"
@@ -149,6 +150,7 @@ export default function AdminDashboard() {
             loading={overview.loading}
             pendingActions={overview.adminCerts.length}
           />
+          <ViewAsCard />
           <PendingCertsCard
             certs={overview.adminCerts}
             actionId={overview.certActionId}

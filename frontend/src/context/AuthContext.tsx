@@ -10,6 +10,7 @@ import { takeReturnPath } from "@/lib/authRedirect"
 import { setDisplayTimeZone } from "@/i18n/timeZone"
 import { hasStoredSupabaseSession } from "@/lib/storedSession"
 import { publishAccountDeleted } from "@/lib/accountDeleted"
+import { activeViewAs, clearViewAs } from "@/lib/viewAs"
 
 // ``reconcileFreshOAuthLocale`` lived here previously — a silent
 // post-signup PATCH that fired whenever ``profile.preferred_locale``
@@ -49,6 +50,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (inflightUserId.current === userId) return
     inflightUserId.current = userId
     activeUserId.current = userId
+    if (activeViewAs()) {
+      // A platform admin viewing as someone else (lib/viewAs): the profile
+      // comes from the API, which answers for that person. RLS would not
+      // let the admin read another person's profile row directly anyway.
+      // Imported on demand: only an admin in a view ever needs the API client here.
+      import("@/services/api")
+        .then(({ default: api }) => api.get<Partial<User> & { id: string; email: string; role: string }>("/auth/me"))
+        .then(
+        ({ data }) => {
+          if (inflightUserId.current === userId) inflightUserId.current = null
+          if (!mounted.current || activeUserId.current !== userId) return
+          setUser({
+            id: data.id,
+            email: data.email,
+            full_name: data.full_name ?? null,
+            avatar_url: data.avatar_url ?? null,
+            role: data.role,
+            preferred_locale: isSupportedLocale(data.preferred_locale) ? data.preferred_locale : DEFAULT_LOCALE,
+            locale_source: data.locale_source ?? "chosen",
+            created_at: data.created_at ?? "",
+            updated_at: data.updated_at ?? "",
+            onboarding_completed_at: data.onboarding_completed_at ?? null,
+            time_zone: null,
+            time_zone_source: "default",
+            phone: null,
+            birth_date: null,
+            country_code: null,
+            region: null,
+            city: null,
+            church: null,
+            email_off: [],
+            deleted_at: null,
+          })
+          setLoading(false)
+        },
+        () => {
+          // The view was refused (ended, expired): drop it and come back as yourself.
+          clearViewAs()
+          window.location.reload()
+        },
+      )
+      return
+    }
     // Supabase resolves with `{ data, error }` even for failures — it does NOT
     // reject the promise — so relying on the `.then` rejection handler only
     // would leave `loading` stuck forever on DB errors. Handle `error` in the

@@ -1,3 +1,4 @@
+import { refuseWhileViewingAs } from "@/lib/viewAs"
 import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from "@/lib/supabase"
 import {
   type BucketSpec,
@@ -352,11 +353,13 @@ async function putWithProgress(
 
 export const storageService = {
   async uploadAvatar(userId: string, file: File): Promise<string> {
+    refuseWhileViewingAs()
     const path = `${userId}/avatar-${crypto.randomUUID().slice(0, 8)}.${fileExtension(file.name)}`
     return uploadToPublicBucket(AVATARS_BUCKET, path, file)
   },
 
   async uploadCourseImage(courseId: string, file: File): Promise<string> {
+    refuseWhileViewingAs()
     const path = `${courseId}/cover-${crypto.randomUUID().slice(0, 8)}.${fileExtension(file.name)}`
     return uploadToPublicBucket(COURSE_ASSETS_BUCKET, path, withBucketContentType(file, COURSE_ASSETS))
   },
@@ -368,6 +371,7 @@ export const storageService = {
    * accepts a `logo_url` only of this exact shape.
    */
   async uploadOrganizationLogo(organizationId: string, file: File): Promise<string> {
+    refuseWhileViewingAs()
     // The extension comes from the type, not from the name: a key is ASCII
     // or Storage refuses it, and "лого.пнг" is a PNG all the same.
     const typed = withBucketContentType(file, ORGANIZATION_LOGOS)
@@ -383,6 +387,7 @@ export const storageService = {
    * an upload the user watched succeed.
    */
   async removePublicObject(url: string | null | undefined): Promise<void> {
+    refuseWhileViewingAs()
     const target = parsePublicObjectUrl(url)
     if (!target) return
     await supabase.storage.from(target.bucket).remove([target.path])
@@ -396,6 +401,7 @@ export const storageService = {
    * gone now that chapter file blocks re-sign on click too.
    */
   async uploadCourseMaterial(courseId: string, file: File): Promise<void> {
+    refuseWhileViewingAs()
     const timestamp = Date.now()
     const safeName = sanitizeFileName(file.name)
     const path = `${courseId}/${timestamp}-${safeName}`
@@ -437,6 +443,7 @@ export const storageService = {
   },
 
   async deleteCourseMaterial(path: string): Promise<void> {
+    refuseWhileViewingAs()
     const { error } = await supabase.storage
       .from(COURSE_MATERIALS_BUCKET)
       .remove([path])
@@ -452,6 +459,7 @@ export const storageService = {
    * doesn't invalidate anything.
    */
   async uploadBlockFile(courseId: string, chapterId: string, file: File): Promise<UploadedBlockFile> {
+    refuseWhileViewingAs()
     const timestamp = Date.now()
     const safeName = sanitizeFileName(file.name)
     // First path segment MUST be the course id: the `course-materials`
@@ -492,6 +500,7 @@ export const storageService = {
     onProgress?: (fraction: number) => void,
     signal?: AbortSignal,
   ): Promise<UploadedBlockFile> {
+    refuseWhileViewingAs()
     const path = `${courseId}/${assignmentId}/${studentId}/${Date.now()}-${sanitizeFileName(file.name)}`
     await putWithProgress(SUBMISSIONS_BUCKET, path, withBucketContentType(file, SUBMISSIONS), onProgress, signal)
     return { bucket: SUBMISSIONS_BUCKET, path, name: file.name }
@@ -500,6 +509,7 @@ export const storageService = {
   /** The «remove» cross between choosing a file and handing it in. The
    *  bucket refuses this once a submission names the key; best-effort. */
   async removeSubmissionFile(path: string): Promise<void> {
+    refuseWhileViewingAs()
     await supabase.storage.from(SUBMISSIONS_BUCKET).remove([path])
   },
 
@@ -509,6 +519,7 @@ export const storageService = {
   },
 
   async uploadContentImage(file: File): Promise<string> {
+    refuseWhileViewingAs()
     const ext = fileExtension(file.name)
     // ``Math.random()`` is non-cryptographic and worse:
     // ``toString(36).slice(2, 10)`` shortens it to ~8 base-36 chars,

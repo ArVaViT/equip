@@ -1,3 +1,4 @@
+import { refuseWhileViewingAs } from "@/lib/viewAs"
 import { DEFAULT_LOCALE, type SupportedLocale } from "@/i18n/config"
 import { supabase } from "@/lib/supabase"
 import type { Session } from "@supabase/supabase-js"
@@ -141,6 +142,7 @@ export const authService = {
   },
 
   async updatePassword(password: string): Promise<void> {
+    refuseWhileViewingAs()
     const { error } = await supabase.auth.updateUser({ password })
     if (error) throw error
   },

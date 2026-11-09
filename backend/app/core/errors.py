@@ -68,6 +68,10 @@ class ErrorCode(enum.StrEnum):
     """Caller is authenticated but lacks the required role / ownership."""
 
     ACCOUNT_DEACTIVATED = "account.deactivated"
+    #: A platform admin viewing as someone else tried to change something,
+    #: or the view itself was refused (ended, not theirs, not an admin).
+    VIEW_AS_READ_ONLY = "view_as.read_only"
+    VIEW_AS_REFUSED = "view_as.refused"
     """The account was soft-deleted (deactivated) by an admin. The token may
     still be valid, but every authenticated surface is blocked until restored.
     Distinct from AUTH_FORBIDDEN so the client can sign the user out cleanly

@@ -51,6 +51,8 @@ def test_enum_values_are_stable_strings():
         "auth.required",
         "auth.forbidden",
         "account.deactivated",
+        "view_as.read_only",
+        "view_as.refused",
         "account.deleted",
         "account.restore_needs_email_link",
         "account.restore_refused",

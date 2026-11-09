@@ -3500,5 +3500,17 @@
       "restoreRefused": "Dieses Konto lässt sich hier nicht wiederherstellen: Seine E-Mail-Adresse wurde nach dem Löschen geändert. Schreiben Sie an supportequip@gmail.com.",
       "linkSent": "Wir haben einen Link an {{email}} geschickt. Öffnen Sie ihn, und Ihr Konto ist wiederhergestellt. Keine E-Mail? Sehen Sie im Spam-Ordner nach."
     }
+  },
+  "viewAs": {
+    "title": "Als Person ansehen",
+    "hint": "Equip genau so sehen wie diese Person. 30 Minuten nur lesen, nichts lässt sich ändern. Jede Ansicht wird mit Grund protokolliert.",
+    "emailPlaceholder": "Ihre E-Mail",
+    "reasonPlaceholder": "Warum (wird protokolliert)",
+    "start": "Ansehen",
+    "banner": "Sie sehen Equip als {{who}}. Nur lesen, bis {{until}}.",
+    "leave": "Beenden",
+    "notFound": "Kein Konto mit dieser E-Mail.",
+    "failed": "Die Ansicht ließ sich nicht öffnen.",
+    "readOnly": "Nur-Lese-Ansicht: nichts lässt sich ändern."
   }
 }

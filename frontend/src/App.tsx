@@ -15,6 +15,7 @@ import { Toaster } from "./components/ui/sonner"
 import { cn } from "@/lib/utils"
 import { ConfirmProvider } from "./components/ui/alert-dialog"
 import Header from "./components/layout/Header"
+import { ViewAsBanner } from "./components/viewAs/ViewAsBanner"
 import AnnouncementBanner from "./components/announcements/AnnouncementBanner"
 import PageSpinner from "./components/ui/PageSpinner"
 import ScrollToTop from "./components/layout/ScrollToTop";
@@ -274,6 +275,7 @@ function AppRoutes() {
       >
         {t("common.skipToContent")}
       </a>
+      <ViewAsBanner />
       <Header />
       {/* A document changed in a way that changes nothing anybody agreed to.
           A strip rather than a modal, because nothing is being asked. */}
