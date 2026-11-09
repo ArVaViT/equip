@@ -1527,6 +1527,8 @@
       "uploading": "Uploading the file",
       "open": "open",
       "openAria": "Open file {{name}}",
+      "sizeBytes": "{{b}} B",
+      "sizeKb": "{{kb}} KB",
       "sizeMb": "{{mb}} MB",
       "tooLarge": "The file is over {{maxMb}} MB. Upload it to YouTube or Google Drive and paste the link.",
       "unsupported": "This file will not do. Photos, PDF, audio, video and Word documents work — or paste a link.",
