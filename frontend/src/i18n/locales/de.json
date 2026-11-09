@@ -1527,6 +1527,8 @@
       "uploading": "Datei wird hochgeladen",
       "open": "öffnen",
       "openAria": "Datei {{name}} öffnen",
+      "sizeBytes": "{{b}} B",
+      "sizeKb": "{{kb}} KB",
       "sizeMb": "{{mb}} MB",
       "tooLarge": "Die Datei ist größer als {{maxMb}} MB. Laden Sie sie auf YouTube oder Google Drive hoch und fügen Sie den Link ein.",
       "unsupported": "Diese Datei passt nicht. Fotos, PDF, Audio, Video und Word-Dokumente gehen — oder fügen Sie einen Link ein.",

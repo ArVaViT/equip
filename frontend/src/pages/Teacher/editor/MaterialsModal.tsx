@@ -1,12 +1,11 @@
 import type { Ref } from "react"
 import { useTranslation } from "react-i18next"
 import { UploadRightsNotice } from "@/components/legal/UploadRightsNotice"
-import type { TFunction } from "i18next"
 import { Button } from "@/components/ui/button"
 import { Download, Loader2, Paperclip, X } from "lucide-react"
 import { EmptyState, Modal } from "@/components/patterns"
 import type { MaterialFile } from "./types"
-import { formatNumber } from "@/i18n/number"
+import { formatFileSize } from "@/lib/fileSize"
 import { acceptAttribute, COURSE_MATERIALS } from "@/lib/uploadLimits"
 
 interface Props {
@@ -27,28 +26,6 @@ interface Props {
 // the product is a YouTube link) — and did not offer ``.m4a``, which is
 // what an iPhone voice memo is.
 const ACCEPTED_TYPES = acceptAttribute(COURSE_MATERIALS)
-
-const KB = 1024
-const MB = KB * 1024
-
-/**
- * Human-readable file size in the active locale's unit.
- *
- * The previous formatter rendered everything in KB, which produced
- * misleading output at both ends: a 400-byte text snippet showed as
- * ``0 KB`` (rounded down via ``toFixed(0)``) and a 2 MB PDF showed as
- * ``2048 KB``. This picks B / KB / MB so the number always looks
- * sensible at a glance.
- *
- * The number itself goes through ``formatNumber`` because ``toFixed``
- * writes a period and ru / de / uk all write a comma — ``1.5 MB`` beside
- * a German file name is a small thing that reads as carelessness.
- */
-function formatFileSize(bytes: number, t: TFunction): string {
-  if (bytes < KB) return t("teacherEditor.modals.materials.sizeBytes", { b: bytes })
-  if (bytes < MB) return t("teacherEditor.modals.materials.sizeKb", { kb: formatNumber(bytes / KB, 0) })
-  return t("teacherEditor.modals.materials.sizeMb", { mb: formatNumber(bytes / MB, 1) })
-}
 
 export function MaterialsModal({
   open,
@@ -109,7 +86,7 @@ export function MaterialsModal({
                 <div className="min-w-0 flex-1">
                   <p className="text-sm [overflow-wrap:anywhere]">{m.name}</p>
                   {m.size && (
-                    <p className="text-xs text-ink-muted">{formatFileSize(m.size, t)}</p>
+                    <p className="text-xs text-ink-muted">{formatFileSize(m.size, t, "teacherEditor.modals.materials")}</p>
                   )}
                 </div>
                 <Button

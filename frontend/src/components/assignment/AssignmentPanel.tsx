@@ -9,7 +9,7 @@ import { storageService } from "@/services/storage"
 import { getErrorDetail } from "@/lib/errorDetail"
 import { answerWasLost, newestUnseen } from "@/lib/lostResponse"
 import { describeUploadError, preflightUpload } from "@/lib/uploadError"
-import { acceptAttribute, maxMb, MB, SUBMISSIONS } from "@/lib/uploadLimits"
+import { acceptAttribute, maxMb, SUBMISSIONS } from "@/lib/uploadLimits"
 import { rubricsService } from "@/services/rubrics"
 import { useAuth } from "@/context/useAuth"
 import { useLocalDraft } from "@/hooks/useLocalDraft"
@@ -24,7 +24,7 @@ import { repeatsTitle } from "@/lib/repeatsTitle"
 import type { AiPolicy, Assignment, AssignmentSubmission, SubmissionRubric } from "@/types"
 import PageSpinner from "@/components/ui/PageSpinner"
 import { formatDateTimeZoned } from "@/i18n/format"
-import { formatNumber } from "@/i18n/number"
+import { formatFileSize } from "@/lib/fileSize"
 import { asPlainText } from "@/lib/plainText"
 import { orNotTranslated } from "@/lib/untranslated"
 import {
@@ -654,7 +654,7 @@ function SingleAssignment({
                     )}
                     <span className="min-w-0 flex-1 truncate text-sm font-medium">{file.name}</span>
                     <span className="shrink-0 text-xs tabular-nums text-ink-muted">
-                      {t("assignment.file.sizeMb", { mb: formatNumber(file.size / MB, 1) })}
+                      {formatFileSize(file.size, t, "assignment.file")}
                     </span>
                     <button
                       type="button"
