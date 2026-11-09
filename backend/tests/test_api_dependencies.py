@@ -17,7 +17,7 @@ real Supabase / FastAPI dispatch path.
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import pytest
 from fastapi import HTTPException, status
@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 class _NoViewAs:
     """A request without the view-as header (see ``app.services.view_as``)."""
 
-    headers: dict[str, str] = {}
+    headers: ClassVar[dict[str, str]] = {}
 
 
 _PLAIN = _NoViewAs()
