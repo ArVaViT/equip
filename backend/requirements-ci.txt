@@ -14,7 +14,7 @@ pytest-cov==7.1.0
 pytest-xdist==3.8.0
 httpx==0.28.1
 anyio==4.16.0
-ruff==0.17.3
+ruff==0.17.4
 mypy==2.4.1
 types-bleach==6.4.0.20260728
 pip-audit==2.10.1
