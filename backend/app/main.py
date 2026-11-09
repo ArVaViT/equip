@@ -12,10 +12,12 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from app.api.consent_gate import require_legal_consent
 from app.api.v1 import api_router
 from app.core.config import env_flag, settings
+from app.core.errors import ErrorCode
 from app.core.logging import setup_logging, vercel_request_id
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.security import SecurityHeadersMiddleware
 from app.services.deleted_person import request_locale, set_request_locale
+from app.services.view_as import ViewAsReadOnlyMiddleware, is_read_only_violation
 
 setup_logging()
 
@@ -82,6 +84,11 @@ app = FastAPI(
 # the time the outer layers see it.
 app.add_middleware(GZipMiddleware, minimum_size=1024, compresslevel=5)
 
+# Innermost of all: a platform admin's read-only "view as" refuses every
+# write before routing (app.services.view_as). Inside CORS so the 403
+# still carries ACAO and the frontend can read it.
+app.add_middleware(ViewAsReadOnlyMiddleware)
+
 app.add_middleware(RateLimitMiddleware, calls=100, window=60)
 
 # CORSMiddleware handles both the OPTIONS preflight and the ACAO headers on the
@@ -143,6 +150,19 @@ async def integrity_error_handler(request: Request, exc: IntegrityError):
 
 @app.exception_handler(SQLAlchemyError)
 async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
+    if is_read_only_violation(exc):
+        # A GET that writes, refused by the read-only transaction of a
+        # "view as". Not an outage: say what it is.
+        return JSONResponse(
+            status_code=403,
+            content={
+                "detail": {
+                    "code": ErrorCode.VIEW_AS_READ_ONLY.value,
+                    "message": "Read-only view: this page tried to change something",
+                    "context": {},
+                }
+            },
+        )
     # ``exc_info=True`` so the DatadogHTTPHandler ships the full stack
     # trace as ``error.stack``. Without it the log line only carries the
     # exception's ``str()`` -- useful for IntegrityError where we already

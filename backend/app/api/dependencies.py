@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -15,6 +15,7 @@ from app.models.course import Chapter, Course, CourseStatus, Module
 from app.models.enrollment import Enrollment
 from app.models.organization import MembershipRole, Organization
 from app.models.user import User, UserRole, can_teach
+from app.services import view_as
 from app.services.chapter_gate import chapter_is_open_to
 from app.services.memberships import belongs_to, default_organization_id, directs, membership_of, organizations_where
 
@@ -35,6 +36,7 @@ def _unauthorized(message: str) -> HTTPException:
 # Sync so FastAPI runs it in the threadpool: keeps the event loop free while
 # decode_access_token (possible Supabase HTTP call) and the User SELECT block.
 def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ) -> User:
@@ -48,7 +50,19 @@ def get_current_user(
     if user is None:
         raise _unauthorized("User not found")
     refuse_if_closed(user)
-    return user
+    return _as_viewed(request, db, user)
+
+
+def _as_viewed(request: Request, db: Session, user: User) -> User:
+    """The person a platform admin is viewing as, if the request says so.
+
+    See ``app.services.view_as``: the session turns read-only and the
+    route runs for that person, exactly as it would for them.
+    """
+    view_id = request.headers.get(view_as.HEADER)
+    if not view_id:
+        return user
+    return view_as.resolve(db, user, view_id)
 
 
 @dataclass(frozen=True)
@@ -134,10 +148,12 @@ def resolve_optional_user(token: str | None, db: Session) -> User | None:
 
 
 def get_optional_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(optional_security),
     db: Session = Depends(get_db),
 ) -> User | None:
-    return resolve_optional_user(credentials.credentials if credentials is not None else None, db)
+    user = resolve_optional_user(credentials.credentials if credentials is not None else None, db)
+    return _as_viewed(request, db, user) if user is not None else None
 
 
 def require_teacher(

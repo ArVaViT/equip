@@ -6,6 +6,7 @@ from app.api.v1 import (
     admin_org_settings,
     admin_organizations,
     admin_translations,
+    admin_view_as,
     analytics,
     announcements,
     assignments,
@@ -74,6 +75,7 @@ api_router.include_router(review.router)
 api_router.include_router(admin_org_settings.router)
 api_router.include_router(admin_organizations.router)
 api_router.include_router(admin_translations.router)
+api_router.include_router(admin_view_as.router)
 api_router.include_router(internal_translation_worker.router)
 api_router.include_router(internal_daily_challenge_worker.router)
 api_router.include_router(internal_event_reminders.router)

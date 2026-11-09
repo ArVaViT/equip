@@ -3498,5 +3498,17 @@
       "restoreRefused": "This account cannot be restored here: its email address changed after it was deleted. Write to supportequip@gmail.com.",
       "linkSent": "We sent a link to {{email}}. Open it and your account is restored. No email? Check the spam folder."
     }
+  },
+  "viewAs": {
+    "title": "View as someone",
+    "hint": "See Equip exactly as this person does. Read-only for 30 minutes; nothing can be changed. Every view is logged with its reason.",
+    "emailPlaceholder": "Their email",
+    "reasonPlaceholder": "Why (logged)",
+    "start": "View",
+    "banner": "You are viewing as {{who}}. Read-only, until {{until}}.",
+    "leave": "Leave",
+    "notFound": "No account with this email.",
+    "failed": "Could not start the view.",
+    "readOnly": "Read-only view: nothing can be changed."
   }
 }

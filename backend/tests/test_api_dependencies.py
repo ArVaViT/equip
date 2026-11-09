@@ -40,6 +40,15 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 
+class _NoViewAs:
+    """A request without the view-as header (see ``app.services.view_as``)."""
+
+    headers: dict[str, str] = {}
+
+
+_PLAIN = _NoViewAs()
+
+
 def _bearer(token: str = "any-token") -> HTTPAuthorizationCredentials:
     return HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
@@ -139,7 +148,7 @@ class TestGetCurrentUser:
         header so the browser surfaces a re-auth prompt."""
         monkeypatch.setattr(deps, "decode_access_token", lambda _token: None)
         with pytest.raises(HTTPException) as exc:
-            deps.get_current_user(credentials=_bearer(), db=db)
+            deps.get_current_user(request=_PLAIN, credentials=_bearer(), db=db)
         assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
         assert exc.value.headers == {"WWW-Authenticate": "Bearer"}
 
@@ -152,7 +161,7 @@ class TestGetCurrentUser:
         is malformed for our purposes — Supabase always sets it."""
         monkeypatch.setattr(deps, "decode_access_token", lambda _t: {"email": "x"})
         with pytest.raises(HTTPException) as exc:
-            deps.get_current_user(credentials=_bearer(), db=db)
+            deps.get_current_user(request=_PLAIN, credentials=_bearer(), db=db)
         assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_unknown_user_id_returns_401(
@@ -175,7 +184,7 @@ class TestGetCurrentUser:
         ghost_id = uuid.uuid4()
         monkeypatch.setattr(deps, "decode_access_token", lambda _t: {"sub": ghost_id})
         with pytest.raises(HTTPException) as exc:
-            deps.get_current_user(credentials=_bearer(), db=db)
+            deps.get_current_user(request=_PLAIN, credentials=_bearer(), db=db)
         assert exc.value.status_code == status.HTTP_401_UNAUTHORIZED
         # equip_error envelope: detail is now the typed dict, not a bare string.
         assert exc.value.detail["code"] == "auth.required"
@@ -188,7 +197,7 @@ class TestGetCurrentUser:
     ) -> None:
         teacher = _seed_teacher(db)
         monkeypatch.setattr(deps, "decode_access_token", lambda _t: {"sub": teacher.id})
-        out = deps.get_current_user(credentials=_bearer(), db=db)
+        out = deps.get_current_user(request=_PLAIN, credentials=_bearer(), db=db)
         assert out.id == teacher.id
 
     def test_deactivated_user_returns_403(
@@ -205,7 +214,7 @@ class TestGetCurrentUser:
         db.commit()
         monkeypatch.setattr(deps, "decode_access_token", lambda _t: {"sub": teacher.id})
         with pytest.raises(HTTPException) as exc:
-            deps.get_current_user(credentials=_bearer(), db=db)
+            deps.get_current_user(request=_PLAIN, credentials=_bearer(), db=db)
         assert exc.value.status_code == status.HTTP_403_FORBIDDEN
         assert exc.value.detail["code"] == "account.deactivated"
 
@@ -217,7 +226,7 @@ class TestGetCurrentUser:
 
 class TestGetOptionalUser:
     def test_no_credentials_returns_none(self, db: Session) -> None:
-        assert deps.get_optional_user(credentials=None, db=db) is None
+        assert deps.get_optional_user(request=_PLAIN, credentials=None, db=db) is None
 
     def test_invalid_payload_returns_none_no_raise(
         self,
@@ -225,7 +234,7 @@ class TestGetOptionalUser:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(deps, "decode_access_token", lambda _t: None)
-        assert deps.get_optional_user(credentials=_bearer(), db=db) is None
+        assert deps.get_optional_user(request=_PLAIN, credentials=_bearer(), db=db) is None
 
     def test_missing_sub_returns_none(
         self,
@@ -233,7 +242,7 @@ class TestGetOptionalUser:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.setattr(deps, "decode_access_token", lambda _t: {"email": "x"})
-        assert deps.get_optional_user(credentials=_bearer(), db=db) is None
+        assert deps.get_optional_user(request=_PLAIN, credentials=_bearer(), db=db) is None
 
     def test_unknown_user_returns_none(
         self,
@@ -245,7 +254,7 @@ class TestGetOptionalUser:
         listings still render for them as anonymous."""
         ghost_id = uuid.uuid4()
         monkeypatch.setattr(deps, "decode_access_token", lambda _t: {"sub": ghost_id})
-        assert deps.get_optional_user(credentials=_bearer(), db=db) is None
+        assert deps.get_optional_user(request=_PLAIN, credentials=_bearer(), db=db) is None
 
     def test_returns_user_on_happy_path(
         self,
@@ -254,7 +263,7 @@ class TestGetOptionalUser:
     ) -> None:
         teacher = _seed_teacher(db)
         monkeypatch.setattr(deps, "decode_access_token", lambda _t: {"sub": teacher.id})
-        out = deps.get_optional_user(credentials=_bearer(), db=db)
+        out = deps.get_optional_user(request=_PLAIN, credentials=_bearer(), db=db)
         assert out is not None
         assert out.id == teacher.id
 
@@ -271,7 +280,7 @@ class TestGetOptionalUser:
         teacher.deactivated_at = datetime.now(UTC)
         db.commit()
         monkeypatch.setattr(deps, "decode_access_token", lambda _t: {"sub": teacher.id})
-        assert deps.get_optional_user(credentials=_bearer(), db=db) is None
+        assert deps.get_optional_user(request=_PLAIN, credentials=_bearer(), db=db) is None
 
 
 # ---------------------------------------------------------------------------

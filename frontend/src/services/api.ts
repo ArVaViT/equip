@@ -4,6 +4,14 @@ import i18n, { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import { supabase } from "@/lib/supabase"
 import { publishAccountDeleted } from "@/lib/accountDeleted"
 import { rememberSignOutReason } from "@/lib/signOutReason"
+import { activeViewAs, VIEW_AS_HEADER, ViewAsReadOnlyError } from "@/lib/viewAs"
+
+declare module "axios" {
+  interface AxiosRequestConfig {
+    /** Send this one request as the admin themself, outside a "view as" (lib/viewAs). */
+    skipViewAs?: boolean
+  }
+}
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
 const cleanApiUrl = API_URL.replace(/\/+$/, "")
@@ -137,8 +145,16 @@ async function getAccessToken(): Promise<string | null> {
   return cachedToken
 }
 
+const READ_METHODS = new Set(["get", "head", "options"])
+
 api.interceptors.request.use(async (config) => {
   config.headers["Accept-Language"] = currentAcceptLanguage()
+  const view = config.skipViewAs ? null : activeViewAs()
+  if (view) {
+    // Refused here so nothing even leaves the browser; the server refuses it too.
+    if (!READ_METHODS.has((config.method ?? "get").toLowerCase())) throw new ViewAsReadOnlyError()
+    config.headers[VIEW_AS_HEADER] = view.id
+  }
   const token = await getAccessToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
