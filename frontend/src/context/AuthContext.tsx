@@ -6,6 +6,7 @@ import type { User } from "@/types"
 import { AuthContext } from "./auth-context"
 import { setDatadogUser, clearDatadogUser } from "@/lib/datadog"
 import { cacheClear } from "@/lib/cache"
+import { clearOfflineLessons } from "@/lib/offlineLessons"
 import { takeReturnPath } from "@/lib/authRedirect"
 import { setDisplayTimeZone } from "@/i18n/timeZone"
 import { hasStoredSupabaseSession } from "@/lib/storedSession"
@@ -27,14 +28,22 @@ import { activeViewAs, clearViewAs } from "@/lib/viewAs"
 /** How long the profile read after sign-in may take before it counts as failed. */
 export const PROFILE_READ_TIMEOUT_MS = 30_000
 
+function clearOfflineStorage(): void {
+  void clearOfflineLessons().catch((error: unknown) => {
+    console.warn("Could not clear offline lesson storage", error)
+  })
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null)
   // Seed from the synchronous storage probe: anonymous visitors (no token)
   // skip the spinner and paint the public landing immediately; signed-in
   // visitors wait for profile enrichment as before.
   const [loading, setLoading] = useState(hasStoredSupabaseSession)
   const mounted = useRef(true)
   const activeUserId = useRef<string | null>(null)
+  const authEventVersion = useRef(0)
   // ``inflightUserId`` deduplicates *simultaneous* enrichProfile() calls
   // for the same user. The activeUserId guards at the onAuthStateChange
   // callsites short-circuit *sequential* duplicates (SIGNED_IN after
@@ -201,6 +210,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (!mounted.current) return
+        authEventVersion.current += 1
 
         // We deliberately do NOT seed user state from ``userFromSupabase`` on
         // SIGNED_IN / INITIAL_SESSION: that value reads role from
@@ -218,7 +228,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // the user id actually changes — i.e. a real sign-in by a new
         // account. Same-user events become a no-op.
         if (event === "INITIAL_SESSION") {
+          setSessionUserId(session?.user.id ?? null)
           if (session?.user) {
+            if (typeof navigator !== "undefined" && !navigator.onLine) {
+              setLoading(false)
+              return
+            }
             enrichProfile(session.user.id, session.user.email ?? "")
           } else {
             setLoading(false)
@@ -231,6 +246,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // the page and surfaced as INITIAL_SESSION; verified on the landing
         // page instead, it only ever shows up as PASSWORD_RECOVERY.
         if ((event === "SIGNED_IN" || event === "PASSWORD_RECOVERY") && session?.user) {
+          setSessionUserId(session.user.id)
           if (activeUserId.current === session.user.id) {
             // Tab refocus or auto-refresh with the same account — we
             // already have the authoritative profile loaded.
@@ -241,6 +257,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // the previous user's (or the guest's) API payloads — clear it so
           // nothing bleeds across accounts on a shared device.
           cacheClear()
+          clearOfflineStorage()
+          setUser(null)
+          clearDatadogUser()
+          setDisplayTimeZone(null)
           setLoading(true)
           enrichProfile(session.user.id, session.user.email ?? "")
           return
@@ -251,12 +271,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // ``services/api.ts`` token cache picks the new JWT up on its
           // own ``onAuthStateChange`` subscription, so we don't need
           // to do anything here.
+          setSessionUserId(session.user.id)
           if (activeUserId.current === session.user.id) return
+          setUser(null)
+          clearDatadogUser()
+          setDisplayTimeZone(null)
+          setLoading(true)
           enrichProfile(session.user.id, session.user.email ?? "")
           return
         }
 
         if (event === "SIGNED_OUT") {
+          setSessionUserId(null)
           activeUserId.current = null
           publishAccountDeleted(false)
           setDisplayTimeZone(null)
@@ -265,6 +291,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Drop the signed-out user's cached API payloads so the next
           // account on this device starts from a cold cache.
           cacheClear()
+          clearOfflineStorage()
           // And where they were heading: a password sign-in returns by router
           // state and never reads the remembered path, so it outlived them
           // and sent the tab's next Google or emailed sign-in there.
@@ -274,8 +301,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     )
 
+    const retryProfileWhenOnline = () => {
+      const observedVersion = authEventVersion.current
+      void supabase.auth
+        .getSession()
+        .then(({ data, error }) => {
+          if (observedVersion !== authEventVersion.current) return
+          if (error) {
+            console.error("Could not resume the signed-in profile after reconnecting", error)
+            return
+          }
+          const session = data.session
+          if (!session?.user || activeUserId.current === session.user.id) return
+          setSessionUserId(session.user.id)
+          setLoading(true)
+          enrichProfile(session.user.id, session.user.email ?? "")
+        })
+        .catch((error: unknown) => {
+          console.error("Could not resume the signed-in profile after reconnecting", error)
+        })
+    }
+    window.addEventListener("online", retryProfileWhenOnline)
+
     return () => {
       mounted.current = false
+      window.removeEventListener("online", retryProfileWhenOnline)
       subscription.unsubscribe()
     }
   }, [enrichProfile])
@@ -322,9 +372,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUser = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) {
-      if (mounted.current) setUser(null)
+      if (mounted.current) {
+        activeUserId.current = null
+        setSessionUserId(null)
+        setUser(null)
+      }
       return
     }
+    if (!mounted.current) return
+    setSessionUserId(session.user.id)
     enrichProfile(session.user.id, session.user.email ?? "")
   }, [enrichProfile])
 
@@ -358,14 +414,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     try { await authService.logout() } catch { /* ignore */ }
+    activeUserId.current = null
+    setSessionUserId(null)
     setDisplayTimeZone(null)
     setUser(null)
     clearDatadogUser()
+    clearOfflineStorage()
   }, [])
 
   const value = useMemo(
-    () => ({ user, loading, login, register, signInWithGoogle, sendSignInLink, resetPassword, logout, refreshUser, applyUser }),
-    [user, loading, login, register, signInWithGoogle, sendSignInLink, resetPassword, logout, refreshUser, applyUser],
+    () => ({ user, sessionUserId, loading, login, register, signInWithGoogle, sendSignInLink, resetPassword, logout, refreshUser, applyUser }),
+    [user, sessionUserId, loading, login, register, signInWithGoogle, sendSignInLink, resetPassword, logout, refreshUser, applyUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

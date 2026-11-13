@@ -82,6 +82,7 @@ function renderWithUser(userId: string | null, tourId: string) {
       <AuthContext.Provider
         value={{
           user: userId ? makeUser(userId) : null,
+          sessionUserId: userId,
           loading: false,
           login: vi.fn(),
           register: vi.fn(),
