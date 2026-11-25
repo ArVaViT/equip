@@ -9,7 +9,7 @@ import { setFirstRunActive } from "@/lib/tourState"
 import type { User } from "@/types"
 import type { LegalStatus } from "@/services/legal"
 import { TeacherAgreementGate } from "../TeacherAgreementGate"
-import { getTeacherAgreementOwed } from "../useTeacherAgreement"
+import { getTeacherAgreementOwed, subscribeTeacherAgreement } from "../useTeacherAgreement"
 
 vi.mock("@/services/legal", () => ({
   legalService: {
@@ -24,6 +24,11 @@ vi.mock("@/services/legal", () => ({
   },
 }))
 vi.mock("@/lib/toast", () => ({ toast: vi.fn() }))
+const viewAs = vi.hoisted(() => ({ active: null as null | { userId: string } }))
+vi.mock("@/lib/viewAs", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/viewAs")>()),
+  activeViewAs: () => viewAs.active,
+}))
 
 const TEACHER_TERMS = {
   slug: "teacher-terms",
@@ -105,6 +110,7 @@ beforeEach(async () => {
   logout.mockClear()
   refreshUser.mockClear()
   setFirstRunActive(false)
+  viewAs.active = null
 })
 
 afterEach(() => {
@@ -323,6 +329,8 @@ describe("TeacherAgreementGate", () => {
       </Wrapper>,
     )
     await screen.findByText(TITLE())
+    const published: boolean[] = []
+    const unsubscribe = subscribeTeacherAgreement(() => published.push(getTeacherAgreementOwed()))
     fireEvent.click(screen.getByRole("checkbox"))
     fireEvent.click(screen.getByRole("button", { name: CONTINUE() }))
     await waitFor(() => expect(legalService.accept).toHaveBeenCalledWith("teacher-terms", "1.0", i18n.language))
@@ -331,8 +339,11 @@ describe("TeacherAgreementGate", () => {
     expect(await screen.findByText(i18n.t("legalGate.school.title"))).toBeInTheDocument()
     expect(screen.getByRole("checkbox")).not.toBeChecked()
     expect(legalService.accept).toHaveBeenCalledTimes(1)
-    // And at no point in between did the route guard think nothing was owed.
+    // And at no point in between did the route guard think nothing was owed:
+    // every value published since the first acceptance was "still owed".
     expect(getTeacherAgreementOwed()).toBe(true)
+    expect(published.every(Boolean)).toBe(true)
+    unsubscribe()
 
     fireEvent.click(screen.getByRole("checkbox"))
     fireEvent.click(screen.getByRole("button", { name: i18n.t("legalGate.school.next") }))
@@ -408,5 +419,34 @@ describe("TeacherAgreementGate", () => {
 
     expect(container.firstChild).toBeNull()
     expect(getTeacherAgreementOwed()).toBe(false)
+  })
+
+  it("lets a director read the providers the School Agreement asks the school to accept", async () => {
+    const { legalService } = await import("@/services/legal")
+    vi.mocked(legalService.status).mockResolvedValue({ accepted: [], outstanding: [SCHOOL_AGREEMENT], notices: [] })
+
+    const { container } = render(
+      <Wrapper route="/privacy/providers" user={makeUser({ role: "director" })}>
+        <TeacherAgreementGate />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(legalService.status).toHaveBeenCalled())
+    expect(container.firstChild).toBeNull()
+  })
+
+  it("stays out of the way while an admin views as somebody who owes it", async () => {
+    // The view is read-only: accepting would be refused, and the gate would
+    // cover the banner whose button ends the view.
+    const { legalService } = await import("@/services/legal")
+    vi.mocked(legalService.status).mockResolvedValue({ accepted: [], outstanding: [SCHOOL_AGREEMENT], notices: [] })
+    viewAs.active = { userId: "director-1" }
+
+    const { container } = render(
+      <Wrapper user={makeUser({ role: "director" })}>
+        <TeacherAgreementGate />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(legalService.status).toHaveBeenCalled())
+    expect(container.firstChild).toBeNull()
   })
 })

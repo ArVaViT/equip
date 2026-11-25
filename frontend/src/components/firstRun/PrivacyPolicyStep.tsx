@@ -76,7 +76,13 @@ export function PrivacyPolicyStep({ onAccept, renewal = false, documents }: Prop
       // Asked again here only when the orchestrator has nothing to hand over —
       // a failed status call on mount must not leave somebody staring at a
       // permanently dead Continue button.
-      const list = documents?.length ? documents : (await legalService.status()).outstanding
+      // Only the documents everybody signs, the same filter FirstRunFlow uses:
+      // this checkbox names the privacy policy and the terms, and a role-scoped
+      // document (the teacher terms, the School Agreement) has its own screen.
+      // Unfiltered, a director arriving here without a prefetched list had the
+      // School Agreement recorded under this sentence.
+      const universal = (docs: LegalDocumentSummary[]) => docs.filter((doc) => doc.required_for.includes("student"))
+      const list = documents?.length ? documents : universal((await legalService.status()).outstanding)
       // One tick, every document named in it — that is what the checkbox says,
       // and recording only one of them would make the record narrower than the
       // sentence the person actually agreed to. Accepting something already
@@ -91,7 +97,7 @@ export function PrivacyPolicyStep({ onAccept, renewal = false, documents }: Prop
         // under «check your connection» — the only ways out were a reload
         // or signing out. Ask for the current versions and accept those.
         if (getErrorCode(err) !== "legal.document_changed") throw err
-        for (const doc of (await legalService.status()).outstanding) {
+        for (const doc of universal((await legalService.status()).outstanding)) {
           await legalService.accept(doc.slug, doc.version, locale)
         }
       }

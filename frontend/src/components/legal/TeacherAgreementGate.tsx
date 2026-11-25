@@ -10,6 +10,7 @@ import { getFirstRunActive, subscribeFirstRun } from "@/lib/tourState"
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
+import { activeViewAs } from "@/lib/viewAs"
 import { type RoleDocument, useTeacherAgreement } from "./useTeacherAgreement"
 
 /** The words for each role-scoped document. Each has its own screen copy:
@@ -79,15 +80,24 @@ export function TeacherAgreementGate() {
     pathname === "/teacher-terms" ||
     pathname === "/school-agreement" ||
     pathname === "/terms" ||
-    pathname === "/privacy"
+    pathname === "/privacy" ||
+    // The School Agreement (s.5) has the school agree to these providers and
+    // links to them: a director must be able to read them before accepting.
+    pathname === "/privacy/providers"
 
-  const owedKey = owed ? `${owed.slug}@${owed.version}` : null
+  // A tick belongs to one person and one document at one version: somebody
+  // signing in after a sign-out in the same tab starts with an empty box.
+  const owedKey = owed && user ? `${user.id}:${owed.slug}@${owed.version}` : null
   const checked = owedKey !== null && checkedFor === owedKey
   const needsTick = owedKey !== null && needsTickFor === owedKey
 
   const firstRunActive = useSyncExternalStore(subscribeFirstRun, getFirstRunActive, getFirstRunActive)
 
-  const open = Boolean(owed) && !exempt && !firstRunActive
+  // Not while a platform admin views as somebody: the status answers for the
+  // person viewed, accepting is a write the read-only view refuses, and the
+  // gate would cover the banner whose button ends the view.
+  const viewingAs = activeViewAs() !== null
+  const open = Boolean(owed) && !exempt && !firstRunActive && !viewingAs
 
   useEffect(() => {
     if (!open) return
