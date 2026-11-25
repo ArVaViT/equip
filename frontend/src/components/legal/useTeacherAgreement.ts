@@ -5,6 +5,22 @@ import { legalService, type LegalDocumentSummary } from "@/services/legal"
 export const TEACHER_TERMS = "teacher-terms"
 
 /**
+ * The other role-scoped document: a director binds the school with it.
+ *
+ * The consent gate on the server refuses every change from a director who has
+ * not accepted it (``RUNS_A_SCHOOL`` in ``app/legal/registry.py``), and until
+ * this screen asked for it nothing in the app did: the first-run flow takes
+ * only what a student owes, and this gate took only the teacher terms. The one
+ * director on the platform met a wall of 403s on grading — seventeen in a day,
+ * under a toast telling him to accept documents he had already accepted.
+ */
+export const SCHOOL_AGREEMENT = "school-agreement"
+
+/** In the order they are asked for: the agreement that makes somebody a
+ *  teacher before the one that lets them bind a school. */
+const ROLE_DOCUMENTS = [TEACHER_TERMS, SCHOOL_AGREEMENT] as const
+
+/**
  * The same answer, reachable from a route guard.
  *
  * ``Gate`` in ``App.tsx`` decides during render whether to let somebody into
@@ -74,7 +90,12 @@ export function useTeacherAgreement(userId: string | undefined) {
   // Set the moment the person accepts, so the gate closes on the click rather
   // than on the next poll. The server is authoritative; this is the optimism
   // that keeps a confirmed action from feeling like a hung button.
-  const [accepted, setAccepted] = useState(false)
+  // The slug just accepted, rather than a flag: a director can owe two
+  // documents, and accepting the first must not hide the second.
+  const [accepted, setAccepted] = useState<string | null>(null)
+  // The same slug for the poll, which must not reopen a gate on a stale
+  // answer that still lists what was accepted a moment ago.
+  const acceptedRef = useRef<string | null>(null)
   const lastCheck = useRef(0)
 
   const check = useCallback(() => {
@@ -82,9 +103,10 @@ export function useTeacherAgreement(userId: string | undefined) {
     lastCheck.current = Date.now()
     legalService.status().then(
       (status) => {
-        const found = status.outstanding.find((doc) => doc.slug === TEACHER_TERMS) ?? null
+        const found =
+          ROLE_DOCUMENTS.map((slug) => status.outstanding.find((doc) => doc.slug === slug)).find(Boolean) ?? null
         setOwed(found)
-        publishOwed(found !== null)
+        publishOwed(found !== null && found.slug !== acceptedRef.current)
       },
       () => {
         // A failed check must not become a gate nobody can pass. Leaving the
@@ -98,11 +120,13 @@ export function useTeacherAgreement(userId: string | undefined) {
   useEffect(() => {
     if (!userId) {
       setOwed(null)
-      setAccepted(false)
+      setAccepted(null)
+      acceptedRef.current = null
       publishOwed(false)
       return
     }
-    setAccepted(false)
+    setAccepted(null)
+    acceptedRef.current = null
     check()
     // Not while the tab is hidden: coming back to it asks anyway (below), and a
     // forgotten background tab otherwise polls every five minutes all day —
@@ -126,10 +150,17 @@ export function useTeacherAgreement(userId: string | undefined) {
 
   return {
     /** The agreement, when it is owed and has not just been accepted. */
-    owed: accepted ? null : owed,
-    onAccepted: useCallback(() => {
-      setAccepted(true)
-      publishOwed(false)
-    }, []),
+    owed: owed && owed.slug === accepted ? null : owed,
+    onAccepted: useCallback(
+      (slug: string) => {
+        setAccepted(slug)
+        acceptedRef.current = slug
+        publishOwed(false)
+        // Somebody who owed both documents is asked for the next one now,
+        // not five minutes from now.
+        check()
+      },
+      [check],
+    ),
   }
 }

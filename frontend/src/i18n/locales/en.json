@@ -3348,6 +3348,20 @@
       "next": "Accept and continue",
       "saveFailed": "Couldn't record your acceptance. Check your connection and try again."
     },
+    "school": {
+      "eyebrow": "You run a school",
+      "title": "One agreement on behalf of your school",
+      "intro": "You are the director of a school on Equip. Before you make changes, accept the School Agreement. It binds the school, not only you.",
+      "bullets": {
+        "people": "Your school is responsible for the people it brings in: who they are, the consents the law requires where you are, and never an account for anyone under 13.",
+        "material": "Your school stands behind the material its teachers upload, and covers us if that material leads to a claim.",
+        "authority": "Accept only if you are authorised to agree on the school's behalf. If you are not, sign out and write to supportequip@gmail.com."
+      },
+      "checkbox": "I have read the School Agreement and accept it on behalf of my school",
+      "tickFirst": "Tick the box above to accept the agreement.",
+      "next": "Accept and continue",
+      "saveFailed": "Couldn't record your acceptance. Check your connection and try again."
+    },
     "notice": {
       "body": "{{document}}: new version from {{date}}, nothing to sign.",
       "read": "What changed",

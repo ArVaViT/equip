@@ -33,6 +33,14 @@ const TEACHER_TERMS = {
   requires_consent: true,
 }
 
+const SCHOOL_AGREEMENT = {
+  slug: "school-agreement",
+  version: "1.0",
+  effective: "2026-09-17",
+  required_for: ["director"],
+  requires_consent: true,
+}
+
 const NOTHING_OWED: LegalStatus = { accepted: [], outstanding: [], notices: [] }
 const AGREEMENT_OWED: LegalStatus = { accepted: [], outstanding: [TEACHER_TERMS], notices: [] }
 
@@ -280,5 +288,61 @@ describe("TeacherAgreementGate", () => {
     fireEvent.click(screen.getByRole("button", { name: CONTINUE() }))
 
     await waitFor(() => expect(getTeacherAgreementOwed()).toBe(false))
+  })
+
+  // The one director on the platform owed the School Agreement and nothing in
+  // the app asked for it: the server refused his every change (seventeen 403s
+  // grading one paper, 2026-11-22) while no screen offered a way to accept.
+  it("asks a director for the School Agreement, in its own words, and records exactly that", async () => {
+    const { legalService } = await import("@/services/legal")
+    vi.mocked(legalService.status).mockResolvedValue({ accepted: [], outstanding: [SCHOOL_AGREEMENT], notices: [] })
+
+    render(
+      <Wrapper user={makeUser({ role: "director" })}>
+        <TeacherAgreementGate />
+      </Wrapper>,
+    )
+    expect(await screen.findByText(i18n.t("legalGate.school.title"))).toBeInTheDocument()
+    expect(screen.queryByText(TITLE())).not.toBeInTheDocument()
+    expect(screen.getByRole("link", { name: i18n.t("legal.schoolAgreement") })).toHaveAttribute("href", "/school-agreement")
+
+    fireEvent.click(screen.getByRole("checkbox"))
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("legalGate.school.next") }))
+    await waitFor(() => expect(legalService.accept).toHaveBeenCalledWith("school-agreement", "1.0", i18n.language))
+  })
+
+  it("asks for the second document with an empty box after the first is accepted", async () => {
+    const { legalService } = await import("@/services/legal")
+    vi.mocked(legalService.status)
+      .mockResolvedValueOnce({ accepted: [], outstanding: [TEACHER_TERMS, SCHOOL_AGREEMENT], notices: [] })
+      .mockResolvedValue({ accepted: [], outstanding: [SCHOOL_AGREEMENT], notices: [] })
+
+    render(
+      <Wrapper user={makeUser({ role: "director" })}>
+        <TeacherAgreementGate />
+      </Wrapper>,
+    )
+    await screen.findByText(TITLE())
+    fireEvent.click(screen.getByRole("checkbox"))
+    fireEvent.click(screen.getByRole("button", { name: CONTINUE() }))
+    await waitFor(() => expect(legalService.accept).toHaveBeenCalledWith("teacher-terms", "1.0", i18n.language))
+
+    // The school's acceptance must not ride on the tick given for the teacher terms.
+    expect(await screen.findByText(i18n.t("legalGate.school.title"))).toBeInTheDocument()
+    expect(screen.getByRole("checkbox")).not.toBeChecked()
+    expect(legalService.accept).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not cover the School Agreement when the director opens it to read", async () => {
+    const { legalService } = await import("@/services/legal")
+    vi.mocked(legalService.status).mockResolvedValue({ accepted: [], outstanding: [SCHOOL_AGREEMENT], notices: [] })
+
+    const { container } = render(
+      <Wrapper route="/school-agreement" user={makeUser({ role: "director" })}>
+        <TeacherAgreementGate />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(legalService.status).toHaveBeenCalled())
+    expect(container.firstChild).toBeNull()
   })
 })

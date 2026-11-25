@@ -37,7 +37,7 @@ describe("the consent screens are not dark patterns", () => {
   it("labels the button with what pressing it does, in every language", () => {
     const bundles = { en, ru, de, uk } as Record<string, typeof en>
     for (const [locale, bundle] of Object.entries(bundles)) {
-      for (const label of [bundle.firstRun.privacy.next, bundle.legalGate.teacher.next]) {
+      for (const label of [bundle.firstRun.privacy.next, bundle.legalGate.teacher.next, bundle.legalGate.school.next]) {
         expect(label.length, `${locale}: the label is empty`).toBeGreaterThan(0)
         // Not a navigation word on its own. Each language's word for "accept"
         // has to be in there, because that is what the press means.

@@ -3348,6 +3348,20 @@
       "next": "Annehmen und fortfahren",
       "saveFailed": "Ihre Zustimmung konnte nicht gespeichert werden. Prüfen Sie die Verbindung und versuchen Sie es erneut."
     },
+    "school": {
+      "eyebrow": "Sie leiten eine Schule",
+      "title": "Eine Vereinbarung im Namen Ihrer Schule",
+      "intro": "Sie leiten eine Schule auf Equip. Bevor Sie etwas ändern, nehmen Sie die Schulvereinbarung an. Sie verpflichtet die Schule, nicht nur Sie persönlich.",
+      "bullets": {
+        "people": "Ihre Schule ist für die Menschen verantwortlich, die sie aufnimmt: wer sie sind, die Einwilligungen, die das Recht vor Ort verlangt, und niemals ein Konto für jemanden unter 13.",
+        "material": "Ihre Schule steht für das Material ein, das ihre Lehrkräfte hochladen, und stellt uns frei, wenn daraus ein Anspruch entsteht.",
+        "authority": "Nehmen Sie nur an, wenn Sie berechtigt sind, im Namen der Schule zuzustimmen. Wenn nicht, melden Sie sich ab und schreiben Sie an supportequip@gmail.com."
+      },
+      "checkbox": "Ich habe die Schulvereinbarung gelesen und nehme sie im Namen meiner Schule an",
+      "tickFirst": "Setzen Sie oben das Häkchen, um die Vereinbarung anzunehmen.",
+      "next": "Annehmen und fortfahren",
+      "saveFailed": "Ihre Zustimmung konnte nicht gespeichert werden. Prüfen Sie die Verbindung und versuchen Sie es erneut."
+    },
     "notice": {
       "body": "„{{document}}“: neue Fassung ab {{date}}, nichts zu unterschreiben.",
       "read": "Was sich ändert",

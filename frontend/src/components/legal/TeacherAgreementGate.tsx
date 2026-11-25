@@ -10,7 +10,14 @@ import { getFirstRunActive, subscribeFirstRun } from "@/lib/tourState"
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
-import { useTeacherAgreement } from "./useTeacherAgreement"
+import { SCHOOL_AGREEMENT, useTeacherAgreement } from "./useTeacherAgreement"
+
+/** The words for each role-scoped document. Each has its own screen copy:
+ *  a checkbox must name exactly the document it records. */
+const COPY = {
+  teacher: { bullets: ["rights", "students", "marks"], link: "/teacher-terms", label: "legal.teacherTerms" },
+  school: { bullets: ["people", "material", "authority"], link: "/school-agreement", label: "legal.schoolAgreement" },
+} as const
 
 /** Same definition the first-run flow uses. Kept local rather than exported
  *  from there, because the two gates are allowed to diverge. */
@@ -61,7 +68,20 @@ export function TeacherAgreementGate() {
   // Same reasoning as the first-run gate: this component mounts on every
   // route, so a link out of it to the document would open a tab where it
   // mounts again and covers the text somebody was sent to read.
-  const exempt = pathname === "/teacher-terms" || pathname === "/terms" || pathname === "/privacy"
+  const exempt =
+    pathname === "/teacher-terms" ||
+    pathname === "/school-agreement" ||
+    pathname === "/terms" ||
+    pathname === "/privacy"
+
+  // A second document starts with an empty box like the first. A tick carried
+  // over from the teacher terms would record the school's acceptance on a
+  // click the director made for something else.
+  const owedSlug = owed?.slug
+  useEffect(() => {
+    setChecked(false)
+    setNeedsTick(false)
+  }, [owedSlug])
 
   const firstRunActive = useSyncExternalStore(subscribeFirstRun, getFirstRunActive, getFirstRunActive)
 
@@ -112,6 +132,9 @@ export function TeacherAgreementGate() {
 
   if (!open || !owed) return null
 
+  const kind = owed.slug === SCHOOL_AGREEMENT ? "school" : "teacher"
+  const copy = COPY[kind]
+
   const confirm = async () => {
     if (!checked) {
       setNeedsTick(true)
@@ -121,13 +144,13 @@ export function TeacherAgreementGate() {
     setSaving(true)
     try {
       await legalService.accept(owed.slug, owed.version, locale)
-      onAccepted()
+      onAccepted(owed.slug)
       // The role that produced this gate is the one the client has not seen
       // yet. Now is the moment to go and get it, so the teacher menu and the
       // /teacher routes are there when the screen closes.
       await refreshUser()
     } catch {
-      toast({ title: t("legalGate.teacher.saveFailed"), variant: "destructive" })
+      toast({ title: t(`legalGate.${kind}.saveFailed`), variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -144,31 +167,25 @@ export function TeacherAgreementGate() {
       <div className="flex w-full max-w-xl flex-col items-center gap-5 text-center">
         <span className="block h-px w-12 bg-accent/60" aria-hidden />
         <p className="text-xs font-medium uppercase tracking-[0.22em] text-accent">
-          {t("legalGate.teacher.eyebrow")}
+          {t(`legalGate.${kind}.eyebrow`)}
         </p>
         <h1
           id="teacher-agreement-heading"
           className="font-serif text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-3xl"
         >
-          {t("legalGate.teacher.title")}
+          {t(`legalGate.${kind}.title`)}
         </h1>
         <p className="max-w-md text-sm leading-relaxed text-ink-muted sm:text-base">
-          {t("legalGate.teacher.intro")}
+          {t(`legalGate.${kind}.intro`)}
         </p>
 
         <ul className="mt-2 w-full space-y-3 text-left text-sm leading-relaxed text-ink-muted">
-          <li className="flex gap-3 rounded-md bg-muted/20 p-3">
-            <span aria-hidden className="mt-1.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-            <span>{t("legalGate.teacher.bullets.rights")}</span>
-          </li>
-          <li className="flex gap-3 rounded-md bg-muted/20 p-3">
-            <span aria-hidden className="mt-1.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-            <span>{t("legalGate.teacher.bullets.students")}</span>
-          </li>
-          <li className="flex gap-3 rounded-md bg-muted/20 p-3">
-            <span aria-hidden className="mt-1.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-            <span>{t("legalGate.teacher.bullets.marks")}</span>
-          </li>
+          {copy.bullets.map((bullet) => (
+            <li key={bullet} className="flex gap-3 rounded-md bg-muted/20 p-3">
+              <span aria-hidden className="mt-1.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+              <span>{t(`legalGate.${kind}.bullets.${bullet}`)}</span>
+            </li>
+          ))}
         </ul>
 
         {/* The whole row is the tap target, not the 16px box: on a phone the
@@ -192,17 +209,17 @@ export function TeacherAgreementGate() {
             aria-describedby={needsTick ? hintId : undefined}
             className="mt-0.5"
           />
-          <span className="text-sm leading-snug text-ink">{t("legalGate.teacher.checkbox")}</span>
+          <span className="text-sm leading-snug text-ink">{t(`legalGate.${kind}.checkbox`)}</span>
         </label>
         {needsTick && (
           <p id={hintId} role="alert" className="-mt-2 w-full text-left text-sm text-destructive-ink">
-            {t("legalGate.teacher.tickFirst")}
+            {t(`legalGate.${kind}.tickFirst`)}
           </p>
         )}
 
         <p className="text-sm text-ink-muted">
-          <Link to="/teacher-terms" target="_blank" className="text-brand underline underline-offset-4">
-            {t("legal.teacherTerms")}
+          <Link to={copy.link} target="_blank" className="text-brand underline underline-offset-4">
+            {t(copy.label)}
           </Link>
         </p>
 
@@ -214,7 +231,7 @@ export function TeacherAgreementGate() {
           className="w-full sm:w-auto sm:min-w-[160px]"
         >
           {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />}
-          {t("legalGate.teacher.next")}
+          {t(`legalGate.${kind}.next`)}
         </Button>
 
         {/* The door. A screen somebody cannot dismiss must not also be a screen
