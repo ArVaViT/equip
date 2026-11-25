@@ -155,6 +155,7 @@ export function TeacherAgreementGate() {
   const confirm = async () => {
     if (!checked) {
       setNeedsTickFor(owedKey)
+      setFailedFor(null)
       checkboxRef.current?.focus()
       return
     }
@@ -258,6 +259,7 @@ export function TeacherAgreementGate() {
           type="button"
           onClick={confirm}
           disabled={saving}
+          aria-describedby={failedFor !== null && failedFor === owedKey ? failedId : undefined}
           size="lg"
           className="w-full sm:w-auto sm:min-w-[160px]"
         >

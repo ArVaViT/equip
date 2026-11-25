@@ -468,6 +468,14 @@ describe("TeacherAgreementGate", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent(i18n.t("legalGate.school.saveFailed"))
     expect(screen.getByText(i18n.t("legalGate.school.title"))).toBeInTheDocument()
+    const next = screen.getByRole("button", { name: i18n.t("legalGate.school.next") })
+    expect(next).toBeEnabled()
+    expect(next).toHaveAccessibleDescription(i18n.t("legalGate.school.saveFailed"))
+
+    // Trying again clears the message and goes through.
+    fireEvent.click(next)
+    await waitFor(() => expect(legalService.accept).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.queryByText(i18n.t("legalGate.school.saveFailed"))).not.toBeInTheDocument())
   })
 
   it("does not turn an admin viewing as somebody away from /teacher/*", async () => {
