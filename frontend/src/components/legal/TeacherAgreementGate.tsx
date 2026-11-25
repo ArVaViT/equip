@@ -8,9 +8,21 @@ import { legalService } from "@/services/legal"
 import { useAuth } from "@/context/useAuth"
 import { getFirstRunActive, subscribeFirstRun } from "@/lib/tourState"
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
-import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
-import { useTeacherAgreement } from "./useTeacherAgreement"
+import { activeViewAs } from "@/lib/viewAs"
+import { type RoleDocument, useTeacherAgreement } from "./useTeacherAgreement"
+
+/** The words for each role-scoped document. Each has its own screen copy:
+ *  a checkbox must name exactly the document it records. */
+const COPY: Record<RoleDocument, { kind: string; bullets: readonly string[]; link: string; label: string }> = {
+  "teacher-terms": { kind: "teacher", bullets: ["rights", "students", "marks"], link: "/teacher-terms", label: "legal.teacherTerms" },
+  "school-agreement": {
+    kind: "school",
+    bullets: ["people", "material", "authority"],
+    link: "/school-agreement",
+    label: "legal.schoolAgreement",
+  },
+}
 
 /** Same definition the first-run flow uses. Kept local rather than exported
  *  from there, because the two gates are allowed to diverge. */
@@ -49,10 +61,16 @@ export function TeacherAgreementGate() {
   const { pathname } = useLocation()
   const locale = isSupportedLocale(i18n.language) ? i18n.language : DEFAULT_LOCALE
   const { owed, onAccepted } = useTeacherAgreement(user?.id)
-  const [checked, setChecked] = useState(false)
+  // Which document the box was ticked for. A tick belongs to one document: the
+  // next one on screen starts empty, in the very first frame it is shown.
+  const [checkedFor, setCheckedFor] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   // Set when the button is pressed before the box is ticked; cleared by the tick.
-  const [needsTick, setNeedsTick] = useState(false)
+  const [needsTickFor, setNeedsTickFor] = useState<string | null>(null)
+  // Shown in the gate, not as a toast: toasts render beneath this overlay, so
+  // a failed save looked like a spinner that stopped and nothing else.
+  const [failedFor, setFailedFor] = useState<string | null>(null)
+  const failedId = useId()
   const checkboxId = useId()
   const hintId = useId()
   const checkboxRef = useRef<HTMLButtonElement>(null)
@@ -61,11 +79,28 @@ export function TeacherAgreementGate() {
   // Same reasoning as the first-run gate: this component mounts on every
   // route, so a link out of it to the document would open a tab where it
   // mounts again and covers the text somebody was sent to read.
-  const exempt = pathname === "/teacher-terms" || pathname === "/terms" || pathname === "/privacy"
+  const exempt =
+    pathname === "/teacher-terms" ||
+    pathname === "/school-agreement" ||
+    pathname === "/terms" ||
+    pathname === "/privacy" ||
+    // The School Agreement (s.5) has the school agree to these providers and
+    // links to them: a director must be able to read them before accepting.
+    pathname === "/privacy/providers"
+
+  // A tick belongs to one person and one document at one version: somebody
+  // signing in after a sign-out in the same tab starts with an empty box.
+  const owedKey = owed && user ? `${user.id}:${owed.slug}@${owed.version}` : null
+  const checked = owedKey !== null && checkedFor === owedKey
+  const needsTick = owedKey !== null && needsTickFor === owedKey
 
   const firstRunActive = useSyncExternalStore(subscribeFirstRun, getFirstRunActive, getFirstRunActive)
 
-  const open = Boolean(owed) && !exempt && !firstRunActive
+  // Not while a platform admin views as somebody: the status answers for the
+  // person viewed, accepting is a write the read-only view refuses, and the
+  // gate would cover the banner whose button ends the view.
+  const viewingAs = activeViewAs() !== null
+  const open = Boolean(owed) && !exempt && !firstRunActive && !viewingAs
 
   useEffect(() => {
     if (!open) return
@@ -112,22 +147,36 @@ export function TeacherAgreementGate() {
 
   if (!open || !owed) return null
 
+  // ``owed`` only ever carries a slug from ROLE_DOCUMENTS, and every one of
+  // them has its words here: the record type makes a new one fail to compile.
+  const copy = COPY[owed.slug as RoleDocument]
+  const kind = copy.kind
+
   const confirm = async () => {
     if (!checked) {
-      setNeedsTick(true)
+      setNeedsTickFor(owedKey)
+      setFailedFor(null)
       checkboxRef.current?.focus()
       return
     }
     setSaving(true)
+    setFailedFor(null)
     try {
       await legalService.accept(owed.slug, owed.version, locale)
-      onAccepted()
+    } catch {
+      setFailedFor(owedKey)
+      setSaving(false)
+      return
+    }
+    onAccepted(owed)
+    try {
       // The role that produced this gate is the one the client has not seen
       // yet. Now is the moment to go and get it, so the teacher menu and the
-      // /teacher routes are there when the screen closes.
+      // /teacher routes are there when the screen closes. The acceptance is
+      // already recorded: a failure here is not a failed acceptance.
       await refreshUser()
     } catch {
-      toast({ title: t("legalGate.teacher.saveFailed"), variant: "destructive" })
+      // The next profile load picks the role up.
     } finally {
       setSaving(false)
     }
@@ -144,31 +193,25 @@ export function TeacherAgreementGate() {
       <div className="flex w-full max-w-xl flex-col items-center gap-5 text-center">
         <span className="block h-px w-12 bg-accent/60" aria-hidden />
         <p className="text-xs font-medium uppercase tracking-[0.22em] text-accent">
-          {t("legalGate.teacher.eyebrow")}
+          {t(`legalGate.${kind}.eyebrow`)}
         </p>
         <h1
           id="teacher-agreement-heading"
           className="font-serif text-2xl font-semibold leading-tight tracking-tight text-ink sm:text-3xl"
         >
-          {t("legalGate.teacher.title")}
+          {t(`legalGate.${kind}.title`)}
         </h1>
         <p className="max-w-md text-sm leading-relaxed text-ink-muted sm:text-base">
-          {t("legalGate.teacher.intro")}
+          {t(`legalGate.${kind}.intro`)}
         </p>
 
         <ul className="mt-2 w-full space-y-3 text-left text-sm leading-relaxed text-ink-muted">
-          <li className="flex gap-3 rounded-md bg-muted/20 p-3">
-            <span aria-hidden className="mt-1.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-            <span>{t("legalGate.teacher.bullets.rights")}</span>
-          </li>
-          <li className="flex gap-3 rounded-md bg-muted/20 p-3">
-            <span aria-hidden className="mt-1.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-            <span>{t("legalGate.teacher.bullets.students")}</span>
-          </li>
-          <li className="flex gap-3 rounded-md bg-muted/20 p-3">
-            <span aria-hidden className="mt-1.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-            <span>{t("legalGate.teacher.bullets.marks")}</span>
-          </li>
+          {copy.bullets.map((bullet) => (
+            <li key={bullet} className="flex gap-3 rounded-md bg-muted/20 p-3">
+              <span aria-hidden className="mt-1.5 block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+              <span>{t(`legalGate.${kind}.bullets.${bullet}`)}</span>
+            </li>
+          ))}
         </ul>
 
         {/* The whole row is the tap target, not the 16px box: on a phone the
@@ -185,24 +228,30 @@ export function TeacherAgreementGate() {
             id={checkboxId}
             checked={checked}
             onCheckedChange={(v) => {
-              setChecked(v === true)
-              if (v === true) setNeedsTick(false)
+              setCheckedFor(v === true ? owedKey : null)
+              if (v === true) setNeedsTickFor(null)
             }}
             aria-invalid={needsTick || undefined}
             aria-describedby={needsTick ? hintId : undefined}
             className="mt-0.5"
           />
-          <span className="text-sm leading-snug text-ink">{t("legalGate.teacher.checkbox")}</span>
+          <span className="text-sm leading-snug text-ink">{t(`legalGate.${kind}.checkbox`)}</span>
         </label>
         {needsTick && (
           <p id={hintId} role="alert" className="-mt-2 w-full text-left text-sm text-destructive-ink">
-            {t("legalGate.teacher.tickFirst")}
+            {t(`legalGate.${kind}.tickFirst`)}
+          </p>
+        )}
+
+        {failedFor !== null && failedFor === owedKey && (
+          <p id={failedId} role="alert" className="w-full text-left text-sm text-destructive-ink">
+            {t(`legalGate.${kind}.saveFailed`)}
           </p>
         )}
 
         <p className="text-sm text-ink-muted">
-          <Link to="/teacher-terms" target="_blank" className="text-brand underline underline-offset-4">
-            {t("legal.teacherTerms")}
+          <Link to={copy.link} target="_blank" className="text-brand underline underline-offset-4">
+            {t(copy.label)}
           </Link>
         </p>
 
@@ -210,11 +259,12 @@ export function TeacherAgreementGate() {
           type="button"
           onClick={confirm}
           disabled={saving}
+          aria-describedby={failedFor !== null && failedFor === owedKey ? failedId : undefined}
           size="lg"
           className="w-full sm:w-auto sm:min-w-[160px]"
         >
           {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" strokeWidth={1.75} aria-hidden />}
-          {t("legalGate.teacher.next")}
+          {t(`legalGate.${kind}.next`)}
         </Button>
 
         {/* The door. A screen somebody cannot dismiss must not also be a screen

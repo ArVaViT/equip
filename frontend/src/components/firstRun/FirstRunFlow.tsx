@@ -71,7 +71,13 @@ export function FirstRunFlow() {
    * promises every course mail can be stopped from its own link, with no
    * "after you have accepted" clause. The server exempts the route too.
    */
-  const exempt = pathname === "/privacy" || pathname === "/terms" || pathname === "/unsubscribe"
+  // `/privacy/providers` is part of what the privacy policy asks people to
+  // accept — it links there for the list of providers.
+  const exempt =
+    pathname === "/privacy" ||
+    pathname === "/privacy/providers" ||
+    pathname === "/terms" ||
+    pathname === "/unsubscribe"
 
   // null until the server has answered. See `decideInitialStep`.
   const [legalOutstanding, setLegalOutstanding] = useState<boolean | null>(null)

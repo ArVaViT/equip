@@ -587,7 +587,7 @@ describe("FirstRunFlow", () => {
     // Found on production minutes after shipping: this component mounts on
     // every route, so opening «Политика конфиденциальности» from the gate
     // showed the gate again, on top of the document.
-    for (const route of ["/privacy", "/terms"]) {
+    for (const route of ["/privacy", "/privacy/providers", "/terms"]) {
       const { unmount } = render(
         <Wrapper route={route}>
           <FirstRunFlow />

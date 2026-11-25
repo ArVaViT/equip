@@ -944,7 +944,7 @@
       "invitation_email_mismatch": "This invitation was sent to a different address.",
       "plan_limit_reached": "You already have {{limit}} courses, which is as many as one teacher can keep at once. Delete one you no longer need, or ask an administrator.",
       "validation_failed": "Something you entered isn't right.",
-      "legal_consent_required": "Please accept the current Terms of Use and Privacy Policy before making changes.",
+      "legal_consent_required": "Accept the documents your account requires before making changes.",
       "legal_document_changed": "This document has changed. Please reload and read it again.",
       "grade_sheet_work_unmarked": "Some work is still waiting to be marked. The sheet closes once the course's teacher has marked it or excused the students from it.",
       "grading_already_marked": "This work has already been marked by someone, so it was left as it is."
@@ -3344,6 +3344,20 @@
         "marks": "Mark honestly and on the work. A certificate carries your judgement and somebody will show it to somebody else."
       },
       "checkbox": "I have read and accept the Teacher & Contributor Agreement",
+      "tickFirst": "Tick the box above to accept the agreement.",
+      "next": "Accept and continue",
+      "saveFailed": "Couldn't record your acceptance. Check your connection and try again."
+    },
+    "school": {
+      "eyebrow": "You run a school",
+      "title": "One agreement on behalf of your school",
+      "intro": "You are the director of a school on Equip. Before you make changes, accept the School Agreement. It binds the school, not only you. Among other things:",
+      "bullets": {
+        "people": "Your school is responsible for the people it brings in: who they are, the consents the law requires where your school is, and never an account for anyone under 13.",
+        "material": "Your school stands behind the material its teachers upload. If that material, how your school or its teachers handle student data, or a breach of this agreement leads to a claim against us, your school defends us and covers the costs.",
+        "authority": "Accept only if you are authorised to agree on the school's behalf. If you are not, sign out and write to supportequip@gmail.com."
+      },
+      "checkbox": "I have read the School Agreement and accept it on behalf of my school",
       "tickFirst": "Tick the box above to accept the agreement.",
       "next": "Accept and continue",
       "saveFailed": "Couldn't record your acceptance. Check your connection and try again."

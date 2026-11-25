@@ -1,8 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { legalService, type LegalDocumentSummary } from "@/services/legal"
+import { activeViewAs } from "@/lib/viewAs"
 
 /** The document this hook exists for. */
 export const TEACHER_TERMS = "teacher-terms"
+
+/**
+ * The other role-scoped document: a director binds the school with it.
+ *
+ * The consent gate on the server refuses every change from a director who has
+ * not accepted it (``RUNS_A_SCHOOL`` in ``app/legal/registry.py``), and until
+ * this screen asked for it nothing in the app did: the first-run flow takes
+ * only what a student owes, and this gate took only the teacher terms. The one
+ * director on the platform met a wall of 403s on grading — seventeen in a day,
+ * under a toast telling him to accept documents he had already accepted.
+ */
+export const SCHOOL_AGREEMENT = "school-agreement"
+
+/** In the order they are asked for: the agreement that makes somebody a
+ *  teacher before the one that lets them bind a school. */
+export const ROLE_DOCUMENTS = [TEACHER_TERMS, SCHOOL_AGREEMENT] as const
+export type RoleDocument = (typeof ROLE_DOCUMENTS)[number]
 
 /**
  * The same answer, reachable from a route guard.
@@ -69,22 +87,44 @@ const POLL_MS = 5 * 60 * 1000
  * have to be reset between tests and between accounts. At this size the
  * request is the cheaper of the two.
  */
+/** A document at a version: a new version of the same document is a new thing to accept. */
+const keyOf = (doc: LegalDocumentSummary) => `${doc.slug}@${doc.version}`
+
 export function useTeacherAgreement(userId: string | undefined) {
-  const [owed, setOwed] = useState<LegalDocumentSummary | null>(null)
-  // Set the moment the person accepts, so the gate closes on the click rather
-  // than on the next poll. The server is authoritative; this is the optimism
-  // that keeps a confirmed action from feeling like a hung button.
-  const [accepted, setAccepted] = useState(false)
+  // Every role-scoped document the last answer listed, in the order they are
+  // asked for. Kept whole so that accepting one shows the next at once,
+  // without a round trip and without a moment in which nothing is owed — the
+  // tour would read that moment as "the gate is gone" and start.
+  const [owedList, setOwedList] = useState<LegalDocumentSummary[]>([])
+  const owedListRef = useRef<LegalDocumentSummary[]>([])
+  // Accepted in this tab, by slug and version. The gate closes on the click
+  // rather than on the next poll, and no answer that left before the click can
+  // bring an accepted document back. A set, because a director can owe two.
+  const [accepted, setAccepted] = useState<ReadonlySet<string>>(() => new Set())
+  const acceptedRef = useRef<ReadonlySet<string>>(new Set())
+  // Only the newest request may answer. The poll, the focus check and the
+  // check after an acceptance are unordered; a slow old answer must not
+  // overwrite a newer one.
+  const seq = useRef(0)
   const lastCheck = useRef(0)
+
+  const stillOwed = (list: LegalDocumentSummary[], done: ReadonlySet<string>) =>
+    list.some((doc) => !done.has(keyOf(doc)))
 
   const check = useCallback(() => {
     if (!userId) return
     lastCheck.current = Date.now()
+    const mine = ++seq.current
     legalService.status().then(
       (status) => {
-        const found = status.outstanding.find((doc) => doc.slug === TEACHER_TERMS) ?? null
-        setOwed(found)
-        publishOwed(found !== null)
+        if (mine !== seq.current) return
+        const list = ROLE_DOCUMENTS.flatMap((slug) => status.outstanding.filter((doc) => doc.slug === slug))
+        owedListRef.current = list
+        setOwedList(list)
+        // Not while an admin views as somebody: the gate stays down then, and a
+        // route guard acting on it would turn the admin away from /teacher/*
+        // with no screen saying why.
+        publishOwed(activeViewAs() === null && stillOwed(list, acceptedRef.current))
       },
       () => {
         // A failed check must not become a gate nobody can pass. Leaving the
@@ -96,13 +136,17 @@ export function useTeacherAgreement(userId: string | undefined) {
   }, [userId])
 
   useEffect(() => {
-    if (!userId) {
-      setOwed(null)
-      setAccepted(false)
-      publishOwed(false)
-      return
-    }
-    setAccepted(false)
+    // A new person (or nobody) starts from nothing: no answer still in flight
+    // for the previous one may land — after sign-out it would raise the gate
+    // over the login page — and nothing they owed or accepted carries over.
+    seq.current++
+    const empty: ReadonlySet<string> = new Set()
+    acceptedRef.current = empty
+    setAccepted(empty)
+    owedListRef.current = []
+    setOwedList([])
+    publishOwed(false)
+    if (!userId) return
     check()
     // Not while the tab is hidden: coming back to it asks anyway (below), and a
     // forgotten background tab otherwise polls every five minutes all day —
@@ -125,11 +169,18 @@ export function useTeacherAgreement(userId: string | undefined) {
   }, [userId, check])
 
   return {
-    /** The agreement, when it is owed and has not just been accepted. */
-    owed: accepted ? null : owed,
-    onAccepted: useCallback(() => {
-      setAccepted(true)
-      publishOwed(false)
-    }, []),
+    /** The first document still owed and not accepted in this tab. */
+    owed: owedList.find((doc) => !accepted.has(keyOf(doc))) ?? null,
+    onAccepted: useCallback(
+      (doc: LegalDocumentSummary) => {
+        const next = new Set(acceptedRef.current).add(keyOf(doc))
+        acceptedRef.current = next
+        setAccepted(next)
+        publishOwed(stillOwed(owedListRef.current, next))
+        // Confirm with the server, and pick up anything that changed meanwhile.
+        check()
+      },
+      [check],
+    ),
   }
 }

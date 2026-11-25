@@ -27,7 +27,9 @@ function Wrapper({ children }: { children: ReactNode }) {
   )
 }
 
-const doc = (version: string) => ({ slug: "privacy", version, effective: "2026-10-01", required_for: [], requires_consent: true })
+const EVERYONE = ["student", "teacher", "director", "admin"]
+const doc = (version: string) => ({ slug: "privacy", version, effective: "2026-10-01", required_for: EVERYONE, requires_consent: true })
+const SCHOOL = { slug: "school-agreement", version: "1.0", effective: "2026-09-17", required_for: ["director"], requires_consent: true }
 
 describe("PrivacyPolicyStep when the document changed under the gate", () => {
   beforeEach(async () => {
@@ -53,5 +55,22 @@ describe("PrivacyPolicyStep when the document changed under the gate", () => {
     expect(accept).toHaveBeenNthCalledWith(1, "privacy", "1.0", "en")
     expect(accept).toHaveBeenNthCalledWith(2, "privacy", "2.0", "en")
     expect(toast).not.toHaveBeenCalled()
+  })
+
+  it("records only the documents its checkbox names, never a role-scoped one", async () => {
+    // With no list handed over, the step asks the server itself — and for a
+    // director the server lists the School Agreement too. Accepting that here
+    // would record it under a sentence about the privacy policy and the terms.
+    const accept = vi.spyOn(legalService, "accept").mockResolvedValue({} as never)
+    vi.spyOn(legalService, "status").mockResolvedValue({ outstanding: [doc("2.0"), SCHOOL] } as never)
+    const onAccept = vi.fn()
+    render(<PrivacyPolicyStep onAccept={onAccept} />, { wrapper: Wrapper })
+
+    await userEvent.click(screen.getByRole("checkbox"))
+    await userEvent.click(screen.getByRole("button", { name: i18n.t("firstRun.privacy.next") }))
+
+    await waitFor(() => expect(onAccept).toHaveBeenCalledTimes(1))
+    expect(accept).toHaveBeenCalledTimes(1)
+    expect(accept).toHaveBeenCalledWith("privacy", "2.0", "en")
   })
 })
