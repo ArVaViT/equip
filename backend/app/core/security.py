@@ -111,6 +111,25 @@ def _validate_via_supabase(token: str) -> dict | None:
     return payload
 
 
+def local_token_subject(token: str) -> str | None:
+    """The ``sub`` of a token this process can verify on its own, else ``None``.
+
+    For the rate limiter, which runs on every request: the local signature
+    check only, never the Supabase fallback (a junk token must not turn into
+    a network call), and no logging (a bad token here is not an event — the
+    route's own check reports it). ``None`` means "count this request by IP".
+    """
+    secret = settings.JWT_SECRET_KEY
+    if not secret or not token:
+        return None
+    try:
+        claims = jwt.decode(token, secret, algorithms=[settings.JWT_ALGORITHM], audience="authenticated")
+    except jwt.PyJWTError:
+        return None
+    sub = claims.get("sub")
+    return sub if isinstance(sub, str) and sub else None
+
+
 def decode_access_token(token: str) -> dict | None:
     # ``JWT_SECRET_KEY`` is optional at boot now (preview deployments may not
     # have the full env-var set — see ``Settings.runtime_ready_errors()``).

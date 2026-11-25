@@ -25,6 +25,18 @@ Decision: keep this in-memory limiter as per-instance defense, point
 production at Vercel WAF for the hard auth limits, and revisit
 Upstash if the user count crosses 1000 active/day.
 
+## Who a bucket belongs to
+
+The global budget is per signed-in person when the request carries a token
+this process can verify locally, and per IP otherwise. A class on one church
+or school Wi-Fi shares an IP: counted by IP, 30 students reading at once
+(the notification bell alone polls twice a minute per tab) spent one shared
+100/min. Counted by person, each has their own.
+
+The per-prefix buckets in ``ENDPOINT_LIMITS`` stay per IP: they guard
+unauthenticated lookups and brute-force surfaces, where the point is to
+limit the source, not the account.
+
 ## IP detection
 
 On Vercel (and any proxy-fronted deploy) `request.client.host` is the proxy
@@ -40,6 +52,7 @@ from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.http import get_client_ip
+from app.core.security import local_token_subject
 
 # Per-endpoint overrides. Resolution is a longest-prefix-style ``startswith``
 # (see ``_resolve_limit``), so any sub-route inherits the bucket of the closest
@@ -139,6 +152,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 return prefix, *limit
         return None, self.calls, self.window
 
+    @staticmethod
+    def _subject(request: Request) -> str | None:
+        """The signed-in person behind ``request``, when it can be proved locally."""
+        header = request.headers.get("authorization", "")
+        scheme, _, token = header.partition(" ")
+        if scheme.lower() != "bearer":
+            return None
+        return local_token_subject(token.strip())
+
     def _cleanup_stale_buckets(self, now: float) -> None:
         if now - self._last_cleanup < CLEANUP_INTERVAL and len(self._hits) < MAX_BUCKETS:
             return
@@ -163,7 +185,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # IP — otherwise an attacker enumerating cert numbers gets a fresh
         # 30/min budget for every guess. Falls back to plain ``client_ip``
         # for the global limiter so unrelated routes still share one bucket.
-        bucket_key = f"{client_ip}:{matched_prefix}" if matched_prefix else client_ip
+        if matched_prefix:
+            bucket_key = f"{client_ip}:{matched_prefix}"
+        else:
+            subject = self._subject(request)
+            bucket_key = f"user:{subject}" if subject else client_ip
         now = time.time()
         cutoff = now - window
 
