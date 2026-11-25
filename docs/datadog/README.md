@@ -80,14 +80,20 @@ and an `op://` reference containing parentheses does not resolve.
 key identifies the org and is what the backend already uses to ship
 logs; it carries no permissions of its own and cannot create a
 monitor. The **application** key is the one that carries scopes, and
-the pair is sent together on every request. Adding scopes means
-issuing a new application key — `Organization Settings` →
-`Application Keys` → `New Key` → set scopes — not editing the API key.
+the pair is sent together on every request. Scopes are edited on the
+application key (`Organization Settings` → `Application Keys`), not on
+the API key.
 
-The application key currently in 1Password is deliberately read-only
-(16 scopes: logs, metrics, dashboards, monitors, APM, RUM, incidents,
-SLOs) and therefore cannot apply anything. A key that can run
-`--apply` needs exactly two scopes:
+The application key in 1Password ("Datadog API Keys (Equip)") was
+named read-only but carried no scopes at all until 2026-11-25, which
+in Datadog means every permission its user has, key and user
+management included. It is scoped now: reads across logs, metrics,
+monitors, dashboards, RUM, APM, incidents, SLOs, synthetics, events,
+usage, hosts and notebooks, and three writes, `monitors_write`,
+`logs_write_exclusion_filters` and `logs_generate_metrics`. Listing
+API keys or users with it answers 403. Its name in Datadog still says
+"read-only": renaming needs a scope it no longer has. `--apply` needs
+two of those scopes:
 
 | Scope | Why |
 |---|---|

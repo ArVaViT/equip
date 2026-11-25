@@ -139,9 +139,8 @@ One command for the whole directory: it creates what is missing, updates what
 has drifted, and stays quiet about what already matches. Running it twice is a
 no-op the second time.
 
-The committed key is read-only by design (least privilege — it reads logs,
-metrics, dashboards and monitors, and nothing else), so `--apply` needs a
-new application key with exactly `monitors_read` + `monitors_write`.
+The application key in 1Password carries `monitors_read` and
+`monitors_write` among its scopes (scoped 2026-11-25), so it runs `--apply`.
 [`docs/datadog/README.md`](../README.md) has the scope list, the `op run`
 form of the command, and why the API key is not the application key.
 
