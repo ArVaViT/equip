@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next"
 import type {
   StudentAssignmentResult,
   StudentChapterInfo,
@@ -24,9 +25,6 @@ export function formatDate(d: string | null): string {
   return formatDateLong(d, { month: "short" })
 }
 
-/** Translator type matches react-i18next's ``useTranslation().t``. */
-type Translator = (key: string, options?: { count?: number }) => string
-
 /** "3m ago" / "5d ago" / falls back to formatDate after 7 days.
  *
  * Takes the translator as a parameter so this stays a pure function —
@@ -34,7 +32,7 @@ type Translator = (key: string, options?: { count?: number }) => string
  * machinery handles the per-locale ``minutesAgo_one`` / ``_few`` /
  * ``_many`` forms via the ``count`` option.
  */
-export function relativeTime(d: string | null, t: Translator): string {
+export function relativeTime(d: string | null, t: TFunction): string {
   if (!d) return t("studentProgress.relative.never")
   const diff = Date.now() - new Date(d).getTime()
   const mins = Math.floor(diff / 60000)

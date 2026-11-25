@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { activeIntlTag } from "@/i18n/config"
@@ -193,7 +194,7 @@ interface CalendarGridProps {
   entries: DailyChallengeArchiveEntry[]
   selectedDate: string | null
   onSelect: (date: string) => void
-  t: (key: string, opts?: Record<string, unknown>) => string
+  t: TFunction
 }
 
 function CalendarGrid({ entries, selectedDate, onSelect, t }: CalendarGridProps) {
@@ -249,7 +250,7 @@ interface DayCellProps {
   entry: DailyChallengeArchiveEntry
   selected: boolean
   onSelect: () => void
-  t: (key: string, opts?: Record<string, unknown>) => string
+  t: TFunction
 }
 
 function DayCell({ entry, selected, onSelect, t }: DayCellProps) {
@@ -302,7 +303,7 @@ function DayCell({ entry, selected, onSelect, t }: DayCellProps) {
 interface DetailPanelProps {
   challengeDate: string | null
   onBack: () => void
-  t: (key: string, opts?: Record<string, unknown>) => string
+  t: TFunction
 }
 
 function DetailPanel({ challengeDate, onBack, t }: DetailPanelProps) {

@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next"
 import { useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useSearchParams } from "react-router-dom"
@@ -198,7 +199,7 @@ export default function DailyChallengeReviewPage() {
 
 interface CvBadgesProps {
   item: AdminDailyChallengeQueueItem
-  t: (key: string, opts?: Record<string, unknown>) => string
+  t: TFunction
 }
 
 function CvBadges({ item, t }: CvBadgesProps) {

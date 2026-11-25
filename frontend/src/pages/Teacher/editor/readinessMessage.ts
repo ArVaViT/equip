@@ -1,10 +1,10 @@
+import type { TFunction } from "i18next"
 import type { ReadinessCheck } from "@/services/courseReadiness"
 
 /**
  * The narrowest slice of ``t`` this helper needs. ``useTranslation().t``
  * satisfies it; so does a stub in a test.
  */
-type Translate = (key: string | string[], options?: Record<string, unknown>) => string
 
 const PASSED_PREFIX = "courseReadiness.checks."
 const MISSING_PREFIX = "courseReadiness.missing."
@@ -21,7 +21,7 @@ const MISSING_PREFIX = "courseReadiness.missing."
  * image.") that we prefer while the check is not passed, falling back to
  * the affirmative key for a check the frontend has not learned about yet.
  */
-export function readinessMessage(t: Translate, check: ReadinessCheck): string {
+export function readinessMessage(t: TFunction, check: ReadinessCheck): string {
   const options = { defaultValue: check.message_key, title: check.subject?.title }
   if (check.passed || !check.message_key.startsWith(PASSED_PREFIX)) {
     return t(check.message_key, options)

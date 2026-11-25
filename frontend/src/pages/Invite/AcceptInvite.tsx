@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next"
 import { Link } from "react-router-dom"
 import { Trans, useTranslation } from "react-i18next"
 import { Loader2, XCircle } from "lucide-react"
@@ -11,7 +12,7 @@ import type { InvitationPreview } from "@/services/invitations"
 import { useAcceptInvite } from "./useAcceptInvite"
 
 /** Who is inviting, and to what — the first thing a person reads here. */
-function invitedBy(preview: InvitationPreview, t: (key: string, values?: Record<string, unknown>) => string): string {
+function invitedBy(preview: InvitationPreview, t: TFunction): string {
   const organization = preview.organization_name
   if (!organization) return t("invite.from.platform")
   if (preview.scope === "course") {
