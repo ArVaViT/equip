@@ -151,7 +151,7 @@ class TestBucketPerPerson:
     @staticmethod
     def _token(
         sub: str,
-        secret: str = "test-secret-key-for-testing-only",
+        secret: str | None = None,
         aud: str = "authenticated",
         ttl: int = 600,
     ) -> str:
@@ -159,7 +159,13 @@ class TestBucketPerPerson:
 
         import jwt as _jwt
 
-        return _jwt.encode({"sub": sub, "aud": aud, "exp": int(_t.time()) + ttl}, secret, algorithm="HS256")
+        from app.core.config import settings
+
+        # The secret the process was started with: conftest's default
+        # locally, the workflow's JWT_SECRET_KEY in CI.
+        key = secret if secret is not None else settings.JWT_SECRET_KEY
+        assert key
+        return _jwt.encode({"sub": sub, "aud": aud, "exp": int(_t.time()) + ttl}, key, algorithm="HS256")
 
     def test_two_people_on_one_ip_do_not_share_the_global_budget(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
