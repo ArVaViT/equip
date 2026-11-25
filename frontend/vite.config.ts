@@ -124,6 +124,19 @@ export default defineConfig({
         // so the "lazy" motion chunk was modulepreloaded by the entry on every
         // page, lesson and teacher screens included (2026-09-30 audit, F1).
         // Priorities make the claim explicit: React first.
+        // Names only; the split itself is the default heuristic's. From
+        // RUM 7.18 the SDK core shared by the lazy `datadogRum`, profiler and
+        // recorder chunks lands in a chunk named after its directory, `esm`
+        // (54 kB of the SDK's 66), which no budget can watch by that name.
+        // Grouping it instead does not work: the router integration that
+        // App.tsx imports eagerly reaches into the same core, so a group pulls
+        // the whole SDK into the first load (+77 kB, measured 2026-11-25).
+        chunkFileNames: (chunk) =>
+          !chunk.isDynamicEntry &&
+          chunk.moduleIds.length > 0 &&
+          chunk.moduleIds.every((id) => /node_modules[\\/]@datadog[\\/]/.test(id))
+            ? 'assets/datadogCore-[hash].js'
+            : 'assets/[name]-[hash].js',
         codeSplitting: {
           groups: [
             {

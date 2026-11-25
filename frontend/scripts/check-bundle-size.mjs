@@ -24,7 +24,7 @@ import { readdir, stat, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { gzip } from "node:zlib";
 import { promisify } from "node:util";
-import { chunkPrefix, evaluate, explain, UNBUDGETED_LIMIT_KB } from "./bundle-budget.mjs";
+import { chunkPrefix, evaluate, explain, MIN_STALE_KB, STALE_RATIO, UNBUDGETED_LIMIT_KB } from "./bundle-budget.mjs";
 
 const DIST = join(process.cwd(), "dist", "assets");
 const gzipAsync = promisify(gzip);
@@ -60,7 +60,11 @@ const BUDGETS_GZIP_KB = {
   //           Datadog RUM core sat beside it in a nameless `esm` chunk;
   //           8.3 folded that core, sonner and the radix dialog/tooltip in
   //           (106 kB). 2026-10-15: the RUM SDK moved out to `datadogRum`.
-  datadogRum: 73, // Datadog RUM SDK, loaded after boot (`lib/datadog.ts`).
+  // 2026-11-25: RUM 7.18 split the SDK. Its core, shared with the profiler
+  // and recorder chunks, is `datadogCore` (named in vite.config.ts); what is
+  // left in `datadogRum` is the RUM half. 65.5 kB together, as before.
+  datadogCore: 62, // Datadog SDK core, loaded after boot (`lib/datadog.ts`).
+  datadogRum: 14, // RUM half of the SDK, loaded with the core.
   katex: 86, // math typesetting, pulled in by lesson content rendering.
   vendor: 82, // React + react-router + react-dom.
   supabase: 61, // supabase-js v2 client.
@@ -143,7 +147,10 @@ async function main() {
   console.log("\nBundle-size sentinel (gzip kB):");
   console.log("  " + "chunk".padEnd(16) + "actual".padStart(10) + "  /  " + "budget".padEnd(10));
   for (const c of [...verdict.checked].sort((a, b) => b.actual - a.actual)) {
-    const flag = c.actual > c.budget ? " ✗ over" : c.actual < c.budget * 0.6 ? " ✗ stale" : "";
+    // The verdict's own rule (bundle-budget.mjs): a chunk under MIN_STALE_KB
+    // is never stale, so the table must not say it is.
+    const stale = c.actual >= MIN_STALE_KB && c.actual < c.budget * STALE_RATIO;
+    const flag = c.actual > c.budget ? " ✗ over" : stale ? " ✗ stale" : "";
     console.log(
       "  " +
         c.name.padEnd(16) +
