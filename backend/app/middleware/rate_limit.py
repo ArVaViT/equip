@@ -114,6 +114,11 @@ ENDPOINT_LIMITS: dict[str, tuple[int, int]] = {
     "/api/v1/invitations": (30, 60),
 }
 
+# Signed-in traffic from one IP, all people together. Each person has their
+# own global budget; this ceiling keeps one source from multiplying it with
+# many accounts. 600/min is a class of ~30 reading at once with room to spare.
+SIGNED_IN_PER_IP = 600
+
 MAX_BUCKETS = 10_000
 CLEANUP_INTERVAL = 300
 
@@ -185,32 +190,39 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # IP — otherwise an attacker enumerating cert numbers gets a fresh
         # 30/min budget for every guess. Falls back to plain ``client_ip``
         # for the global limiter so unrelated routes still share one bucket.
+        # Every bucket this request is charged to, as (key, max_calls). All
+        # must have room, and the request counts against all of them.
         if matched_prefix:
-            bucket_key = f"{client_ip}:{matched_prefix}"
+            buckets = [(f"{client_ip}:{matched_prefix}", max_calls)]
         else:
             subject = self._subject(request)
-            bucket_key = f"user:{subject}" if subject else client_ip
+            if subject:
+                buckets = [(f"user:{subject}", max_calls), (f"{client_ip}:signed-in", SIGNED_IN_PER_IP)]
+            else:
+                buckets = [(client_ip, max_calls)]
         now = time.time()
         cutoff = now - window
 
         async with self._lock:
             self._cleanup_stale_buckets(now)
 
-            pruned = [t for t in self._hits[bucket_key] if t > cutoff]
-            if len(pruned) >= max_calls:
+            pruned = {key: [t for t in self._hits[key] if t > cutoff] for key, _ in buckets}
+            if any(len(pruned[key]) >= cap for key, cap in buckets):
                 # Reassign so the cleanup loop sees the pruned state too.
-                self._hits[bucket_key] = pruned
+                self._hits.update(pruned)
                 return Response(
                     content='{"detail":"Too many requests"}',
                     status_code=429,
                     media_type="application/json",
                     headers={"Retry-After": str(window)},
                 )
-            pruned.append(now)
-            self._hits[bucket_key] = pruned
+            for key, _ in buckets:
+                pruned[key].append(now)
+            self._hits.update(pruned)
             # Capture the post-append count under the lock so the
-            # header value matches the same snapshot the gate used.
-            remaining = max(0, max_calls - len(pruned))
+            # header value matches the same snapshot the gate used. The
+            # person's own bucket comes first and is the one they can act on.
+            remaining = max(0, max_calls - len(pruned[buckets[0][0]]))
 
         response = await call_next(request)
         response.headers["X-RateLimit-Limit"] = str(max_calls)
