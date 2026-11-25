@@ -140,3 +140,93 @@ class TestStaleBucketCleanup:
         mw._cleanup_stale_buckets(999_999.0 + rl_mod.CLEANUP_INTERVAL / 2)
         # Cleanup should not have run — the stale bucket stays.
         assert set(mw._hits.keys()) == prev_keys
+
+
+class TestBucketPerPerson:
+    """A classroom shares one IP. Signed-in people get their own global
+    budget; anything the process cannot verify locally stays on the IP."""
+
+    WRONG = "a-different-secret-of-thirty-two-bytes!"
+
+    @staticmethod
+    def _token(
+        sub: str,
+        secret: str | None = None,
+        aud: str = "authenticated",
+        ttl: int = 600,
+    ) -> str:
+        import time as _t
+
+        import jwt as _jwt
+
+        from app.core.config import settings
+
+        # The secret the process was started with: conftest's default
+        # locally, the workflow's JWT_SECRET_KEY in CI.
+        key = secret if secret is not None else settings.JWT_SECRET_KEY
+        assert key
+        return _jwt.encode({"sub": sub, "aud": aud, "exp": int(_t.time()) + ttl}, key, algorithm="HS256")
+
+    def test_two_people_on_one_ip_do_not_share_the_global_budget(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        mw = _get_middleware_instance()
+        monkeypatch.setattr(mw, "calls", 2)
+        a = {"Authorization": f"Bearer {self._token('11111111-1111-4111-8111-111111111111')}"}
+        b = {"Authorization": f"Bearer {self._token('22222222-2222-4222-8222-222222222222')}"}
+        for _ in range(2):
+            assert client.get("/api/v1/users/me", headers=a).status_code != 429
+        assert client.get("/api/v1/users/me", headers=a).status_code == 429
+        # Same IP, another person: a fresh budget.
+        assert client.get("/api/v1/users/me", headers=b).status_code != 429
+        # And the anonymous budget of that IP was never touched.
+        assert not any(k == "testclient" for k in mw._hits)
+
+    def test_a_token_that_does_not_verify_counts_by_ip(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Forged tokens must not mint fresh budgets: each would otherwise be a
+        # new "person".
+        mw = _get_middleware_instance()
+        monkeypatch.setattr(mw, "calls", 2)
+        for i in range(2):
+            forged = {"Authorization": f"Bearer {self._token(f'0000000{i}-0000-4000-8000-000000000000', self.WRONG)}"}
+            assert client.get("/api/v1/users/me", headers=forged).status_code != 429
+        forged = {"Authorization": f"Bearer {self._token('09999999-0000-4000-8000-000000000000', self.WRONG)}"}
+        assert client.get("/api/v1/users/me", headers=forged).status_code == 429
+
+    def test_prefix_buckets_stay_per_ip(self, client: TestClient) -> None:
+        # Brute-force surfaces limit the source, not the account.
+        mw = _get_middleware_instance()
+        token = {"Authorization": f"Bearer {self._token('11111111-1111-4111-8111-111111111111')}"}
+        client.get("/api/v1/auth/me", headers=token)
+        assert not any(k.startswith("user:") for k in mw._hits)
+        assert any(k.endswith(":/api/v1/auth/") for k in mw._hits)
+
+    def test_expired_or_foreign_audience_tokens_count_by_ip(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from app.core import security
+
+        assert security.local_token_subject(self._token("x", ttl=-60)) is None
+        assert security.local_token_subject(self._token("x", aud="anon")) is None
+        assert security.local_token_subject(self._token("x")) == "x"
+
+    def test_many_accounts_from_one_ip_meet_a_shared_ceiling(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # One source cannot multiply its budget by signing in as many people.
+        monkeypatch.setattr(rl_mod, "SIGNED_IN_PER_IP", 3)
+        for i in range(3):
+            h = {"Authorization": f"Bearer {self._token(f'1000000{i}-0000-4000-8000-000000000000')}"}
+            assert client.get("/api/v1/users/me", headers=h).status_code != 429
+        h = {"Authorization": f"Bearer {self._token('19999999-0000-4000-8000-000000000000')}"}
+        assert client.get("/api/v1/users/me", headers=h).status_code == 429
+
+    def test_the_limiter_never_asks_supabase(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from app.core import security
+
+        def boom(_token: str) -> None:
+            raise AssertionError("network fallback reached from the limiter")
+
+        monkeypatch.setattr(security, "_validate_via_supabase", boom)
+        assert security.local_token_subject(self._token("x", self.WRONG)) is None
+        assert security.local_token_subject("not-a-jwt") is None
