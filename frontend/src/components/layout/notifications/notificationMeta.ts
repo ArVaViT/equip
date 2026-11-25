@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next"
 import {
   AlarmClock,
   Award,
@@ -65,9 +66,6 @@ export function colorFor(type: string): string {
   return NOTIFICATION_COLORS[type as NotificationType] ?? "text-ink-muted"
 }
 
-/** Translator type matches react-i18next's ``useTranslation().t``. */
-type Translator = (key: string, options?: { count?: number }) => string
-
 /**
  * Compact "x minutes ago" formatter used by the dropdown list.
  *
@@ -81,7 +79,7 @@ type Translator = (key: string, options?: { count?: number }) => string
  * Days ≥ 7 falls through to the canonical ``formatDate`` (locale-
  * neutral ``YYYY-MM-DD``).
  */
-export function timeAgo(dateStr: string, t: Translator): string {
+export function timeAgo(dateStr: string, t: TFunction): string {
   const parsed = new Date(dateStr).getTime()
   if (Number.isNaN(parsed)) return "—"
   const now = Date.now()

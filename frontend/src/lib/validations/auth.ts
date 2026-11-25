@@ -1,3 +1,4 @@
+import type { TOptions } from "i18next"
 import { z } from "zod"
 import i18n from "@/i18n/config"
 import { PASSWORD_MIN_LENGTH } from "@/lib/passwordPolicy"
@@ -11,7 +12,7 @@ import { PASSWORD_MIN_LENGTH } from "@/lib/passwordPolicy"
  * Caching would snapshot the bootstrap-locale strings and leave error
  * messages stuck in the wrong language after a locale switch.
  */
-const t = (key: string, options?: Record<string, unknown>) => i18n.t(key, options)
+const t = (key: string, options?: TOptions): string => i18n.t(key, options ?? {})
 
 /** The length message carries the number, so the reader is told the actual rule. */
 const tooShort = () => t("authRegister.errors.passwordTooShort", { count: PASSWORD_MIN_LENGTH })

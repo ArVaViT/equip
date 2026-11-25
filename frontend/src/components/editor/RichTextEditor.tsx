@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next"
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useEditor, EditorContent } from "@tiptap/react";
@@ -218,7 +219,7 @@ function CharacterCounter({
 }: {
   count: number;
   limit: number;
-  t: (k: string, opts?: Record<string, unknown>) => string;
+  t: TFunction;
 }) {
   const ratio = Math.min(count / limit, 1);
   const tone = ratio >= 1 ? "destructive" : ratio >= 0.9 ? "warning" : "muted";
