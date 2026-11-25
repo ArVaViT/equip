@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { legalService, type LegalDocumentSummary } from "@/services/legal"
+import { activeViewAs } from "@/lib/viewAs"
 
 /** The document this hook exists for. */
 export const TEACHER_TERMS = "teacher-terms"
@@ -120,7 +121,10 @@ export function useTeacherAgreement(userId: string | undefined) {
         const list = ROLE_DOCUMENTS.flatMap((slug) => status.outstanding.filter((doc) => doc.slug === slug))
         owedListRef.current = list
         setOwedList(list)
-        publishOwed(stillOwed(list, acceptedRef.current))
+        // Not while an admin views as somebody: the gate stays down then, and a
+        // route guard acting on it would turn the admin away from /teacher/*
+        // with no screen saying why.
+        publishOwed(activeViewAs() === null && stillOwed(list, acceptedRef.current))
       },
       () => {
         // A failed check must not become a gate nobody can pass. Leaving the

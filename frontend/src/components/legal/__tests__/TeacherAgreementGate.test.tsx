@@ -449,4 +449,39 @@ describe("TeacherAgreementGate", () => {
     await waitFor(() => expect(legalService.status).toHaveBeenCalled())
     expect(container.firstChild).toBeNull()
   })
+
+  it("says so inside the gate when the acceptance could not be saved", async () => {
+    // A toast renders beneath this overlay: a failed save looked like a
+    // spinner that stopped and nothing else.
+    const { legalService } = await import("@/services/legal")
+    vi.mocked(legalService.status).mockResolvedValue({ accepted: [], outstanding: [SCHOOL_AGREEMENT], notices: [] })
+    vi.mocked(legalService.accept).mockRejectedValueOnce(new Error("Network Error"))
+
+    render(
+      <Wrapper user={makeUser({ role: "director" })}>
+        <TeacherAgreementGate />
+      </Wrapper>,
+    )
+    await screen.findByText(i18n.t("legalGate.school.title"))
+    fireEvent.click(screen.getByRole("checkbox"))
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("legalGate.school.next") }))
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(i18n.t("legalGate.school.saveFailed"))
+    expect(screen.getByText(i18n.t("legalGate.school.title"))).toBeInTheDocument()
+  })
+
+  it("does not turn an admin viewing as somebody away from /teacher/*", async () => {
+    const { legalService } = await import("@/services/legal")
+    vi.mocked(legalService.status).mockResolvedValue({ accepted: [], outstanding: [SCHOOL_AGREEMENT], notices: [] })
+    viewAs.active = { userId: "director-1" }
+
+    render(
+      <Wrapper user={makeUser({ role: "director" })}>
+        <TeacherAgreementGate />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(legalService.status).toHaveBeenCalled())
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(getTeacherAgreementOwed()).toBe(false)
+  })
 })

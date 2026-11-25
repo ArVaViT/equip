@@ -8,7 +8,6 @@ import { legalService } from "@/services/legal"
 import { useAuth } from "@/context/useAuth"
 import { getFirstRunActive, subscribeFirstRun } from "@/lib/tourState"
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
-import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
 import { activeViewAs } from "@/lib/viewAs"
 import { type RoleDocument, useTeacherAgreement } from "./useTeacherAgreement"
@@ -68,6 +67,10 @@ export function TeacherAgreementGate() {
   const [saving, setSaving] = useState(false)
   // Set when the button is pressed before the box is ticked; cleared by the tick.
   const [needsTickFor, setNeedsTickFor] = useState<string | null>(null)
+  // Shown in the gate, not as a toast: toasts render beneath this overlay, so
+  // a failed save looked like a spinner that stopped and nothing else.
+  const [failedFor, setFailedFor] = useState<string | null>(null)
+  const failedId = useId()
   const checkboxId = useId()
   const hintId = useId()
   const checkboxRef = useRef<HTMLButtonElement>(null)
@@ -156,15 +159,23 @@ export function TeacherAgreementGate() {
       return
     }
     setSaving(true)
+    setFailedFor(null)
     try {
       await legalService.accept(owed.slug, owed.version, locale)
-      onAccepted(owed)
+    } catch {
+      setFailedFor(owedKey)
+      setSaving(false)
+      return
+    }
+    onAccepted(owed)
+    try {
       // The role that produced this gate is the one the client has not seen
       // yet. Now is the moment to go and get it, so the teacher menu and the
-      // /teacher routes are there when the screen closes.
+      // /teacher routes are there when the screen closes. The acceptance is
+      // already recorded: a failure here is not a failed acceptance.
       await refreshUser()
     } catch {
-      toast({ title: t(`legalGate.${kind}.saveFailed`), variant: "destructive" })
+      // The next profile load picks the role up.
     } finally {
       setSaving(false)
     }
@@ -228,6 +239,12 @@ export function TeacherAgreementGate() {
         {needsTick && (
           <p id={hintId} role="alert" className="-mt-2 w-full text-left text-sm text-destructive-ink">
             {t(`legalGate.${kind}.tickFirst`)}
+          </p>
+        )}
+
+        {failedFor !== null && failedFor === owedKey && (
+          <p id={failedId} role="alert" className="w-full text-left text-sm text-destructive-ink">
+            {t(`legalGate.${kind}.saveFailed`)}
           </p>
         )}
 
