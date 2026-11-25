@@ -1,0 +1,22 @@
+{
+  "name": "[Equip] The API is turning people away (429)",
+  "type": "log alert",
+  "query": "logs(\"service:equip-backend source:vercel \\\"[INFO] api:\\\" \\\" 429 \\\"\").index(\"*\").rollup(\"count\").last(\"10m\") >= 5",
+  "message": "The API answered 429 five or more times in ten minutes.\n\nRateLimitMiddleware (backend/app/middleware/rate_limit.py) counts a signed-in person by person (100/min) with a shared ceiling of 600/min for all signed-in traffic from one IP; anonymous requests and the per-prefix buckets (/cohorts, /scripture/, certificates, invitations) are counted by IP. The counters live in each function instance's memory.\n\nLook at the sample lines: one path repeating is a client loop or a scraper; many paths from one school or church is a class outgrowing the ceiling.\n\nThe status code is only in the access line text (\"api: METHOD path STATUS ms\"); @proxy.statusCode is nearly empty.\n\nNotify: @supportequip@gmail.com",
+  "tags": [
+    "env:production",
+    "project:equip",
+    "managed_by:claude"
+  ],
+  "priority": 2,
+  "options": {
+    "notify_no_data": false,
+    "include_tags": true,
+    "evaluation_delay": 60,
+    "enable_logs_sample": true,
+    "renotify_interval": 0,
+    "thresholds": {
+      "critical": 5
+    }
+  }
+}

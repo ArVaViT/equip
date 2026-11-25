@@ -1,0 +1,22 @@
+{
+  "name": "[Equip] Changes refused with 403",
+  "type": "log alert",
+  "query": "logs(\"service:equip-backend source:vercel (\\\"[INFO] api: POST\\\" OR \\\"[INFO] api: PUT\\\" OR \\\"[INFO] api: PATCH\\\" OR \\\"[INFO] api: DELETE\\\") \\\" 403 \\\"\").index(\"*\").rollup(\"count\").last(\"1h\") >= 5",
+  "message": "Five or more changes (POST/PUT/PATCH/DELETE) were refused with 403 within an hour.\n\nSomebody is trying to do their work and the server keeps saying no. On 21-22.11 this was the only director: the consent gate wanted the School Agreement and no screen asked for it (17 refusals grading one paper). Usual causes: a legal document owed with no screen for it (legal.consent_required), a role or membership the UI thinks the person has and the server does not.\n\nFind the person from the request ids in the sample lines, then their legal_acceptances and memberships.\n\nNotify: @supportequip@gmail.com",
+  "tags": [
+    "env:production",
+    "project:equip",
+    "managed_by:claude"
+  ],
+  "priority": 2,
+  "options": {
+    "notify_no_data": false,
+    "include_tags": true,
+    "evaluation_delay": 60,
+    "enable_logs_sample": true,
+    "renotify_interval": 0,
+    "thresholds": {
+      "critical": 5
+    }
+  }
+}

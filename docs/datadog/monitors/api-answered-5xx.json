@@ -1,0 +1,22 @@
+{
+  "name": "[Equip] The API answered 5xx",
+  "type": "log alert",
+  "query": "logs(\"service:equip-backend source:vercel \\\"[INFO] api:\\\" (\\\" 500 \\\" OR \\\" 502 \\\" OR \\\" 503 \\\" OR \\\" 504 \\\")\").index(\"*\").rollup(\"count\").last(\"10m\") >= 3",
+  "message": "Our API answered 5xx three or more times in ten minutes (none in the 15 days before this monitor was made, 25.11.2026).\n\nThe error-spike monitor (19730778) watches the backend's own ERROR records; this one watches what people actually received, including 503s the code returns on purpose (database or a provider unavailable) without logging an error. Vercel's own failures (timeouts, crashes) are 22874850.\n\nNotify: @supportequip@gmail.com",
+  "tags": [
+    "env:production",
+    "project:equip",
+    "managed_by:claude"
+  ],
+  "priority": 2,
+  "options": {
+    "notify_no_data": false,
+    "include_tags": true,
+    "evaluation_delay": 60,
+    "enable_logs_sample": true,
+    "renotify_interval": 0,
+    "thresholds": {
+      "critical": 3
+    }
+  }
+}

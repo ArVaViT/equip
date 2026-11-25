@@ -23,15 +23,13 @@ dashboard-only.** Concretely:
   stops) and the RUM and telemetry "gone quiet" monitors,
   which alert on an absence by query rather than by no-data.
 
-The live set (checked 2026-10-16) is **20 monitors**: the 4 synthetic uptime
-checks (`/health`, frontend `/`, `/api/v1/courses`, Supabase), managed in the
-Synthetics UI and not mirrored here, and 16 others — 15 of the 18 files in
-this directory (the thinking-tokens monitor stays blocked and the two
-Daily Challenge worker monitors added 2026-10-16 are not applied yet, see
-their rows) plus «telemetry has gone quiet (no worker metric)», which is live
-but has no file yet. Two are
-dashboard-only: the warning spike and «An edit has been waiting on
-translation too long».
+The live set (checked 2026-11-25 with a dry run of the apply script:
+22 specs, 0 drift) is **27 monitors**: the 4 synthetic uptime checks
+(`/health`, frontend `/`, `/api/v1/courses`, Supabase), managed in the
+Synthetics UI and not mirrored here, all 22 files in this directory,
+and «telemetry has gone quiet (no worker metric)», which is live but
+has no file yet. Two are dashboard-only: the warning spike and «An edit
+has been waiting on translation too long».
 
 ## Inventory (the mirrored monitors)
 
@@ -42,10 +40,10 @@ translation too long».
 | `daily-challenge-schedule-dry.json` | the editorial schedule ran out and the live path is auto-filling from the pool (seed fresh questions) | **email** |
 | `translation-jobs-stuck-processing.json` | jobs piling up in `processing` (workers dying mid-run) | **email** |
 | `equip-frontend-rum-error-spike.json` | spike in real-user JS errors (RUM) | **email** |
-| `equip-backend-warning-log-spike.json` | ≥20 backend `status:warning` logs in 15 min | dashboard-only |
+| `equip-backend-warning-log-spike.json` | ≥20 backend `status:warn` logs in 15 min (the query said `status:warning`, which the index never carries, so it matched nothing until 2026-11-25) | dashboard-only |
 | `daily-challenge-replenish-failing.json` | the nightly generator produced no question twice in three days (added 2026-10-03, live) | **email** |
-| `daily-challenge-worker-silent.json` | the nightly worker reported no tick at all for 36 hours — cron stopped or the metric rule is gone (added 2026-10-16, **not yet applied**; alerts on no-data by design) | **email** |
-| `daily-challenge-worker-erroring.json` | the nightly worker ended in `error` or `no_actor` twice in three days (added 2026-10-16, **not yet applied**) | **email** |
+| `daily-challenge-worker-silent.json` | the nightly worker reported no tick at all for 36 hours — cron stopped or the metric rule is gone (added 2026-10-16, live; alerts on no-data by design) | **email** |
+| `daily-challenge-worker-erroring.json` | the nightly worker ended in `error` or `no_actor` twice in three days (added 2026-10-16, live) | **email** |
 | `backend-platform-5xx.json` | Vercel answered 5xx for the backend — crashes and timeouts the app's logger never sees (added 2026-10-03, live) | **email** |
 
 ### Translation and spend (added 2026-08-17, applied 2026-08-22)
@@ -57,7 +55,7 @@ unread tokens per string without anyone noticing.
 | File | What it catches | Notify |
 |---|---|---|
 | `gemini-spend-spike.json` | billed output tokens over 500k in an hour — a model change, a loop, or a genuine bulk import | **email** |
-| `gemini-thinking-tokens-returned.json` | **BLOCKED** — the metric it queries has no log-based-metric rule, so it cannot fire and the apply script refuses to create it. `docs/datadog/README.md` has the recipe | **email** |
+| `gemini-thinking-tokens-returned.json` | the translation model spending billed "thinking" tokens nobody reads (blocked until 2026-11-25 for want of a log-based-metric rule; `../README.md` has the rule) | **email** |
 | `gemini-call-failures.json` | the provider timing out or refusing past its own retries — translations stop landing and a publishing course stays invisible | **email** |
 | `translation-backlog-not-draining.json` | the queue never reaches empty for two hours: refilled as fast as it drains, or a job failing and re-queuing | **email** |
 | `edits-held-too-long.json` | edits to a live course blocked on a translation that cannot resolve itself — invisible to students, silent to the teacher | **email** |
@@ -74,6 +72,27 @@ unread tokens per string without anyone noticing.
 > fields. An earlier generation of JSONs queried `@http.url_details.path` /
 > `@http.status_code`, which our logs don't carry, so they sat in No-Data;
 > those were retired in favour of this set.
+
+### What people receive, and the log quota (added 2026-11-25)
+
+The monitors above watch the backend's own records. These watch the
+access line, `api: METHOD path STATUS ms`, which is the only place the
+status code a person received is written (`@proxy.statusCode` is
+nearly empty). Each query starts at `"[INFO] api:"` so an outbound
+call logged as `Bible API 503 for …` does not count as ours.
+
+| File | What it catches | Notify |
+|---|---|---|
+| `api-rate-limited-429.json` | ≥5 rate-limit refusals in 10 min: a client loop, a scraper, or a class outgrowing the ceiling | **email** |
+| `changes-refused-403.json` | ≥5 refused POST/PUT/PATCH/DELETE in an hour: somebody trying to work and being told no (on 21-22.11 the only director, 17 times, for want of a School Agreement screen) | **email** |
+| `api-answered-5xx.json` | ≥3 5xx in 10 min, including 503s the code returns on purpose without logging an error | **email** |
+| `log-index-filling-quota.json` | the `main` index past 5,000 / 7,000 of its 10,000-a-day quota; past the quota Datadog stops indexing until 00:00 UTC and search goes blind | **email** |
+
+Log monitors evaluate everything ingested, before index exclusion, so
+the `main` index's exclusion filters (successful `/internal/*` cron
+calls, successful OPTIONS preflights, 90% of the notification bell's
+successful polls — all added 2026-11-25) do not hide anything from
+them.
 
 ### Checked against production, 2026-08-19
 

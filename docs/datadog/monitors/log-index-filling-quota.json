@@ -1,0 +1,21 @@
+{
+  "name": "[Equip] Log index is filling its daily quota",
+  "type": "query alert",
+  "query": "sum(last_1d):sum:datadog.estimated_usage.logs.ingested_events{datadog_index:main,datadog_is_excluded:false}.as_count() > 7000",
+  "message": "The main log index took more than 7,000 lines in the last 24 hours. Its daily quota is 10,000 (resets 00:00 UTC); past it Datadog stops indexing until the reset and logs go missing from search silently. Monitors still evaluate everything, so alerts keep working, but investigations go blind.\n\nOn 25.11.2026 the index took ~1,000-1,500 a day; cron calls, OPTIONS and 90% of the notification bell were excluded then. Look at what grew (Logs > Patterns on the last day), exclude noise first, and only then sample successful access lines or raise the quota.\n\nNotify: @supportequip@gmail.com",
+  "tags": [
+    "env:production",
+    "project:equip",
+    "managed_by:claude"
+  ],
+  "priority": 3,
+  "options": {
+    "thresholds": {
+      "critical": 7000,
+      "warning": 5000
+    },
+    "notify_no_data": false,
+    "include_tags": true,
+    "renotify_interval": 0
+  }
+}
