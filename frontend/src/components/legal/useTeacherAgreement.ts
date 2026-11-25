@@ -85,28 +85,41 @@ const POLL_MS = 5 * 60 * 1000
  * have to be reset between tests and between accounts. At this size the
  * request is the cheaper of the two.
  */
+/** A document at a version: a new version of the same document is a new thing to accept. */
+const keyOf = (doc: LegalDocumentSummary) => `${doc.slug}@${doc.version}`
+
 export function useTeacherAgreement(userId: string | undefined) {
-  const [owed, setOwed] = useState<LegalDocumentSummary | null>(null)
-  // Set the moment the person accepts, so the gate closes on the click rather
-  // than on the next poll. The server is authoritative; this is the optimism
-  // that keeps a confirmed action from feeling like a hung button.
-  // The slug just accepted, rather than a flag: a director can owe two
-  // documents, and accepting the first must not hide the second.
-  const [accepted, setAccepted] = useState<string | null>(null)
-  // The same slug for the poll, which must not reopen a gate on a stale
-  // answer that still lists what was accepted a moment ago.
-  const acceptedRef = useRef<string | null>(null)
+  // Every role-scoped document the last answer listed, in the order they are
+  // asked for. Kept whole so that accepting one shows the next at once,
+  // without a round trip and without a moment in which nothing is owed — the
+  // tour would read that moment as "the gate is gone" and start.
+  const [owedList, setOwedList] = useState<LegalDocumentSummary[]>([])
+  const owedListRef = useRef<LegalDocumentSummary[]>([])
+  // Accepted in this tab, by slug and version. The gate closes on the click
+  // rather than on the next poll, and no answer that left before the click can
+  // bring an accepted document back. A set, because a director can owe two.
+  const [accepted, setAccepted] = useState<ReadonlySet<string>>(() => new Set())
+  const acceptedRef = useRef<ReadonlySet<string>>(new Set())
+  // Only the newest request may answer. The poll, the focus check and the
+  // check after an acceptance are unordered; a slow old answer must not
+  // overwrite a newer one.
+  const seq = useRef(0)
   const lastCheck = useRef(0)
+
+  const stillOwed = (list: LegalDocumentSummary[], done: ReadonlySet<string>) =>
+    list.some((doc) => !done.has(keyOf(doc)))
 
   const check = useCallback(() => {
     if (!userId) return
     lastCheck.current = Date.now()
+    const mine = ++seq.current
     legalService.status().then(
       (status) => {
-        const found =
-          ROLE_DOCUMENTS.map((slug) => status.outstanding.find((doc) => doc.slug === slug)).find(Boolean) ?? null
-        setOwed(found)
-        publishOwed(found !== null && found.slug !== acceptedRef.current)
+        if (mine !== seq.current) return
+        const list = ROLE_DOCUMENTS.flatMap((slug) => status.outstanding.filter((doc) => doc.slug === slug))
+        owedListRef.current = list
+        setOwedList(list)
+        publishOwed(stillOwed(list, acceptedRef.current))
       },
       () => {
         // A failed check must not become a gate nobody can pass. Leaving the
@@ -118,15 +131,15 @@ export function useTeacherAgreement(userId: string | undefined) {
   }, [userId])
 
   useEffect(() => {
+    const empty: ReadonlySet<string> = new Set()
+    acceptedRef.current = empty
+    setAccepted(empty)
     if (!userId) {
-      setOwed(null)
-      setAccepted(null)
-      acceptedRef.current = null
+      owedListRef.current = []
+      setOwedList([])
       publishOwed(false)
       return
     }
-    setAccepted(null)
-    acceptedRef.current = null
     check()
     // Not while the tab is hidden: coming back to it asks anyway (below), and a
     // forgotten background tab otherwise polls every five minutes all day —
@@ -149,15 +162,15 @@ export function useTeacherAgreement(userId: string | undefined) {
   }, [userId, check])
 
   return {
-    /** The agreement, when it is owed and has not just been accepted. */
-    owed: owed && owed.slug === accepted ? null : owed,
+    /** The first document still owed and not accepted in this tab. */
+    owed: owedList.find((doc) => !accepted.has(keyOf(doc))) ?? null,
     onAccepted: useCallback(
-      (slug: string) => {
-        setAccepted(slug)
-        acceptedRef.current = slug
-        publishOwed(false)
-        // Somebody who owed both documents is asked for the next one now,
-        // not five minutes from now.
+      (doc: LegalDocumentSummary) => {
+        const next = new Set(acceptedRef.current).add(keyOf(doc))
+        acceptedRef.current = next
+        setAccepted(next)
+        publishOwed(stillOwed(owedListRef.current, next))
+        // Confirm with the server, and pick up anything that changed meanwhile.
         check()
       },
       [check],

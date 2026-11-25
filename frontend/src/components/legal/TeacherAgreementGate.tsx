@@ -56,10 +56,12 @@ export function TeacherAgreementGate() {
   const { pathname } = useLocation()
   const locale = isSupportedLocale(i18n.language) ? i18n.language : DEFAULT_LOCALE
   const { owed, onAccepted } = useTeacherAgreement(user?.id)
-  const [checked, setChecked] = useState(false)
+  // Which document the box was ticked for. A tick belongs to one document: the
+  // next one on screen starts empty, in the very first frame it is shown.
+  const [checkedFor, setCheckedFor] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   // Set when the button is pressed before the box is ticked; cleared by the tick.
-  const [needsTick, setNeedsTick] = useState(false)
+  const [needsTickFor, setNeedsTickFor] = useState<string | null>(null)
   const checkboxId = useId()
   const hintId = useId()
   const checkboxRef = useRef<HTMLButtonElement>(null)
@@ -74,14 +76,9 @@ export function TeacherAgreementGate() {
     pathname === "/terms" ||
     pathname === "/privacy"
 
-  // A second document starts with an empty box like the first. A tick carried
-  // over from the teacher terms would record the school's acceptance on a
-  // click the director made for something else.
-  const owedSlug = owed?.slug
-  useEffect(() => {
-    setChecked(false)
-    setNeedsTick(false)
-  }, [owedSlug])
+  const owedKey = owed ? `${owed.slug}@${owed.version}` : null
+  const checked = owedKey !== null && checkedFor === owedKey
+  const needsTick = owedKey !== null && needsTickFor === owedKey
 
   const firstRunActive = useSyncExternalStore(subscribeFirstRun, getFirstRunActive, getFirstRunActive)
 
@@ -137,14 +134,14 @@ export function TeacherAgreementGate() {
 
   const confirm = async () => {
     if (!checked) {
-      setNeedsTick(true)
+      setNeedsTickFor(owedKey)
       checkboxRef.current?.focus()
       return
     }
     setSaving(true)
     try {
       await legalService.accept(owed.slug, owed.version, locale)
-      onAccepted(owed.slug)
+      onAccepted(owed)
       // The role that produced this gate is the one the client has not seen
       // yet. Now is the moment to go and get it, so the teacher menu and the
       // /teacher routes are there when the screen closes.
@@ -202,8 +199,8 @@ export function TeacherAgreementGate() {
             id={checkboxId}
             checked={checked}
             onCheckedChange={(v) => {
-              setChecked(v === true)
-              if (v === true) setNeedsTick(false)
+              setCheckedFor(v === true ? owedKey : null)
+              if (v === true) setNeedsTickFor(null)
             }}
             aria-invalid={needsTick || undefined}
             aria-describedby={needsTick ? hintId : undefined}

@@ -311,7 +311,7 @@ describe("TeacherAgreementGate", () => {
     await waitFor(() => expect(legalService.accept).toHaveBeenCalledWith("school-agreement", "1.0", i18n.language))
   })
 
-  it("asks for the second document with an empty box after the first is accepted", async () => {
+  it("asks for the second document at once, with an empty box, and records both", async () => {
     const { legalService } = await import("@/services/legal")
     vi.mocked(legalService.status)
       .mockResolvedValueOnce({ accepted: [], outstanding: [TEACHER_TERMS, SCHOOL_AGREEMENT], notices: [] })
@@ -331,6 +331,47 @@ describe("TeacherAgreementGate", () => {
     expect(await screen.findByText(i18n.t("legalGate.school.title"))).toBeInTheDocument()
     expect(screen.getByRole("checkbox")).not.toBeChecked()
     expect(legalService.accept).toHaveBeenCalledTimes(1)
+    // And at no point in between did the route guard think nothing was owed.
+    expect(getTeacherAgreementOwed()).toBe(true)
+
+    fireEvent.click(screen.getByRole("checkbox"))
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("legalGate.school.next") }))
+    await waitFor(() => expect(legalService.accept).toHaveBeenCalledWith("school-agreement", "1.0", i18n.language))
+    expect(legalService.accept).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not bring back a document accepted a moment ago when a stale answer still lists it", async () => {
+    const { legalService } = await import("@/services/legal")
+    const stale = { accepted: [], outstanding: [TEACHER_TERMS, SCHOOL_AGREEMENT], notices: [] }
+    vi.mocked(legalService.status).mockResolvedValue(stale)
+
+    render(
+      <Wrapper user={makeUser({ role: "director" })}>
+        <TeacherAgreementGate />
+      </Wrapper>,
+    )
+    await screen.findByText(TITLE())
+    fireEvent.click(screen.getByRole("checkbox"))
+    fireEvent.click(screen.getByRole("button", { name: CONTINUE() }))
+    await waitFor(() => expect(legalService.accept).toHaveBeenCalledTimes(1))
+    // The check after accepting answers with the old list, teacher terms included.
+    await waitFor(() => expect(vi.mocked(legalService.status).mock.calls.length).toBeGreaterThanOrEqual(2))
+
+    expect(await screen.findByText(i18n.t("legalGate.school.title"))).toBeInTheDocument()
+    expect(screen.queryByText(TITLE())).not.toBeInTheDocument()
+    expect(getTeacherAgreementOwed()).toBe(true)
+  })
+
+  it("names the School Agreement in its checkbox, in every language", async () => {
+    const bundles = { en: (await import("@/i18n/locales/en.json")).default, ru: (await import("@/i18n/locales/ru.json")).default, de: (await import("@/i18n/locales/de.json")).default, uk: (await import("@/i18n/locales/uk.json")).default }
+    // By word stems: Russian and Ukrainian put the name in the accusative
+    // («Угоду зі школою»), which is still the same document named.
+    for (const [locale, bundle] of Object.entries(bundles)) {
+      const box = bundle.legalGate.school.checkbox.toLowerCase()
+      for (const word of bundle.legal.schoolAgreement.toLowerCase().split(/\s+/)) {
+        expect(box, `${locale}: the checkbox does not name the School Agreement`).toContain(word.slice(0, Math.max(2, word.length - 1)))
+      }
+    }
   })
 
   it("does not cover the School Agreement when the director opens it to read", async () => {
