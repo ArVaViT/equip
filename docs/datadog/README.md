@@ -80,14 +80,20 @@ and an `op://` reference containing parentheses does not resolve.
 key identifies the org and is what the backend already uses to ship
 logs; it carries no permissions of its own and cannot create a
 monitor. The **application** key is the one that carries scopes, and
-the pair is sent together on every request. Adding scopes means
-issuing a new application key — `Organization Settings` →
-`Application Keys` → `New Key` → set scopes — not editing the API key.
+the pair is sent together on every request. Scopes are edited on the
+application key (`Organization Settings` → `Application Keys`), not on
+the API key.
 
-The application key currently in 1Password is deliberately read-only
-(16 scopes: logs, metrics, dashboards, monitors, APM, RUM, incidents,
-SLOs) and therefore cannot apply anything. A key that can run
-`--apply` needs exactly two scopes:
+The application key in 1Password ("Datadog API Keys (Equip)") was
+named read-only but carried no scopes at all until 2026-11-25, which
+in Datadog means every permission its user has, key and user
+management included. It is scoped now: reads across logs, metrics,
+monitors, dashboards, RUM, APM, incidents, SLOs, synthetics, events,
+usage, hosts and notebooks, and three writes, `monitors_write`,
+`logs_write_exclusion_filters` and `logs_generate_metrics`. Listing
+API keys or users with it answers 403. Its name in Datadog still says
+"read-only": renaming needs a scope it no longer has. `--apply` needs
+two of those scopes:
 
 | Scope | Why |
 |---|---|
@@ -113,62 +119,30 @@ Two notes the script cannot tell you itself:
   created.** That marker means the monitor cannot fire as written —
   usually a metric with no emitter or no log-based-metric rule — and a
   monitor parked in No Data forever teaches the reader to ignore No
-  Data. `monitors/gemini-thinking-tokens-returned.json` is the
-  standing example; see the next section for what unblocks it.
+  Data. None is blocked as of 2026-11-25; the last one,
+  `monitors/gemini-thinking-tokens-returned.json`, was unblocked
+  that day (next section).
 
-## Creating the missing thinking-token metric
+## The thinking-token metric
 
-`equip.gemini.tokens_thinking_total` is emitted on every successful
-Gemini call and **does not exist as a metric**. Verified 2026-08-19 by
-listing every `equip.*` metric that reported in the last thirty days:
-fourteen came back and this is not one of them, while
-`equip.gemini.tokens_output_total` returns points over the same window
-and a direct query for the thinking series returns no series at all. Nothing but a UI change fixes this — no
-key scope, no code change — and until it is done the
-`[Equip] Gemini is thinking again` monitor cannot fire, and
-`[Equip] Gemini spend jumped` has to count output alone while thinking
-tokens are billed as output.
+`equip.gemini.tokens_thinking_total` existed only as log lines until
+2026-11-25, so `[Equip] Gemini is thinking again` sat blocked for
+three months. The log-based-metric rule was created that day through
+the API (`POST /api/v2/logs/config/metrics`) as an exact copy of
+`equip.gemini.tokens_output_total` with the name changed: filter
+`source:vercel @metric.name:equip.gemini.tokens_thinking_total`,
+distribution on `@metric.value`, grouped by `model` only. A
+log-based metric bills by timeseries, so `course_id`, `locale`,
+`entity_id` and `field` stay out of it.
 
-In `Logs` → `Configuration` → `Generate Metrics` → `New Metric`:
+`[Equip] Gemini spend jumped` still counts output alone, on purpose:
+adding the two series together joins them on timestamp (the
+`gemini-call-failures.json` trap in `monitors/README.md`), and the thinking monitor
+already alerts on any thinking spend at all.
 
-| Field | Value |
-|---|---|
-| Filter query | `source:vercel @metric.name:equip.gemini.tokens_thinking_total` |
-| Metric name | `equip.gemini.tokens_thinking_total` |
-| Value | `@value` — the numeric field, **not** "count of logs" |
-| Group by | `model`, and nothing else |
-| Percentiles | off |
-
-The result should be a **distribution** metric with `origin: Logs /
-Log Metrics`, matching `equip.gemini.tokens_output_total` exactly —
-that one is the template, and the fastest way to get this right is to
-open its rule and copy the filter verbatim, changing only the name.
-Do open it: the application key in 1Password **cannot** read
-log-metric rules (`GET /api/v2/logs/config/metrics` answers 403 — it
-lacks `logs_read_config`), so this is the one step nothing here can
-verify for you.
-
-`model` is the only tag worth keeping, and the rest are actively
-harmful. A log-based metric bills by timeseries, so a `course_id`
-group-by multiplies the series count by the whole catalogue, and
-`locale`, `entity_id` and `field` do the same again. `model` is the
-dimension the metric exists to separate: production ran 81 days on
-`gemini-flash-latest` at ~840 thinking tokens per translated string
-and `gemini-2.5-flash-lite` spends zero on the same work, so a
-model-tagged series makes a regression visible the same hour.
-
-Do not go looking for the source lines in Log Explorer first — you
-will find nothing and conclude the emitter is broken. The
-`equip.metric` INFO lines carry one of the `main` index's three
-exclusion filters, so they are never indexed. **Log-based metrics are
-generated before index exclusion**, which is exactly why the other
-fourteen work.
-
-Once the rule exists and has a few hours of points: delete the
-`BLOCKED` paragraph from
-`monitors/gemini-thinking-tokens-returned.json`, add the thinking term
-back into `monitors/gemini-spend-spike.json`, raise both of its
-thresholds by the measured thinking ratio, and run the apply script.
+Do not look for the source lines in Log Explorer: the `equip.metric`
+INFO lines are excluded from the `main` index, and **log-based metrics
+are generated before index exclusion**.
 
 ## How the metrics work
 
