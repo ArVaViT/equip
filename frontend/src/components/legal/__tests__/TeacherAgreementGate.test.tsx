@@ -386,4 +386,27 @@ describe("TeacherAgreementGate", () => {
     await waitFor(() => expect(legalService.status).toHaveBeenCalled())
     expect(container.firstChild).toBeNull()
   })
+
+  it("does not raise the gate for nobody when an answer lands after sign-out", async () => {
+    const { legalService } = await import("@/services/legal")
+    let answer: (status: LegalStatus) => void = () => {}
+    vi.mocked(legalService.status).mockReturnValue(new Promise<LegalStatus>((resolve) => (answer = resolve)))
+
+    const { container, rerender } = render(
+      <Wrapper user={makeUser({ role: "director" })}>
+        <TeacherAgreementGate />
+      </Wrapper>,
+    )
+    await waitFor(() => expect(legalService.status).toHaveBeenCalled())
+    rerender(
+      <Wrapper user={null}>
+        <TeacherAgreementGate />
+      </Wrapper>,
+    )
+    answer({ accepted: [], outstanding: [SCHOOL_AGREEMENT], notices: [] })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(container.firstChild).toBeNull()
+    expect(getTeacherAgreementOwed()).toBe(false)
+  })
 })

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
-import { SCHOOL_AGREEMENT, TEACHER_TERMS } from "../useTeacherAgreement"
+import { ROLE_DOCUMENTS } from "../useTeacherAgreement"
 
 /**
  * Every document the server makes somebody sign has a screen that asks for it.
@@ -28,7 +28,7 @@ describe("every document somebody must sign has a screen", () => {
     // Asked by the first-run flow (everybody signs) or by nobody (notices).
     const askedElsewhere = new Set(["EVERYONE", "frozenset()"])
     const roleScoped = specs.filter((spec) => !askedElsewhere.has(spec.requiredFor)).map((spec) => spec.slug)
-    const asked = new Set<string>([TEACHER_TERMS, SCHOOL_AGREEMENT])
+    const asked = new Set<string>(ROLE_DOCUMENTS)
     for (const slug of roleScoped) {
       expect(asked.has(slug), `${slug} is required for a role, and no screen asks for it`).toBe(true)
     }

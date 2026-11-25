@@ -10,14 +10,19 @@ import { getFirstRunActive, subscribeFirstRun } from "@/lib/tourState"
 import { DEFAULT_LOCALE, isSupportedLocale } from "@/i18n/config"
 import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
-import { SCHOOL_AGREEMENT, useTeacherAgreement } from "./useTeacherAgreement"
+import { type RoleDocument, useTeacherAgreement } from "./useTeacherAgreement"
 
 /** The words for each role-scoped document. Each has its own screen copy:
  *  a checkbox must name exactly the document it records. */
-const COPY = {
-  teacher: { bullets: ["rights", "students", "marks"], link: "/teacher-terms", label: "legal.teacherTerms" },
-  school: { bullets: ["people", "material", "authority"], link: "/school-agreement", label: "legal.schoolAgreement" },
-} as const
+const COPY: Record<RoleDocument, { kind: string; bullets: readonly string[]; link: string; label: string }> = {
+  "teacher-terms": { kind: "teacher", bullets: ["rights", "students", "marks"], link: "/teacher-terms", label: "legal.teacherTerms" },
+  "school-agreement": {
+    kind: "school",
+    bullets: ["people", "material", "authority"],
+    link: "/school-agreement",
+    label: "legal.schoolAgreement",
+  },
+}
 
 /** Same definition the first-run flow uses. Kept local rather than exported
  *  from there, because the two gates are allowed to diverge. */
@@ -129,8 +134,10 @@ export function TeacherAgreementGate() {
 
   if (!open || !owed) return null
 
-  const kind = owed.slug === SCHOOL_AGREEMENT ? "school" : "teacher"
-  const copy = COPY[kind]
+  // ``owed`` only ever carries a slug from ROLE_DOCUMENTS, and every one of
+  // them has its words here: the record type makes a new one fail to compile.
+  const copy = COPY[owed.slug as RoleDocument]
+  const kind = copy.kind
 
   const confirm = async () => {
     if (!checked) {

@@ -47,7 +47,7 @@ jobs:
           CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" || true)
           echo "Changed files:"
           echo "$CHANGED"
-          if echo "$CHANGED" | grep -qE '^frontend/|^\.github/workflows/frontend-ci\.yml$'; then
+          if echo "$CHANGED" | grep -qE '^frontend/|^\.github/workflows/frontend-ci\.yml$|^backend/app/legal/registry\.py$'; then
             echo "frontend=true" >> "$GITHUB_OUTPUT"
             echo "Frontend changes detected — heavy jobs will run."
           else

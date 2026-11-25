@@ -18,7 +18,8 @@ export const SCHOOL_AGREEMENT = "school-agreement"
 
 /** In the order they are asked for: the agreement that makes somebody a
  *  teacher before the one that lets them bind a school. */
-const ROLE_DOCUMENTS = [TEACHER_TERMS, SCHOOL_AGREEMENT] as const
+export const ROLE_DOCUMENTS = [TEACHER_TERMS, SCHOOL_AGREEMENT] as const
+export type RoleDocument = (typeof ROLE_DOCUMENTS)[number]
 
 /**
  * The same answer, reachable from a route guard.
@@ -131,15 +132,17 @@ export function useTeacherAgreement(userId: string | undefined) {
   }, [userId])
 
   useEffect(() => {
+    // A new person (or nobody) starts from nothing: no answer still in flight
+    // for the previous one may land — after sign-out it would raise the gate
+    // over the login page — and nothing they owed or accepted carries over.
+    seq.current++
     const empty: ReadonlySet<string> = new Set()
     acceptedRef.current = empty
     setAccepted(empty)
-    if (!userId) {
-      owedListRef.current = []
-      setOwedList([])
-      publishOwed(false)
-      return
-    }
+    owedListRef.current = []
+    setOwedList([])
+    publishOwed(false)
+    if (!userId) return
     check()
     // Not while the tab is hidden: coming back to it asks anyway (below), and a
     // forgotten background tab otherwise polls every five minutes all day —
