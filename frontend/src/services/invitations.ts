@@ -28,6 +28,8 @@ export interface InvitationPreview {
   course_title: string | null
   /** Who is inviting; null for a platform invitation. */
   organization_name: string | null
+  /** That organization's logo; null when it has none. */
+  organization_logo_url?: string | null
   status: InvitationStatus
   is_expired: boolean
   /** Null while the link still admits its person. */

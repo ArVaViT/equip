@@ -10,6 +10,7 @@ import { PasswordFields } from "@/components/auth/PasswordFields"
 import { GoogleButton, OrDivider } from "@/components/auth/GoogleButton"
 import type { InvitationPreview } from "@/services/invitations"
 import { useAcceptInvite } from "./useAcceptInvite"
+import { OrganizationMark } from "@/components/organization/OrganizationMark"
 
 /** Who is inviting, and to what — the first thing a person reads here. */
 function invitedBy(preview: InvitationPreview, t: TFunction): string {
@@ -58,10 +59,16 @@ export default function AcceptInvite() {
 
   const heading = t("invite.heading")
   const subheading = preview ? invitedBy(preview, t) : undefined
+  // Who is inviting, by face as well as by name — but only a real logo: the
+  // initials tile says nothing the sentence under the heading does not.
+  const mark =
+    preview?.organization_name && preview.organization_logo_url ? (
+      <OrganizationMark name={preview.organization_name} logoUrl={preview.organization_logo_url} size="lg" />
+    ) : undefined
 
   if (phase === "loading" || phase === "accepting") {
     return (
-      <AuthLayout heading={heading} subheading={subheading}>
+      <AuthLayout heading={heading} subheading={subheading} mark={mark}>
         <div className="flex justify-center py-10">
           <Loader2 className="h-6 w-6 animate-spin text-ink-muted" strokeWidth={1.75} aria-hidden />
         </div>
@@ -92,7 +99,7 @@ export default function AcceptInvite() {
 
   if (phase === "unavailable" || phase === "acceptFailed") {
     return (
-      <AuthLayout heading={heading} subheading={subheading}>
+      <AuthLayout heading={heading} subheading={subheading} mark={mark}>
         {notice(phase === "unavailable" ? previewError : t("invite.errors.acceptFailed"), "warning")}
         <Button size="lg" className="w-full" onClick={phase === "unavailable" ? retryPreview : retryAccept}>
           {t("common.tryAgain")}
@@ -111,7 +118,7 @@ export default function AcceptInvite() {
 
   if (phase === "unusable" && reason) {
     return (
-      <AuthLayout heading={heading} subheading={subheading}>
+      <AuthLayout heading={heading} subheading={subheading} mark={mark}>
         {notice(t(`invite.unusable.${reason}`), reason === "used" ? "warning" : "destructive")}
         {/* Only a used link has a next step on this screen; the others are
             a word to whoever sent it, and the copy says so. */}
@@ -128,7 +135,7 @@ export default function AcceptInvite() {
 
   if (phase === "mismatch" && preview) {
     return (
-      <AuthLayout heading={heading} subheading={subheading}>
+      <AuthLayout heading={heading} subheading={subheading} mark={mark}>
         {notice(
           <Trans
             i18nKey="invite.errors.emailMismatchDetail"
@@ -158,7 +165,7 @@ export default function AcceptInvite() {
 
   if (phase === "signIn") {
     return (
-      <AuthLayout heading={heading} subheading={subheading}>
+      <AuthLayout heading={heading} subheading={subheading} mark={mark}>
         <div className="space-y-6 animate-fade-in">
           {errorBox}
           <p className="text-sm text-ink-muted leading-relaxed">
@@ -183,7 +190,7 @@ export default function AcceptInvite() {
 
   // phase === "form": no account at the invited address yet.
   return (
-    <AuthLayout heading={heading} subheading={subheading}>
+    <AuthLayout heading={heading} subheading={subheading} mark={mark}>
       <div className="space-y-6 animate-fade-in">
         {errorBox}
 

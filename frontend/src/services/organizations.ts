@@ -91,6 +91,7 @@ export interface MyOrganizationCourses {
   organization_id: string
   organization_slug: string
   organization_name: string
+  organization_logo_url?: string | null
   role: "director" | "teacher" | "student"
   courses: Course[]
 }

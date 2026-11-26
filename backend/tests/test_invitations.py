@@ -18,6 +18,7 @@ from app.api.dependencies import get_current_user, get_optional_user
 from app.core.database import get_db
 from app.main import app
 from app.models.invitation import Invitation
+from app.models.organization import Organization
 from app.models.user import User, UserRole
 from app.services.invitation_service import hash_invitation_token, invitation_token
 from tests._cv_helpers import make_course_with_text
@@ -256,6 +257,25 @@ def test_preview_invitation_by_token_ok(admin_client: TestClient, anon_client: T
     assert body["role"] == "teacher"
     assert body["status"] == "pending"
     assert body["is_expired"] is False
+
+
+def test_preview_shows_the_inviting_organizations_logo(admin_client: TestClient, anon_client: TestClient, db: Session):
+    """The name of who is inviting comes with its face: the first thing a
+    person reads on the page is by whom."""
+    admin_client.post(INVITATIONS_PREFIX, json={"email": "logo@example.com", "role": "student", "age_attested": True})
+    invitation = db.query(Invitation).filter(Invitation.email == "logo@example.com").one()
+    token = invitation_token(invitation.id)
+
+    body = anon_client.post(f"{INVITATIONS_PREFIX}/preview", json={"token": token}).json()
+    assert body["organization_name"] is not None
+    assert body["organization_logo_url"] is None
+
+    organization = db.get(Organization, invitation.organization_id)
+    assert organization is not None
+    organization.logo_url = f"/img/organization-logos/{organization.id}/logo-89abcdef.webp"
+    db.commit()
+    body = anon_client.post(f"{INVITATIONS_PREFIX}/preview", json={"token": token}).json()
+    assert body["organization_logo_url"] == organization.logo_url
 
 
 def test_preview_invitation_unknown_token_404(anon_client: TestClient):

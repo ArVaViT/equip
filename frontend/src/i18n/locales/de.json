@@ -120,7 +120,8 @@
       "websitePlaceholder": "https://",
       "logo": "Logo",
       "changeLogo": "Logo ändern",
-      "removeLogo": "Logo entfernen"
+      "removeLogo": "Logo entfernen",
+      "logoHint": "Am besten quadratisch, mindestens 256 px. Ein PNG mit transparentem Hintergrund passt zum hellen und dunklen Modus. Bis 2 MB."
     },
     "locked": {
       "how": "So erhalten Sie Zugang",

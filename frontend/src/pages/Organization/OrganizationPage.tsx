@@ -15,7 +15,7 @@ import { useNamedPageTitle } from "@/hooks/usePageTitle"
 import { activeIntlTag } from "@/i18n/config"
 import { toProxyImage } from "@/lib/images"
 import { getErrorCode } from "@/lib/errorCode"
-import { organizationInitials } from "@/lib/organizationInitials"
+import { OrganizationMark } from "@/components/organization/OrganizationMark"
 import { cn } from "@/lib/utils"
 import { organizationsService, type LockedCourse, type OrganizationPage as Page } from "@/services/organizations"
 import { OrganizationProfileForm } from "./OrganizationProfileForm"
@@ -68,7 +68,7 @@ export default function OrganizationPage() {
   return (
     <Section>
       <PageHeader
-        cover={<OrganizationLogo page={data} />}
+        cover={<OrganizationMark name={data.public_name} logoUrl={data.logo_url} size="lg" />}
         eyebrow={place || undefined}
         title={data.public_name}
         meta={
@@ -187,22 +187,6 @@ export default function OrganizationPage() {
         </Link>
       </footer>
     </Section>
-  )
-}
-
-function OrganizationLogo({ page }: { page: Page }) {
-  const src = toProxyImage(page.logo_url)
-  if (src) {
-    return <img src={src} alt="" className="h-20 w-20 shrink-0 rounded-card border border-edge bg-surface object-contain" />
-  }
-  // No logo yet: the name's initials, quiet, in the place a logo goes.
-  return (
-    <div
-      aria-hidden
-      className="flex h-20 w-20 shrink-0 items-center justify-center rounded-card border border-edge bg-muted/40 font-serif text-3xl font-semibold text-ink-muted"
-    >
-      {organizationInitials(page.public_name)}
-    </div>
   )
 }
 

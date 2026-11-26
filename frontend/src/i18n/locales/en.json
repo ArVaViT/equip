@@ -120,7 +120,8 @@
       "websitePlaceholder": "https://",
       "logo": "Logo",
       "changeLogo": "Change logo",
-      "removeLogo": "Remove logo"
+      "removeLogo": "Remove logo",
+      "logoHint": "Square works best, at least 256 px. A PNG with a transparent background looks right in light and dark mode. Up to 2 MB."
     },
     "locked": {
       "how": "How to get access",
