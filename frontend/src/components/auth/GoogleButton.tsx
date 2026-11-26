@@ -1,3 +1,4 @@
+import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -52,7 +53,7 @@ export function GoogleButton({ loading, disabled, onClick }: Props) {
 }
 
 /** «or …» between the Google button and the email form. */
-export function OrDivider({ label }: { label: string }) {
+export function OrDivider({ label }: { label: ReactNode }) {
   // Two rules either side of the words, not one rule under a patch of page
   // colour: the patch showed as a box once the sign-in screens got the
   // landing's scene behind them.

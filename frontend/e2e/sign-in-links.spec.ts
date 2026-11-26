@@ -15,7 +15,8 @@
  *     in the fragment: wiped and refused, since taking a session from the
  *     URL lets whoever wrote the URL choose the account (login CSRF);
  *   - a link used twice;
- *   - "Email me a link instead" end to end through Mailpit: the real PKCE
+ *   - a new sign-in link asked for on the expired-link screen, end to end
+ *     through Mailpit: the real PKCE
  *     email, followed in the browser that asked (`?code=` exchange) and its
  *     token hash in one that did not.
  *
@@ -150,7 +151,7 @@ test.describe("sign-in links", () => {
     await second.close();
   });
 
-  test.describe("Email me a link instead, through Mailpit", () => {
+  test.describe("A new sign-in link, through Mailpit", () => {
     test.beforeAll(async ({ request }) => {
       const reachable = await request
         .get(`${MAILPIT_URL}/api/v1/messages?limit=1`)
@@ -159,10 +160,16 @@ test.describe("sign-in links", () => {
       test.skip(!reachable, `Mailpit is not reachable at ${MAILPIT_URL}`);
     });
 
+    /**
+     * Ask for a sign-in link the way people still can: from the screen a
+     * spent link lands on. (The sign-in page no longer offers one; the same
+     * request backs this screen and «restore my account».)
+     */
     async function requestLink(page: Page, email: string) {
-      await page.goto("/login");
+      await page.goto(`/auth/confirm#token_hash=${"0".repeat(56)}&type=magiclink`);
       await page.getByLabel("Email", { exact: true }).fill(email);
-      await page.getByRole("button", { name: "Email me a link instead" }).click();
+      await page.getByRole("button", { name: "Send a new link" }).click();
+      await expect(page.getByRole("status")).toHaveText(/on its way/i);
     }
 
     /** The link in the mail GoTrue sent this address. */

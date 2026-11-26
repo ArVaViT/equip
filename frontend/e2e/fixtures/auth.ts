@@ -26,7 +26,7 @@
  * it stays here as a documented option for a spec that wants a specific
  * signed-in state without going through the login form.
  */
-import { test as base } from "@playwright/test";
+import { test as base, expect } from "@playwright/test";
 import type { Page, BrowserContext } from "@playwright/test";
 
 export type AuthRole = "student" | "teacher" | "admin";
@@ -65,6 +65,20 @@ export function getTestUser(role: AuthRole): TestUser {
 }
 
 /**
+ * Open the email form on /login. It starts closed for a fresh browser (most
+ * people sign in with Google) and starts open on a device that signed in
+ * with a password before, so this clicks only when there is something to
+ * open.
+ */
+export async function openEmailSignIn(page: Page): Promise<void> {
+  const opener = page.getByRole("button", { name: /continue with email|войдите по почте/i });
+  const email = page.getByLabel(/email|почта/i);
+  await expect(opener.or(email).first()).toBeVisible();
+  if (await opener.isVisible()) await opener.click();
+  await expect(email).toBeVisible();
+}
+
+/**
  * Sign in through the real login form and return the page in a
  * post-login state. Used by the global setup to mint a storage-state
  * file. Individual specs should NOT call this — they should rely on
@@ -76,6 +90,8 @@ export async function signInViaForm(
   user: TestUser,
 ): Promise<void> {
   await page.goto("/login");
+  // The email form waits behind the «or continue with email» divider.
+  await openEmailSignIn(page);
   await page.getByLabel(/email/i).fill(user.email);
   await page.getByLabel(/password|пароль/i).fill(user.password);
   await page.getByRole("button", { name: /sign in|войти/i }).click();

@@ -773,12 +773,9 @@
       "show": "Show password",
       "hide": "Hide password"
     },
-    "signInLink": "Email me a link instead",
-    "signInLinkSending": "Sending…",
     "signInLinkSent": "If we have that address, the email is on its way. Open it and press the button.",
     "signInLinkAgain": "Send it again",
     "signInLinkAgainIn": "Send it again in {{seconds}}s",
-    "signInLinkBackToPassword": "Use a password",
     "googleInAppBrowser": "Google doesn't allow sign-in inside this app's browser — open the page in Chrome or Safari.",
     "sendNewLink": "Send a new link"
   },

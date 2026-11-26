@@ -15,6 +15,7 @@
  * test Supabase env vars aren't populated.
  */
 import { test, expect } from "@playwright/test";
+import { openEmailSignIn } from "./fixtures/auth";
 
 test.describe("public surfaces", () => {
   test("landing → login navigation works", async ({ page }) => {
@@ -36,6 +37,7 @@ test.describe("public surfaces", () => {
 
   test("login page has an email + password field and a submit", async ({ page }) => {
     await page.goto("/login", { waitUntil: "networkidle" });
+    await openEmailSignIn(page);
 
     // Use accessible-name match so the test works in either UI
     // language — the locale-switcher may flip these.

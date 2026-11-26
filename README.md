@@ -50,8 +50,8 @@
   </tr>
   <tr>
     <td width="50%" align="center">
-      <img src=".github/assets/screenshots/login-desktop.png" alt="Equip sign-in page: a scripture column on the left, Google, email-and-password and sign-in-link options on the right" />
-      <br /><sub>Sign in — Google, email and password, or a sign-in link</sub>
+      <img src=".github/assets/screenshots/login-desktop.png" alt="Equip sign-in page: a scripture column on the left; on the right, Google, with email and password one click away" />
+      <br /><sub>Sign in — Google, or email and password</sub>
     </td>
     <td width="50%" align="center">
       <img src=".github/assets/screenshots/home-mobile.png" alt="Equip home page on a 390px mobile viewport" width="240" />
@@ -108,7 +108,7 @@ technical expertise that volunteer-run organizations simply don't have.
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, TipTap, Radix |
 | Backend | Python 3.12, FastAPI, SQLAlchemy 2, Pydantic 2 |
 | Database | PostgreSQL (Supabase) with Row Level Security |
-| Auth | Supabase Auth (Google OAuth, email/password, sign-in link) |
+| Auth | Supabase Auth (Google OAuth, email/password) |
 | Storage | Supabase Storage (avatars, course assets, materials) |
 | Deploy | Vercel (static frontend + Python serverless backend) |
 | CI/CD | GitHub Actions (lint, typecheck, test, audit) + Dependabot |
