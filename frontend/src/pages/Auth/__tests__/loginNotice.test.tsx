@@ -20,7 +20,7 @@ import Login from "../Login"
 
 const login = vi.fn()
 vi.mock("@/context/useAuth", () => ({
-  useAuth: () => ({ login: (...a: unknown[]) => login(...a), signInWithGoogle: vi.fn(), sendSignInLink: vi.fn() }),
+  useAuth: () => ({ login: (...a: unknown[]) => login(...a), signInWithGoogle: vi.fn() }),
 }))
 
 const resendConfirmation = vi.fn()

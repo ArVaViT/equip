@@ -117,6 +117,11 @@ export function isRateLimited(err: unknown): boolean {
   return e.status === 429 || e.code === "over_request_rate_limit" || e.code === "over_email_send_rate_limit"
 }
 
+/** The address and password do not match an account. */
+export function isInvalidCredentials(err: unknown): boolean {
+  return asAuthError(err).code === "invalid_credentials"
+}
+
 /** The account exists and its address has not been confirmed yet. */
 export function isEmailNotConfirmed(err: unknown): boolean {
   return asAuthError(err).code === "email_not_confirmed"

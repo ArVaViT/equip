@@ -7,12 +7,11 @@ import { Label } from "@/components/ui/label"
 import { useAuth } from "@/context/useAuth"
 import { makeLoginSchema, type LoginFormData } from "@/lib/validations/auth"
 import AuthLayout from "@/components/layout/AuthLayout"
-import { Loader2, RefreshCw } from "lucide-react"
-import { authErrorMessage, emailSendErrorMessage, isEmailNotConfirmed, isRateLimited } from "@/lib/authError"
+import { ChevronDown, Loader2, RefreshCw } from "lucide-react"
+import { authErrorMessage, emailSendErrorMessage, isEmailNotConfirmed, isInvalidCredentials } from "@/lib/authError"
 import { GoogleButton, OrDivider } from "@/components/auth/GoogleButton"
 import { authService } from "@/services/auth"
 import { useCooldown } from "@/hooks/useCooldown"
-import { SignInLinkSent } from "./SignInLinkSent"
 import { takeSignOutReason, type SignOutReason } from "@/lib/signOutReason"
 import { emailFromState, peekReturnPath, rememberReturnPath, returnPathFrom } from "@/lib/authRedirect"
 
@@ -44,6 +43,36 @@ function noticeKeyFor(error: string | null, reason: SignOutReason | null, state:
   return null
 }
 
+/**
+ * Wrong passwords in a row before «Forgot password?» is offered. Most people
+ * mistype once and get it on the next try; a link to a reset that early is
+ * one more thing to read on a screen whose job is to get them in.
+ */
+export const FORGOT_PASSWORD_AFTER = 3
+
+/**
+ * Set on this device after a password sign-in, so the person who always uses
+ * email does not have to open the form every visit. A convenience only:
+ * storage can be off or cleared, and then the form simply starts closed.
+ */
+const EMAIL_SIGN_IN_KEY = "equip.signIn.email"
+
+function usedEmailBefore(): boolean {
+  try {
+    return localStorage.getItem(EMAIL_SIGN_IN_KEY) === "1"
+  } catch {
+    return false
+  }
+}
+
+function rememberEmailSignIn() {
+  try {
+    localStorage.setItem(EMAIL_SIGN_IN_KEY, "1")
+  } catch {
+    // Private mode or blocked storage: next visit starts with the form closed.
+  }
+}
+
 export default function Login() {
   const [searchParams] = useSearchParams()
   const location = useLocation()
@@ -55,20 +84,24 @@ export default function Login() {
   // visitor was going for /auth/callback (lib/authRedirect).
   useEffect(() => rememberReturnPath(location.state), [location.state])
   const [prefilled] = useState(() => emailFromState(location.state))
+  // Three of every four people here sign in with Google, so the email form
+  // waits behind «or sign in with email» instead of filling the screen. It
+  // starts open when there is an address to finish (an invitation) or when
+  // this device signed in with a password before.
+  const [emailOpen, setEmailOpen] = useState(() => !!prefilled || usedEmailBefore())
+  const [wrongPasswords, setWrongPasswords] = useState(0)
   const [form, setForm] = useState<LoginFormData>({ email: prefilled, password: "" })
   const [errors, setErrors] = useState<Partial<Record<keyof LoginFormData, string>>>({})
   const [serverError, setServerError] = useState("")
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
-  const [linkSending, setLinkSending] = useState(false)
-  const [linkSent, setLinkSent] = useState(false)
   // The address exists and was never confirmed: the error alone left the
   // person with nowhere to go but back to an inbox that may not have it.
   const [unconfirmed, setUnconfirmed] = useState(false)
   const [resending, setResending] = useState(false)
   const [resent, setResent] = useState(false)
   const resendCooldown = useCooldown(60, false)
-  const { login, signInWithGoogle, sendSignInLink } = useAuth()
+  const { login, signInWithGoogle } = useAuth()
   const { t } = useTranslation()
 
   const handleChange = (field: keyof LoginFormData, value: string) => {
@@ -96,8 +129,10 @@ export default function Login() {
     setResent(false)
     try {
       await login(result.data.email, result.data.password)
+      rememberEmailSignIn()
     } catch (err) {
       setUnconfirmed(isEmailNotConfirmed(err))
+      if (isInvalidCredentials(err)) setWrongPasswords((n) => n + 1)
       // Never the server's own words. GoTrue always supplies a `message`,
       // so the `|| t(...)` that used to sit here was unreachable and a
       // German signing in read "Invalid login credentials" on an otherwise
@@ -124,39 +159,6 @@ export default function Login() {
     }
   }, [form.email, resendCooldown])
 
-  /**
-   * Ask for a one-time sign-in link.
-   *
-   * The confirmation is deliberately the same whether or not the address has
-   * an account here: anything else turns this form into a way to find out
-   * who is registered. A 429 is the one thing worth saying out loud — it is
-   * the only outcome the reader can act on, by waiting.
-   */
-  const handleSignInLink = useCallback(async () => {
-    setServerError("")
-    const parsed = makeLoginSchema().pick({ email: true }).safeParse({ email: form.email })
-    if (!parsed.success) {
-      setErrors({ email: parsed.error.issues[0]?.message })
-      return
-    }
-
-    setLinkSending(true)
-    try {
-      await sendSignInLink(parsed.data.email)
-    } catch (err) {
-      if (import.meta.env.DEV) console.error("sendSignInLink failed", err)
-      if (isRateLimited(err)) {
-        setServerError(emailSendErrorMessage(err))
-        setLinkSending(false)
-        return
-      }
-      // Everything else — including "no such user", which is exactly what we
-      // must not disclose — reads as the neutral confirmation below.
-    }
-    setLinkSending(false)
-    setLinkSent(true)
-  }, [form.email, sendSignInLink])
-
   const handleGoogleLogin = async () => {
     setGoogleLoading(true)
     try {
@@ -166,14 +168,6 @@ export default function Login() {
     } finally {
       setGoogleLoading(false)
     }
-  }
-
-  if (linkSent) {
-    return (
-      <AuthLayout heading={t("auth.welcomeBack")}>
-        <SignInLinkSent email={form.email} onUsePassword={() => setLinkSent(false)} />
-      </AuthLayout>
-    )
   }
 
   return (
@@ -219,79 +213,87 @@ export default function Login() {
 
         <GoogleButton loading={googleLoading} disabled={loading} onClick={handleGoogleLogin} />
 
-        <OrDivider label={t("auth.orContinueWithEmail")} />
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">{t("auth.email")}</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder={t("auth.emailPlaceholder")}
-              autoComplete="email"
-              fieldSize="lg"
-              value={form.email}
-              onChange={(e) => handleChange("email", e.target.value)}
-              aria-invalid={!!errors.email}
-              aria-describedby={errors.email ? "email-error" : undefined}
-              autoFocus={!prefilled}
-            />
-            {errors.email && <p id="email-error" role="alert" className="text-xs text-destructive mt-1">{errors.email}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">{t("auth.password")}</Label>
-              <Link
-                to="/forgot-password"
-                className="-my-2 inline-flex min-h-[44px] items-center px-1 text-sm text-brand transition-colors hover:text-brand-ink sm:min-h-0 sm:py-0 sm:text-xs"
+        {emailOpen ? (
+          <OrDivider label={t("auth.orContinueWithEmail")} />
+        ) : (
+          // The same divider, words and all, so the screen reads as it always
+          // did; only now the words are the way in.
+          <OrDivider
+            label={
+              <button
+                type="button"
+                onClick={() => setEmailOpen(true)}
+                aria-expanded={false}
+                aria-controls="email-sign-in"
+                className="-my-3 inline-flex min-h-[44px] items-center gap-1 uppercase text-ink-muted transition-colors hover:text-ink focus-visible:text-ink"
               >
-                {t("auth.forgotPasswordLink")}
-              </Link>
+                {t("auth.orContinueWithEmail")}
+                <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+              </button>
+            }
+          />
+        )}
+
+        {emailOpen && (
+          <form id="email-sign-in" onSubmit={handleSubmit} className="space-y-4 animate-fade-in">
+            <div className="space-y-2">
+              <Label htmlFor="email">{t("auth.email")}</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder={t("auth.emailPlaceholder")}
+                autoComplete="email"
+                fieldSize="lg"
+                value={form.email}
+                onChange={(e) => handleChange("email", e.target.value)}
+                aria-invalid={!!errors.email}
+                aria-describedby={errors.email ? "email-error" : undefined}
+                autoFocus={!prefilled}
+              />
+              {errors.email && <p id="email-error" role="alert" className="text-xs text-destructive mt-1">{errors.email}</p>}
             </div>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              fieldSize="lg"
-              value={form.password}
-              onChange={(e) => handleChange("password", e.target.value)}
-              aria-invalid={!!errors.password}
-              aria-describedby={errors.password ? "password-error" : undefined}
-              autoFocus={!!prefilled}
-            />
-            {errors.password && <p id="password-error" role="alert" className="text-xs text-destructive mt-1">{errors.password}</p>}
-          </div>
 
-          <Button type="submit" size="lg" className="w-full rounded-md font-medium" disabled={loading}>
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />
-                {t("auth.signingIn")}
-              </>
-            ) : (
-              t("auth.signIn")
-            )}
-          </Button>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">{t("auth.password")}</Label>
+                {/* Only after a few misses: on the first try it is one more
+                    thing to read on a screen whose job is to get you in. */}
+                {wrongPasswords >= FORGOT_PASSWORD_AFTER && (
+                  <Link
+                    to="/forgot-password"
+                    state={{ email: form.email.trim() }}
+                    className="-my-2 inline-flex min-h-[44px] items-center px-1 text-sm text-brand transition-colors hover:text-brand-ink sm:min-h-0 sm:py-0 sm:text-xs"
+                  >
+                    {t("auth.forgotPasswordLink")}
+                  </Link>
+                )}
+              </div>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                fieldSize="lg"
+                value={form.password}
+                onChange={(e) => handleChange("password", e.target.value)}
+                aria-invalid={!!errors.password}
+                aria-describedby={errors.password ? "password-error" : undefined}
+                autoFocus={!!prefilled}
+              />
+              {errors.password && <p id="password-error" role="alert" className="text-xs text-destructive mt-1">{errors.password}</p>}
+            </div>
 
-          {/* Quiet, and below the password: for most people the password is
-              still the fastest way in, and this is the way out of "I do not
-              remember it" that does not involve choosing a new one. */}
-          <p className="text-center">
-            <button
-              type="button"
-              onClick={handleSignInLink}
-              disabled={linkSending || loading || googleLoading}
-              className="inline-flex min-h-[44px] items-center px-1 text-sm text-ink-muted transition-colors hover:text-ink disabled:opacity-60 sm:min-h-0"
-            >
-              {linkSending ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" strokeWidth={1.75} />{t("auth.signInLinkSending")}</>
+            <Button type="submit" size="lg" className="w-full rounded-md font-medium" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" strokeWidth={1.75} />
+                  {t("auth.signingIn")}
+                </>
               ) : (
-                t("auth.signInLink")
+                t("auth.signIn")
               )}
-            </button>
-          </p>
-        </form>
+            </Button>
+          </form>
+        )}
 
         <p className="text-sm text-center text-ink-muted">
           {t("auth.noAccount")}{" "}
