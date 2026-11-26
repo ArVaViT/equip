@@ -30,6 +30,7 @@ export default defineConfig({
 
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:5173",
+    serviceWorkers: "block",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",

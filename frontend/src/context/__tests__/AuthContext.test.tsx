@@ -11,6 +11,11 @@ let authHandler: AuthChangeHandler | null = null
 const unsubscribe = vi.fn()
 
 const from = vi.fn()
+const clearOfflineLessons = vi.fn().mockResolvedValue(undefined)
+
+vi.mock("@/lib/offlineLessons", () => ({
+  clearOfflineLessons: () => clearOfflineLessons(),
+}))
 
 vi.mock("@/lib/supabase", () => ({
   supabase: {
@@ -65,11 +70,12 @@ const BACKEND_USER_RESPONSE = {
 } as const
 
 function AuthProbe() {
-  const { user, loading, logout: doLogout, applyUser } = useAuth()
+  const { user, sessionUserId, loading, logout: doLogout, applyUser } = useAuth()
   return (
     <div>
       <span data-testid="loading">{String(loading)}</span>
       <span data-testid="user">{user ? user.email : "anon"}</span>
+      <span data-testid="session-user-id">{sessionUserId ?? "-"}</span>
       <span data-testid="role">{user?.role ?? "-"}</span>
       <span data-testid="zone">{user?.time_zone ?? "-"}/{user?.time_zone_source ?? "-"}</span>
       <span data-testid="city">{user?.city ?? "-"}</span>
@@ -116,6 +122,7 @@ describe("AuthContext", () => {
     authHandler = null
     unsubscribe.mockReset()
     from.mockReset()
+    clearOfflineLessons.mockReset().mockResolvedValue(undefined)
     login.mockReset()
     register.mockReset()
     signInWithGoogle.mockReset()
@@ -275,11 +282,82 @@ describe("AuthContext", () => {
     await waitFor(() => {
       expect(screen.getByTestId("user").textContent).toBe("a@b.com")
     })
+    expect(screen.getByTestId("session-user-id").textContent).toBe("user-1")
 
     await act(async () => {
       authHandler!("SIGNED_OUT", null)
     })
     expect(screen.getByTestId("user").textContent).toBe("anon")
+    expect(screen.getByTestId("session-user-id").textContent).toBe("-")
+    expect(clearOfflineLessons).toHaveBeenCalledTimes(2)
+  })
+
+  it("uses the stored session id for offline lesson lookup without inventing a profile", async () => {
+    const originalOnLine = navigator.onLine
+    Object.defineProperty(navigator, "onLine", { configurable: true, value: false })
+    try {
+      render(
+        <AuthProvider>
+          <AuthProbe />
+        </AuthProvider>,
+      )
+
+      await act(async () => {
+        authHandler!("INITIAL_SESSION", makeSession(makeSupabaseUser()))
+      })
+
+      expect(screen.getByTestId("loading").textContent).toBe("false")
+      expect(screen.getByTestId("user").textContent).toBe("anon")
+      expect(screen.getByTestId("session-user-id").textContent).toBe("user-1")
+      expect(from).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(navigator, "onLine", { configurable: true, value: originalOnLine })
+    }
+  })
+
+  it("switches the offline account partition with the Supabase session", async () => {
+    const profileQuery = (profile: Record<string, unknown>) => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: vi.fn().mockResolvedValue({ data: profile, error: null }),
+        }),
+      }),
+    })
+    from
+      .mockReturnValueOnce(profileQuery({
+        id: "user-1",
+        email: "a@b.com",
+        full_name: "A",
+        role: "student",
+        created_at: "2024-01-01T00:00:00Z",
+      }))
+      .mockReturnValueOnce(profileQuery({
+        id: "user-2",
+        email: "b@b.com",
+        full_name: "B",
+        role: "student",
+        created_at: "2024-01-01T00:00:00Z",
+      }))
+
+    render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>,
+    )
+
+    await act(async () => authHandler!("SIGNED_IN", makeSession(makeSupabaseUser())))
+    await waitFor(() => expect(screen.getByTestId("user").textContent).toBe("a@b.com"))
+
+    await act(async () => authHandler!("SIGNED_IN", makeSession(makeSupabaseUser({
+      id: "user-2",
+      email: "b@b.com",
+    }))))
+
+    await waitFor(() => {
+      expect(screen.getByTestId("user").textContent).toBe("b@b.com")
+      expect(screen.getByTestId("session-user-id").textContent).toBe("user-2")
+    })
+    expect(clearOfflineLessons).toHaveBeenCalledTimes(2)
   })
 
   it("forgets where the signed-out person was heading", async () => {
@@ -328,6 +406,7 @@ describe("AuthContext", () => {
     })
 
     expect(logout).toHaveBeenCalledTimes(1)
+    expect(clearOfflineLessons).toHaveBeenCalledTimes(2)
     await waitFor(() => {
       expect(screen.getByTestId("user").textContent).toBe("anon")
     })

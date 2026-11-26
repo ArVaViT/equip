@@ -10,6 +10,7 @@ import { HeaderDesktopNav } from "./header/HeaderDesktopNav"
 import { HeaderMobileMenuTrigger } from "./header/HeaderMobileMenuTrigger"
 import { HeaderMobileSheet } from "./header/HeaderMobileSheet"
 import { HeaderUserMenu } from "./header/HeaderUserMenu"
+import { ConnectionStatus } from "./ConnectionStatus"
 
 /**
  * App-shell header — the sticky bar that sits on top of every routed
@@ -103,6 +104,7 @@ export default function Header() {
           )}
 
           <div className="flex shrink-0 items-center gap-1.5 md:gap-2">
+            <ConnectionStatus />
             {/* Signed-out visitors had no way to change language at all: the
                 switcher lived in the profile, behind a login. So a German
                 reader met a Russian landing page and their only move was to

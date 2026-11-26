@@ -19,6 +19,13 @@ import '@fontsource-variable/literata/index.css'
 import '@fontsource-variable/golos-text/index.css'
 import './index.css'
 
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  const workerUrl = `/service-worker.js?v=${encodeURIComponent(import.meta.env.VITE_APP_VERSION ?? 'dev')}`
+  void navigator.serviceWorker.register(workerUrl).catch((error: unknown) => {
+    console.warn('Service worker registration failed', error)
+  })
+}
+
 // Before monitoring starts: take any sign-in the URL carries (an OAuth
 // `?code=`, an email link's `#token_hash=`, a pre-PKCE fragment session) and
 // remove it from the address bar, so the first view Datadog RUM and Session

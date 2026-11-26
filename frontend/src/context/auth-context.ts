@@ -5,6 +5,12 @@ import type { SignUpOutcome } from "@/services/auth"
 
 export interface AuthContextValue {
   user: User | null
+  /**
+   * Supabase's persisted session identity. It is not a profile or role
+   * authority; the lesson reader uses it only to select this account's
+   * published offline lesson records when profile loading is unavailable.
+   */
+  sessionUserId: string | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (

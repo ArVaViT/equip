@@ -1,4 +1,9 @@
 {
+  "offline": {
+    "online": "Online",
+    "offline": "Offline",
+    "savedCopy": "You're offline. This is a saved copy of the lesson."
+  },
   "unsubscribe": {
     "title": "Equip email",
     "ask": "Stop sending “{{kind}}” emails?",
