@@ -23,9 +23,10 @@ from app.api.dependencies import require_worker_secret
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.metrics import increment
+from app.services import worker_lease
 from app.services.daily_challenge.llm import GeminiPromptClient
 from app.services.daily_challenge.replenish import replenish_one_question
-from app.services.daily_challenge.translate import translate_pending_questions
+from app.services.daily_challenge.translate import POOL_SWEEP_LEASE, translate_pending_questions
 from app.services.translation.budget import worker_budget
 
 logger = logging.getLogger(__name__)
@@ -84,36 +85,57 @@ def _run_one_tick(db: Session) -> ReplenishResponse:
         gemini_timeout_seconds=settings.GEMINI_TIMEOUT_SECONDS,
     )
 
-    with GeminiPromptClient(
-        api_key=api_key,
-        default_model=model,
-        max_retries=_MAX_RETRIES,
-        min_request_interval_seconds=_THROTTLE_SECONDS,
-        retry_backoff_seconds=_THROTTLE_SECONDS,
-        retry_backoff_cap_seconds=30.0,
-    ) as client:
-        outcome = replenish_one_question(db, client=client)
-
-    # Then repair a little of the backlog. Questions written before a
-    # language existed have nobody to translate them — the generator only
-    # ever produces English and Russian, and there is no course above a
-    # Daily Challenge question for the edit-triggered pipeline to hang
-    # off. Without this sweep the gap is permanent for every question
-    # already in the bank.
-    #
-    # Two per tick, deliberately: one question costs ~12 provider calls
-    # (question text, explanation, four options, each into three
-    # languages), and this worker shares a daily Gemini budget with the
-    # generation run above it. Sipping, not gulping.
+    # The pool is one tick's at a time. The translation cron runs every
+    # minute and, when it has nothing queued, sweeps the same questions this
+    # tick translates — the one it is about to generate (committed before it
+    # is translated) and the oldest ones missing a language. Two writers of
+    # one question collide on ``uniq_content_versions_active`` (2026-09-18),
+    # so this tick takes the lease the idle sweep takes. Without it, the
+    # question still gets generated and scheduled; its translation and the
+    # backlog are left to the sweep that holds the pool, a minute or two
+    # away. Held from before generation, because the question becomes
+    # visible to a sweep the moment generation commits it.
+    holder = worker_lease.claim(db, POOL_SWEEP_LEASE)
     swept = 0
     translated = 0
     try:
-        sweep = translate_pending_questions(db, limit=_TRANSLATION_SWEEP_LIMIT, budget=budget)
-        translated = sweep.rows.translated
-        swept = sweep.questions
-    except Exception as exc:
-        db.rollback()
-        logger.warning("daily-challenge worker: translation sweep failed: %s", exc)
+        with GeminiPromptClient(
+            api_key=api_key,
+            default_model=model,
+            max_retries=_MAX_RETRIES,
+            min_request_interval_seconds=_THROTTLE_SECONDS,
+            retry_backoff_seconds=_THROTTLE_SECONDS,
+            retry_backoff_cap_seconds=30.0,
+        ) as client:
+            outcome = replenish_one_question(db, client=client, translate=holder is not None)
+
+        # Then repair a little of the backlog. Questions written before a
+        # language existed have nobody to translate them — the generator only
+        # ever produces English and Russian, and there is no course above a
+        # Daily Challenge question for the edit-triggered pipeline to hang
+        # off. Without this sweep the gap is permanent for every question
+        # already in the bank.
+        #
+        # Two per tick, deliberately: one question costs ~12 provider calls
+        # (question text, explanation, four options, each into three
+        # languages), and this worker shares a daily Gemini budget with the
+        # generation run above it. Sipping, not gulping.
+        if holder is not None:
+            try:
+                sweep = translate_pending_questions(db, limit=_TRANSLATION_SWEEP_LIMIT, budget=budget)
+                translated = sweep.rows.translated
+                swept = sweep.questions
+            except Exception as exc:
+                db.rollback()
+                logger.warning("daily-challenge worker: translation sweep failed: %s", exc)
+    finally:
+        if holder is not None:
+            # A lease that cannot be given back expires on its own.
+            try:
+                worker_lease.release(db, POOL_SWEEP_LEASE, holder)
+            except Exception as exc:
+                db.rollback()
+                logger.warning("daily-challenge worker: pool lease not released (it will expire): %s", exc)
 
     # The only trace of a bad night used to be a WARNING and a 200: ``error``
     # and ``no_survivors`` looked like any other tick, and the one monitor

@@ -13,6 +13,8 @@ import uuid
 from datetime import date, timedelta
 from typing import TYPE_CHECKING
 
+import pytest
+
 from app.models.daily_challenge import (
     DailyChallengeQuestion,
     DailyChallengeQuestionEvent,
@@ -25,7 +27,6 @@ from app.services.daily_challenge.orchestrator import GenerationOutcome
 from app.services.daily_challenge.seed_passages import SEED_PASSAGES
 
 if TYPE_CHECKING:
-    import pytest
     from sqlalchemy.orm import Session
 
 
@@ -307,7 +308,9 @@ class TestWorkerTickSweepHasAClock:
         from app.services.translation.orchestrator import OrchestratorReport
 
         monkeypatch.setattr(settings, "GEMINI_API_KEY", SecretStr("test-key"))
-        monkeypatch.setattr(W, "replenish_one_question", lambda db, client: R.ReplenishOutcome(status="no_survivors"))
+        monkeypatch.setattr(
+            W, "replenish_one_question", lambda db, client, **_: R.ReplenishOutcome(status="no_survivors")
+        )
         seen: dict[str, object] = {}
 
         def fake_sweep(db: Session, *, limit: int, budget: TranslationBudget | None = None) -> SweepReport:
@@ -333,7 +336,9 @@ class TestWorkerTickIsCounted:
         from app.services.translation.orchestrator import OrchestratorReport
 
         monkeypatch.setattr(settings, "GEMINI_API_KEY", SecretStr("test-key"))
-        monkeypatch.setattr(W, "replenish_one_question", lambda db, client: R.ReplenishOutcome(status="no_survivors"))
+        monkeypatch.setattr(
+            W, "replenish_one_question", lambda db, client, **_: R.ReplenishOutcome(status="no_survivors")
+        )
         monkeypatch.setattr(
             W,
             "translate_pending_questions",
@@ -343,3 +348,129 @@ class TestWorkerTickIsCounted:
         monkeypatch.setattr(W, "increment", lambda name, **tags: counted.append((name, tags)))
         W._run_one_tick(db)
         assert counted == [("equip.daily_challenge.replenish_total", {"status": "no_survivors"})]
+
+
+class TestWorkerTickHoldsThePool:
+    """The nightly tick and the minute tick's idle sweep write the same
+    pool. Both pick the oldest questions missing a language, and the new
+    question is committed before it is translated, so two at once write
+    the same question and the second meets ``uniq_content_versions_active``.
+    The nightly tick takes the lease the idle sweep takes."""
+
+    @staticmethod
+    def _configured(monkeypatch: pytest.MonkeyPatch) -> None:
+        from pydantic import SecretStr
+
+        from app.core.config import settings
+
+        monkeypatch.setattr(settings, "GEMINI_API_KEY", SecretStr("test-key"))
+
+    def test_with_the_pool_free_it_translates_sweeps_and_lets_go(
+        self, db: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from app.api.v1 import internal_daily_challenge_worker as W
+        from app.services import worker_lease
+        from app.services.daily_challenge.translate import POOL_SWEEP_LEASE, SweepReport
+        from app.services.translation.orchestrator import OrchestratorReport
+
+        self._configured(monkeypatch)
+        asked: list[bool] = []
+
+        def fake_replenish(db: Session, client: object, *, translate: bool) -> R.ReplenishOutcome:
+            asked.append(translate)
+            # The lease is held while the question is generated and translated.
+            assert worker_lease.claim(db, POOL_SWEEP_LEASE) is None
+            return R.ReplenishOutcome(status="scheduled")
+
+        swept: list[int] = []
+
+        def fake_sweep(db: Session, *, limit: int, budget: object = None) -> SweepReport:
+            swept.append(limit)
+            return SweepReport(questions=0, rows=OrchestratorReport())
+
+        monkeypatch.setattr(W, "replenish_one_question", fake_replenish)
+        monkeypatch.setattr(W, "translate_pending_questions", fake_sweep)
+        W._run_one_tick(db)
+
+        assert asked == [True]
+        assert swept == [W._TRANSLATION_SWEEP_LIMIT]
+        # Given back: the next minute's idle sweep can take it.
+        assert worker_lease.claim(db, POOL_SWEEP_LEASE) is not None
+
+    def test_with_the_pool_held_it_generates_and_leaves_translation_to_the_sweep(
+        self, db: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from app.api.v1 import internal_daily_challenge_worker as W
+        from app.models.worker_lease import WorkerLease
+        from app.services import worker_lease
+        from app.services.daily_challenge.translate import POOL_SWEEP_LEASE
+
+        self._configured(monkeypatch)
+        idle_tick = worker_lease.claim(db, POOL_SWEEP_LEASE)
+        assert idle_tick is not None
+        asked: list[bool] = []
+
+        def fake_replenish(db: Session, client: object, *, translate: bool) -> R.ReplenishOutcome:
+            asked.append(translate)
+            return R.ReplenishOutcome(status="scheduled")
+
+        def no_sweep(*_: object, **__: object) -> None:
+            raise AssertionError("swept the pool while another tick held it")
+
+        monkeypatch.setattr(W, "replenish_one_question", fake_replenish)
+        monkeypatch.setattr(W, "translate_pending_questions", no_sweep)
+        out = W._run_one_tick(db)
+
+        assert out.status == "scheduled"
+        assert asked == [False]
+        # The other tick's lease is untouched.
+        assert str(db.get(WorkerLease, POOL_SWEEP_LEASE).holder) == str(idle_tick)  # type: ignore[union-attr]
+
+    def test_a_failed_tick_still_lets_go(self, db: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        from app.api.v1 import internal_daily_challenge_worker as W
+        from app.services import worker_lease
+        from app.services.daily_challenge.translate import POOL_SWEEP_LEASE
+
+        self._configured(monkeypatch)
+
+        def broken(*_: object, **__: object) -> R.ReplenishOutcome:
+            raise RuntimeError("provider down")
+
+        monkeypatch.setattr(W, "replenish_one_question", broken)
+        with pytest.raises(RuntimeError):
+            W._run_one_tick(db)
+        assert worker_lease.claim(db, POOL_SWEEP_LEASE) is not None
+
+
+class TestReplenishCanLeaveTranslationToTheSweep:
+    def test_translate_false_publishes_without_asking_for_languages(
+        self, db: Session, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        admin = _admin(db)
+
+        def _fake_generate(db_: Session, *, client: object, request: object) -> GenerationOutcome:
+            q = _draft(db_, created_by=admin.id)
+            return GenerationOutcome(generation_run_id=uuid.uuid4(), created_question_ids=[q.id])
+
+        def _fake_promote(
+            db_: Session, *, question: DailyChallengeQuestion, actor_id: uuid.UUID
+        ) -> DailyChallengeQuestion:
+            question.status = DailyChallengeQuestionStatus.PILOT_PASSED.value
+            db_.flush()
+            return question
+
+        def _no_translation(*_: object, **__: object) -> None:
+            raise AssertionError("translated a question another tick may be sweeping")
+
+        monkeypatch.setattr(R, "run_generation", _fake_generate)
+        monkeypatch.setattr(R, "promote_status", _fake_promote)
+        monkeypatch.setattr(R, "translate_question", _no_translation)
+
+        out = R.replenish_one_question(
+            db,
+            client=object(),  # type: ignore[arg-type]
+            start_date=date(2026, 7, 10),
+            translate=False,
+        )
+        assert out.status == "scheduled"
+        assert db.query(DailyChallengeSchedule).filter_by(challenge_date=date(2026, 7, 10)).one()

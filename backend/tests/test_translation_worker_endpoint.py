@@ -426,7 +426,8 @@ class TestTwoOverlappingTicksDoNotSweepThePoolTogether:
     sweep and threw away the work the tick had already done. Seven of
     those reached production between 04:29 and 05:16 UTC on 2026-09-18.
 
-    The sweep now runs under a transaction-scoped advisory lock.
+    The sweep now holds a lease (``services/worker_lease.py``); a
+    transaction-scoped advisory lock was released by its first commit.
     """
 
     def test_a_tick_that_cannot_take_the_lease_skips_the_sweep(self, client: TestClient, configured_worker, db) -> None:

@@ -170,9 +170,16 @@ def replenish_one_question(
     actor_id: uuid.UUID | None = None,
     n_candidates: int = 2,
     start_date: date | None = None,
+    translate: bool = True,
 ) -> ReplenishOutcome:
     """Generate one question and append it to the schedule. See module
-    docstring. ``actor_id`` defaults to the oldest active admin."""
+    docstring. ``actor_id`` defaults to the oldest active admin.
+
+    ``translate=False`` leaves the new question's other languages to the
+    pool sweep. The worker passes it when another tick holds the pool lease
+    (``translate.POOL_SWEEP_LEASE``): the question is committed before it is
+    translated, so a sweep running at that moment can pick it up too.
+    """
     actor = actor_id or _system_actor_id(db)
     if actor is None:
         return ReplenishOutcome(status="no_actor", detail="no active admin user to attribute generation to")
@@ -257,18 +264,21 @@ def replenish_one_question(
     # yet translated is inventory the sweep will finish; a tick that fails
     # here after publishing would be a tick that threw away a good question
     # over a provider hiccup.
-    try:
-        report = translate_question(db, question)
-        logger.info(
-            "replenish: translated %s (%d rows, %d needs review, %d failed)",
-            qid,
-            report.translated,
-            report.needs_review,
-            report.failed,
-        )
-    except Exception as exc:
-        db.rollback()
-        logger.warning("replenish: translation failed for %s: %s", qid, exc)
+    if not translate:
+        logger.info("replenish: %s left to the pool sweep (another tick holds the pool)", qid)
+    else:
+        try:
+            report = translate_question(db, question)
+            logger.info(
+                "replenish: translated %s (%d rows, %d needs review, %d failed)",
+                qid,
+                report.translated,
+                report.needs_review,
+                report.failed,
+            )
+        except Exception as exc:
+            db.rollback()
+            logger.warning("replenish: translation failed for %s: %s", qid, exc)
 
     logger.info("replenish: scheduled %s (%s) for %s", qid, label, cursor.isoformat())
     return ReplenishOutcome(status="scheduled", question_id=str(qid), challenge_date=cursor.isoformat(), passage=label)
