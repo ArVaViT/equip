@@ -73,7 +73,11 @@ jobs:
 
       - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
         with:
-          version: latest
+          # Pinned, as in frontend-e2e.yml. `latest` resolved to CLI 3.4.0 on
+          # 2026-11-25, which refuses a deploy without a terminal unless told
+          # --yes, and the run failed having changed nothing. A production
+          # deploy moves to a new CLI by a reviewed change, not overnight.
+          version: "2.111.0"
 
       - name: Deploy
         env:
@@ -83,7 +87,8 @@ jobs:
             echo "::error::SUPABASE_ACCESS_TOKEN is not set — the function cannot be deployed."
             exit 1
           fi
-          supabase functions deploy "$FUNCTION_SLUG" --project-ref "$PROJECT_REF"
+          # --yes: this job has no terminal; deploying is what it is for.
+          supabase functions deploy "$FUNCTION_SLUG" --project-ref "$PROJECT_REF" --yes
 
       - name: Confirm the deploy landed
         env:
