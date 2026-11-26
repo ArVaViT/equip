@@ -382,6 +382,15 @@ def questions_missing_a_language(db: Session, *, limit: int) -> list[DailyChalle
     return [by_id[qid] for qid in pending if qid in by_id]
 
 
+#: The lease (``services/worker_lease.py``) every writer of pool translations
+#: holds: the idle translation tick's sweep, and the nightly tick, which
+#: translates the question it just generated and then sweeps. Both pick the
+#: oldest questions missing a language, so two of them running at once
+#: translate the same question and the second write meets
+#: ``uniq_content_versions_active``. One name, so they exclude each other.
+POOL_SWEEP_LEASE = "daily_challenge_pool_sweep"
+
+
 @dataclass(frozen=True, slots=True)
 class SweepReport:
     """What one sweep repaired. ``questions`` is what was actually
@@ -433,6 +442,7 @@ def translate_pending_questions(
 
 
 __all__ = [
+    "POOL_SWEEP_LEASE",
     "SweepReport",
     "question_translation_completeness",
     "questions_missing_a_language",

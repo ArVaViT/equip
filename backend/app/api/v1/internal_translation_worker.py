@@ -39,8 +39,8 @@ from app.core.metrics import emit, gauge, timing
 from app.services import worker_lease
 from app.services.content_versions.prune import PruneReport, prune_superseded_machine_translations
 from app.services.course_service import get_course
+from app.services.daily_challenge.translate import POOL_SWEEP_LEASE, translate_pending_questions
 from app.services.daily_challenge.translate import SweepReport as PoolSweepReport
-from app.services.daily_challenge.translate import translate_pending_questions
 from app.services.staged_edits import promote_ready_fields
 from app.services.translation.budget import worker_budget
 from app.services.translation.completeness import courses_stuck_in_publishing, promote_if_complete
@@ -71,9 +71,6 @@ logger = logging.getLogger(__name__)
 # dozen provider calls, so this is roughly a minute of work — and it only
 # ever runs on a tick that had nothing else to do.
 _IDLE_POOL_SWEEP_LIMIT = 5
-
-#: Lease name for the idle pool sweep (``services/worker_lease.py``).
-_POOL_SWEEP_LEASE = "daily_challenge_pool_sweep"
 
 #: Groups of superseded machine translations the idle tick prunes per
 #: call. A group is one text in one language, typically a handful of
@@ -331,7 +328,7 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
         # held for the whole sweep and given back after, which a tick that
         # dies leaves to expire.
         pool = PoolSweepReport(questions=0, rows=OrchestratorReport())
-        holder = worker_lease.claim(db, _POOL_SWEEP_LEASE)
+        holder = worker_lease.claim(db, POOL_SWEEP_LEASE)
         if holder is not None:
             try:
                 pool = translate_pending_questions(db, limit=_IDLE_POOL_SWEEP_LIMIT, budget=idle_budget)
@@ -343,7 +340,7 @@ def _run_one_tick(db: Session) -> WorkerTickResponse:
                 # A lease that cannot be given back expires on its own; that is
                 # no reason to fail the tick that did the work.
                 try:
-                    worker_lease.release(db, _POOL_SWEEP_LEASE, holder)
+                    worker_lease.release(db, POOL_SWEEP_LEASE, holder)
                 except Exception as exc:
                     db.rollback()
                     logger.warning("worker: pool sweep lease not released (it will expire): %s", exc)
