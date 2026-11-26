@@ -327,7 +327,9 @@ def _preview(db: Session, response: Response, token: str, accept_language: str |
     response.headers["Vary"] = "Accept-Language"
     reason = unusable_reason(db, invitation)
     organization = (
-        db.query(Organization.public_name).filter(Organization.id == invitation.organization_id).scalar()
+        db.query(Organization.public_name, Organization.logo_url)
+        .filter(Organization.id == invitation.organization_id)
+        .first()
         if invitation.scope != InvitationScope.PLATFORM.value
         else None
     )
@@ -342,7 +344,8 @@ def _preview(db: Session, response: Response, token: str, accept_language: str |
         # profile yet, so the browser's header is the only thing that
         # knows what they read.
         course_title=course_title_for_invitation(db, invitation, display_locale=normalize_locale(accept_language)),
-        organization_name=organization,
+        organization_name=organization.public_name if organization else None,
+        organization_logo_url=organization.logo_url if organization else None,
         status=cast("InvitationStatusLiteral", invitation.status),
         # A fulfilled invitation is still redeemable by its invitee (see
         # accept_invitation), on the same clock as a pending one.

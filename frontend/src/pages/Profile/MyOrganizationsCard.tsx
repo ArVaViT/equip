@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom"
 import { useTranslation } from "react-i18next"
-import { ArrowRight, Building2 } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { OrganizationMark } from "@/components/organization/OrganizationMark"
 import { useAsyncData } from "@/hooks/useAsyncData"
 import { organizationsService } from "@/services/organizations"
 
@@ -28,9 +29,7 @@ export function MyOrganizationsCard({ userId }: { userId: string }) {
                 to={`/o/${block.organization_slug}`}
                 className="lift group flex items-center gap-3 rounded-lg bg-muted/15 p-4 hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
-                  <Building2 className="h-5 w-5 text-ink-muted" strokeWidth={1.75} aria-hidden />
-                </div>
+                <OrganizationMark name={block.organization_name} logoUrl={block.organization_logo_url} size="sm" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{block.organization_name}</p>
                   <p className="text-xs text-ink-muted first-letter:uppercase">{t(`myOrganizations.roles.${block.role}`)}</p>

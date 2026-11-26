@@ -1,4 +1,5 @@
 import { Lock } from "lucide-react"
+import { OrganizationMark } from "@/components/organization/OrganizationMark"
 import { useId, useState, type ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
@@ -224,9 +225,10 @@ function Author({ courseId }: { courseId: string }) {
             // The school is a page now: who it is, who runs it, what else it teaches.
             <Link
               to={`/o/${author.organization_slug}`}
-              className="text-sm text-ink-muted underline-offset-4 text-wrap-safe hover:text-ink hover:underline"
+              className="mt-1 inline-flex items-center gap-2 text-sm text-ink-muted underline-offset-4 hover:text-ink hover:underline"
             >
-              {author.school}
+              <OrganizationMark name={author.school} logoUrl={author.organization_logo_url} size="xs" />
+              <span className="min-w-0 text-wrap-safe">{author.school}</span>
             </Link>
           ) : (
             <p className="text-sm text-ink-muted text-wrap-safe">{author.school}</p>

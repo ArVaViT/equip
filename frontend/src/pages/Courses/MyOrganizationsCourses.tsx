@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom"
+import { OrganizationMark } from "@/components/organization/OrganizationMark"
 import { useTranslation } from "react-i18next"
 import { Lock } from "lucide-react"
 
@@ -52,8 +53,12 @@ export function MyOrganizationsCourses({
             <Lock className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
             {t("myOrganizations.eyebrow", { role: t(`myOrganizations.roles.${block.role}`) })}
           </Eyebrow>
-          <h2 id={`my-org-${block.organization_id}`} className="mt-1 font-serif text-2xl font-semibold tracking-tight">
-            <Link to={`/o/${block.organization_slug}`} className="underline-offset-4 hover:underline">
+          <h2
+            id={`my-org-${block.organization_id}`}
+            className="mt-2 flex items-center gap-3 font-serif text-2xl font-semibold tracking-tight"
+          >
+            <OrganizationMark name={block.organization_name} logoUrl={block.organization_logo_url} size="sm" />
+            <Link to={`/o/${block.organization_slug}`} className="min-w-0 underline-offset-4 text-wrap-safe hover:underline">
               {block.organization_name}
             </Link>
           </h2>

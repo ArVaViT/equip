@@ -164,6 +164,17 @@ class TestAStudentInTwoOrganizations:
         assert [c["id"] for c in blocks["school-a"]["courses"]] == ["inst-a"]
         assert [c["id"] for c in blocks["school-b"]["courses"]] == ["inst-b"]
 
+    def test_each_block_carries_its_organizations_logo(self, db: Session, world: dict) -> None:
+        """The block heads a member's courses with the organization's face;
+        one without a logo says so with ``None``, and the client shows
+        initials."""
+        db.get(Organization, A_ID).logo_url = f"/img/organization-logos/{A_ID}/logo-0123abcd.png"
+        db.commit()
+        both = _person(db, "logos@example.com", UserRole.STUDENT.value, (A_ID, "student"), (B_ID, "teacher"))
+        blocks = {b["organization_slug"]: b for b in _as(db, both).get("/api/v1/courses/my-organizations").json()}
+        assert blocks["school-a"]["organization_logo_url"] == f"/img/organization-logos/{A_ID}/logo-0123abcd.png"
+        assert blocks["school-b"]["organization_logo_url"] is None
+
     def test_a_member_may_enrol_on_a_closed_course_by_themselves(self, db: Session, world: dict) -> None:
         """The 2026-10-03 amendment to ADR-010: membership is the gate, the
         course's own window the schedule. A stranger meets a 404 — not the

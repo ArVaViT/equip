@@ -134,6 +134,9 @@ class InvitationPreview(BaseModel):
     #: person deciding whether to accept is told by whom before anything
     #: else; ``None`` for a platform invitation, which comes from no school.
     organization_name: str | None = None
+    #: That organization's logo, the face beside the name; ``None`` when it
+    #: has none, or for a platform invitation.
+    organization_logo_url: str | None = None
     status: InvitationStatusLiteral
     is_expired: bool
     #: Why the link admits nobody now, or ``None`` when it still does --

@@ -8,8 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { getErrorDetail } from "@/lib/errorDetail"
-import { toProxyImage } from "@/lib/images"
-import { organizationInitials } from "@/lib/organizationInitials"
+import { OrganizationMark } from "@/components/organization/OrganizationMark"
 import { toast } from "@/lib/toast"
 import { ORGANIZATION_LOGOS, acceptAttribute } from "@/lib/uploadLimits"
 import { organizationsService, type OrganizationPage } from "@/services/organizations"
@@ -51,7 +50,6 @@ export function OrganizationProfileForm({
   const [logoChanged, setLogoChanged] = useState(false)
   const websiteTyped = website.trim()
   const websiteBroken = websiteTyped !== "" && !/^https:\/\/\S+\.\S+/.test(websiteTyped)
-  const logoSrc = toProxyImage(logo)
 
   const save = async () => {
     setSaving(true)
@@ -124,17 +122,7 @@ export function OrganizationProfileForm({
       <div className="space-y-1.5">
         <Label htmlFor={`${ids}-logo`}>{t("organization.form.logo")}</Label>
         <div className="flex items-center gap-3">
-          {logoSrc ? (
-            <img src={logoSrc} alt="" className="h-14 w-14 shrink-0 rounded-lg border border-edge bg-surface object-contain" />
-          ) : (
-            // The same stand-in the page shows: the name's initials.
-            <div
-              aria-hidden
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-edge bg-muted/40 font-serif text-xl font-semibold text-ink-muted"
-            >
-              {organizationInitials(page.public_name)}
-            </div>
-          )}
+          <OrganizationMark name={page.public_name} logoUrl={logo} size="md" />
           <Button
             type="button"
             variant="outline"
@@ -165,11 +153,15 @@ export function OrganizationProfileForm({
             ref={fileRef}
             id={`${ids}-logo`}
             type="file"
+            aria-describedby={`${ids}-logo-hint`}
             accept={acceptAttribute(ORGANIZATION_LOGOS)}
             className="hidden"
             onChange={(e) => void changeLogo(e)}
           />
         </div>
+        <p id={`${ids}-logo-hint`} className="text-xs text-ink-muted">
+          {t("organization.form.logoHint")}
+        </p>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor={`${ids}-description`}>{t("organization.form.description")}</Label>

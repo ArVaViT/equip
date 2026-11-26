@@ -108,6 +108,7 @@ def list_my_organizations_courses(
                 organization_id=organization.id,
                 organization_slug=organization.slug,
                 organization_name=organization.public_name,
+                organization_logo_url=organization.logo_url,
                 role=membership.role,
                 courses=build_localized_course_summaries(db, courses, display_locale) if courses else [],
             )

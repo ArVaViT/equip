@@ -24,9 +24,12 @@ interface AuthLayoutProps {
   children: React.ReactNode
   heading: string
   subheading?: string
+  /** Shown above the heading: whose screen this is, when it is somebody's
+   *  (an organization's logo on its invitation). */
+  mark?: React.ReactNode
 }
 
-export default function AuthLayout({ children, heading, subheading }: AuthLayoutProps) {
+export default function AuthLayout({ children, heading, subheading, mark }: AuthLayoutProps) {
   const { theme, toggleTheme } = useTheme()
   const { t } = useTranslation()
   const prefersReducedMotion = useReducedMotion()
@@ -158,6 +161,7 @@ export default function AuthLayout({ children, heading, subheading }: AuthLayout
           {/* A clearing in the scene behind the form (`FORM_VEIL` above). */}
           <div className={`w-full max-w-[420px] space-y-8 ${FORM_VEIL}`}>
             <div className="space-y-2 text-center lg:text-left">
+              {mark && <div className="mb-4 flex justify-center lg:justify-start">{mark}</div>}
               <h1 className="font-serif text-2xl font-bold tracking-tight sm:text-3xl">{heading}</h1>
               {subheading && <p className="font-sans text-sm text-ink-muted">{subheading}</p>}
             </div>

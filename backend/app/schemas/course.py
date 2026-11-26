@@ -496,6 +496,8 @@ class OrganizationCourses(BaseModel):
     organization_id: UUID
     organization_slug: str
     organization_name: str
+    #: The organization's logo, or ``None`` and the reader sees its initials.
+    organization_logo_url: str | None = None
     role: str
     courses: list[CourseSummary] = []
 
